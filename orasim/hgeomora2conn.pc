@@ -1,0 +1,391 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 10/06/2010 by Ilse Koenig
+
+//_HADES_CLASS_DESCRIPTION 
+/////////////////////////////////////////////////////////////
+// HGeomOra2Conn
+//
+// Connection class to database Oracle for geometry 
+// (uses the Oracle C/C++ precompiler)
+//
+/////////////////////////////////////////////////////////////
+using namespace std;
+#include "hgeomora2conn.h"
+#include "TRandom.h"
+#include <stdio.h>
+#include <iostream>
+#include <iomanip>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <termios.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+ 
+ClassImp(HGeomOra2Conn)
+
+HGeomOra2Conn::HGeomOra2Conn() {
+  // default constructor
+  // defines default values for user ("hades_ana") and the database
+  //   ("db-hades", the HADES Oracle database at GSI)
+  // User "hades" has Read-only access to the Oracle tables.
+  // The connection to Oracle is not opened!
+  strcpy(dbName,"db-hades");
+  strcpy(userName,"hades_ana");
+  isConnected=kFALSE;
+  actRunId=-1;
+  runStart=-1;
+  expLocation[0]='\0';
+  historyDate[0]='\0';
+  needsServerCheck=kTRUE;
+  writable=kFALSE;
+}
+
+HGeomOra2Conn::~HGeomOra2Conn() {
+  // default destructor (closes connection)
+  close();
+}
+
+Bool_t HGeomOra2Conn::open() {
+  // opens default connection with readonly access
+  Char_t* password = new Char_t[20];
+  strcpy(password,"hades");
+  Bool_t rc=openConnection(password);
+  writable=kFALSE;
+  if (!rc) close();
+  return rc;
+}
+
+Bool_t HGeomOra2Conn::open(const Char_t *uName) {
+  // opens connection to database Hades for user given by name
+  // asks for password
+  strcpy(userName,uName);
+  Char_t* password=getPassword();
+  Bool_t rc=openConnection(password);
+  writable=kTRUE;
+  if (!rc) close();
+  return rc;
+}
+
+Bool_t HGeomOra2Conn::open(const Char_t *dbN,const Char_t *uN) {
+  // opens connection to database with name dbName for user given by name
+  // asks for password
+  strcpy(dbName,dbN);
+  strcpy(userName,uN);
+  Char_t* password=getPassword();
+  Bool_t rc=openConnection(password);
+  writable=kTRUE;
+  if (!rc) close();
+  return rc;
+}
+
+void HGeomOra2Conn::close() {
+  // disconnects from ORACLE
+  // A transaction will be automatically rolled back,
+  // that means changes in the database are not stored
+  // without an explicit COMMIT
+  actRunId=-1;
+  runStart=-1;
+  expLocation[0]='\0';
+  historyDate[0]='\0';
+  EXEC SQL WHENEVER SQLERROR DO
+    showSqlError("ORACLE error in HGeomOra2Conn::close():");
+  if (isConnected) {
+    EXEC SQL ROLLBACK RELEASE;
+    isConnected=kFALSE;
+    cout<<"connection to Oracle closed"<<endl;
+  }
+  writable=kFALSE;
+  needsServerCheck=kTRUE;
+}
+
+void HGeomOra2Conn::print() {
+  // prints information about the database connection
+  if (isConnected)
+    cout<<"Oracle-Database: "<<dbName<<"    Username: "<<userName<<'\n';
+  else cout<<"*** no connection to Oracle established  ***\n";
+  if (strlen(historyDate)==0) cout<<"No history date set\n";
+  else cout<<"History date: "<<historyDate<<'\n';
+}
+
+void HGeomOra2Conn::showSqlError(const Char_t* fctName) {
+  // shows SQL error messages
+  Error(fctName,"\n%s\n",sqlca.sqlerrm.sqlerrmc);
+}
+
+void HGeomOra2Conn::showSqlError(const Char_t* fctName,const Char_t* msg) {
+  // shows SQL error messages
+  Error(fctName,"\n%s\n%s\n",sqlca.sqlerrm.sqlerrmc,msg);
+}
+
+void HGeomOra2Conn::commit(void) {
+  // commits all changes
+  EXEC SQL COMMIT WORK;
+  cout<<"Transaction committed"<<endl;
+  return;
+}
+
+void HGeomOra2Conn::rollback(void) {
+  // discards all changes since last commit
+  EXEC SQL ROLLBACK WORK;
+  cout<<"Transaction rolled back"<<endl;
+  return;
+}
+
+Char_t* HGeomOra2Conn::getPassword() {
+  // asks for the password
+  Char_t* passwd = new Char_t[20];
+  Char_t buf[20];
+  Int_t ttyfd = 0;
+  struct termios tio, itio;
+  if ((ttyfd = ::open("/dev/tty", O_RDWR)) < 0) {
+    fprintf(stderr, "cannot open tty, using stdin\n");
+    ttyfd = 0;
+  }
+  if (tcgetattr(ttyfd, &tio) < 0) {
+    fprintf (stderr, "\nUnable to get terminal characteristics: ");
+    cout<<"enter password for user "<<userName<<" > ";
+    Int_t n=scanf("%[^\n]%*c",passwd);
+    if(n==0)cout<<"no password found!"<<endl;
+    return passwd; 
+  }
+  itio = tio;
+  tio.c_lflag &= ~(ECHO|ICANON);         
+  tcsetattr (ttyfd, TCSAFLUSH, &tio);
+  cout<<"enter password for user "<<userName<<" > ";
+  Bool_t res=fgets(buf, 20, stdin);
+  if(!res)cout<<"could not retrieve next buffer!"<<endl;
+  tcsetattr (ttyfd, TCSAFLUSH, &itio);
+  //close(ttyfd);
+  sscanf(buf, "%s", passwd);
+  cout<<endl;
+  return passwd;
+}
+
+Bool_t HGeomOra2Conn::openConnection(const Char_t* password) {
+  // opens connection (contains the SQL-statements)
+  if (isConnected) close();
+  Char_t connId[80];
+  strcpy(connId,userName);
+  strcat(connId,"@");
+  strcat(connId,dbName);    // e.g."hades_ana@hadp"
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* uName;
+    char* pWord;
+  EXEC SQL END DECLARE SECTION;
+  uName=connId;
+  pWord=(Char_t*)password;
+  EXEC SQL WHENEVER SQLERROR DO
+    showSqlError("ORACLE error in HGeomOra2Conn::openConnection(...):");
+  EXEC SQL CONNECT :uName IDENTIFIED BY :pWord;
+  if (sqlca.sqlcode==0) isConnected=kTRUE;
+  else cout<<"*** Failed to connect to Oracle ***"<<endl;
+  delete password;
+  actRunId=-1;
+  runStart=0;
+  expLocation[0]='\0';
+  historyDate[0]='\0';
+  return isConnected; 
+}
+
+Bool_t HGeomOra2Conn::setSimulRefRun(const Char_t* runName) {
+  // Sets the run id via the name of the simulation reference run
+  if (!isConnected) return kFALSE; 
+  simulRefRun=runName;
+  if (simulRefRun.Length()==0) return kFALSE;
+  simulRefRun.ToLower();
+  runStart=-1;  
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* fname;
+    int   run;
+  EXEC SQL END DECLARE SECTION;
+  fname=(Char_t*)simulRefRun.Data();
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL SELECT ref_run_id INTO :run
+           FROM hanal2.simul_ref_run
+           WHERE ref_run_name = :fname;
+  getRunStart(run);
+  if (runStart>0) return kTRUE;
+  else return kFALSE;
+errorfound:
+  showSqlError("setSimulRefRun(const Char_t*");
+  return kFALSE;
+notfound:
+  Error("setSimulRefRun(const Char_t*)",
+        "No such simulation reference run %s",runName);
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Conn::setRunId(Int_t id) {
+  // Sets the run id and the run start
+  if (!isConnected) return kFALSE; 
+  simulRefRun="";
+  getRunStart(id);   
+  if (runStart==-1) return kFALSE;
+  else return kTRUE;
+}
+
+Int_t HGeomOra2Conn::checkServerLoad() {
+  EXEC SQL BEGIN DECLARE SECTION;
+    int retval;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO notfound;
+  EXEC SQL EXECUTE
+    BEGIN
+      :retval := hanal.check_analysis_sessions;
+    END;
+  END-EXEC;
+  return retval;
+notfound:
+  showSqlError("checkServerLoad");
+  return -1;
+}
+
+Int_t HGeomOra2Conn::getRunStart(Int_t id) {
+  // Compares the run id with the last used actRunId for fetching data.
+  // If they are different, the run start time (converted to ansi C time) is
+  // read from Oracle and stored together with the run id in the data members
+  // run_id and runStart
+  if (id==actRunId && runStart>0) return runStart;
+  if (needsServerCheck) {
+    Int_t l=0;
+    UInt_t nTotWait=0;
+    l=checkServerLoad();
+    while (l==0&&nTotWait<86400000) {
+      UInt_t nWait=10000+gRandom->Integer(20000);
+      nTotWait+=nWait;
+      cout<<"Oracle server busy, retry in "<<nWait/1000<<" seconds"<<endl;
+      usleep(nWait*1000);
+      l=checkServerLoad();
+    }
+    if (l>0) needsServerCheck=kFALSE;
+    else return -1;
+  }
+  if (strlen(historyDate)==0) setParamRelease(id);
+  actRunId=id;
+  runStart=-1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int ri; 
+    int rs;
+    varchar exp_loc[30];
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO notfound;
+  ri = actRunId;
+  exp_loc.len=30;
+  EXEC SQL EXECUTE
+    BEGIN
+      hades_oper.run_query_2.get_run_start(:ri,:rs,:exp_loc);
+    END;
+  END-EXEC;
+  if (ri==actRunId) {
+    runStart=rs;
+    exp_loc.arr[exp_loc.len]='\0';
+    if (strlen(expLocation)==0) strcpy(expLocation,(Char_t*)exp_loc.arr);
+    else {
+      if (strcmp(expLocation,(Char_t*)exp_loc.arr)!=0) {
+        Error("getRunStart(Int_t)",
+          "\nA switch from beamtime runs to simulations runs and vice versa is not "
+          "possible\nwithout the close and reopen of the Oracle connection!\n\n");
+        runStart=-1;
+      }
+    }
+    return runStart;
+  }
+notfound:
+  Error("getRunStart(Int_t)","Run not found!\n\n");
+  return -1; 
+}
+
+Bool_t HGeomOra2Conn::setHistoryDate(const Char_t* dateString) {
+  // Sets the date to retrieve historic data
+  // Returns kFALSE when the date string cannot be converted to a valid date.
+  if (!isConnected) return kFALSE;
+  if (strstr(dateString,"_")!=NULL) {
+    return  setParamRelease(dateString);
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* d;
+    char rd[21];
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO notfound;
+  d=(Char_t*)dateString;
+  rd[0]='\0';
+  EXEC SQL EXECUTE
+    BEGIN
+      hades_oper.run_query_2.set_history_date(:d);
+      :rd := to_char(hades_oper.run_query_2.get_history_date,hwww.c_datemask);
+    END;
+  END-EXEC;
+  rd[20]='\0';
+  strcpy(historyDate,rd);
+  cout<<"*************************************************************\n";
+  cout<<"     Oracle history date: "<<historyDate<<"\n";
+  cout<<"*************************************************************\n";
+  return kTRUE;
+notfound:
+  showSqlError("setHistoryDate(const Char_t*): sql error");
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Conn::setParamRelease(const Char_t* release_name) {
+  // Sets the history date to the creation date of the parameter release give by name
+  if (!isConnected) return kFALSE; 
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* r;
+    char rd[21];
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO notfound;
+  rd[0]='\0';	
+  r=(Char_t*)release_name;
+  EXEC SQL EXECUTE
+    BEGIN
+      hades_oper.run_query_2.set_param_release(:r);
+      :rd := to_char(hades_oper.run_query_2.get_history_date,hwww.c_datemask);
+    END;
+  END-EXEC;
+  rd[20]='\0';
+  strcpy(historyDate,rd);
+  cout<<"*************************************************************\n";
+  cout<<"     Oracle history date: "<<historyDate<<"\n";
+  cout<<"*************************************************************\n";
+  return kTRUE;
+notfound:
+  showSqlError("setParamRelease(const Char_t*): sql error");
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Conn::setParamRelease(Int_t run) {
+  // Sets the history date to the creation date of the parameter release
+  // for the corresponding experiment
+  if (!isConnected) return kFALSE; 
+  EXEC SQL BEGIN DECLARE SECTION;
+    int r;
+    char rd[21];
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO notfound;
+  r=run;
+  rd[0]='\0';
+  EXEC SQL EXECUTE
+    BEGIN
+      hades_oper.run_query_2.set_history_date_by_run(:r);	
+      :rd := to_char(hades_oper.run_query_2.get_history_date,hwww.c_datemask);
+    END;
+  END-EXEC;
+  rd[20]='\0';
+  strcpy(historyDate,rd);
+  cout<<"*************************************************************\n";
+  cout<<"     Oracle history date: "<<historyDate<<"\n";
+  cout<<"*************************************************************\n";
+  return kTRUE;
+notfound:
+  showSqlError("setParamRelease(Int_t): sql error");
+  return kFALSE;
+}

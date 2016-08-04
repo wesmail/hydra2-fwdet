@@ -1,0 +1,43 @@
+!
+! GEANT key words
+!
+!
+PMCF 1
+AUTO 1
+KINE 0
+CKOV 1
+FMAP 2
+RNDM 123 456
+FPOL .7215    ! // scaling of full field
+MXST 25000
+SECO 3 1
+JVER 2 2 0     ! // smeared vertex
+LOSS 1
+DRAY 1
+TRIG 1
+SPLIT 1800000000 
+FILE 1
+SWIT 0 0
+TIME 0 1000000 1000000
+END            ! End of gffread
+//
+// ******************************************************************
+//
+SimulRefRunDb:   apr12sim_mediumfieldalign_auau
+HistoryDateDb:   now
+//DebugFile:       /misc/ilse/simul/debug_11100.txt
+//
+/misc/halo/field/fldrpz_unf.map
+//
+///u/teilab/pluto/pp3.5GeV_filter15-85.evt
+/misc/kempter/projects/AuAu/run_urqmd/out/Au15Au_urqmd_bmax4_1000evts.evt
+//
+kine.tup
+rich.tup
+mdc.tup
+tof.tup
+shower.tup
+rpc.tup
+wall.tup
+//
+tmp.root

@@ -1,0 +1,112 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Modified : 14/09/2000
+
+//_HADES_CLASS_DESCRIPTION 
+/////////////////////////////////////////////////////////////
+//
+// HDbFileUtil
+//
+// Class for FileI/O to/from Oracle tables
+//
+/////////////////////////////////////////////////////////////
+using namespace std;
+#include "hdbfileutil.h"
+#include "hdbconn.h"
+#include <iostream>
+#include <iomanip>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+ 
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+ 
+ClassImp(HDbFileUtil)
+
+void HDbFileUtil::commit(void) {
+  // commits all changes
+  if (!dbConn->isOpen()) return;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("HDbConn::commit");
+  EXEC SQL COMMIT WORK;
+  cout<<"*************************************************************"<<endl;
+  cout<<"******************  Transaction committed  ******************"<<endl;
+  cout<<"*************************************************************"<<endl;
+}
+
+void HDbFileUtil::rollback(void) {
+  // discards all changes since last commit
+  if (!dbConn->isOpen()) return;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("HDbConn::rollback");
+  EXEC SQL ROLLBACK WORK;
+  cout<<"*************************************************************"<<endl;
+  cout<<"*****************  Transaction rolled back  *****************"<<endl;
+  cout<<"*************************************************************"<<endl;
+  return;
+}
+
+void HDbFileUtil::showSqlError(const Char_t* f) {
+  // shows SQL error messages
+  cout<<"*************************************************************"<<endl;
+  Error(f,"\n%s",sqlca.sqlerrm.sqlerrmc);
+  cout<<"*************************************************************"<<endl;
+}
+
+void HDbFileUtil::showDynSqlError(const Char_t* f) {
+  sqlca.sqlerrm.sqlerrmc[sqlca.sqlerrm.sqlerrml]='\0';
+  oraca.orastxt.orastxtc[oraca.orastxt.orastxtl]='\0';
+  oraca.orasfnm.orasfnmc[oraca.orasfnm.orasfnml]='\0';
+  cout<<"**************************************************************"<<endl;
+  Error(f,"\n%s\n  in %s...\n  on line %d of %s \n\n",sqlca.sqlerrm.sqlerrmc,
+        oraca.orastxt.orastxtc,oraca.oraslnr,oraca.orasfnm.orasfnmc);
+  cout<<"**************************************************************"<<endl;
+}
+
+Bool_t HDbFileUtil::executeDirect(TString& stm) {
+  if (stm.Length()==0) {
+    Error("HDbFileUtil::executeDirect","Empty statement string");
+    return kFALSE;
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* dynstmt;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorFound;
+  dynstmt=(Char_t*)stm.Data();
+  EXEC SQL EXECUTE IMMEDIATE :dynstmt;
+  return kTRUE;
+errorFound:
+  showSqlError("HDbFileUtil::executeDirect");
+  cout<<"SQL statement: "<<endl<<stm<<endl;
+  return kFALSE;
+}
+
+Int_t HDbFileUtil::getTokString(TString& s1, TString& s2, const Char_t* delim) {
+  Int_t n=s1.First(delim);
+  if (n>0) {
+    s2=s1(0,n);
+    s2=s2.Strip(s2.kBoth);
+    n+=strlen(delim);
+    s1=s1(n,s1.Length()-n);
+    s1=s1.Strip(s1.kLeading);
+    return s1.Length();
+  }
+  if (n==0) {
+    s2="";
+    s1.Remove(0,strlen(delim)); // remove delimiter
+    s1=s1.Strip(s1.kLeading);
+    return s1.Length();
+  }
+  s2=s1.Strip(s1.kLeading);
+  s1="";
+  return 0;
+}
+
+Bool_t HDbFileUtil::confirm(const Char_t * action) {
+  Char_t buf[80];
+  cout<<"Confirm "<<action<<" ('y' or 'n') > "<<endl;
+  cin>>buf;
+  if (buf[0]=='y' || buf[0]=='Y') return kTRUE;
+  else return kFALSE;
+}
+

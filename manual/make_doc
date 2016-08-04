@@ -1,0 +1,5 @@
+#!/bin/bash
+pdflatex hydra.tex
+bibtex   hydra
+pdflatex hydra.tex
+pdflatex hydra.tex

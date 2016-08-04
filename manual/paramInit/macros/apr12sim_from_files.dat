@@ -1,0 +1,68 @@
+!
+! GEANT key words
+!
+PMCF 1
+AUTO 1
+KINE 0
+FMAP 2
+FPOL 0.7215
+MXST 25000
+JVER 2 2 0
+BEAM 1. 1. 1230. 0. 0. 0.
+SECO 3 1
+CKOV 1
+LOSS 1
+DRAY 1
+SWIT 0 0 0 0 0 1 0
+TRIG TRIGGER_NUM
+ETA  37.30 30.20 21.00 4.75 6.0 7.1e-2
+TIME 0 1000000 1000000
+SPLIT 1800000000
+FILE 1
+END            ! End of gffread
+//
+// ******************************************************************
+//
+// SimulRefRunDb:   apr12sim_mediumfieldalign_auau
+// HistoryDateDb:   now
+//
+DbSupport:     OFF
+SimulRefRunId: 12001
+//
+//ParameterFile: geom12001/mdcwireplanes.root
+//
+geom12001/media_230615155440.geo
+geom12001/cave_230615155440.geo
+geom12001/rich_230615155440.geo
+geom12001/target_230615155440.geo
+geom12001/sect_230615155440.geo
+geom12001/mdc_230615155440.geo
+geom12001/coils_230615155440.geo
+geom12001/tof_230615155440.geo
+geom12001/shower_230615155440.geo
+geom12001/frames_230615155440.geo
+geom12001/start_230615155440.geo
+geom12001/wall_230615155440.geo
+geom12001/rpc_230615155440.geo
+//
+geom12001/rich_230615155440.hit
+geom12001/mdc_230615155440.hit
+geom12001/tof_230615155440.hit
+geom12001/shower_230615155440.hit
+geom12001/start_230615155440.hit
+geom12001/wall_230615155440.hit
+geom12001/rpc_230615155440.hit
+//
+/cvmfs/hades.gsi.de/param/field/fldrpz_unf.map
+//
+kine.tup
+rich.tup
+mdc.tup
+tof.tup
+shower.tup
+wall.tup
+rpc.tup
+//
+/misc/kempter/projects/AuAu/run_urqmd/out/Au15Au_urqmd_bmax4_1000evts.evt
+//
+test.root

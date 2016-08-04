@@ -1,0 +1,135 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Modified : 05/07/2001
+
+//_HADES_CLASS_DESCRIPTION 
+/////////////////////////////////////////////////////////////
+// HDbConn
+//
+// Oracle connection class (used for Oracle utility programs)
+// (uses the Oracle C/C++ precompiler)
+//
+/////////////////////////////////////////////////////////////
+using namespace std;
+#include "hdbconn.h"
+#include <stdio.h>
+#include <iostream>
+#include <iomanip>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <termios.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+// SQL prototype routines
+#include <sqlcpr.h> 
+ 
+ClassImp(HDbConn)
+
+HDbConn::HDbConn() {
+  // Default constructor (Connection not yet open)
+  dbIsOpen=kFALSE;
+  noDDL=kTRUE;
+}
+
+HDbConn::~HDbConn() {
+  // Destructor
+  closeDbConn();
+}
+
+Bool_t HDbConn::connectDb(TString userName, TString dbName) {
+  // Opens an Oracle connection (e.g.with:  "hades","db-hades")
+  // Asks for a password.
+  uName=userName;
+  uName.ToUpper();
+  if (uName.CompareTo("SCOTT")==0) {
+    cout<<"User SCOTT is not allowed to use this program!"<<endl;
+    return kFALSE;
+  }
+  TString connString=uName+"@"+dbName;
+  Char_t* passwd = new Char_t[20];
+  if (uName.CompareTo("HADES_ANA")==0) {
+    strcpy(passwd,"hades");
+    noDDL=kTRUE;
+  } else {
+    if (uName.CompareTo("HADES")==0) {
+      cout<<"User HADES has readonly access!"<<endl;
+      noDDL=kTRUE;
+    } else {
+      noDDL=kFALSE;
+    }
+    Char_t buf[20];
+    Int_t ttyfd = 0;
+    struct termios tio, itio;
+    if ((ttyfd = ::open("/dev/tty", O_RDWR)) < 0) {
+      fprintf(stderr, "cannot open tty, using stdin\n");
+      ttyfd = 0;
+    }
+    if (tcgetattr(ttyfd, &tio) < 0) {
+      fprintf (stderr, "\nUnable to get terminal characteristics: ");
+      cout<<"enter password for user "<<userName<<" > ";
+      Int_t n=scanf("%[^\n]%*c",passwd);
+      if(n==0)cout<<"no password found!"<<endl;
+    }
+    itio = tio;
+    tio.c_lflag &= ~(ECHO|ICANON);         
+    tcsetattr (ttyfd, TCSAFLUSH, &tio);
+    cout<<"enter password for user "<<userName<<" > ";
+    Bool_t res=fgets(buf, 19, stdin);
+    if(!res)cout<<"could not retrieve next buffer!"<<endl;
+    tcsetattr (ttyfd, TCSAFLUSH, &itio);
+    //close(ttyfd);
+    sscanf(buf, "%s", passwd);
+    cout<<endl;
+  }
+  if (dbIsOpen) closeDbConn();
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* uN;
+    char* pW;
+  EXEC SQL END DECLARE SECTION;
+  uN=(Char_t*)connString.Data();
+  pW=passwd;
+  EXEC SQL WHENEVER SQLERROR DO
+    showSqlError("ORACLE error in HDbConn::openConnection(...):");
+  EXEC SQL CONNECT :uN IDENTIFIED BY :pW;
+  if (sqlca.sqlcode==0) {
+    dbIsOpen=kTRUE;
+    cout<<"Connected to Oracle database"<<endl;
+  }
+  else cout<<"*** Failed to connect to Oracle ***"<<endl;
+  delete [] passwd;
+  return dbIsOpen;
+}   
+ 
+void HDbConn::closeDbConn() {  
+  // Disconnects from ORACLE
+  // A transaction will be automatically rolled back, that means,
+  // changes in the database are not stored without an explicit COMMIT before
+  EXEC SQL WHENEVER SQLERROR DO
+    showSqlError("ORACLE error in HDbConn::closeDbConn():");
+  if (dbIsOpen) {
+    EXEC SQL ROLLBACK RELEASE;
+    dbIsOpen=kFALSE;
+    cout<<"connection to Oracle closed"<<endl;
+  }
+}
+
+void HDbConn::showSqlError(const Char_t* f) {
+  // shows SQL error messages
+  UChar_t errmsg[513];
+  size_t buflen, msglen;
+  buflen=sizeof(errmsg)-1;
+  sqlglm(errmsg,&buflen,&msglen);
+  if ((++msglen)<buflen) {
+    errmsg[msglen]='\0';
+  } else {
+    errmsg[buflen]='\0';
+  }
+  Error(f,"\n%s\n",errmsg);
+//  Error(f,"\n%s",sqlca.sqlerrm.sqlerrmc);
+}

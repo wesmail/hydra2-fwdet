@@ -1,0 +1,19 @@
+#include "harray.h"
+
+//_HADES_CLASS_DESCRIPTION
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+// HArray
+// helper class to wrapp TArrays to store them in TObjArrays
+//
+////////////////////////////////////////////////////////////////////////////////
+
+ClassImp(HArrayC)
+ClassImp(HArrayS)
+ClassImp(HArrayI)
+ClassImp(HArrayL)
+ClassImp(HArrayL64)
+ClassImp(HArrayF)
+ClassImp(HArrayD)
+

@@ -1,0 +1,219 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 14/10/2004 by Ilse Koenig
+
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+//
+// HOraDetRunInfoIo
+//
+// Interface to the analysis run information in Oracle
+// It allows to set the quality of runs via a ROOT macro
+//
+//////////////////////////////////////////////////////////////////////////////
+
+using namespace std;
+#include "horadetruninfoio.h"
+#include "hdbconn.h"
+#include <iostream>
+#include <iomanip>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// Include the SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HOraDetRunInfoIo)
+
+HOraDetRunInfoIo::HOraDetRunInfoIo() {
+  // Constructor
+  pConn=new HDbConn();
+  hasErrors=kFALSE;
+  numChanges=0;
+}
+
+HOraDetRunInfoIo::~HOraDetRunInfoIo() {
+  // Destructor
+  if (pConn) {
+    close();
+    delete pConn;
+    pConn=0;
+  }
+}
+
+Bool_t HOraDetRunInfoIo::open(const Char_t* userName,const Char_t* dbName) {
+  // Opens an oracle connection (account userName)
+  hasErrors=kFALSE;
+  numChanges=0;
+  return pConn->connectDb(userName,dbName);
+}
+
+void HOraDetRunInfoIo::close() {
+  // Disconnects from ORACLE
+  pConn->closeDbConn();
+}
+
+void HOraDetRunInfoIo::print() {
+  // Prints information about the database connection
+  if (pConn->isOpen()) {
+    cout<<"Connected to Oracle-Database as user "<<pConn->getUserName();
+    if (pConn->isReadonly()) {
+      cout<<" with read-only access\n";
+    } else {
+      cout<<" with write access\n";
+    }
+  } else cout<<"*** no connection to Oracle established  ***\n";
+}
+
+Bool_t HOraDetRunInfoIo::isOpen() {
+  // Returns kTRUE, if connected to Oracle, otherwise kFALSE;
+  return pConn->isOpen();
+}
+
+Bool_t HOraDetRunInfoIo::setDetector(const Char_t* detName) {
+  // Sets the detector name (might fail if insufficient privilege)
+  if (!isOpen()) return kFALSE;
+  if (strlen(detName)==0) {
+    Error("setDetector","Specify detector name");
+    return 0;
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* detname;
+  EXEC SQL END DECLARE SECTION;
+  detname=(Char_t*)detName;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+  EXEC SQL EXECUTE
+    BEGIN
+      hanal2.hrv_ana.set_detector(:detname);
+    END;
+  END-EXEC;
+  return kTRUE;
+errorfound:
+  pConn->showSqlError("setDetector");
+  hasErrors=kTRUE;
+  return kFALSE;
+}
+
+Int_t HOraDetRunInfoIo::createComment(const Char_t* author,const Char_t* description) {
+  // Creates a new comment and returns the comment id
+  if (!isOpen()) return -1;
+  if (strlen(author)==0) {
+    Error("createComment","Specify author");
+    return -1;
+  }
+  if (strlen(author)==0) {
+    Error("createComment","Specify comment");
+    return -1;
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* auth;
+    char* descript;
+    int   id;
+  EXEC SQL END DECLARE SECTION;
+  auth=(Char_t*)author;
+  descript=(Char_t*)description;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+  EXEC SQL EXECUTE
+    BEGIN
+      hanal2.hrv_ana.create_comment(:auth,:descript,:id);
+    END;
+  END-EXEC;
+  return id;
+errorfound:
+  pConn->showSqlError("createComment");
+  hasErrors=kTRUE;
+  return -1;
+}
+
+Bool_t HOraDetRunInfoIo::setRunQuality(const Char_t* filename,Int_t quality,
+                                       Int_t commentId) {
+  // Sets the quality of a run
+  if (!isOpen()) return kFALSE;
+  if (strlen(filename)==0) {
+    Error("setRunQuality","Filename not defined");
+    return kFALSE;
+  }
+  if (commentId<=0) {
+    Error("setRunQuality","Comment id not defined");
+    return kFALSE;
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* fname;
+    int   qualityfac;
+    int   commentid;
+    char  status;
+    int   oldqualityfac;
+  EXEC SQL END DECLARE SECTION;
+  fname=(Char_t*)filename;
+  qualityfac=quality;
+  commentid=commentId;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+  EXEC SQL EXECUTE
+    BEGIN
+      hanal2.hrv_ana.set_run_info(:fname,:qualityfac,:commentid,
+                                  :status,:oldqualityfac);
+    END;
+  END-EXEC;
+  cout.setf(ios::left,ios::adjustfield);
+  cout<<setw(50)<<filename;
+  cout.setf(ios::right,ios::adjustfield);
+  if (status=='S') {
+    cout<<"No change\n";
+  } else if (status=='I') { 
+    cout<<"New quality: "<<setw(2)<<quality<<'\n';
+    numChanges++;
+  } else if (status=='U') { 
+    cout<<"New quality: "<<setw(2)<<quality<<'\n';
+    cout<<setw(63)<<"Old quality: "<<setw(2)<<oldqualityfac<<'\n';
+    numChanges++;
+  }
+  return kTRUE;
+errorfound:
+  pConn->showSqlError("setRunQuality");
+  hasErrors=kTRUE;
+  return kFALSE;
+}
+
+void HOraDetRunInfoIo::finish() {
+  // Asks for commit, if transaction has no errors or makes a rollback
+  if (!isOpen()) return;
+  cout<<"****************************************************************\n";
+  if (hasErrors) rollback();
+  else {
+    cout<<"Number of changes since last commit/rollback: "<<numChanges<<'\n';
+    if (numChanges>0) {
+      TString answer;
+      cout<<"Do you want to commit the changes (yes or no) > ";
+      cin>>answer;
+      if (answer.CompareTo("yes")==0) commit();
+      else rollback();
+    } else rollback();
+  }
+  cout<<"****************************************************************\n";
+}
+
+void HOraDetRunInfoIo::commit() {
+  // Commits all changes
+  EXEC SQL COMMIT WORK;
+  cout<<"***  Transaction committed"<<endl;
+  numChanges=0;
+  return;
+errorfound:
+  pConn->showSqlError("commit");
+}
+
+void HOraDetRunInfoIo::rollback() {
+  // discards all changes since last commit and clears the error flag
+  EXEC SQL ROLLBACK WORK;
+  cout<<"***  Transaction rolled back"<<endl;
+  hasErrors=kFALSE;
+  numChanges=0;
+  return;
+errorfound:
+  pConn->showSqlError("rollback");
+}

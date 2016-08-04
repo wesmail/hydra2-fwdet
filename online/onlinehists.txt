@@ -1,0 +1,437 @@
+#############################################################################
+# Class:   MagnetPar
+# Context:
+##############################################################################
+[MagnetPar]
+//----------------------------------------------------------------------------
+current:  i  2500
+##############################################################################
+########################
+#########################################
+#  HGo4OnlineConfig
+#################################################################
+[Go4OnlineConfig]
+//---------------------------------------------
+nLoop: i 100
+sleep: i 3
+maxrate: i 1000
+triggerrefresh: i 500
+startrefresh: i 500
+richrefresh: i 500
+richODrefresh: i 500
+mdcrefresh: i 500
+tofrefresh: i 500
+hodorefresh: i 500
+wallrefresh: i 500
+tofinorefresh: i 500
+showerrefresh: i 500
+physicsrefresh: i 500
+trigger: i 1
+start: i 1
+startRaw: i 0
+startCal: i 0
+startHit: i 0
+startdetsetup: i 1, 1, 1, 0, 0, 0
+hodo: i 0
+hodoRaw: i 1
+hodoCal: i 1
+hodoHit: i 1
+hododetsetup: i 1,1,1,1, 1,1,1,1, 1,1
+hodohitf: i 2,0,2,2, 1,1,1,2, 2,3
+hodohit2start: i 0
+wall: i 0
+wallRaw: i 1
+wallCal: i 1
+wallHit: i 1
+rich: i 1
+richRaw: i 1
+richCal: i 1
+richHit: i 1
+mdc: i 1
+mdcLevel: i 3
+mdcdetsetup: i 1, 1, 1, 1,\
+               1, 1, 1, 1,\
+               1, 1, 1, 1,\
+               1, 1, 1, 1,\
+               1, 1, 1, 1,\
+               1, 1, 1, 1
+tof: i 1
+tofRaw: i 1
+tofCal: i 1
+tofHit: i 1
+tofino: i 1
+tofinoRaw: i 1
+tofinoCal: i 1
+showertofino: i 1
+shower: i 1
+showerRaw: i 1
+showerCal: i 1
+showerHit: i 1
+showerIPUCal: i 0
+showerIPUHit: i 0
+physics: i 1
+startunp: i 416
+hodounp: i 805, 806, 807, 804, 803, 801, 0,0,0,0
+wallunp: i 804, 806, 807
+richunp: i 100, 101, 102, 103,\
+          104, 105, 106, 107,\
+          108, 109, 110, 111
+mdcunp: i 201, 202, 203, 204,\
+          205, 206, 207, 208,\
+          209, 210, 211, 212,\
+          213, 214, 215, 216,\
+          217, 218, 219, 220,\
+          221, 222, 223, 224
+tofunp: i 416, 416, 416
+tofinounp: i 416
+showerunp: i 300, 301, 302, 303,\
+          304, 305, 306, 307,\
+          308, 309, 310, 311
+#################################################################
+#################################################################
+#  HMdcHistBooker
+#################################################################
+[MdcHistBooker]
+//---------------------------------------------
+htime1Cal1: s FORMAT#array TYPE#1F NAME#hMdctime1Cal1 TITLE#Mdc_timeCal1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#800:-100:700:0:0:0 SIZE#1:2 AXIS#time_[channel]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1Cal1MeanTrend: s FORMAT#trend TYPE#1F NAME#hMdctime1Cal1MeanTrend TITLE#Mdc_time1Cal1MeanTrend ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0:100:0:0:0 SIZE#0:0 AXIS#trend:mean_time1[channel]:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#2:0 FILL#0:0 MARKER#0:0:0 RANGE#50:70
+htime1Cal1MeanTrendTemp: s FORMAT#mon TYPE#1F NAME#hMdctime1Cal1MeanTrendtemp TITLE#time1Cal1MeanTrendtemp ACTIVE#1 RESET#1 REFRESH#5000  BIN#1200:0:1200:0:0:0 SIZE#0:0 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hcutstat: s FORMAT#array TYPE#1F NAME#hMdccutstat TITLE#Mdc_hcutstat ACTIVE#1 RESET#1 REFRESH#5000 BIN#24:0:24:0:0:0 SIZE#1:4 AXIS#no:ratio:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hcal1hits: s FORMAT#mon TYPE#2F NAME#hMdccal1hits TITLE#Mdc_hcal1hits ACTIVE#1 RESET#1 REFRESH#5000 BIN#8:0:4:12:0:6 SIZE#0:0 AXIS#module:sector:no DIR#no OPT#lego2 STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hcal1hitstemp: s FORMAT#mon TYPE#2F NAME#hMdccal1hitstemp TITLE#Mdc_hcal1hits ACTIVE#1 RESET#1 REFRESH#5000 BIN#4:0:4:6:0:6 SIZE#0:0 AXIS#module:sector:counts DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hcal1hitstrend: s FORMAT#trendarray TYPE#1F NAME#hMdccal1hitstrend TITLE#Mdc_hcal1hits_trend ACTIVE#1 RESET#0 REFRESH#5000 BIN#50:0:50:0:0:0 SIZE#6:4 AXIS#trend:multiplicity:no DIR#no OPT#p STATS#0 LOG#0:0:0 GRID#0:1 LINE#0:0 FILL#0:0 MARKER#1:20:0.5 RANGE#-99:-99
+hrawRoc_Subev: s FORMAT#mon TYPE#2F NAME#hMdcrawRoc_Subev TITLE#Mdc_Raw_Roc_SubEvent_Size ACTIVE#1 RESET#1 REFRESH#5000 BIN#120:0:24:40:0:160 SIZE#0:0 AXIS#no:sub_evt_size:counts DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hrawError_Stat: s FORMAT#mon TYPE#2F NAME#hMdcrawError_Stat TITLE#Mdc_Raw_Error_Stat ACTIVE#1 RESET#1 REFRESH#5000 BIN#120:0:24:3:2:8 SIZE#0:0 AXIS#:no:error_bit:no DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hlayer: s FORMAT#array TYPE#1F NAME#hMdclayer TITLE#Mdc_layer ACTIVE#1 RESET#1 REFRESH#5000 BIN#210:0:210:0:0:0 SIZE#1:144 AXIS#wire:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#3:0 MARKER#0:0:0 RANGE#-99:-99
+hmbo_tdc: s FORMAT#array TYPE#2F NAME#hMdcmbotdc TITLE#Mdc_mbo_tdc ACTIVE#1 RESET#1 REFRESH#5000 BIN#16:0:16:12:0:12 SIZE#6:4 AXIS#mbo:tdc:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1Mod0: s FORMAT#array TYPE#1F NAME#hMdctime1Mod0 TITLE#MdcI_time1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1Mod1: s FORMAT#array TYPE#1F NAME#hMdctime1Mod1 TITLE#MdcII_time1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1Mod2: s FORMAT#array TYPE#1F NAME#hMdctime1Mod2 TITLE#MdcIII_time1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1Mod3: s FORMAT#array TYPE#1F NAME#hMdctime1Mod3 TITLE#MdcIV_time1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime2Mod0: s FORMAT#array TYPE#1F NAME#hMdctime2Mod0 TITLE#MdcI_time2 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time2_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime2Mod1: s FORMAT#array TYPE#1F NAME#hMdctime2Mod1 TITLE#MdcII_time2 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time2_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime2Mod2: s FORMAT#array TYPE#1F NAME#hMdctime2Mod2 TITLE#MdcIII_time2 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time2_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime2Mod3: s FORMAT#array TYPE#1F NAME#hMdctime2Mod3 TITLE#MdcIV_time2 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time2_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime12Mod0: s FORMAT#array TYPE#1F NAME#hMdctime12Mod0 TITLE#MdcI_time2-time1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time2-time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime12Mod1: s FORMAT#array TYPE#1F NAME#hMdctime12Mod1 TITLE#MdcII_time2-time1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time2-time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime12Mod2: s FORMAT#array TYPE#1F NAME#hMdctime12Mod2 TITLE#MdcIII_time2-time1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time2-time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime12Mod3: s FORMAT#array TYPE#1F NAME#hMdctime12Mod3 TITLE#MdcIV_time2-time1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:0:0:0 SIZE#1:6 AXIS#time2-time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1_12: s FORMAT#array TYPE#2F NAME#hMdctime1_12 TITLE#t2-t1:t1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#225:-50:400:200:0:200 SIZE#6:4 AXIS#time1_[ns]:time2-time1_[ns]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1rawMod0: s FORMAT#array TYPE#1F NAME#hMdctime1rawMod0 TITLE#MdcI_time1raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1rawMod1: s FORMAT#array TYPE#1F NAME#hMdctime1rawMod1 TITLE#MdcII_time1raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1rawMod2: s FORMAT#array TYPE#1F NAME#hMdctime1rawMod2 TITLE#MdcIII_time1raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1rawMod3: s FORMAT#array TYPE#1F NAME#hMdctime1rawMod3 TITLE#MdcIV_time1raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime2rawMod0: s FORMAT#array TYPE#1F NAME#hMdctime2rawMod0 TITLE#MdcI_time2raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time2_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime2rawMod1: s FORMAT#array TYPE#1F NAME#hMdctime2rawMod1 TITLE#MdcII_time2raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time2_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime2rawMod2: s FORMAT#array TYPE#1F NAME#hMdctime2rawMod2 TITLE#MdcIII_time2raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time2_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime2rawMod3: s FORMAT#array TYPE#1F NAME#hMdctime2rawMod3 TITLE#MdcIV_time2raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time2_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime12rawMod0: s FORMAT#array TYPE#1F NAME#hMdctime12rawMod0 TITLE#MdcI_time2-time1raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time2-time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime12rawMod1: s FORMAT#array TYPE#1F NAME#hMdctime12rawMod1 TITLE#MdcII_time2-time1raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time2-time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime12rawMod2: s FORMAT#array TYPE#1F NAME#hMdctime12rawMod2 TITLE#MdcIII_time2-time1raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time2-time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime12rawMod3: s FORMAT#array TYPE#1F NAME#hMdctime12rawMod3 TITLE#MdcIV_time2-time1raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:0:0:0 SIZE#1:6 AXIS#time2-time1_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1_12raw: s FORMAT#array TYPE#2F NAME#hMdctime1_12raw TITLE#t2-t1:t1raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#256:0:2048:200:0:400 SIZE#6:4 AXIS#time1_[ns]:time2-time1_[ns]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmbo: s FORMAT#array TYPE#2F NAME#hMdcMbo TITLE#Mbo_per_plane ACTIVE#1 RESET#1 REFRESH#5000 BIN#6:0:6:16:0:16 SIZE#1:4 AXIS#sector:mbo:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmbotrendMod0: s FORMAT#trendarray TYPE#1F NAME#hMdcMboTrendMod0 TITLE#Mbo_counts_per_plane ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0:100:0:0:0 SIZE#1:6 AXIS#trend:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmbotrendMod1: s FORMAT#trendarray TYPE#1F NAME#hMdcMboTrendMod1 TITLE#Mbo_counts_per_plane ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0:100:0:0:0 SIZE#1:6 AXIS#trend:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmbotrendMod2: s FORMAT#trendarray TYPE#1F NAME#hMdcMboTrendMod2 TITLE#Mbo_counts_per_plane ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0:100:0:0:0 SIZE#1:6 AXIS#trend:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmbotrendMod3: s FORMAT#trendarray TYPE#1F NAME#hMdcMboTrendMod3 TITLE#Mbo_counts_per_plane ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0:100:0:0:0 SIZE#1:6 AXIS#trend:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmbo_tdc_calib: s FORMAT#array TYPE#2F NAME#hMdcmbotdcCalib TITLE#Mdc_mbo_tdc_calib ACTIVE#1 RESET#1 REFRESH#5000 BIN#16:0:16:12:0:12 SIZE#6:4 AXIS#mbo:tdc:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmod_timestat_calib: s FORMAT#array TYPE#1F NAME#hMdcmodtimestatCalib TITLE#Mdc_Mod_timestat_calib ACTIVE#1 RESET#1 REFRESH#5000 BIN#8:0:8:0:0:0 SIZE#6:4 AXIS#timeN:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1Cal1MeanTrendMod0: s FORMAT#trendarray TYPE#1F NAME#hMdctime1Cal1MeanTrendMod0 TITLE#Mdc_time1Cal1MeanTrendMod0 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0:100:0:0:0 SIZE#1:6 AXIS#trend:mean_time1[ns]:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#2:0 FILL#0:0 MARKER#0:0:0 RANGE#20:100
+htime1Cal1MeanTrendMod1: s FORMAT#trendarray TYPE#1F NAME#hMdctime1Cal1MeanTrendMod1 TITLE#Mdc_time1Cal1MeanTrendMod1 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0:100:0:0:0 SIZE#1:6 AXIS#trend:mean_time1[ns]:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#2:0 FILL#0:0 MARKER#0:0:0 RANGE#20:100
+htime1Cal1MeanTrendMod2: s FORMAT#trendarray TYPE#1F NAME#hMdctime1Cal1MeanTrendMod2 TITLE#Mdc_time1Cal1MeanTrendMod2 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0:100:0:0:0 SIZE#1:6 AXIS#trend:mean_time1[ns]:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#2:0 FILL#0:0 MARKER#0:0:0 RANGE#50:180
+htime1Cal1MeanTrendMod3: s FORMAT#trendarray TYPE#1F NAME#hMdctime1Cal1MeanTrendMod3 TITLE#Mdc_time1Cal1MeanTrendMod3 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0:100:0:0:0 SIZE#1:6 AXIS#trend:mean_time1[ns]:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#2:0 FILL#0:0 MARKER#0:0:0 RANGE#50:180
+htime1Cal1MeanTrendMod0temp: s FORMAT#array TYPE#1F NAME#hMdctime1Cal1MeanTrendMod0temp TITLE#time1Cal1MeanTrendMod0temp ACTIVE#1 RESET#1 REFRESH#5000  BIN#1200:0:1200:0:0:0 SIZE#1:6 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1Cal1MeanTrendMod1temp: s FORMAT#array TYPE#1F NAME#hMdctime1Cal1MeanTrendMod1temp TITLE#time1Cal1MeanTrendMod1temp ACTIVE#1 RESET#1 REFRESH#5000  BIN#1200:0:1200:0:0:0 SIZE#1:6 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1Cal1MeanTrendMod2temp: s FORMAT#array TYPE#1F NAME#hMdctime1Cal1MeanTrendMod2temp TITLE#time1Cal1MeanTrendMod2temp ACTIVE#1 RESET#1 REFRESH#5000  BIN#1200:0:1200:0:0:0 SIZE#1:6 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime1Cal1MeanTrendMod3temp: s FORMAT#array TYPE#1F NAME#hMdctime1Cal1MeanTrendMod3temp TITLE#time1Cal1MeanTrendMod3temp ACTIVE#1 RESET#1 REFRESH#5000  BIN#1200:0:1200:0:0:0 SIZE#1:6 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+colorsSector: i 2, 4, 6, 8, 38, 46
+colorsModule: i 2, 4, 6, 8
+styleModule: i 20, 21, 22, 23
+colorsCuts: i   3, 5, 4, 2
+layerhists: i 1
+mbotdchists: i 1
+mbohists: i 1
+timescalhists: i 1
+timesrawhists: i 1
+normhists: i 0
+#################################################################
+#################################################################
+#  HRichHistBooker
+#################################################################
+[RichHistBooker]
+//---------------------------------------------
+hRichPulseDist: s FORMAT#array TYPE#1F NAME#hRichPulseDist TITLE#Rich_pulse_Height_Distribution ACTIVE#1 RESET#1 REFRESH#5000 BIN#200:0.0:200.0:0:0.0:0.0 SIZE#1:6 AXIS#pulse_height_[channels]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hRichChargedParticles: s FORMAT#trendarray TYPE#1F NAME#hRichChargedParticles TITLE#Rich_Charged_Particle_Events ACTIVE#1 RESET#0 REFRESH#5000 BIN#5000:0.0:5000.0:0:0.0:0.0 SIZE#1:6 AXIS#Charged_Particles_[time]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hRichPulseheight: s FORMAT#array TYPE#2F NAME#hRichPulseheight TITLE#Rich_Pulseheight_Distribution ACTIVE#1 RESET#0 REFRESH#5000 BIN#92:1.0:92.0:90:1.0:90.0 SIZE#1:6 AXIS#pulse_height_[channels]:counts:no DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#0:0 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hRichMultiplicity: s FORMAT#trendarray TYPE#1F NAME#hRichMultiplicity TITLE#Rich_Multiplicity_Distribution ACTIVE#1 RESET#0 REFRESH#5000 BIN#5000:0.0:5000.0:0:0.0:0.0 SIZE#1:6 AXIS#multiplicity_time_[channels]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hRichmult_raw: s FORMAT#mon TYPE#2F NAME#hRichmult_raw TITLE#Rich_hits_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#32:0.0:16.0:12:0.:6. SIZE#0:0 AXIS#roc*8+port:sector:no DIR#no OPT#lego2 STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hRichmulttemp_raw: s FORMAT#mon TYPE#2F NAME#hRichmult_temp_raw TITLE#Rich_hits_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#16:0.0:16.0:6:0.:6. SIZE#0:0 AXIS#roc*8+port:sector:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hRichmulttrend_raw: s FORMAT#trendarray TYPE#1F NAME#hRichmult_trend_raw TITLE#Rich_hits_raw ACTIVE#1 RESET#0 REFRESH#5000000 BIN#50:0.0:50.0:0:0.:0. SIZE#1:6 AXIS#trend:multiplicity:no DIR#no OPT#p STATS#0 LOG#0:0:0 GRID#0:1 LINE#1:0 FILL#0:0 MARKER#1:20:0.5 RANGE#-99:-99
+hRichPattern: s
+hRichFancy: s 
+colorsSector: i 2, 4, 6, 8, 38, 46
+colorsModule: i 2, 4, 6, 8
+colorsCuts: i   3, 5, 4, 2
+#################################################################
+#################################################################
+#  HStartHistBooker
+#################################################################
+[StartHistBooker]
+//---------------------------------------------
+hvertex_xy: s FORMAT#mon TYPE#2F NAME#hVertex_xy TITLE#Vertex_XY ACTIVE#1 RESET#1 REFRESH#200000 BIN#40:-40:40:40:-40:40 SIZE#0:0 AXIS#X[mm]:Y[mm]:no DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hvertex_xz: s FORMAT#mon TYPE#2F NAME#hVertex_xz TITLE#Vertex_ZX ACTIVE#1 RESET#1 REFRESH#200000 BIN#50:-80:20:40:-40:40 SIZE#0:0 AXIS#Z[mm]:X[mm]:no DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hvertex_yz: s FORMAT#mon TYPE#2F NAME#hVertex_yz TITLE#Vertex_ZY ACTIVE#1 RESET#1 REFRESH#200000 BIN#50:-80:20:40:-40:40 SIZE#0:0 AXIS#Z[mm]:Y[mm]:no DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hlatchdata: s FORMAT#array TYPE#1F NAME#hlatchdata TITLE#Latch_Data ACTIVE#1 RESET#1 REFRESH#500 BIN#10:0:10:0:0.0:0.0 SIZE#1:8 AXIS#trigger_nr:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#1:0 MARKER#0:0:0 RANGE#-99:-99
+hstrips_hodo_pos: s FORMAT#array TYPE#1F NAME#hStart_hodo_pos TITLE#HODO_pos ACTIVE#0 RESET#0 REFRESH#5000 BIN#256:-128:128.0:0:0.0:0.0 SIZE#1:6 AXIS#position:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hstrips_hodo_tof: s FORMAT#array TYPE#1F NAME#hStart_hodo_tof TITLE#HODO_tof ACTIVE#0 RESET#0 REFRESH#5000 BIN#256:-128:128.0:0:0.0:0.0 SIZE#1:6 AXIS#Tof:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hstrips_hodo_cal: s FORMAT#array TYPE#1F NAME#hStartstrips_hodo_cal TITLE#HODO_strips_Cal ACTIVE#0 RESET#1 REFRESH#5000 BIN#18:0.0:18.0:0:0.0:0.0 SIZE#1:6 AXIS#strip_number_[channels]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hstrips_hodo_both_raw: s FORMAT#array TYPE#1F NAME#hStartstrips_hodo_both_raw TITLE#HODO_strips_both_raw ACTIVE#0 RESET#1 REFRESH#5000 BIN#18:0.0:18.0:0:0.0:0.0 SIZE#1:3 AXIS#strip_number_[channels]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hstrips_hodo_mult: s FORMAT#array TYPE#1F NAME#hStartMult_hodo TITLE#HODO_Mult ACTIVE#0 RESET#1 REFRESH#5000 BIN#9:0.0:9.0:0:0.0:0.0 SIZE#1:3 AXIS#Multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hstrips_hodo_raw: s FORMAT#array TYPE#1F NAME#hStartstrips_hodo_raw TITLE#HODO_strips_Raw ACTIVE#0 RESET#1 REFRESH#5000 BIN#18:0.0:18.0:0:0.0:0.0 SIZE#1:3 AXIS#strip_number_[channels]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hstrips_start_veto_raw: s FORMAT#array TYPE#1F NAME#hStartstrips_start_veto_raw TITLE#Start_Raw_Strips_Start_Veto ACTIVE#1 RESET#1 REFRESH#5000 BIN#10:0.0:10.0:0:0.0:0.0 SIZE#1:3 AXIS#strip_number_[channels]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hstrips_start_vetotemp_raw: s FORMAT#array TYPE#1F NAME#hStartstrips_start_vetotemp_raw TITLE#Start_Raw_Strips_Start_Veto ACTIVE#1 RESET#1 REFRESH#5000 BIN#10:0.0:10.0:0:0.0:0.0 SIZE#1:3 AXIS#strip_number_[channels]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hstartmeanstriptrend_raw: s FORMAT#trendarray TYPE#1F NAME#hStartmeanstrip_trend_raw TITLE#Start_mean_strip_raw ACTIVE#1 RESET#0 REFRESH#5000 BIN#50:0.0:50.0:0:0.:0. SIZE#1:3 AXIS#trend:mean_strip:no DIR#no OPT#p STATS#0 LOG#0:0:0 GRID#0:1 LINE#1:0 FILL#0:0 MARKER#1:20:0.5 RANGE#-99:-99
+hmult_start_veto_raw: s FORMAT#array TYPE#1F NAME#hStartmult_start_veto_raw TITLE#Start_Veto_Mult_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#10:0.0:10.0:0:0.0:0.0 SIZE#1:2 AXIS#multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime_start_raw: s FORMAT#array TYPE#1F NAME#hStarttime_start_raw TITLE#Start_time_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#500:0.0:4000.0:0:0.0:0.0 SIZE#1:8 AXIS#time_[channel]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime_veto_raw: s FORMAT#array TYPE#1F NAME#hStarttime_veto_raw TITLE#Veto_time_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#500:0.0:4000.0:0:0.0:0.0 SIZE#1:8 AXIS#time_[channel]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hstart_veto_corr_raw: s FORMAT#mon TYPE#2F NAME#hStartstart_veto_corr_raw TITLE#Start_Veto_Corr_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#10:0.0:10.0:10:0.0:10.0 SIZE#1:8 AXIS#start_[strip]:veto_[strip]:no DIR#no OPT#colz STATS#0 LOG#0:0:1 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime_trend_hodo: s FORMAT#trendarray TYPE#1F NAME#htime_trend_hodo TITLE#Time_Trend_Strips ACTIVE#0 RESET#0 REFRESH#5000 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:16 AXIS#Trend:Time[channel]:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime_trend_start: s FORMAT#trendarray TYPE#1F NAME#htime_trend_start TITLE#Time_Trend_Strips ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:8 AXIS#Trend:Time[channel]:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#0:4000
+hscaler_0: s FORMAT#trendarray TYPE#1F NAME#hscaler_0 TITLE#hscaler_0 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:1000.0:0:0.0:0.0 SIZE#1:2 AXIS#hscaler_0:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hscaler_1: s FORMAT#trendarray TYPE#1F NAME#hscaler_1 TITLE#hscaler_1 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:1000.0:0:0.0:0.0 SIZE#1:2 AXIS#hscaler_1:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hscaler_2: s FORMAT#trendarray TYPE#1F NAME#hscaler_2 TITLE#hscaler_2 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:1000.0:0:0.0:0.0 SIZE#1:2 AXIS#hscaler_2:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hscaler_3: s FORMAT#trendarray TYPE#1F NAME#hscaler_3 TITLE#hscaler_3 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:1000.0:0:0.0:0.0 SIZE#1:2 AXIS#hscaler_3:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hscaler_4: s FORMAT#trendarray TYPE#1F NAME#hscaler_4 TITLE#hscaler_4 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:1000.0:0:0.0:0.0 SIZE#1:2 AXIS#hscaler_4:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hscaler_5: s FORMAT#trendarray TYPE#1F NAME#hscaler_5 TITLE#hscaler_5 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:1000.0:0:0.0:0.0 SIZE#1:2 AXIS#hscaler_5:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hscaler_6: s FORMAT#trendarray TYPE#1F NAME#hscaler_6 TITLE#hscaler_6 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:1000.0:0:0.0:0.0 SIZE#1:2 AXIS#hscaler_6:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hscaler_7: s FORMAT#trendarray TYPE#1F NAME#hscaler_7 TITLE#hscaler_7 ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:1000.0:0:0.0:0.0 SIZE#1:2 AXIS#hscaler_7:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime_hodo_temp: s FORMAT#array TYPE#1F NAME#htime_hodo_temp TITLE#htime_hodo_temp ACTIVE#0 RESET#0 REFRESH#5000 BIN#100:-180.0:180.0:0:0.0:0.0 SIZE#1:16 AXIS#time_[channel]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htime_start_temp: s FORMAT#array TYPE#1F NAME#htime_start_temp TITLE#htime_start_temp ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:4000.0:0:0.0:0.0 SIZE#1:8 AXIS#time_[channel]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hscaler_tmp: s FORMAT#array TYPE#1F NAME#hscaler_tmp TITLE#hscaler_tmp ACTIVE#1 RESET#0 REFRESH#5000 BIN#100000:0:100000000.0:0:0.0:0.0 SIZE#1:32 AXIS#time_[channel]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+colorsModule: i 2, 4, 6
+colorsStrips: i 2, 4, 6, 8, 30, 38, 46, 49, 50, 51, 52, 53, 54, 55, 56, 57
+colorsCuts: i   3, 5, 4, 2
+#################################################################
+#################################################################
+#  HTriggerHistBooker
+#################################################################
+[TriggerHistBooker]
+//---------------------------------------------
+hmucorrall: s FORMAT#mon TYPE#2F NAME#hTriggerMUCorrAll TITLE#Sector_vs_Theta_for_ddPhi0 ACTIVE#1 RESET#1 REFRESH#50000 BIN#30:0.0:90.0:6:0.0:6.0 SIZE#0:0 AXIS#theta:sector:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmulepmom: s FORMAT#mon TYPE#1F NAME#hTriggerMULepMom TITLE#MULepMomentum ACTIVE#1 RESET#1 REFRESH#50000 BIN#256:0.0:256.0:0:0.0:0.0 SIZE#0:0 AXIS#mom:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htof: s FORMAT#mon TYPE#1F NAME#hTriggertof TITLE#Trigger_tof ACTIVE#1 RESET#1 REFRESH#15000 BIN#200:0.0:50.0:0:0.0:0.0 SIZE#0:0 AXIS#tof_[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#2:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hipubutterfly: s FORMAT#mon TYPE#2F NAME#hTriggerIPUButterfly TITLE#Phi_vs_DPhi ACTIVE#1 RESET#1 REFRESH#50000 BIN#60:0.0:60.0:120:-60.0:60.0 SIZE#0:0 AXIS#phi:dphi:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofnumbers: s FORMAT#mon TYPE#1F NAME#hTriggerTofNumbers TITLE#Trigger_tof_numbers ACTIVE#1 RESET#1 REFRESH#5000 BIN#7:0.0:7.0:0:0.0:0.0 SIZE#0:0 AXIS#nil:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hrichnumbers: s FORMAT#mon TYPE#1F NAME#hTriggerRichNumbers TITLE#Trigger_rich_numbers ACTIVE#1 RESET#1 REFRESH#5000 BIN#6:0.0:6.0:0:0.0:0.0 SIZE#0:0 AXIS#nil:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hiputrendRich: s FORMAT#trendarray TYPE#1F NAME#hTriggerIPUtrendRich TITLE#Rich_MeanHitMultiplicity ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:7 AXIS#[x_events/bin]:mean_multiplicity:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hiputrendTof: s FORMAT#trendarray TYPE#1F NAME#hTriggerIPUtrendTof TITLE#Tof_MeanHitMultiplicity ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:7 AXIS#[x_events/bin]:mean_multiplicity:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hiputrendShower: s FORMAT#trendarray TYPE#1F NAME#hTriggerIPUtrendShower TITLE#Shower_MeanHitMultiplicity ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:7 AXIS#[x_events/bin]:mean_multiplicity:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hiputrendMatchU: s FORMAT#trendarray TYPE#1F NAME#hTriggerIPUtrendMatchU TITLE#MatchingUnit_MeanLeptonMultiplicity ACTIVE#1 RESET#0 REFRESH#5000 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:7 AXIS#[x_events/bin]:mean_multiplicity:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htriggermultdistrib: s FORMAT#array TYPE#1F NAME#hTriggerMultDist TITLE#IPU_Multiplicity_Distribution ACTIVE#1 RESET#1 REFRESH#5000 BIN#50:0.0:50.0:0:0.0:0.0 SIZE#1:4 AXIS#multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htriggerrichringmultdistrib: s FORMAT#array TYPE#1F NAME#hTriggerRichRingMultDist TITLE#Rich_Ring_Multiplicity_Distribution ACTIVE#1 RESET#1 REFRESH#5000 BIN#15:0.0:15.0:0:0.0:0.0 SIZE#1:6 AXIS#multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htriggertofhitmultdistrib: s FORMAT#array TYPE#1F NAME#hTriggerTofHitMultDist TITLE#Tof_Hit_Multiplicity_Distribution ACTIVE#1 RESET#1 REFRESH#5000 BIN#15:0.0:15.0:0:0.0:0.0 SIZE#1:6 AXIS#multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htriggershowerhitmultdistrib: s FORMAT#array TYPE#1F NAME#hTriggerShowerHitMultDist TITLE#Shower_Hit_Multiplicity_Distribution ACTIVE#1 RESET#1 REFRESH#5000 BIN#15:0.0:15.0:0:0.0:0.0 SIZE#1:6 AXIS#multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htriggermatchuhitmultdistrib: s FORMAT#array TYPE#1F NAME#hTriggerMatchUHitMultDist TITLE#MatchU_Hit_Multiplicity_Distribution ACTIVE#1 RESET#1 REFRESH#5000 BIN#15:0.0:15.0:0:0.0:0.0 SIZE#1:6 AXIS#multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htriggerTrendTime: s FORMAT#trendarray TYPE#1F NAME#hTriggerTrendTime TITLE#Time_MeanEventMultiplicity ACTIVE#1 RESET#0 REFRESH#5000 BIN#300:-300.0:0.0:0:0.0:0.0 SIZE#1:1 AXIS#time_[1s/bin]:mean_multiplicity:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hiputrendRichTime: s FORMAT#trendarray TYPE#1F NAME#hTriggerIPUtrendRichTime TITLE#Rich_Time_MeanHitMultiplicity ACTIVE#1 RESET#0 REFRESH#5000 BIN#300:-300.0:0.0:0:0.0:0.0 SIZE#1:7 AXIS#[1s/bin]:mean_multiplicity:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hiputrendTofTime: s FORMAT#trendarray TYPE#1F NAME#hTriggerIPUtrendTofTime TITLE#Tof_Time_MeanHitMultiplicity ACTIVE#1 RESET#0 REFRESH#5000 BIN#300:-300.0:0.0:0:0.0:0.0 SIZE#1:7 AXIS#[1s/bin]:mean_multiplicity:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hiputrendShowerTime: s FORMAT#trendarray TYPE#1F NAME#hTriggerIPUtrendShowerTime TITLE#Shower_Time_MeanHitMultiplicity ACTIVE#1 RESET#0 REFRESH#5000 BIN#300:-300.0:0.0:0:0.0:0.0 SIZE#1:7 AXIS#[1s/bin]:mean_multiplicity:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hiputrendMatchUTime: s FORMAT#trendarray TYPE#1F NAME#hTriggerIPUtrendMatchUTime TITLE#MatchingUnit_Time_MeanLeptonMultiplicity ACTIVE#1 RESET#0 REFRESH#5000 BIN#300:-300.0:0.0:0:0.0:0.0 SIZE#1:7 AXIS#[1s/bin]:mean_multiplicity:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hrichCorrPhi: s FORMAT#array TYPE#2F NAME#hTriggerRichCorrPhi TITLE#RICHIPU_Ana_X_Correlation ACTIVE#1 RESET#1 REFRESH#20000 BIN#100:0.0:100.0:100:0.0:100.0 SIZE#1:6 AXIS#X_ana:X_IPU DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hrichCorrTheta: s FORMAT#array TYPE#2F NAME#hTriggerRichCorrTheta TITLE#RICHIPU_Ana_Y_Correlation ACTIVE#1 RESET#1 REFRESH#20000 BIN#100:0:100:100:0:100 SIZE#1:6 AXIS#Y_ana:Y_IPU DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofCorrPhi: s FORMAT#array TYPE#2F NAME#hTriggerTofCorrPhi TITLE#TOFIPU_Ana_Correlation ACTIVE#1 RESET#1 REFRESH#20000 BIN#60:0.0:60.0:60:0.0:60.0 SIZE#1:6 AXIS#phi_ana:phi_IPU DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofCorrTheta: s FORMAT#array TYPE#2F NAME#hTriggerTofCorrTheta TITLE#TOFIPU_Ana_Correlation ACTIVE#1 RESET#1 REFRESH#20000 BIN#50:40.0:90.0:50:40.0:90.0 SIZE#1:6 AXIS#theta_ana:theta_IPU DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hshowerCorrPhi: s FORMAT#array TYPE#2F NAME#hTriggerShowerCorrPhi TITLE#SHOWERIPU_Ana_Correlation ACTIVE#1 RESET#1 REFRESH#20000 BIN#60:0.0:60.0:60:0.0:60.0 SIZE#1:6 AXIS#phi_ana:phi_IPU DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hshowerCorrTheta: s FORMAT#array TYPE#2F NAME#hTriggerShowerCorrTheta TITLE#SHOWERIPU_Ana_Correlation ACTIVE#1 RESET#1 REFRESH#20000 BIN#35:10.0:44.0:35:10.0:44.0 SIZE#1:6 AXIS#delta_theta_emu:delta_theta_MU DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmuCorrPhi: s FORMAT#array TYPE#2F NAME#hTriggerMUCorrPhi TITLE#MUIPU_Ana_Correlation ACTIVE#1 RESET#1 REFRESH#20000 BIN#80:-20.0:20.0:80:-20.0:20.0 SIZE#1:6 AXIS#delta_phi_emu:delte_phi_MU DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmuCorrTheta: s FORMAT#array TYPE#2F NAME#hTriggerMUCorrTheta TITLE#MUIPU_Ana_Correlation ACTIVE#1 RESET#1 REFRESH#20000 BIN#80:-80:80:80:-80:80 SIZE#1:6 AXIS#theta_ana:theta_IPU DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+colorsModule: i 2, 4
+colorsCuts: i   3, 5, 4, 2
+colorsIPUtrend: i  2, 3, 7, 5, 6, 4, 17
+#################################################################
+#################################################################
+#  HTofHistBooker
+#################################################################
+[TofHistBooker]
+//---------------------------------------------
+hhits_raw: s FORMAT#array TYPE#1F NAME#hTofhits_raw TITLE#Tof_Raw_Hits ACTIVE#1 RESET#1 REFRESH#5000 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:6 AXIS#cells:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hmulttof_raw: s FORMAT#mon TYPE#1F NAME#hTofmulttof_raw TITLE#Tof_multiplicity ACTIVE#1 RESET#1 REFRESH#5000 BIN#16:-0.5:15.5:0:0.0:0.0 SIZE#0:0 AXIS#multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#30:0 MARKER#0:0:0 RANGE#-99:-99
+htofpatternL_raw: s FORMAT#mon TYPE#1F NAME#hTofpatternL_raw TITLE#Tof_PatternL ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:0:0.0:0.0 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#38:0 MARKER#0:0:0 RANGE#-99:-99
+htofpatternR_raw: s FORMAT#mon TYPE#1F NAME#hTofpatternR_raw TITLE#Tof_PatternR ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:0:0.0:0.0 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+htoftdcL_raw: s FORMAT#mon TYPE#2F NAME#hToftdcL_raw TITLE#Tof_TdcL ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:256:0:4096 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htoftdcR_raw: s FORMAT#mon TYPE#2F NAME#hToftdcR_raw TITLE#Tof_TdcR ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:256:0:4096 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofadcL_raw: s FORMAT#mon TYPE#2F NAME#hTofadcL_raw TITLE#Tof_AdcL ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:256:0:4096 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofadcR_raw: s FORMAT#mon TYPE#2F NAME#hTofadcR_raw TITLE#Tof_AdcR ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:256:0:4096 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofmult_raw: s FORMAT#mon TYPE#2F NAME#hTofmult_raw TITLE#Tof_hits_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#64:0.0:64.0:6:0.:6. SIZE#0:0 AXIS#module*8+cell:sector:no DIR#no OPT#lego2 STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofmulttemp_raw: s FORMAT#mon TYPE#2F NAME#hTofmult_temp_raw TITLE#Tof_hits_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#64:0.0:64.0:6:0.:6. SIZE#0:0 AXIS#module*8+cell:sector:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofmulttrend_raw: s FORMAT#trendarray TYPE#1F NAME#hTofmult_trend_raw TITLE#Tof_hits_raw ACTIVE#1 RESET#0 REFRESH#5000 BIN#50:0.0:50.0:0:0.:0. SIZE#1:6 AXIS#trend:multiplicity:no DIR#no OPT#p STATS#0 LOG#0:0:0 GRID#0:1 LINE#1:0 FILL#0:0 MARKER#1:20:0.5 RANGE#-99:-99
+htoftdcSum_hit: s FORMAT#mon TYPE#2F NAME#hToftdcSum_hit TITLE#Tof_TdcSum ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:250:-50:100 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htoftdcDiff_hit: s FORMAT#mon TYPE#2F NAME#hToftdcDiff_hit TITLE#Tof_TdcDiff ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:250:-5000:5000 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofadcSum_hit: s FORMAT#mon TYPE#2F NAME#hTofadcSum_hit TITLE#Tof_AdcSum ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:250:0:15 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofadcPos_hit: s FORMAT#mon TYPE#2F NAME#hTofadcPos_hit TITLE#Tof_AdcPos ACTIVE#1 RESET#1 REFRESH#5000 BIN#384:0.5:384.5:250:-5000:5000 SIZE#0:0 AXIS#sec*64+mod*8+cell:counts:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofsum_hit: s FORMAT#mon TYPE#1F NAME#hTofsum_hit TITLE#Tof_Sum ACTIVE#1 RESET#1 REFRESH#5000 BIN#1500:0.0:150.0:0:0.0:0.0 SIZE#0:0 AXIS#time[ns]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#30:0 MARKER#0:0:0 RANGE#-99:-99
+htoftheta_hit: s FORMAT#mon TYPE#1F NAME#hToftheta_hit TITLE#Tof_theta ACTIVE#1 RESET#1 REFRESH#5000 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#0:0 AXIS#theta:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#38:0 MARKER#0:0:0 RANGE#-99:-99
+htofphi_hit: s FORMAT#mon TYPE#1F NAME#hTofphi_hit TITLE#Tof_phi ACTIVE#1 RESET#1 REFRESH#5000 BIN#360:0.0:360.0:0:0.0:0.0 SIZE#0:0 AXIS#phi:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+htofyvsx_hit: s FORMAT#mon TYPE#2F NAME#hTofyvsx_hit TITLE#Tof_y_vs_x ACTIVE#1 RESET#1 REFRESH#5000 BIN#200:-3000.0:3000.0:200:-3000.0:3000.0 SIZE#0:0 AXIS#y_[mm]:x_[mm]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofmulttoftofino_raw: s FORMAT#mon TYPE#1F NAME#hTofmulttoftofino_raw TITLE#Tof_Tofino_multiplicity ACTIVE#1 RESET#1 REFRESH#5000 BIN#16:-0.5:15.5:0:0.0:0.0 SIZE#0:0 AXIS#multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#30:0 MARKER#0:0:0 RANGE#-99:-99
+colorsSector: i 2, 4, 6, 8, 38, 46
+colorsModule: i 2, 4, 6, 8
+colorsCuts: i   3, 5, 4, 2
+#################################################################
+#################################################################
+#  HTofinoHistBooker
+#################################################################
+[TofinoHistBooker]
+//---------------------------------------------
+htofinomult_raw: s FORMAT#mon TYPE#2F NAME#hTofinomult_raw TITLE#Tofino_hits_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#8:0.0:4.0:12:0.:6. SIZE#0:0 AXIS#cell:sector:no DIR#no OPT#lego2 STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofinomulttemp_raw: s FORMAT#mon TYPE#2F NAME#hTofinomult_temp_raw TITLE#Tofino_hits_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#4:0.0:4.0:6:0.:6. SIZE#0:0 AXIS#module*8+cell:sector:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+htofinomulttrend_raw: s FORMAT#trendarray TYPE#1F NAME#hTofinomult_trend_raw TITLE#Tofino_hits_raw ACTIVE#1 RESET#0 REFRESH#5000 BIN#50:0.0:50.0:0:0.:0. SIZE#1:6 AXIS#trend:multiplicity:no DIR#no OPT#p STATS#0 LOG#0:0:0 GRID#0:1 LINE#1:0 FILL#0:0 MARKER#1:20:0.5 RANGE#-99:-99
+hhits_raw: s FORMAT#array TYPE#1F NAME#hTofinohits_raw TITLE#Tofino_Raw_Hits ACTIVE#1 RESET#1 REFRESH#5000 BIN#4:0.0:4.0:0:0.0:0.0 SIZE#1:6 AXIS#cells:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hprof: s FORMAT#array TYPE#1F NAME#hTofinoprof TITLE#Tofino_Profile ACTIVE#1 RESET#1 REFRESH#5000 BIN#24:0.0:24.0:0:0.0:0.0 SIZE#1:2 AXIS#Sec*4+Cell:#_of_Hits/Max_#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hmulttdcall: s FORMAT#mon TYPE#1F NAME#hTofinoMultTdcAll TITLE#Tofino_Multiplicity_by_TDC ACTIVE#1 RESET#1 REFRESH#5000 BIN#26:0.0:26.0:0:0.0:0.0 SIZE#0:0 AXIS##_of_Hit_Tofino_Cells:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hAdc: s FORMAT#mon TYPE#2F NAME#hTofinoADC TITLE#Tofino_Adc ACTIVE#1 RESET#1 REFRESH#5000 BIN#24:0.0:24.0:256:0.0:4096.0 SIZE#0:0 AXIS#Sec*4+Cell:charge:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hTdc: s FORMAT#mon TYPE#2F NAME#hTofinoTDC TITLE#Tofino_Tdc ACTIVE#1 RESET#1 REFRESH#5000 BIN#24:0.0:24.0:256:0.0:4096.0 SIZE#0:0 AXIS#Sec*4+Cell:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hTofinoShower: s FORMAT#array TYPE#1F NAME#hTofinoShower TITLE#Shower_Tofino ACTIVE#1 RESET#1 REFRESH#5000 BIN#24:0.0:24.0:0:0.0:0.0 SIZE#1:3 AXIS#Sec*4+Cell:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+colorsSector: i 2, 4, 6, 8, 38, 46
+colorsModule: i 2, 4, 6, 8
+colorsCuts: i   3, 5, 4, 2
+#################################################################
+#################################################################
+#  HHodoHistBooker
+#################################################################
+[HodoHistBooker]
+//---------------------------------------------
+hHodoProf0: s FORMAT#array TYPE#1F NAME#hHodoProf0 TITLE#Fiber_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:0:0.0:0.0 SIZE#1:4 AXIS#Fiber:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoProf1: s FORMAT#array TYPE#1F NAME#hHodoProf1 TITLE#Diamond_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:0:0.0:0.0 SIZE#1:4 AXIS#Fiber:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoProf2: s FORMAT#array TYPE#1F NAME#hHodoProf2 TITLE#VetoX_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:0:0.0:0.0 SIZE#1:4 AXIS#Chn:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoProf3: s FORMAT#array TYPE#1F NAME#hHodoProf3 TITLE#VetoY_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:0:0.0:0.0 SIZE#1:4 AXIS#Rod:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoProf4: s FORMAT#array TYPE#1F NAME#hHodoProf4 TITLE#PH1_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:0:0.0:0.0 SIZE#1:4 AXIS#Rod:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoProf5: s FORMAT#array TYPE#1F NAME#hHodoProf5 TITLE#PH2_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:0:0.0:0.0 SIZE#1:4 AXIS#Fiber:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoProf6: s FORMAT#array TYPE#1F NAME#hHodoProf6 TITLE#FiberX_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#96:-0.5:95.5:0:0.0:0.0 SIZE#1:4 AXIS#Fiber:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoProf7: s FORMAT#array TYPE#1F NAME#hHodoProf7 TITLE#FiberY_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#4:-0.5:3.5:0:0.0:0.0 SIZE#1:4 AXIS#Chn:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoProf8: s FORMAT#array TYPE#1F NAME#hHodoProf8 TITLE#Mod8_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:0:0.0:0.0 SIZE#1:4 AXIS#Rod:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoProf9: s FORMAT#array TYPE#1F NAME#hHodoProf9 TITLE#Che_Profile ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:0:0.0:0.0 SIZE#1:4 AXIS#Rod:#_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime0: s FORMAT#mon TYPE#2F NAME#hHodoRawTime0 TITLE#Hodo0_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:128:30000:40000 SIZE#0:0 AXIS#Fiber:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime1: s FORMAT#mon TYPE#2F NAME#hHodoRawTime1 TITLE#Hodo1_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:128:30000:40000 SIZE#0:0 AXIS#Fiber:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime2: s FORMAT#mon TYPE#2F NAME#hHodoRawTime2 TITLE#Hodo2_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:128:30000:40000 SIZE#0:0 AXIS#Chn:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime3: s FORMAT#mon TYPE#2F NAME#hHodoRawTime3 TITLE#Hodo3_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:128:30000:40000 SIZE#0:0 AXIS#Rod:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime4: s FORMAT#mon TYPE#2F NAME#hHodoRawTime4 TITLE#Hodo4_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:128:30000:40000 SIZE#0:0 AXIS#Rod:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime5: s FORMAT#mon TYPE#2F NAME#hHodoRawTime5 TITLE#Hodo5_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:128:30000:40000 SIZE#0:0 AXIS#Fiber:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime6: s FORMAT#mon TYPE#2F NAME#hHodoRawTime6 TITLE#Hodo6_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#96:-0.5:95.5:128:30000:40000 SIZE#0:0 AXIS#Fiber:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime7: s FORMAT#mon TYPE#2F NAME#hHodoRawTime7 TITLE#Hodo7_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#4:-0.5:3.5:128:30000:40000 SIZE#0:0 AXIS#Chn:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime8: s FORMAT#mon TYPE#2F NAME#hHodoRawTime8 TITLE#Hodo8_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:128:30000:40000 SIZE#0:0 AXIS#Rod:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawTime9: s FORMAT#mon TYPE#2F NAME#hHodoRawTime9 TITLE#Hodo9_RawTime ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:128:30000:40000 SIZE#0:0 AXIS#Rod:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth0: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth0 TITLE#Hodo1_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:128:0.0:600.0 SIZE#0:0 AXIS#Fiber:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth1: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth1 TITLE#Hodo1_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:128:0.0:600.0 SIZE#0:0 AXIS#Fiber:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth2: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth2 TITLE#Hodo2_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:128:0.0:600.0 SIZE#0:0 AXIS#Chn:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth3: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth3 TITLE#Hodo3_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:128:0.0:600.0 SIZE#0:0 AXIS#Rod:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth4: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth4 TITLE#Hodo4_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:128:0.0:800.0 SIZE#0:0 AXIS#Rod:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth5: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth5 TITLE#Hodo5_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:128:0.0:600.0 SIZE#0:0 AXIS#Fiber:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth6: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth6 TITLE#Hodo6_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#96:-0.5:95.5:128:0.0:600.0 SIZE#0:0 AXIS#Fiber:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth7: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth7 TITLE#Hodo7_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#4:-0.5:3.5:128:0.0:600.0 SIZE#0:0 AXIS#Chn:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth8: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth8 TITLE#Hodo8_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:128:0.0:600.0 SIZE#0:0 AXIS#Rod:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoRawWidth9: s FORMAT#mon TYPE#2F NAME#hHodoRawWidth9 TITLE#Hodo9_RawWidth ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:128:0.0:800.0 SIZE#0:0 AXIS#Rod:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT0: s FORMAT#mon TYPE#2F NAME#hHodoCrT0 TITLE#Hodo0_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:32:-0.5:31.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT1: s FORMAT#mon TYPE#2F NAME#hHodoCrT1 TITLE#Hodo1_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:32:-0.5:31.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT2: s FORMAT#mon TYPE#2F NAME#hHodoCrT2 TITLE#Hodo2_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:16:-0.5:15.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT3: s FORMAT#mon TYPE#2F NAME#hHodoCrT3 TITLE#Hodo3_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:16:-0.5:15.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT4: s FORMAT#mon TYPE#2F NAME#hHodoCrT4 TITLE#Hodo4_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:64:-0.5:63.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT5: s FORMAT#mon TYPE#2F NAME#hHodoCrT5 TITLE#Hodo5_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:64:-0.5:63.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT6: s FORMAT#mon TYPE#2F NAME#hHodoCrT6 TITLE#Hodo6_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#96:-0.5:95.5:96:-0.5:95.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT7: s FORMAT#mon TYPE#2F NAME#hHodoCrT7 TITLE#Hodo7_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#4:-0.5:3.5:4:-0.5:3.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT8: s FORMAT#mon TYPE#2F NAME#hHodoCrT8 TITLE#Hodo8_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:16:-0.5:15.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoCrT9: s FORMAT#mon TYPE#2F NAME#hHodoCrT9 TITLE#Hodo9_Crosstalk ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:16:-0.5:15.5 SIZE#0:0 AXIS#Chn:Chn:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult0: s FORMAT#mon TYPE#2F NAME#hHodoFibMult0 TITLE#Hodo_FibMult0 ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:21:-0.5:20.5 SIZE#0:0 AXIS#Fiber:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult1: s FORMAT#mon TYPE#2F NAME#hHodoFibMult1 TITLE#Hodo_FibMult1 ACTIVE#1 RESET#1 REFRESH#25000 BIN#32:-0.5:31.5:21:-0.5:20.5 SIZE#0:0 AXIS#Fiber:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult2: s FORMAT#mon TYPE#2F NAME#hHodoFibMult2 TITLE#Hodo_FibMult2 ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:21:-0.5:20.5 SIZE#0:0 AXIS#Chn:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult3: s FORMAT#mon TYPE#2F NAME#hHodoFibMult3 TITLE#Hodo_FibMult3 ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:21:-0.5:20.5 SIZE#0:0 AXIS#Rod:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult4: s FORMAT#mon TYPE#2F NAME#hHodoFibMult4 TITLE#Hodo_FibMult4 ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:21:-0.5:20.5 SIZE#0:0 AXIS#Rod:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult5: s FORMAT#mon TYPE#2F NAME#hHodoFibMult5 TITLE#Hodo_FibMult5 ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:21:-0.5:20.5 SIZE#0:0 AXIS#Fiber:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult6: s FORMAT#mon TYPE#2F NAME#hHodoFibMult6 TITLE#Hodo_FibMult6 ACTIVE#1 RESET#1 REFRESH#25000 BIN#96:-0.5:95.5:21:-0.5:20.5 SIZE#0:0 AXIS#Fiber:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult7: s FORMAT#mon TYPE#2F NAME#hHodoFibMult7 TITLE#Hodo_FibMult7 ACTIVE#1 RESET#1 REFRESH#25000 BIN#4:-0.5:3.5:21:-0.5:20.5 SIZE#0:0 AXIS#Chn:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult8: s FORMAT#mon TYPE#2F NAME#hHodoFibMult8 TITLE#Hodo_FibMult8 ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:21:-0.5:20.5 SIZE#0:0 AXIS#Rod:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoFibMult9: s FORMAT#mon TYPE#2F NAME#hHodoFibMult9 TITLE#Hodo_FibMult9 ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:21:-0.5:20.5 SIZE#0:0 AXIS#Rod:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoSpot: s FORMAT#mon TYPE#2F NAME#hHodoSpot TITLE#VetoBeamSpot ACTIVE#1 RESET#1 REFRESH#25000 BIN#16:-0.5:15.5:16:-0.5:15.5 SIZE#0:0 AXIS#VetoX:VetoY:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoNe5: s FORMAT#mon TYPE#2F NAME#hHodoNe5 TITLE#Ne5Corr ACTIVE#1 RESET#1 REFRESH#25000 BIN#64:-0.5:63.5:64:-0.5:63.5 SIZE#0:0 AXIS#Hodo1:Hodo2:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHodoTDCMult: s FORMAT#mon TYPE#2F NAME#hHodoTDCMult TITLE#Hodo_TDCMult ACTIVE#1 RESET#1 REFRESH#25000 BIN#128:-0.5:127.5:11:-0.5:10.5 SIZE#0:0 AXIS#Chn:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hEfficiency: s FORMAT#trendarray TYPE#1F NAME#hEfficiency TITLE#Hodo_Efficiency ACTIVE#1 RESET#0 REFRESH#5000 BIN#300:-300:0:0:0:0 SIZE#1:10 AXIS#1s/bin:Effi:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+colorsModule: i 2, 4, 6, 8, 38, 46, 3, 5
+#################################################################
+#################################################################
+#  HWallHistBooker
+#################################################################
+[WallHistBooker]
+//---------------------------------------------
+hWallProf1: s FORMAT#array TYPE#1F NAME#hWallProf1 TITLE#Raw_SmallCellHits ACTIVE#1 RESET#1 REFRESH#5000 BIN#144:0:144:0:0.0:0.0 SIZE#1:2 AXIS#CellNr:Nr_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hWallProf2: s FORMAT#array TYPE#1F NAME#hWallProf2 TITLE#Raw_MiddleCellHits ACTIVE#1 RESET#1 REFRESH#5000 BIN#64:144:208:0:0.0:0.0 SIZE#1:2 AXIS#CellNr:Nr_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hWallProf3: s FORMAT#array TYPE#1F NAME#hWallProf3 TITLE#Raw_LargeCellHits ACTIVE#1 RESET#1 REFRESH#5000 BIN#92:210:302:0:0.0:0.0 SIZE#1:2 AXIS#CellNr:Nr_of_Hits:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#46:0 MARKER#0:0:0 RANGE#-99:-99
+hWallRawTime1: s FORMAT#mon TYPE#2F NAME#hWallRawTime1 TITLE#Raw_Time ACTIVE#1 RESET#1 REFRESH#5000 BIN#302:0.5:302.5:128:0.0:50000.0 SIZE#0:0 AXIS#CellNr:time_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hWallRawWidth1: s FORMAT#mon TYPE#2F NAME#hWallRawWidth1 TITLE#Raw_Width ACTIVE#1 RESET#1 REFRESH#5000 BIN#302:0.5:302.5:128:0.0:800.0 SIZE#0:0 AXIS#Fiber:width_[channel]:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hWallHitTime: s FORMAT#mon TYPE#2F NAME#hWallHitTime TITLE#Hit_Time ACTIVE#1 RESET#1 REFRESH#5000 BIN#305:0:305:250:0:50 SIZE#0:0 AXIS#Cell:Time:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hWallHitCharge: s FORMAT#mon TYPE#2F NAME#hWallHitCharge TITLE#Hit_Charge ACTIVE#1 RESET#1 REFRESH#5000 BIN#305:0:305:250:0:50 SIZE#0:0 AXIS#Cell:Charge:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hWallHitXY: s FORMAT#mon TYPE#2F NAME#hWallHitXY TITLE#Wall_XY ACTIVE#1 RESET#1 REFRESH#5000 BIN#120:-120:120:120:-120:120 SIZE#0:0 AXIS#X_cm:Y_cm:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hWallFib1Mult: s FORMAT#mon TYPE#2F NAME#hWallFib1Mult TITLE#CellMult ACTIVE#1 RESET#1 REFRESH#50000 BIN#302:0.5:302.5:21:-0.5:20.5 SIZE#0:0 AXIS#Fiber:Mult:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hWallRawMult: s FORMAT#array TYPE#1F NAME#hWallRawMult TITLE#WallRawMult ACTIVE#1 RESET#1 REFRESH#50000 BIN#100:0.5:100.5:0:0:0 SIZE#1:5 AXIS#multiplicity:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+colorsSector: i 2, 4, 6, 8, 38, 46
+colorsModule: i 2, 4, 6, 8
+colorsCuts: i   3, 5, 4, 2
+#################################################################
+#################################################################
+#  HShowerHistBooker
+#################################################################
+[ShowerHistBooker]
+//---------------------------------------------
+hhitsRaw: s FORMAT#mon TYPE#2F NAME#hShowerhits_raw TITLE#Shower_Raw ACTIVE#1 RESET#1 REFRESH#500 BIN#12:0.0:6.0:6:0.0:3.0 SIZE#1:2 AXIS#sector:module:counts DIR#no OPT#LEGO2 STATS#0 LOG#0:0:0 GRID#0:0 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hhitsCal: s FORMAT#mon TYPE#2F NAME#hShowerhits_cal TITLE#Shower_Cal ACTIVE#1 RESET#1 REFRESH#500 BIN#12:0.0:6.0:6:0.0:3.0 SIZE#1:2 AXIS#sector:module:counts DIR#no OPT#LEGO2 STATS#0 LOG#0:0:0 GRID#0:0 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hhitsHit: s FORMAT#mon TYPE#2F NAME#hShowerhits_hit TITLE#Shower_Hit ACTIVE#1 RESET#1 REFRESH#500 BIN#12:0.0:6.0:6:0.0:3.0 SIZE#1:2 AXIS#sector:module:counts DIR#no OPT#LEGO2 STATS#0 LOG#0:0:0 GRID#0:0 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hCalCol: s FORMAT#mon TYPE#1F NAME#hCalCol TITLE#Col ACTIVE#1 RESET#1 REFRESH#500  BIN#600:0:300:0:0:0 SIZE#0:0 AXIS#no:no:no DIR#no OPT#no STATS#1 LOG#0:0:0 GRID#1:1 LINE#4:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hCalRow: s FORMAT#mon TYPE#1F NAME#hCalRow TITLE#Row ACTIVE#1 RESET#1 REFRESH#500  BIN#600:0:300:0:0:0 SIZE#0:0 AXIS#no:no:no DIR#no OPT#no STATS#1 LOG#0:0:0 GRID#1:0 LINE#3:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hRawMultTrend: s FORMAT#trend TYPE#1F NAME#hRawMultTrend TITLE#Pre-Shower_multiplicity_RAW ACTIVE#1 RESET#0 REFRESH#500 BIN#100:0:100:0:0:0 SIZE#0:0 AXIS#trend:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#2:0 FILL#0:0 MARKER#0:0:0 RANGE#0:90
+hRawMultTemp: s FORMAT#mon TYPE#1F NAME#hRawMultTemp TITLE#hRawMultTemp ACTIVE#1 RESET#1 REFRESH#500  BIN#200:0:100:0:0:0 SIZE#0:0 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hCalMultTrend: s FORMAT#trend TYPE#1F NAME#hCalMultTrend TITLE#Pre-Shower_multiplicity_CAL  ACTIVE#1 RESET#0 REFRESH#500 BIN#100:0:100:0:0:0 SIZE#0:0 AXIS#trend:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#2:0 FILL#0:0 MARKER#0:0:0 RANGE#0:90
+hCalMultTemp: s FORMAT#mon TYPE#1F NAME#hCalMultTemp TITLE#hCalMultTemp ACTIVE#1 RESET#1 REFRESH#500  BIN#200:0:100:0:0:0 SIZE#0:0 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hHitMultTrend: s FORMAT#trend TYPE#1F NAME#hHitMultTrend TITLE#Pre-Shower_multiplicity_HIT  ACTIVE#1 RESET#0 REFRESH#500 BIN#100:0:100:0:0:0 SIZE#0:0 AXIS#trend:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#2:0 FILL#0:0 MARKER#0:0:0 RANGE#0:90
+hHitMultTemp: s FORMAT#mon TYPE#1F NAME#hHitMultTemp TITLE#hHitMultTemp ACTIVE#1 RESET#1 REFRESH#500  BIN#200:0:100:0:0:0 SIZE#0:0 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hSums_0: s FORMAT#array TYPE#1F NAME#hSums_0 TITLE#Sums_Sector_0 ACTIVE#1 RESET#1 REFRESH#1500 BIN#80:0:80:0:0:0 SIZE#1:3 AXIS#Charge:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hSums_1: s FORMAT#array TYPE#1F NAME#hSums_1 TITLE#Sums_Sector_1 ACTIVE#1 RESET#1 REFRESH#1500 BIN#80:0:80:0:0:0 SIZE#1:3 AXIS#Charge:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hSums_2: s FORMAT#array TYPE#1F NAME#hSums_2 TITLE#Sums_Sector_2 ACTIVE#1 RESET#1 REFRESH#1500 BIN#80:0:80:0:0:0 SIZE#1:3 AXIS#Charge:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hSums_3: s FORMAT#array TYPE#1F NAME#hSums_3 TITLE#Sums_Sector_3 ACTIVE#1 RESET#1 REFRESH#1500 BIN#80:0:80:0:0:0 SIZE#1:3 AXIS#Charge:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hSums_4: s FORMAT#array TYPE#1F NAME#hSums_4 TITLE#Sums_Sector_4 ACTIVE#1 RESET#1 REFRESH#1500 BIN#80:0:80:0:0:0 SIZE#1:3 AXIS#Charge:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hSums_5: s FORMAT#array TYPE#1F NAME#hSums_5 TITLE#Sums_Sector_5 ACTIVE#1 RESET#1 REFRESH#1500 BIN#80:0:80:0:0:0 SIZE#1:3 AXIS#Charge:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hCalRows_0: s FORMAT#array TYPE#1F NAME#hCalRows_0 TITLE#ROWS_Module_0 ACTIVE#1 RESET#1 REFRESH#1500 BIN#100:0:31:0:0:0 SIZE#1:6 AXIS#Rows:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hCalRows_1: s FORMAT#array TYPE#1F NAME#hCalRows_1 TITLE#ROWS_Module_1 ACTIVE#1 RESET#1 REFRESH#1500 BIN#100:0:31:0:0:0 SIZE#1:6 AXIS#Rows:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hCalRows_2: s FORMAT#array TYPE#1F NAME#hCalRows_2 TITLE#ROWS_Module_2 ACTIVE#1 RESET#1 REFRESH#1500 BIN#100:0:31:0:0:0 SIZE#1:6 AXIS#Rows:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hCalCols_0: s FORMAT#array TYPE#1F NAME#hCalCols_0 TITLE#COLS_Module_0 ACTIVE#1 RESET#1 REFRESH#1500 BIN#100:0:31:0:0:0 SIZE#1:6 AXIS#Columns:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hCalCols_1: s FORMAT#array TYPE#1F NAME#hCalCols_1 TITLE#COLS_Module_1 ACTIVE#1 RESET#1 REFRESH#1500 BIN#100:0:31:0:0:0 SIZE#1:6 AXIS#Columns:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hCalCols_2: s FORMAT#array TYPE#1F NAME#hCalCols_2 TITLE#COLS_Module_2 ACTIVE#1 RESET#1 REFRESH#1500 BIN#100:0:31:0:0:0 SIZE#1:6 AXIS#Columns:Counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hMultTrend: s FORMAT#array TYPE#1F NAME#hMultTrend TITLE#Sums ACTIVE#1 RESET#1 REFRESH#1500 BIN#256:0:256:0:0:0 SIZE#1:3 AXIS#modules[1-24]:ratio:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hSumTrend_0: s FORMAT#trendarray TYPE#1F NAME#hSumTrend_0 TITLE#SumTrend_0 ACTIVE#1 RESET#0 REFRESH#1500 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:3 AXIS#Sum:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#0:50
+hSumTrend_1: s FORMAT#trendarray TYPE#1F NAME#hSumTrend_1 TITLE#SumTrend_1 ACTIVE#1 RESET#0 REFRESH#1500 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:3 AXIS#Sum:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#0:50
+hSumTrend_2: s FORMAT#trendarray TYPE#1F NAME#hSumTrend_2 TITLE#SumTrend_2 ACTIVE#1 RESET#0 REFRESH#1500 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:3 AXIS#Sum:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#0:50
+hSumTrend_3: s FORMAT#trendarray TYPE#1F NAME#hSumTrend_3 TITLE#SumTrend_3 ACTIVE#1 RESET#0 REFRESH#1500 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:3 AXIS#Sum:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#0:50
+hSumTrend_4: s FORMAT#trendarray TYPE#1F NAME#hSumTrend_4 TITLE#SumTrend_4 ACTIVE#1 RESET#0 REFRESH#1500 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:3 AXIS#Sum:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#0:50
+hSumTrend_5: s FORMAT#trendarray TYPE#1F NAME#hSumTrend_5 TITLE#SumTrend_5 ACTIVE#1 RESET#0 REFRESH#1500 BIN#100:0.0:100.0:0:0.0:0.0 SIZE#1:3 AXIS#Sum:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#0:50
+hSumTemp: s FORMAT#array TYPE#1F NAME#hSumTemp TITLE#hSumTemp ACTIVE#1 RESET#1 REFRESH#1500  BIN#256:0:100:0:0:0 SIZE#1:18 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hshowermult_raw: s FORMAT#mon TYPE#2F NAME#hShowermult_raw TITLE#Shower_hits_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#6:0.0:3.0:12:0.:6. SIZE#0:0 AXIS#module:sector:no DIR#no OPT#lego2 STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hshowermulttemp_raw: s FORMAT#mon TYPE#2F NAME#hShowermult_temp_raw TITLE#Shower_hits_raw ACTIVE#1 RESET#1 REFRESH#5000 BIN#3:0.0:3.0:6:0.:6. SIZE#0:0 AXIS#module:sector:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hshowermulttrend_raw: s FORMAT#trendarray TYPE#1F NAME#hShowermult_trend_raw TITLE#Shower_hits_raw ACTIVE#1 RESET#0 REFRESH#5000 BIN#50:0.0:50.0:0:0.:0. SIZE#1:6 AXIS#trend:multiplicity:no DIR#no OPT#p STATS#0 LOG#0:0:0 GRID#0:1 LINE#1:0 FILL#0:0 MARKER#1:20:0.5 RANGE#-99:-99
+colorsSector: i 2, 4, 6, 8, 38, 46
+colorsModule: i 2, 3, 4
+colorsCuts: i   3, 5, 4, 2
+################################################################
+#################################################################
+#  HPhysicsHistBooker
+#################################################################
+[PhysicsHistBooker]
+//---------------------------------------------
+hphimdctof: s FORMAT#array TYPE#1F NAME#hphimdctof TITLE#DeltaPhi_Mdc_Tof ACTIVE#1 RESET#1 REFRESH#5000 BIN#60:-30:30:0:0:0 SIZE#1:6 AXIS#deltaPhi_[deg]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hphimdctofino: s FORMAT#array TYPE#1F NAME#hphimdctofino TITLE#DeltaPhi_Mdc_Tofino ACTIVE#1 RESET#1 REFRESH#5000 BIN#60:-30:30:0:0:0 SIZE#1:6 AXIS#deltaPhi_[deg]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hphimdcrich: s FORMAT#array TYPE#1F NAME#hphimdcrich TITLE#DeltaPhi_Mdc_Rich ACTIVE#1 RESET#1 REFRESH#5000 BIN#60:-30:30:0:0:0 SIZE#1:6 AXIS#deltaPhi_[deg]:counts:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hdedxmdc: s FORMAT#mon TYPE#2F NAME#hMdcdedx TITLE#Mdc_dEdx ACTIVE#1 RESET#1 REFRESH#50000 BIN#200:-1500:1500:70:0:20 SIZE#6:2 AXIS#p*charge:dEdx:counts DIR#no OPT#COLZ STATS#0 LOG#0:0:1 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hdedxtof: s FORMAT#mon TYPE#2F NAME#hTofdedx TITLE#Tof_dEdx ACTIVE#1 RESET#1 REFRESH#50000 BIN#200:-1500:1500:100:0:10 SIZE#1:6 AXIS#p*charge:dEdx:counts DIR#no OPT#COLZ STATS#0 LOG#0:0:1 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+hdedxtofino: s FORMAT#mon TYPE#2F NAME#hTofinodedx TITLE#Tofino_dEdx ACTIVE#1 RESET#1 REFRESH#50000 BIN#200:-1500:1500:100:0:5 SIZE#1:6 AXIS#p*charge:dEdx:counts DIR#no OPT#COLZ STATS#0 LOG#0:0:1 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99
+colorsSector: i 2, 4, 6, 8, 38, 46
+################################################################
+##############################################################################
+//----------------------------------------------------------------------------

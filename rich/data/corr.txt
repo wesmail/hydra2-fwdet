@@ -1,0 +1,61 @@
+[Correlator Switches]
+
+Shower Condition = 0
+No TofTOF cut = 1
+No TofinoTOF cut = 1
+All Sectors correlated = 1
+Selected Sector = 0 
+No Rich correlated = 0 
+Ring Quality cuts = 0
+Tofino Multiplicity cuts = 0
+Magnet On = 0
+
+
+[Theta Cuts between Detectors (asymmetric)]
+
+DTheta RICH MDC = 10.
+DThetaMin RICH MDC = -10.
+DThetaMax RICH MDC = 10.
+DTheta RICH TOF = 10.
+DThetaMin RICH TOF = -10.
+DThetaMax RICH TOF = 10.
+DTheta RICH SHOWER = 10.
+DThetaMin RICH SHOWER = -10.
+DThetaMax RICH SHOWER = 10.
+DTheta MDC TOF = 10.
+DThetaMin MDC TOF = -10.
+DThetaMax MDC TOF = 10.
+DTheta MDC SHOWER = 10.
+DThetaMin MDC SHOWER = -10.
+DThetaMax MDC SHOWER = 10.
+
+
+[Phi Cuts between Detectors]
+
+DPhi RICH MDC = 10.
+DPhi RICH TOF = 10.
+DPhi RICH SHOWER = 10.
+DPhi MDC TOF = 10.
+DPhi MDC SHOWER = 10.
+
+[TOF Cuts]
+
+Mininum T.O.F. in Tof = 1.
+Minimum T.O.F. in Tofino = 1.5
+Maximum T.O.F. in Tof = 40.
+Maximum T.O.F. in Tofino = 40.  
+
+[Miscellanea]
+
+Shower Amplification Factor = 1.9
+Tofino Multiplicity Cut = 1
+MDC Theta correction factor = 1.
+
+[Ring Quality Cuts]
+
+Minimal Pattern Matrix Quality =  200
+Minimal Hough Trasformation Quality = 28
+Minimal PadNr per Ring  = 6
+Minimal Ring Charge Amplitude = 200
+Minimal Ring Local Maxima = 4
+

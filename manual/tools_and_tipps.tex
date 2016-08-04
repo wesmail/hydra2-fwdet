@@ -1,0 +1,195 @@
+\chapter{Tool \& Tipps}\label{Chapter_tools_and_tipps}
+
+
+\section{HZip}
+
+A helper class to read/work with zip file containing
+ many root files. Those files can be typically produced
+ by :
+\begin{lstlisting}
+    zip -j -n root myzipname myrootfiles
+\end{lstlisting}
+
+Note: root files will not be compressed, directory names
+ignored. It's a flat files structure. Purpose of the
+zipping of many root files into on zip archive is
+to improve the handling of many small files and reduce
+the load on the file system.
+
+
+To make the daily work more easy a command line executable hzip
+is provided to produce and work with those zip files:
+
+\begin{lstlisting}
+ usage: hzip -o zipfile [-i filefilter] [-f filelist] [-u outputdir] [-msth]
+	          -f input ascii filelist (1 file per line)
+                  -h help
+                  -i input filefilter (like "be*.root")
+                  -l list file in zip files
+                  -m maxsize of file [bytes] (default = 2 Gbyte, will be splitted if larger)
+                  -o outputzip file name (required)
+                  -s save mode. do not overide existing zip files (default is overwrite)
+                  -t test. show what would be done
+                  -u dir unzip zip files to dir
+                  -w print in which file membername is contained
+ examples:
+   test zip root files      : hzip -t -o test.zip -i "/mydir/be*.root"
+   zip root files           : hzip -o test.zip -i "/mydir/be*.root"
+   zip root files from list : hzip -o test.zip -f filelist
+   unzip root files to dir  : hzip -i "test_*.zip" -u /mydir
+   list files in zip files  : hzip -i "test_*.zip" -l
+\end{lstlisting}
+ 
+from the normal terminal. The corresponding source and Makefiles
+are located in the module programs. The compiled executable should
+be copied to the ROOT bin dir, so that hzip is found automatically
+when called from the shell.
+
+HZip provides the functionality to access, list and files from
+a root macro.
+
+
+\begin{lstlisting}
+ 
+ examples:
+
+  TChain* chain =  new TChain("myTree");
+  // add all root files to chain
+  HZip::makeChain("my.zip",chain);            
+  // add all root files of all matching zip files to chain  
+  HZip::makeChainGlob("my*.zip",chain); 
+  // add all root files of all zip files in filelist to chain      
+  HZip::makeChainList("filelist.txt",chain);  
+
+  chain->GetEntries(); // access all files and get number of entries
+  chain->ls();         // list all files in chain with number of entries
+  
+  // is my.root contained in my.zip?
+  Bool_t HZip::isInside("my.zip","my.root"); 
+  // list all files which match the pattern  
+  Int_t  HZip::list("my.zip",".*");          
+  // return to TList list all files which match the pattern  
+  Int_t  HZip::getList("my.zip",list,".*"); 
+  // unzip file to directory 
+  Bool_t HZip::unzip("my.zip","mydir"); 
+  // add this root file to the zip file     
+  Bool_t HZip::addFile("my.zip","my.root");  
+  // add all root files from TList list to the zip file
+  Bool_t HZip::addFiles("my.zip",list);     
+\end{lstlisting}
+
+\section{HLoop}
+
+
+HLoop is a helper class to allow for fast looping of HADES dsts.
+The categories are maped directly from the Tree and allow partical
+reading to speed up. If Hades object exists, the current event structure
+will be replaced by the one defined by HLoop. If Hades not exists, it
+can be created by HLoop constructor. The Hades eventstructure is important
+if one wants to access the data via\newline 
+\verb+gHades->getCurrentEvent()->getCategory(cattype)+
+or implicit by Classes like HParticleTrackSorter. See the example below for
+further explanation.
+
+
+\begin{lstlisting}
+
+HEventHeader* getEventHeader()  // retrieve the pointer to the HADES HEventHeader
+TTree*        getTree       ()  // retrieve the pointer to the HADES tree
+TChain*       getChain      ()  // retrieve TChain pointer
+Long64_t      getEntries    ()  // get Number of events in the chain
+
+\end{lstlisting}
+
+
+\begin{lstlisting}
+
+
+#include "hloop.h"
+#include "hcategory.h"
+#include "hzip.h"
+#include "heventheader.h"
+#include "hparticlecand.h"
+#include "hparticletracksorter.h"
+
+#include "TIterator.h"
+
+#include <iostream>
+using namespace std;
+void myLoop()
+{
+   //---------------LOOP CONFIG----------------------------------------------------------------
+   Bool_t createHades = kTRUE;  // kTRUE = create HADES new
+   HLoop* loop = new HLoop(createHades); // create HADES (needed if one wants to use gHades)
+   // add files : Input sources may be combined
+   loop->addFile ("myFile1.root");
+   loop->addFile ("myFile2.root"); 
+   // add all files in ascii file list. list contains 1 root file per line (including path)
+   loop->addFilesList("list.txt");  
+   // add all files matching this expression
+   loop->addFiles("myFiles*.root"); 
+   // add all root files contained in zip file (this file has to be produced by hzip)
+   HZip::makeChain("all_files.zip",loop->getChain()); 
+
+   // global disbale "-*" has to be first in the list
+   // read only one category from file (HEventHeader is allways on)
+   // Correct name for real data / sim data have to be used here
+   if(!loop->setInput("-*,+HParticleCand")){
+       exit(1);                             
+   }
+   loop->printCategories(); // print status from all categories in event
+   //------------------------------------------------------------------------------------------
+   TIterator* iterCand = 0;
+   if (loop->getCategory("HParticleCand")) {
+      iterCand = loop->getCategory("HParticleCand")->MakeIterator();
+   }
+   HEventHeader* header = loop->getEventHeader();
+
+   //--------------------------CONFIGURATION---------------------------------------------------
+   //At begin of the program (outside the event loop)
+
+   HParticleTrackSorter sorter;
+   //sorter.setDebug();               // for debug
+   //sorter.setPrintLevel(3);         // max prints
+   //sorter.setRICHMatching(HParticleTrackSorter::kUseRKRICHWindow,4.); // select matching RICH-MDC
+   //sorter.setIgnoreInnerMDC();      // do not reject Double_t inner MDC hits
+   //sorter.setIgnoreOuterMDC();      // do not reject Double_t outer MDC hits
+   //sorter.setIgnoreMETA();          // do not reject Double_t META hits
+   //sorter.setIgnorePreviousIndex(); // do not reject indices from previous selctions
+   sorter.init();                     // get catgegory pointers etc...
+   //--------------------------------------------------------------------------------------------
+   Int_t nFile = 0;
+   for (Int_t i = 0; i < 10; i++) {
+       if(loop->nextEvent(i) <= 0) break;  // get next event. categories will be cleared before
+                                           // if 0 (entry not found) or -1 (Io error) is 
+                                           // returned stop the loop
+       cout<<i<<"----------------------------------- "<<endl;
+       cout<<"sequence Nr = "<<header->getEventSeqNumber()<<endl; // retrieve full header infos
+       TString filename;
+       if(loop->isNewFile(filename)){ // new file opened from chain ?
+           cout<<"new File found "<<filename.Data()<<endl;
+           nFile++;
+       }
+
+       sorter.cleanUp();
+       // reset all flags for flags (0-28) ,reject,used,lepton
+       sorter.resetFlags(kTRUE,kTRUE,kTRUE,kTRUE);     
+       // fill only good leptons
+       Int_t nCandLep     = sorter.fill(HParticleTrackSorter::selectLeptons);   
+       Int_t nCandLepBest = sorter.selectBest(HParticleTrackSorter::kIsBestRKRKMETA,HParticleTrackSorter::kIsLepton);
+       // fill only good hadrons (already marked good leptons will be skipped)
+       Int_t nCandHad     = sorter.fill(HParticleTrackSorter::selectHadrons);   
+       Int_t nCandHadBest = sorter.selectBest(HParticleTrackSorter::kIsBestRKRKMETA,HParticleTrackSorter::kIsHadron);
+
+       if(iterCand){
+          iterCand->Reset();
+          HParticleCand* cand;
+          while ( (cand = (HParticleCand*)iterCand->Next()) != 0 ){
+             // do some work  ....
+         }
+      }
+   }
+   sorter.finalize(); // clean up stuff
+}
+\end{lstlisting}
+

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+. SCRIPTSADMIN/hsc-functions.sh
+
+hsc_checkEnvironment
+
+hsc_finalizeScript

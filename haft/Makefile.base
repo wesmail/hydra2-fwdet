@@ -1,0 +1,33 @@
+COMPILER	= g++
+CXX=$(COMPILER)
+
+LD		= g++
+
+LDFLAGS		= -g -f2c -lm -lnsl
+
+CINTINC		= 
+
+CXXFLAGS	=  -O2 -g -pipe -Wall -fPIC  -DR__GLIBC \
+	 	  -DDEBUG_LEVEL=$(HDL)  \
+                  -I$(ROOTSYS)/include $(CINTINC)
+
+ifdef NOLIBNEW
+  ROOTLIBS	=  $(shell root-config --nonew --libs)
+  ROOTGLIBS   	=  $(shell root-config --nonew --glibs)
+else
+  ROOTLIBS	=  $(shell root-config --libs)
+  ROOTGLIBS   	=  $(shell root-config --glibs)
+endif
+
+RINT		=  
+LIBS		=  $(ROOTLIBS)
+
+GLIBS		=  $(LIBS) $(ROOTGLIBS)  
+
+SOFLAGS		=  -shared -Wl,-soname,$@.so
+
+
+
+
+
+

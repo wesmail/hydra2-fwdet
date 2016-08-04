@@ -1,0 +1,6 @@
+Unix.*.Root.MacroPath:          .:$(MYHADDIR)/macros:$(HADDIR)/macros
+Rint.Logon:		rootlogon.C
+Rint.Logoff:		rootlogoff.C
+Canvas.ShowEventStatus:	true
+Unix.*.Root.UseTTFonts: true
+Root.Debug:	0

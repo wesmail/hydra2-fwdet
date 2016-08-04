@@ -1,0 +1,166 @@
+% ------------------------------------------------------------------------
+
+ \documentclass[11pt,twoside,a4paper]{report}
+ \usepackage[latin1]{inputenc}
+\usepackage{listings}
+\usepackage[usenames,dvipsnames]{color}
+
+ \definecolor{lightgray}{rgb}{0.95,0.95,0.95}
+ \definecolor{darkred}{rgb}{0.8,0.2,0.2}
+\lstset{ 
+language=C++,
+keywordstyle=\color{black}\bfseries,
+stringstyle=\color{red},
+commentstyle=\color{darkred},
+basicstyle=\footnotesize,
+numbers=none,
+numberstyle=\footnotesize,
+stepnumber=2,
+numbersep=5pt,
+%backgroundcolor=\color{white},
+backgroundcolor=\color{lightgray},
+showspaces=false,
+showstringspaces=false,
+showtabs=false,
+frame=none,
+tabsize=2,
+captionpos=b,
+breaklines=true,
+breakatwhitespace=false,
+escapeinside={\%*}{*)}
+}
+
+
+
+
+
+ \usepackage{amsmath}
+ \usepackage{subfigure}
+ \usepackage{placeins}
+ \usepackage{caption2}
+ \usepackage{floatflt}
+ \usepackage{wrapfig}
+ \usepackage[]{tocbibind}
+ \usepackage{appendix}
+ \usepackage{ifthen}
+ \usepackage{times}                                          %true type fonts
+ \pagestyle{headings}
+ \usepackage[pdftex]{graphicx}                               %USE WHEN DOCUMENT IS PDFLATEX'ED!
+ \usepackage[pdftex,plainpages=false,pagebackref]{hyperref}  %USE WHEN DOCUMENT IS PDFLATEX'ED! NO COLORLINKS
+ \pdfcompresslevel=9                                         %USE WHEN DOCUMENT IS PDFLATEX'ED!
+ \pdfoutput=1                                                %USE WHEN DOCUMENT IS PDFLATEX'ED!
+ \hypersetup{
+ bookmarksopen=true,
+ bookmarksopenlevel=0,
+ pdfauthor={Jochen Markert, Goethe-Universität, Frankfurt am Main},
+ pdftitle={HYDRA manual},
+ pdfkeywords={Hades, HYDRA, Magbolz, Heed}
+}
+\setcounter{tocdepth}{4}
+\setcounter{secnumdepth}{4}
+
+\newlength{\mylinewidth}
+\setlength{\mylinewidth}{\linewidth}
+\setlength{\textwidth}{159mm}
+\setlength{\oddsidemargin}{0in}
+\setlength{\evensidemargin}{0in}
+
+
+\makeatletter
+\newcommand\figcaption{\def\@captype{figure}\caption}
+\newcommand\tabcaption{\def\@captype{table}\caption}
+\makeatother
+
+\newenvironment{narrow}[2]{
+   \begin{list}{}{
+      \setlength{\topsep}{0pt}
+      \setlength{\leftmargin}{#1}
+      \setlength{\rightmargin}{#2}
+      \setlength{\listparindent}{\parindent}
+      \setlength{\itemindent}{\parindent}
+      \setlength{\parsep}{\parskip}}
+\item[]}{\end{list}}
+
+\newcommand{\goodgap}{
+\hspace{\subfigtopskip}
+\hspace{\subfigbottomskip}}
+
+\renewcommand{\textfraction}{0.0003} % make large figures on page possible
+%%% ------------------------------------------------------------------------
+%%% ----------------------------------------------------------------------
+
+%\hyphenation{}
+
+
+\title{HYDRA2 manual} 
+\author{Hades software group}
+\date{\today} % Date
+
+
+ \begin{document}
+
+
+%NO NEED TO TYPE FILE EXTENSIONS IN \includegraphics:
+ \DeclareGraphicsExtensions{.jpg,.pdf,.png}             %USE WHEN DOCUMENT IS PDFLATEX'ED!
+
+% ------------------------------------------------------------------------
+% Cover- Titelseite
+\thispagestyle{empty}
+
+\maketitle
+
+\cleardoublepage
+\thispagestyle{empty}
+
+
+\pagenumbering{roman}
+
+% ------------------------------------------------------------------------
+ \cleardoublepage
+ \tableofcontents
+ %\cleardoublepage
+ \listoffigures
+ \listoftables
+
+ \cleardoublepage
+
+% ------------------------------------------------------------------------
+ \pagenumbering{arabic}
+ \setlength{\parskip}{1.0ex plus0.2ex minus0.2ex}             %set skip between paragraphs
+
+ \clearpage
+ \input{software_environment}
+ \clearpage
+ \input{hydra_design}
+ \clearpage
+ \input{tools_and_tipps}
+ \clearpage
+ \input{event_display}
+ \clearpage
+ \input{event_embedding}
+ \clearpage
+ \input{online_qa}
+ \clearpage
+
+
+
+ %GATHER{lit_article.bib}       % For Gather Purpose Only
+ %GATHER{lit_book.bib}          % For Gather Purpose Only
+ %GATHER{Lit_misc.bib}          % For Gather Purpose Only
+
+% ------------------------------------------------------------------------
+ \begin{appendix}
+  \input{appendix_macros}
+  \input{appendix}
+ \end{appendix}
+
+\cleardoublepage
+\bibliographystyle{alpha}
+\bibliography{lit_article,Lit_book,Lit_misc}
+% ------------------------------------------------------------------------
+
+\cleardoublepage
+
+% ------------------------------------------------------------------------
+\end{document}
+% ------------------------------------------------------------------------

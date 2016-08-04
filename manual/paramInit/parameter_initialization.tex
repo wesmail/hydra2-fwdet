@@ -1,0 +1,41 @@
+\documentclass[a4paper,twoside,10pt]{book}
+\usepackage{parameter_initialization_style}
+
+\graphicspath{%
+        {./img/}
+}%
+
+% ------------------------------------------------------------------------
+\title{Parameter initialization in Hydra2 and HGeant2}
+\author{Ilse Koenig, GSI Darmstadt}
+\date{\today} % Date
+
+\begin{document}
+
+% ------------------------------------------------------------------------
+% Cover- Titelseite
+\frontmatter
+\pagenumbering{roman}
+\pagestyle{plain}
+\hyphenpenalty=100000
+\sloppy
+
+\maketitle
+%\cleardoublepage
+
+\tableofcontents
+\cleardoublepage
+
+% ------------------------------------------------------------------------
+\mainmatter
+\pagenumbering{arabic}
+\pagestyle{headings}
+\raggedbottom
+
+\input{./tex/overview}
+\input{./tex/rtdb}
+\input{./tex/geometryInterface}
+\input{./tex/oracle}
+
+% ------------------------------------------------------------------------
+\end{document}

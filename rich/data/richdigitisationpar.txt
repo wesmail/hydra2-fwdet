@@ -1,0 +1,37 @@
+
+[ Rich Digitisation Parameters ]
+
+Mean number of electrons / keV = 35.71
+Noise sigma value for gauss [e] = 1038.
+Electronic Noise Status = 0
+Charge [e] per one channel = 1730.
+Q upper limit = 800
+# these are charge limits used in Polya function
+
+strong side coupling = 0.19
+weak side coupling  = 0.021
+vertical coupling : a = 2.833
+vertical coupling : b = 8.806e-02
+
+parameter 1 first exp = 2.935e+04 
+parameter 2 first exp = -6.830e-02
+parameter 1 second exp = 7.522e+03
+parameter 2 second exp = -1.66e-02
+ 
+[ CsI quantum efficiency for photons ]
+
+Number of bins = 18
+Cherenkov photon length [eV] = 
+\ 5.63  5.76  5.9  6.04  6.19  6.35  6.52  6.7  6.88
+\ 7.08  7.29  7.51  7.74  7.99  8.26  8.55  8.85  9.18
+CsI photoelectron extraction efficiency = 
+\ 0.005141  0.002813  0.010961  0.025608  0.053544  0.102626
+\ 0.151611  0.189053  0.213788  0.242015  0.259378  0.297499
+\ 0.308363  0.329412  0.356960  0.381307  0.401192  0.450856
+
+
+
+
+
+
+

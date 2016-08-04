@@ -1,0 +1,1474 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 10/06/2010 by Ilse Koenig
+
+//_HADES_CLASS_DESCRIPTION 
+/////////////////////////////////////////////////////////////
+// HGeomOra2Io
+//
+// Class for geometry I/O from Oracle used in Hydra2/HGeant2
+// (uses the Oracle C/C++ precompiler)
+//
+/////////////////////////////////////////////////////////////
+
+#include "hgeomora2io.h"
+#include "hgeomora2conn.h"
+#include "hgeommedia.h"
+#include "hgeommedium.h"
+#include "hgeomset.h"
+#include "hgeomnode.h"
+#include "hgeominterface.h"
+#include "hgeomhit.h"
+#include "hgeomshapes.h"
+#include "hgeombasicshape.h"
+#include "hgeomtof.h"
+#include "TList.h"
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// Include the SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HGeomOra2Io)
+
+#define NMAX_GEOLARGE  2500
+#define NMAX_GEOMEDIUM  500
+#define NMAX_GEOSMALL   100
+#define NMAX_GEOTINY     20
+
+HGeomOra2Io::HGeomOra2Io() {
+  // Constructor
+  pConn=new HGeomOra2Conn();
+  detVersions=0;
+  maxSince=-1;
+  minUntil=-1;
+}
+
+HGeomOra2Io::~HGeomOra2Io() {
+  // default constructor closes an open connection
+  close();
+  if (pConn) {
+    delete pConn;
+    pConn=0;
+  }
+}
+
+Bool_t HGeomOra2Io::open() {
+  // opens a read-only default connection
+  close();
+  return pConn->open();
+}
+
+Bool_t HGeomOra2Io::open(const Char_t* connName,const Text_t* status) {
+  // opens a database connection for user given by name
+  // accepts also user@dbName
+  // asks for password
+  close();
+  TString s(connName);
+  Bool_t isConnected=kFALSE;
+  Int_t n=s.First('@');
+  if (n>0) {
+    TString userName=s(0,n);
+    TString dbName=s(n+1,s.Length()-n-1);
+    isConnected=pConn->open((Char_t*)dbName.Data(),(Char_t*)userName.Data());
+  } else isConnected=pConn->open((Char_t*)connName);
+  return isConnected;
+}
+
+void HGeomOra2Io::close() {
+  // closes the connection with automatic ROLLBACK
+  pConn->close();
+  if (detVersions) {
+    detVersions->Delete();
+    delete detVersions;
+    detVersions=0;
+  }
+  maxSince=-1;
+  minUntil=-1;
+}
+
+void HGeomOra2Io::print() {
+  // prints information about the database connection
+  pConn->print();
+}
+
+Bool_t HGeomOra2Io::isOpen() {
+  // Returns kTRUE, if the connection is open
+  return pConn->isOpen();
+}
+
+Bool_t HGeomOra2Io::isWritable() {
+  // Returns kTRUE for non-default connections with possible write access
+  return pConn->isWritable();
+} 
+
+Bool_t HGeomOra2Io::setSimulRefRun(const Char_t* runName) {
+  // Sets the simulation reference run
+  return pConn->setSimulRefRun(runName);
+}
+
+const Char_t* HGeomOra2Io::getSimulRefRun() {
+  // Returns the name of the simulation reference run
+  return pConn->getSimulRefRun();
+}
+
+Bool_t HGeomOra2Io::setRunId(Int_t id) {
+  // Sets the run id
+  return pConn->setRunId(id);
+}
+
+Int_t HGeomOra2Io::getCurrentRunId() {
+  // returns the actual run id 
+  return pConn->getActRunId();
+}
+
+Bool_t HGeomOra2Io::setHistoryDate(const Char_t* s) {
+  // Sets the date to retrieve historic data
+  // Returns kFALSE when the date string cannot be converted to a valid date.
+  if (strlen(s)==0) return kTRUE;
+  else return pConn->setHistoryDate(s);
+}
+
+const Char_t* HGeomOra2Io::getHistoryDate() {
+  // Returns the history date
+  return pConn->getHistoryDate();
+}
+
+Bool_t HGeomOra2Io::readGeomConfig(HGeomInterface* interface) {
+  // Reads the geometry configuration and versions
+  if (interface==0||pConn->getActRunId()==-1) return kFALSE;
+  Int_t n=0;
+  if (!detVersions) n=readGeomSetup();
+  if (n>0&&detVersions) {
+    TListIter iter(detVersions);
+    HOra2DetVers* vers;
+    cout<<"*---------------------------------*\n";
+    cout<<"| Initialization from database:   |\n";
+    cout<<"*---------------------------------*\n";
+    cout<<"Run Id \t"<<pConn->getActRunId()<<'\n';
+    while((vers=(HOra2DetVers*)iter.Next())) {
+      TString detFile=vers->GetName();
+      cout<<detFile<<" \tVersion: "<<vers->geomVersion<<'\n';
+      detFile+="_gdb";
+      interface->addInputFile(detFile);
+    }
+    cout<<"*---------------------------------*\n";
+    return kTRUE;
+  } else {
+    return kFALSE;
+    Error("readGeomConfig(HGeomInterface*)","No versions found in database");
+  }
+}
+
+Bool_t HGeomOra2Io::read(HGeomMedia* media) {
+  // Reads the media
+  if (media==0||pConn->getActRunId()==-1) return kFALSE;
+  Bool_t rc=kTRUE;
+  TObjArray* pMat=0;
+  TObjArray* pOpt=0;
+  Int_t nMed=0, nMat=0, nOpt=0;
+  EXEC SQL BEGIN DECLARE SECTION;
+    struct {
+      varchar p_name[NMAX_GEOMEDIUM][81];
+      int     p_compos_id[NMAX_GEOMEDIUM];
+      double  p_density[NMAX_GEOMEDIUM];
+      int     p_isvol[NMAX_GEOMEDIUM];
+      int     p_ifield[NMAX_GEOMEDIUM];
+      double  p_fieldm[NMAX_GEOMEDIUM];
+      double  p_epsil[NMAX_GEOMEDIUM];
+      int     p_optic_id[NMAX_GEOMEDIUM];
+    } med;
+    struct {
+      short p_name_Ind[NMAX_GEOMEDIUM];
+      short p_compos_id_Ind[NMAX_GEOMEDIUM];
+      short p_density_Ind[NMAX_GEOMEDIUM];
+      short p_isvol_Ind[NMAX_GEOMEDIUM];
+      short p_ifield_Ind[NMAX_GEOMEDIUM];
+      short p_fieldm_Ind[NMAX_GEOMEDIUM];
+      short p_epsil_Ind[NMAX_GEOMEDIUM];
+      short p_optic_id_Ind[NMAX_GEOMEDIUM];
+    } med_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT medium_name, composition_id, density, isvol,
+                  ifield, fieldm, epsil, optical_prop_id
+           INTO :med INDICATOR :med_Ind
+           FROM hgeom.media_at_histdate_2;
+  nMed=sqlca.sqlerrd[2];
+  pMat=new TObjArray(nMed);
+  pOpt=new TObjArray(nMed);
+  if (nMed>0) {
+    for(Int_t i=0;i<nMed;i++) {
+      if (med_Ind.p_name_Ind[i]!=-1) {
+        med.p_name[i].arr[med.p_name[i].len]='\0';
+        HGeomMedium* medium=new HGeomMedium((Char_t*)(med.p_name[i].arr));
+        medium->setMediumPar(med.p_isvol[i],med.p_ifield[i],med.p_fieldm[i],
+                             med.p_epsil[i],0.,0.,0.,0.);
+        medium->setDensity(med.p_density[i]);                     
+        media->addMedium(medium);      
+        pMat->AddAt(new HOra2Obj(medium,med.p_compos_id[i]),nMat);
+        nMat++;
+        if (med_Ind.p_optic_id_Ind[i]!=-1) {
+          pOpt->AddAt(new HOra2Obj(medium,med.p_optic_id[i]),nOpt);
+          nOpt++;
+        }
+      }
+    }
+    rc=readMaterialComposition(media,pMat,nMat);
+    if (rc&&nOpt>0) rc=readOpticalProperties(media,pOpt,nOpt);
+//media->print();
+  } else {
+    rc=kFALSE;
+    Error("read(Int_t,HGeomMedia*)","No media found in database");
+  }
+  if (pMat) {
+    pMat->Delete();
+    delete pMat;
+    pMat=0;
+  }
+  if (pOpt) {
+    pOpt->Delete();
+    delete pOpt;
+    pOpt=0;
+  }
+  return rc;
+errorfound:
+  pConn->showSqlError("read(Int_t,HGeomMedia*)");  
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::readMaterialComposition(HGeomMedia* media,TObjArray* pMaterials,
+                                               Int_t nMaterials) {
+  // Reads the material composition
+  if (pMaterials==0||nMaterials==0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int id;
+    struct {
+      int    cz[NMAX_GEOSMALL];
+      double ca[NMAX_GEOSMALL];
+      double cw[NMAX_GEOSMALL];
+    } pmat;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL DECLARE mat_cursor CURSOR FOR
+    SELECT comp_z, comp_a, comp_weight
+    FROM hgeom.material_compositions_all
+    WHERE composition_id = :id;
+  Bool_t rc=kTRUE;
+  for(Int_t i=0;i<nMaterials&&rc;i++) {
+    HOra2Obj* p=(HOra2Obj*)pMaterials->At(i);
+    HGeomMedium* medium=(HGeomMedium*)p->pObj;
+    id=p->oraId;
+    EXEC SQL OPEN mat_cursor;
+    EXEC SQL FETCH mat_cursor INTO :pmat;
+    Int_t nComp=sqlca.sqlerrd[2];
+    Int_t wFac=1;
+    if (medium&&nComp>0) {
+      if (nComp>1) {
+        Double_t wSum=0.;
+        for(Int_t k=0;k<nComp;k++) wSum+=pmat.cw[k];
+        if (wSum>1.01) wFac=-1;
+      }
+      medium->setNComponents(nComp*wFac);
+      for(Int_t k=0;k<nComp;k++) {
+        if (pmat.cz[k]==0) medium->setComponent(k,1.e-16,1.e-16,1.);
+        else medium->setComponent(k,(Double_t)pmat.ca[k],pmat.cz[k],pmat.cw[k]);    
+      }
+      if (nComp==1) rc=medium->calcRadiationLength();
+    } else {
+      rc=kFALSE;
+    }
+  }
+  EXEC SQL CLOSE mat_cursor;
+  return rc;  
+errorfound:
+  pConn->showSqlError("readMaterialComposition");  
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::readOpticalProperties(HGeomMedia* media,TObjArray* pOptical,
+                                             Int_t nOptical) {
+  // Reads the optical parameters
+  if (nOptical==0) return kTRUE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int id;
+    struct {
+      double cp[NMAX_GEOSMALL];
+      double ca[NMAX_GEOSMALL];
+      double ce[NMAX_GEOSMALL];
+      double cr[NMAX_GEOSMALL];
+    } popt;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL DECLARE opt_cursor CURSOR FOR
+    SELECT ppckov,absco,effic,rindex
+    FROM hgeom.optical_prop_data
+    WHERE property_id = :id;
+  Bool_t rc=kTRUE;
+  for(Int_t i=0;i<nOptical&&rc;i++) {
+    HOra2Obj* p=(HOra2Obj*)pOptical->At(i);
+    HGeomMedium* medium=(HGeomMedium*)p->pObj;
+    id=p->oraId;
+    EXEC SQL OPEN opt_cursor;
+    EXEC SQL FETCH opt_cursor INTO :popt;
+    Int_t nComp=sqlca.sqlerrd[2];
+    if (medium&&nComp>0) {
+      medium->setNpckov(nComp);
+      for(Int_t k=0;k<nComp;k++) {
+        medium->setCerenkovPar(k,popt.cp[k],popt.ca[k],popt.ce[k],popt.cr[k]);    
+      }
+    } else {
+      rc=kFALSE;
+    }
+  }
+  EXEC SQL CLOSE opt_cursor;
+  return rc;  
+errorfound:
+  pConn->showSqlError("readOpticalProperties");  
+  return kFALSE;
+} 
+
+Int_t HGeomOra2Io::readGeomSetup() {
+  // Reads the geometry configuration and versions
+  Int_t runStart=pConn->getActRunStart();
+  if (runStart==-1) return 0;
+  if (detVersions) {
+    if (runStart>=maxSince&&runStart<=minUntil) return detVersions->GetSize();
+    else detVersions->Delete();
+  } else detVersions=new TList;
+  maxSince=-1;
+  minUntil=-1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    struct {
+      varchar p_name[NMAX_GEOTINY][11];
+      int     p_id[NMAX_GEOTINY];
+      int     p_vers[NMAX_GEOTINY];
+      double  p_since[NMAX_GEOTINY];
+      double  p_until[NMAX_GEOTINY];
+    } setup;
+    struct {
+      short p_name_Ind[NMAX_GEOTINY];
+      short p_id_Ind[NMAX_GEOTINY];
+      short p_vers_Ind[NMAX_GEOTINY];
+      short p_since_Ind[NMAX_GEOTINY];
+      short p_until_Ind[NMAX_GEOTINY];
+    } setup_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT detector_name, det_part_id, geom_vers,
+                  hanadate.date_to_number(valid_since),
+                  hanadate.date_to_number(valid_until)
+           INTO :setup INDICATOR :setup_Ind
+           FROM hgeom.geom_setup_at_histdate_2;
+  for(Int_t i=0;i<sqlca.sqlerrd[2];i++) {
+    if (setup_Ind.p_name_Ind[i]!=-1) {
+      setup.p_name[i].arr[setup.p_name[i].len]='\0';
+      HOra2DetVers* d=new HOra2DetVers((Char_t*)(setup.p_name[i].arr));
+      d->detectorId=setup.p_id[i];
+      d->geomVersion=setup.p_vers[i];
+      detVersions->Add(d);
+      if (setup.p_since[i]>maxSince) maxSince=setup.p_since[i];
+      if (minUntil==-1||setup.p_until[i]<minUntil) minUntil=setup.p_until[i];
+    }
+  }
+  return sqlca.sqlerrd[2];
+errorfound:
+  pConn->showSqlError("readGeomSetup(Int_t)");  
+  return 0;
+}
+
+Bool_t HGeomOra2Io::read(HGeomSet* pSet,HGeomMedia* media) {
+  // Reads the geometry of a detector part
+  if (pSet==0||media==0||pConn->getActRunId()==-1) return kFALSE; 
+  Int_t numVers=readGeomSetup();
+  if (numVers==0) return kFALSE;
+  TString detName=pSet->GetName();
+  detName.ToUpper();
+  Int_t detId=-1, detVers=-1, caveVers=-1, sectVers=-1;
+  Int_t minId=-1, maxId=-1, minLevel=-1, nObj=-1, n=0;
+  HOra2DetVers* v=(HOra2DetVers*)(detVersions->FindObject(detName));
+  if (v) detVers=v->geomVersion;
+  detId=v->detectorId;
+  if (detVers<=0||detId<0) return kFALSE;
+  if (detName.CompareTo("TARGET")==0) return readTarget(pSet,media,detId,detVers);
+  else if (detName.CompareTo("START")==0) return readStart(pSet,media,detId,detVers);
+  else if (detName.CompareTo("CAVE")==0) {
+    minId=0;
+    maxId=0;
+    minLevel=1;
+    caveVers=detVers;
+  } else if (detName.CompareTo("SECT")==0) {
+    minId=1;
+    maxId=6;
+    minLevel=2;
+    HOra2DetVers* vC=(HOra2DetVers*)(detVersions->FindObject("CAVE"));
+    if (vC) caveVers=vC->geomVersion;
+    if (caveVers<0) return kFALSE;
+    sectVers=detVers;
+  } else {
+    minId=7;
+    maxId=99999999;
+    if (pSet->getMaxSectors()>0) minLevel=3;
+    else minLevel=2; 
+    HOra2DetVers* vC=(HOra2DetVers*)(detVersions->FindObject("CAVE"));
+    if (vC) caveVers=vC->geomVersion;
+    HOra2DetVers* vS=(HOra2DetVers*)(detVersions->FindObject("SECT"));
+    if (vS) sectVers=vS->geomVersion;
+    if (caveVers<0||sectVers<0) return kFALSE;
+  }
+  Int_t maxKeepin=pSet->getMaxKeepinVolumes();
+  Int_t maxModules=pSet->getMaxModules();
+  TList* volumes=pSet->getListOfVolumes();
+  TObjArray* pObj=0;
+  Bool_t rc=kTRUE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int p_det_id;
+    int p_det_vers;
+    int p_max_id;
+    int p_cave_vers;
+    int p_sect_vers;
+    struct {
+      int lev[NMAX_GEOLARGE];
+      int obj_id[NMAX_GEOLARGE];
+      int mo_id[NMAX_GEOLARGE];
+      int entry_id[NMAX_GEOLARGE];
+    } ptree;
+    struct {
+      short lev[NMAX_GEOLARGE];
+      short obj_id[NMAX_GEOLARGE];
+      short mo_id[NMAX_GEOLARGE];
+      short entry_id[NMAX_GEOLARGE];
+    } ptree_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  p_det_id=detId;  
+  p_det_vers=detVers;
+  p_max_id=maxId;
+  p_cave_vers=caveVers;
+  p_sect_vers=sectVers;
+  EXEC SQL SELECT level, object_id, mother_id, id
+           INTO :ptree INDICATOR :ptree_Ind 
+           FROM ( SELECT object_id, mother_id, id
+                  FROM hgeom.geom_object_data
+                  WHERE (   ( det_part_id = 0
+                              AND :p_cave_vers BETWEEN geom_vers_min AND geom_vers_max )
+                         OR ( det_part_id = 4
+                              AND :p_sect_vers BETWEEN geom_vers_min AND geom_vers_max ) 
+                         OR ( det_part_id = :p_det_id
+                              AND :p_det_vers BETWEEN geom_vers_min AND geom_vers_max) ) 
+                    AND hades_oper.run_query_2.get_history_date between
+                        date_create AND invalid_since
+                    AND object_id <= :p_max_id )
+           START WITH object_id = 0
+           CONNECT BY PRIOR object_id = mother_id AND level <= 20;
+  nObj=sqlca.sqlerrd[2];
+  pObj=new TObjArray(nObj);
+  for (Int_t i=0;i<nObj;i++) {
+    if (ptree.obj_id[i]>=minId) {
+      Int_t l=ptree.lev[i]-minLevel;
+      HGeomNode* node=new HGeomNode;
+      volumes->Add(node);
+      pObj->AddAt(new HOra2Obj(node,ptree.entry_id[i]),n);
+      n++;
+      if (detName.CompareTo("CAVE")==0) {
+        node->setVolumeType(kHGeomTopNode);
+        node->setActive();
+      } else if (maxKeepin>0) {
+        switch(l) {
+          case 0:  {
+            node->setVolumeType(kHGeomKeepin);
+            break;
+          }
+          case 1:  {
+            node->setVolumeType(kHGeomModule);
+            break;
+          }
+          default: {
+            node->setVolumeType(kHGeomElement);
+          }
+        }
+      } else {
+        if (maxModules>0) { 
+          switch(l) {
+            case 0:  {
+              node->setVolumeType(kHGeomModule);
+              break;
+            }
+            default: {
+              node->setVolumeType(kHGeomElement);
+            }
+          }
+        }
+      }
+    }
+  }
+  if (n>0) {
+    rc=readVolumes(pSet,media,pObj,n);
+    pSet->addRefNodes();
+  } else {
+    Error("read(Int_t,HGeomSet*,HGeomMedia*)","Do data found");
+    rc=kFALSE;
+  }
+  if (pObj) {
+    pObj->Delete();
+    delete pObj;
+    pObj=0;
+  }
+  return rc;
+errorfound:
+  pConn->showSqlError("read(Int_t,HGeomSet*,HGeomMedia*)");  
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::readTarget(HGeomSet* pSet,HGeomMedia* media,Int_t detId,Int_t detVers) {
+  // Reads the target geometry
+  Int_t nObj=-1, n=0;
+  TObjArray* pObj=0;
+  Bool_t rc=kTRUE;
+  TList* volumes=pSet->getListOfVolumes();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int p_det_id;
+    int p_det_vers;
+    int p_mo_id;
+    struct {
+      int lev[NMAX_GEOLARGE];
+      int obj_id[NMAX_GEOLARGE];
+      int mo_id[NMAX_GEOLARGE];
+      int entry_id[NMAX_GEOLARGE];
+    } ptree;
+    struct {
+      short lev[NMAX_GEOLARGE];
+      short obj_id[NMAX_GEOLARGE];
+      short mo_id[NMAX_GEOLARGE];
+      short entry_id[NMAX_GEOLARGE];
+    } ptree_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  p_det_id=detId;  
+  p_det_vers=detVers;
+  EXEC SQL SELECT id INTO :p_mo_id FROM hgeom.geom_object WHERE object_name = 'RTAM';
+  EXEC SQL SELECT level, object_id, mother_id, id
+           INTO :ptree INDICATOR :ptree_Ind 
+           FROM ( SELECT object_id, mother_id, id
+                  FROM hgeom.geom_object_data
+                  WHERE ( ( object_id = :p_mo_id
+                            AND invalid_since = hanadate.high_date )
+                        OR ( det_part_id = :p_det_id 
+                             AND hades_oper.run_query_2.get_history_date between
+                             date_create AND invalid_since ) )
+                    AND :p_det_vers BETWEEN geom_vers_min AND geom_vers_max )
+           START WITH object_id = :p_mo_id
+           CONNECT BY PRIOR object_id = mother_id AND level <= 20;
+  nObj=sqlca.sqlerrd[2];
+  pObj=new TObjArray(nObj);
+  for (Int_t i=0;i<nObj;i++) {
+    if (ptree.lev[i]>1) {
+      HGeomNode* node=new HGeomNode;
+      node->setVolumeType(kHGeomElement);
+      node->setActive(kTRUE);
+      volumes->Add(node);
+      pObj->AddAt(new HOra2Obj(node,ptree.entry_id[i]),n);
+      n++;
+    }
+  }
+  if (n>0) {
+    rc=readVolumes(pSet,media,pObj,n);
+  } else {
+    Error("readTarget","No data found");
+    rc=kFALSE;
+  }
+  if (pObj) {
+    pObj->Delete();
+    delete pObj;
+    pObj=0;
+  }
+  return rc;
+errorfound:
+  pConn->showSqlError("readTarget");  
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::readStart(HGeomSet* pSet,HGeomMedia* media,Int_t detId,Int_t detVers) {
+  // Reads the Start/Veto geometry
+  Int_t nObj=-1, n=0, nTopNodes=-1;
+  TObjArray* pObj=0;
+  Bool_t rc=kTRUE;
+  TList* volumes=pSet->getListOfVolumes();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int p_det_id;
+    int p_det_vers;
+    int p_top_nodes[NMAX_GEOSMALL];
+    int p_node;
+    struct {
+      int lev[NMAX_GEOLARGE];
+      int obj_id[NMAX_GEOLARGE];
+      int mo_id[NMAX_GEOLARGE];
+      int entry_id[NMAX_GEOLARGE];
+    } ptree;
+    struct {
+      short lev[NMAX_GEOLARGE];
+      short obj_id[NMAX_GEOLARGE];
+      short mo_id[NMAX_GEOLARGE];
+      short entry_id[NMAX_GEOLARGE];
+    } ptree_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  p_det_id=detId;  
+  p_det_vers=detVers;
+  EXEC SQL SELECT object_id INTO :p_top_nodes
+           FROM hgeom.geom_object_data
+           WHERE det_part_id = :p_det_id 
+             AND :p_det_vers BETWEEN geom_vers_min AND geom_vers_max
+             AND hades_oper.run_query_2.get_history_date BETWEEN
+                             date_create AND invalid_since
+             AND mother_id NOT IN ( SELECT id
+                                    FROM hgeom.geom_object
+                                    WHERE det_part_id = :p_det_id );
+  nTopNodes=sqlca.sqlerrd[2];
+  for (Int_t i=0;i<nTopNodes;i++) {
+    p_node=p_top_nodes[i];
+    EXEC SQL SELECT level, object_id, mother_id, id
+             INTO :ptree INDICATOR :ptree_Ind 
+             FROM ( SELECT object_id, mother_id, id
+                    FROM hgeom.geom_object_data
+                    WHERE det_part_id = :p_det_id 
+                      AND :p_det_vers BETWEEN geom_vers_min AND geom_vers_max
+                      AND hades_oper.run_query_2.get_history_date BETWEEN
+                               date_create AND invalid_since )
+             START WITH object_id = :p_node
+             CONNECT BY PRIOR object_id = mother_id AND level <= 20;
+    nObj=sqlca.sqlerrd[2];
+    if (n==0) pObj=new TObjArray(nObj);
+    else pObj->Expand(n+nObj);
+    for (Int_t k=0;k<nObj;k++) {
+      HGeomNode* node=new HGeomNode;
+      if (ptree.lev[k]==1) node->setVolumeType(kHGeomModule);
+      else node->setVolumeType(kHGeomElement);
+      node->setActive(kTRUE);
+      volumes->Add(node);
+      pObj->AddAt(new HOra2Obj(node,ptree.entry_id[k]),n);
+      n++;
+    }
+  }
+  if (n>0) {
+    rc=readVolumes(pSet,media,pObj,n);
+  } else {
+    Error("readStart","No data found");
+    rc=kFALSE;
+  }
+  if (pObj) {
+    pObj->Delete();
+    delete pObj;
+    pObj=0;
+  }
+  return rc;
+errorfound:
+  pConn->showSqlError("readStart");  
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::readVolumes(HGeomSet* pSet,HGeomMedia* media,
+                                   TObjArray* pTree,Int_t nVol) {
+  // Reads the volumes
+  if (pSet==0||media==0||pTree==0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int id;
+    struct {
+      varchar p_name[11];
+      varchar p_mother[11];
+      varchar p_medium[81];
+      varchar p_shape[5];
+      int     p_vol_id;
+      int     p_trans_id;
+    } vol;
+    struct {
+      short p_name_Ind;
+      short p_mother_Ind;
+      short p_medium_Ind;
+      short p_shape_Ind;
+      short p_vol_id_Ind;
+      short p_trans_id_Ind;
+    } vol_Ind;
+  EXEC SQL END DECLARE SECTION;
+  Bool_t rc=kTRUE;
+  TList pTrans;
+  TObjArray* pPoint=new TObjArray(nVol);
+  Int_t nTrans=0, nPoint=0;
+  TList refVolumes;
+  TString detName=pSet->GetName();
+  detName.ToUpper();
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL DECLARE vol_cursor CURSOR FOR
+    SELECT object_name, mother_name, medium_name, geant3_shape,
+           volume_id, trans_id
+    FROM hgeom.volume_data_for_ana
+    WHERE entry_id = :id;
+  for(Int_t i=0;i<nVol&&rc;i++) {
+    HOra2Obj* p=(HOra2Obj*)pTree->At(i);
+    HGeomNode* node=(HGeomNode*)p->pObj;
+    id=p->oraId;
+    EXEC SQL OPEN vol_cursor;
+    EXEC SQL FETCH vol_cursor INTO :vol INDICATOR :vol_Ind;
+    if (vol_Ind.p_name_Ind!=-1) {
+      vol.p_name.arr[vol.p_name.len]='\0';
+      TString nName=(Char_t*)(vol.p_name.arr);
+      node->SetName(nName);
+      if (nName.Length()>4) {
+        TString refName=nName(0,4);
+        HGeomOra2CopyNode* refNode=(HGeomOra2CopyNode*)refVolumes.FindObject(refName);
+        if (!refNode) {
+          refVolumes.Add(new HGeomOra2CopyNode(refName.Data(),node));
+        } else {
+          HGeomNode* cn=refNode->pNode;
+          node->setCopyNode(cn);
+        }
+      }
+      if (node->isModule()) {
+        Int_t a=pSet->getModule(pSet->getSecNumInMod(nName),pSet->getModNumInMod(nName));
+        if (a>0) node->setActive(kTRUE);
+        else node->setActive(kFALSE);
+      }
+      if (vol_Ind.p_mother_Ind!=-1) {
+        vol.p_mother.arr[vol.p_mother.len]='\0';
+        Char_t* pM=(Char_t*)(vol.p_mother.arr);
+        HGeomNode* mother=0;
+        if (node->isKeepin()) {
+          mother=pSet->getMasterNode(pM);
+        } else if (node->isModule()) {
+          mother=pSet->getMasterNode(pM);
+          if (!mother) mother=pSet->getVolume(pM);
+          if (node->isActive()&&mother) mother->setActive();
+        } else {
+          mother=pSet->getVolume(pM);
+          if (!mother) mother=pSet->getMasterNode(pM);
+          if (mother) {
+            if (mother->isActive()) {
+              node->setActive();
+            } else if (mother->isModule()) {
+              Int_t m=pSet->getModNumInMod(mother->GetName());
+              Bool_t containsActiveModule=kFALSE;
+              for (Int_t s=0;s<pSet->getMaxSectors();s++) {
+                if (pSet->getModule(s,m)) containsActiveModule=kTRUE;
+              }
+              node ->setActive(containsActiveModule);
+            }
+          }
+        }
+        node->setMother(mother);
+        if (!mother) Warning("readVolumeParams","Mother volume %s not found!",pM);
+      }
+      if (vol_Ind.p_medium_Ind!=-1) {
+        vol.p_medium.arr[vol.p_medium.len]='\0';
+        HGeomMedium* medium=media->getMedium((Char_t*)(vol.p_medium.arr));
+        if (medium) node->setMedium(medium);
+        else {
+          Error("readVolumes","Medium %s not found in list of media",
+                (Char_t*)(vol.p_medium.arr));
+          rc=kFALSE;
+        }
+      }
+      if (vol_Ind.p_shape_Ind!=-1) {
+        vol.p_shape.arr[vol.p_shape.len]='\0';
+        HGeomBasicShape* sh=pSet->getShapes()->selectShape((Char_t*)(vol.p_shape.arr));
+        if (sh) node->setShape(sh);
+        else {
+          Error("readVolumes","Shape %s not found",
+                (Char_t*)(vol.p_shape.arr));
+          rc=kFALSE;
+        }
+      }
+      if (vol_Ind.p_trans_id_Ind!=-1) {
+        pTrans.Add(new HOra2TransObj(node,vol.p_trans_id));
+        nTrans++;
+      }
+      if (vol_Ind.p_vol_id_Ind!=-1) {
+        pPoint->AddAt(new HOra2Obj(node,vol.p_vol_id),nPoint);
+        nPoint++;
+      }
+    } else {
+       Error("readVolumes","Object %s not found",
+                (Char_t*)(vol.p_name.arr));
+       rc=kFALSE;
+    }
+  }
+  if (nPoint>0) {
+    rc=readPoints(pPoint,nPoint);
+    if (rc&&nTrans>0)rc=readTransform(&pTrans);
+//pSet->print();
+  } else {
+    rc=kFALSE;
+    Error("readVolumes","No volumes found in database");
+  }
+  pTrans.Delete();
+  if (pPoint) {
+    pPoint->Delete();
+    delete pPoint;
+    pPoint=0;
+  }
+  return rc;
+errorfound:
+  pConn->showSqlError("readVolumes");  
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::readPoints(TObjArray* pVol,Int_t nVol) {
+  // Reads the points
+  EXEC SQL BEGIN DECLARE SECTION;
+    int id;
+    struct {
+      int    c[NMAX_GEOSMALL];
+      double x[NMAX_GEOSMALL];
+      double y[NMAX_GEOSMALL];
+      double z[NMAX_GEOSMALL];
+    } p3d;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL DECLARE point_cursor CURSOR FOR
+    SELECT point_num,x,y,z
+    FROM hgeom.volume_points
+    WHERE volume_id = :id;
+  Bool_t allFound=kTRUE;
+  for(Int_t i=0;i<nVol&&allFound;i++) {
+    HOra2Obj* p=(HOra2Obj*)pVol->At(i);
+    HGeomVolume* node=(HGeomVolume*)p->pObj;
+    id=p->oraId;
+    EXEC SQL OPEN point_cursor;
+    EXEC SQL FETCH point_cursor INTO :p3d;
+    Int_t nPoints=sqlca.sqlerrd[2];
+    if (nPoints<=0) allFound=kFALSE;
+    else {
+      node->createPoints(nPoints);
+      for(Int_t i=0;i<nPoints;i++) {
+        node->setPoint((p3d.c[i]-1),p3d.x[i],p3d.y[i],p3d.z[i]);
+      }
+    }
+  }
+  EXEC SQL CLOSE point_cursor;
+  return allFound;
+errorfound:
+  EXEC SQL CLOSE point_cursor;
+  pConn->showSqlError("readPoints");  
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::readTransform(TList* pVol) {
+  // Reads the transformations
+  EXEC SQL BEGIN DECLARE SECTION;
+    int id;
+    struct {
+      varchar tref[11];
+      double tx;
+      double ty;
+      double tz;
+      double r11;
+      double r12;
+      double r13;
+      double r21;
+      double r22;
+      double r23;
+      double r31;
+      double r32;
+      double r33;
+    } tr;
+    struct {
+      short tref_Ind;
+      short tx_Ind;
+      short ty_Ind;
+      short tz_Ind;
+      short r11_Ind;
+      short r12_Ind;
+      short r13_Ind;
+      short r21_Ind;
+      short r22_Ind;
+      short r23_Ind;
+      short r31_Ind;
+      short r32_Ind;
+      short r33_Ind;
+    } tr_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL DECLARE trans_cursor CURSOR FOR
+    SELECT ref_obj_name,
+           x, y, z,
+           r11, r12, r13, r21, r22, r23, r31, r32, r33
+    FROM hgeom.volume_transform_for_ana
+    WHERE trans_id = :id;
+  Bool_t allFound=kTRUE;
+  Double_t t[3];
+  Double_t r[9];
+  TIter next(pVol);
+  HOra2TransObj* p;
+  while ((p=(HOra2TransObj*)next())&&allFound) {
+    id=p->oraId;
+    EXEC SQL OPEN trans_cursor;
+    EXEC SQL FETCH trans_cursor INTO :tr INDICATOR :tr_Ind;
+    if (tr_Ind.tref_Ind==-1) allFound=kFALSE;
+    else {
+      tr.tref.arr[tr.tref.len]='\0';
+      Char_t* refObj=(Char_t*)(tr.tref.arr);
+      t[0]=tr.tx;
+      t[1]=tr.ty;
+      t[2]=tr.tz;
+      r[0]=tr.r11;
+      r[1]=tr.r12;
+      r[2]=tr.r13;
+      r[3]=tr.r21;
+      r[4]=tr.r22;
+      r[5]=tr.r23;
+      r[6]=tr.r31;
+      r[7]=tr.r32;
+      r[8]=tr.r33;
+      HGeomNode* node=(HGeomNode*)p->pObj;
+      if (strcmp(refObj,"CAVE")==0) {
+        HGeomTransform tt;
+        tt.setTransVector(t);
+        tt.setRotMatrix(r);
+        node->setLabTransform(tt);
+      } else {
+        p->refObj=refObj;
+        p->refTransform.setTransVector(t);
+        p->refTransform.setRotMatrix(r);
+        TString mo=node->getMother();
+        HGeomTransform& tn=node->getTransform();
+        tn=p->refTransform;
+        if (mo.CompareTo(refObj)!=0) {
+          HOra2TransObj* mr=(HOra2TransObj*)pVol->FindObject(mo);
+          if (mr&&strcmp(refObj,mr->refObj)==0) {
+            tn.transTo(mr->refTransform);
+          } else {
+            Error("readTransform","Mother %s not found",mo.Data());
+            EXEC SQL CLOSE trans_cursor;
+            return kFALSE;
+          }
+        }
+      }
+    }
+  }
+  EXEC SQL CLOSE trans_cursor;
+  return allFound;
+errorfound:
+  EXEC SQL CLOSE trans_cursor;
+  pConn->showSqlError("readTransform");  
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::read(HGeomHit* hits) {
+  // Reads the hit definition
+  if (hits==0||pConn->getActRunId()==-1) return kFALSE;
+  Int_t nComp=0;
+  cout<<"Read hit definition for "<<hits->getDetectorName()<<endl;
+  EXEC SQL BEGIN DECLARE SECTION;
+    char*  part;
+    struct {
+      varchar sn[NMAX_GEOSMALL][5];
+      int     cn[NMAX_GEOSMALL];
+      varchar chn[NMAX_GEOSMALL][5];
+      int     nbi[NMAX_GEOSMALL];
+      float   ori[NMAX_GEOSMALL];
+      float   fac[NMAX_GEOSMALL];
+    } gh;
+    struct {
+      short sn[NMAX_GEOSMALL];
+      short cn[NMAX_GEOSMALL];
+      short chn[NMAX_GEOSMALL];
+      short nbi[NMAX_GEOSMALL];
+      short ori[NMAX_GEOSMALL];
+      short fac[NMAX_GEOSMALL];
+    } gh_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  part=(Char_t*)hits->getDetectorName();
+  EXEC SQL SELECT hit_set_name, comp_num, comp_chnamh, comp_nbitsh,
+                  comp_orig, comp_fact
+           INTO :gh INDICATOR :gh_Ind
+           FROM hgeom.geant_hit_at_histdate_2
+           where detector_name = UPPER(:part)
+           ORDER BY comp_num; 
+  nComp=sqlca.sqlerrd[2];
+  if (nComp>0&&gh_Ind.sn[0]!=-1) {
+    gh.sn[0].arr[gh.sn[0].len]='\0';
+    hits->SetName((Char_t*)(gh.sn[0].arr));
+    hits->setNh(nComp);
+    for(Int_t i=0;i<nComp;i++) {
+      if (gh_Ind.chn[i]!=-1) {
+        gh.chn[i].arr[gh.chn[i].len]='\0';
+        hits->fill(gh.cn[i]-1,(Char_t*)gh.chn[i].arr,gh.nbi[i],gh.ori[i],gh.fac[i]);
+      }
+    }
+    return kTRUE;
+  } else {
+    Error("read(HGeomHit*)","Hit definition for %s not found in database",part);
+    return kFALSE;
+  }
+errorfound:
+  pConn->showSqlError("read(HGeomHit*)");  
+  return kFALSE;
+}
+
+Int_t HGeomOra2Io::createVersion(const Char_t* part,TString& pAuthor,
+                                  TString& pDescription) {
+  // Creates a new version in Oracle
+  // Returns version number or -1 if error occurred
+  if (pAuthor.IsNull()) {
+    Error("createVersion",
+          "author of %s not defined",part);
+    return -1;
+  }
+  if (strlen(pDescription)==0) {
+    Error("createVersion",
+          "description of %s not defined",part);
+    return -1;
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+     int vers=-1;
+     char* pP;
+     char* pA;
+     char* pD;
+  EXEC SQL END DECLARE SECTION;
+  pP=(Char_t*)part;
+  pA=(Char_t*)pAuthor.Data();
+  pD=(Char_t*)pDescription.Data();
+  EXEC SQL WHENEVER SQLERROR GOTO error_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO error_found;
+  EXEC SQL EXECUTE
+    DECLARE
+    BEGIN
+      hgeom.geom_load_public.insert_version(:pP,:pA,:pD,:vers);
+    END;
+  END-EXEC;
+  cout<<"****************************************************************\n";
+  cout<<"*****  Inserts in Oracle                                        \n";
+  cout<<"****************************************************************\n";
+  cout<<"Part:              "<<part<<'\n';
+  cout<<"Version:           "<<vers<<'\n';
+  return vers;
+error_found:
+  pConn->showSqlError("createVersion");
+  pConn->rollback();
+  return -1;
+};
+
+Bool_t HGeomOra2Io::write(HGeomMedia* media) {
+  // Writes the media to the LAOD tables in Oracle
+  if (!pConn->isOpen()||!pConn->isWritable()) return kFALSE; 
+  Int_t version=createVersion("media",media->getAuthor(),
+                              media->getDescription());
+  if (version<=0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int    vers;
+    char*  medName;
+    double dens;
+    int    ncomp;
+    int    sens;
+    int    fldflag;
+    double fld;
+    double eps;
+    int    nopt;
+    int    id=-1;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO error_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO error_found;
+  vers=version;    
+  TList* medList=media->getListOfMedia();
+  TListIter iter(medList);
+  HGeomMedium* medium;
+  Bool_t rc=kTRUE;
+  Int_t n=0;
+  while(rc&&(medium=(HGeomMedium*)iter.Next())) {
+    n++;
+    medName=(Char_t*)medium->GetName();
+    dens=medium->getDensity();
+    ncomp=medium->getNComponents();
+    sens=medium->getSensitivityFlag();
+    fldflag=medium->getFieldFlag();
+    fld=medium->getField();
+    eps=medium->getEpsil();
+    nopt=medium->getNpckov();
+    EXEC SQL EXECUTE
+      DECLARE
+      BEGIN
+        hgeom.geom_load_public.insert_medium(:vers,:medName,
+            :dens,:ncomp,:sens,:fldflag,:fld,:eps,:nopt,:id);
+      END;
+    END-EXEC;
+    rc=insertMaterialData(id,medium);
+    if (rc&&nopt>0) insertOpticalData(id,medium); 
+  }
+  if (rc) {
+   cout<<"Number of inserts: "<<n<<'\n'; 
+   pConn->commit();
+   cout<<"****************************************************************\n";
+   return kTRUE;
+  }
+  return kFALSE;
+error_found:
+  if (medium) {
+    TString s("error in medium ");
+    s.Append(medium->GetName());
+    pConn->showSqlError("write(HGeomMedia*)",s );
+  }
+  else pConn->showSqlError("write(HGeomMedia*)","No media written");
+  pConn->rollback();
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::insertMaterialData(Int_t medId,HGeomMedium* medium) {
+  // Writes the materials to the LAOD tables in Oracle
+  if (!medium||medId<=0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int    id[NMAX_GEOSMALL];
+    int    comp[NMAX_GEOSMALL];
+    double a[NMAX_GEOSMALL];
+    int    z[NMAX_GEOSMALL];
+    double w[NMAX_GEOSMALL];
+    int rowsToInsert;
+  EXEC SQL END DECLARE SECTION;
+  rowsToInsert=medium->getNComponents();
+  if (rowsToInsert>NMAX_GEOSMALL) {
+    Error("insertMaterialData","Number of components in medium %s exceeds %i\n",
+          medium->GetName(),NMAX_GEOSMALL);
+    return kFALSE;
+  }
+  Double_t p[3];
+  for (Int_t i=0;i<rowsToInsert;i++) {
+    id[i]=medId;
+    comp[i]=i+1;
+    medium->getComponent(i,p);
+    a[i]=p[0];
+    z[i]=(Int_t)(p[1]);
+    w[i]=p[2];
+  }
+  EXEC SQL WHENEVER SQLERROR GOTO error_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO error_found;
+  EXEC SQL FOR :rowsToInsert
+  INSERT INTO hgeom.material_data_load
+      ( med_id, comp_num, comp_z, comp_a, comp_weight )
+      VALUES (:id, :comp, :z, :a, :w );
+  return kTRUE;
+error_found:
+  TString s("error in medium ");
+  s.Append(medium->GetName());
+  pConn->showSqlError("insertMaterialData",s);
+  pConn->rollback();
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::insertOpticalData(Int_t medId,HGeomMedium* medium) {
+  // Writes the optical parameters to the LAOD tables in Oracle
+  if (!medium||medId<=0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int    id[NMAX_GEOSMALL];
+    int    no[NMAX_GEOSMALL];
+    double pp[NMAX_GEOSMALL];
+    double ab[NMAX_GEOSMALL];
+    double ef[NMAX_GEOSMALL];
+    double ri[NMAX_GEOSMALL];
+    int rowsToInsert;
+  EXEC SQL END DECLARE SECTION;
+  rowsToInsert=medium->getNpckov();
+  if (rowsToInsert==0) return kTRUE;
+  else if (rowsToInsert>NMAX_GEOSMALL) {
+    Error("insertOpticalData",
+          "Number of optical components in medium %s exceeds %i\n",
+          medium->GetName(),NMAX_GEOSMALL);
+    return kFALSE;
+  }
+  Double_t p[4];
+  for (Int_t i=0;i<rowsToInsert;i++) {
+    id[i]=medId;
+    no[i]=i+1;
+    medium->getCerenkovPar(i,p);
+    pp[i]=p[0];
+    ab[i]=p[1];
+    ef[i]=p[2];
+    ri[i]=p[3];
+  }
+  EXEC SQL WHENEVER SQLERROR GOTO error_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO error_found;
+  EXEC SQL FOR :rowsToInsert
+  INSERT INTO hgeom.optical_data_load
+      ( med_id, prop_num, ppckov, absco, effic, rindex )
+      VALUES (:id, :no, :pp, :ab, :ef, :ri );
+  return kTRUE;
+error_found:
+  TString s("error in medium ");
+  s.Append(medium->GetName());
+  pConn->showSqlError("insertOpticalData",s.Data() );
+  pConn->rollback();
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::write(HGeomSet* set) {
+  // Writes the geometry of a detector part to the LAOD tables in Oracle
+  if (!pConn->isOpen()||!pConn->isWritable()) return kFALSE; 
+  Int_t version=createVersion(set->GetName(),set->getAuthor(),
+                              set->getDescription());
+  if (version<=0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int    vers;
+    char*  volName;
+    char*  moName; 
+    char*  medName;
+    char*  shape;
+    char*  refPosObj;
+    double x;
+    double y;
+    double z;
+    double r11;
+    double r12;
+    double r13;
+    double r21;
+    double r22;
+    double r23;
+    double r31;
+    double r32;
+    double r33;
+    int    id=-1;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO error_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO error_found;
+  vers=version;    
+  TList* volList=set->getListOfVolumes();
+  TListIter iter(volList);
+  HGeomNode* node;
+  Bool_t rc=kTRUE;
+  Int_t n=0;
+  HGeomTransform transform;
+  while(rc&&(node=(HGeomNode*)iter.Next())) {
+    n++;
+    volName=(Char_t*)node->GetName();
+    moName=(Char_t*)(node->getMother().Data());
+    medName=(Char_t*)(node->getMedium()->GetName());
+    shape=(Char_t*)(node->getShape().Data());
+    refPosObj=(Char_t*)calcRefTransform(node,transform);
+    if (refPosObj) {
+      const HGeomVector& pos=transform.getTransVector();
+      x=pos(0);
+      y=pos(1);
+      z=pos(2);
+      const HGeomRotation& rot=transform.getRotMatrix();
+      r11=rot(0);
+      r12=rot(1);
+      r13=rot(2);
+      r21=rot(3);
+      r22=rot(4);
+      r23=rot(5);
+      r31=rot(6);
+      r32=rot(7);
+      r33=rot(8);
+      EXEC SQL EXECUTE
+        DECLARE
+        BEGIN
+          hgeom.geom_load_public.insert_volume(:vers,:volName,
+              :moName,:medName,:shape,:refPosObj,:x,:y,:z,
+              :r11,:r12,:r13,:r21,:r22,:r23,:r31,:r32,:r33,:id);
+        END;
+      END-EXEC;
+      rc=insertVolumePoints(id,node);
+    } else rc=kFALSE;
+  }
+  if (rc) {
+   cout<<"Number of inserts: "<<n<<'\n'; 
+   pConn->commit();
+   cout<<"****************************************************************\n";
+   return kTRUE;
+  }
+  return kFALSE;
+error_found:
+  if (node) {
+    TString s("error in volume ");
+    s.Append(node->GetName());
+    pConn->showSqlError("write(HGeomSet*)",s );
+  }
+  else pConn->showSqlError("write(HGeomSet*)","No volumes written");
+  pConn->rollback();
+  return kFALSE;
+}
+
+Bool_t HGeomOra2Io::insertVolumePoints(Int_t volId,HGeomNode* node) {
+  // Writes the points to the LAOD tables in Oracle
+  if (!node||volId<=0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int    id[NMAX_GEOSMALL];
+    int    no[NMAX_GEOSMALL];
+    double px[NMAX_GEOSMALL];
+    double py[NMAX_GEOSMALL];
+    double pz[NMAX_GEOSMALL];
+    int rowsToInsert;
+  EXEC SQL END DECLARE SECTION;
+  rowsToInsert=node->getNumPoints();
+  if (rowsToInsert<3) {
+    Error("insertVolumePoints","Too few points for volume %s\n",
+          node->GetName());
+    return kFALSE;
+  }
+  if (rowsToInsert>NMAX_GEOSMALL) {
+    Error("insertVolumePoints","Number of points of volume %s exceeds %i\n",
+          node->GetName(),NMAX_GEOSMALL);
+    return kFALSE;
+  }
+  EXEC SQL WHENEVER SQLERROR GOTO error_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO error_found;
+  for (Int_t i=0;i<rowsToInsert;i++) {
+    id[i]=volId;
+    no[i]=i+1;
+    HGeomVector* p=node->getPoint(i);
+    if (!p) {
+      Error("insertVolumePoints","Point %i for volume %s is NULL\n",
+            i,node->GetName());
+      return kFALSE;
+    }  
+    px[i]=(*p)(0);
+    py[i]=(*p)(1);
+    pz[i]=(*p)(2);
+  }
+  EXEC SQL FOR :rowsToInsert
+  INSERT INTO hgeom.volume_points_load
+      ( obj_id, point_num, x, y, z )
+      VALUES (:id, :no, :px, :py, :pz );
+  return kTRUE;
+error_found:
+  TString s("error in volume ");
+  s.Append(node->GetName());
+  pConn->showSqlError("insertVolumePoints",s);
+  pConn->rollback();
+  return kFALSE;
+}
+
+const Char_t* HGeomOra2Io::calcRefTransform(HGeomNode* node,
+                                           HGeomTransform& refTransform) {
+  // Calculates the transformation in the reference coordinate system
+  if (!node) return 0;
+  refTransform.clear();
+  if (node->isTopNode()) {
+    refTransform.clear();
+    return node->GetName();
+  }
+  if (node->isModule()) {
+    HGeomTransform* t=node->getLabTransform();
+    if (t) {
+      refTransform=*t;
+      return "CAVE";
+    } else return 0;
+  }
+  HGeomNode* currNode=node;
+  refTransform=node->getTransform();
+  HGeomNode* pm;
+  while (currNode) {
+    pm=currNode->getMotherNode();
+    if (!pm) {
+      Error("calcRefTransform","Mother volume of %s not found!",
+            node->GetName());
+      return 0;
+    }
+    if (pm->isModule()||pm->isTopNode()) break;
+    refTransform.transFrom(pm->getTransform());
+    currNode=pm;
+  }
+  return pm->GetName();
+}
+
+Int_t HGeomOra2Io::checkRunidExistence(Int_t run) {
+  // Checks, if a run id exixts already (used by the run id generator)
+  if (run<=0||!pConn->isOpen()) return 1;
+  if (!pConn) return 0; 
+  EXEC SQL BEGIN DECLARE SECTION;
+    int    id;
+    int    pout;
+  EXEC SQL END DECLARE SECTION;
+  id=run;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL SELECT 1 INTO :pout
+           FROM hanal2.all_run_ids
+           WHERE run_id = :id;
+  return pout;
+notfound:
+  return 0;
+errorfound:
+  pConn->showSqlError("checkRunidExistence");  
+  return 1;
+}
+
+Int_t HGeomOra2Io::createHitVersion(const Char_t* part,const Char_t* hitSet) {
+  // Create a new version for the hits in Oracle
+  // Returns version number or -1 if error occurred
+  if (strlen(part)==0||strlen(hitSet)==0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+     int vers=-1;
+     char* pP;
+     char* pH;
+  EXEC SQL END DECLARE SECTION;
+  pP=(Char_t*)part;
+  pH=(Char_t*)hitSet;
+  EXEC SQL WHENEVER SQLERROR GOTO error_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO error_found;
+  EXEC SQL EXECUTE
+    DECLARE
+    BEGIN
+      hgeom.geom_load_public.insert_hit_version(:pP,:pH,:vers);
+    END;
+  END-EXEC;
+  cout<<"****************************************************************\n";
+  cout<<"*****  Inserts in Oracle                                        \n";
+  cout<<"****************************************************************\n";
+  cout<<"Part:              "<<part<<'\n';
+  cout<<"Version:           "<<vers<<'\n';
+  return vers;
+error_found:
+  pConn->showSqlError("createHitVersion");
+  pConn->rollback();
+  return -1;
+};
+
+Bool_t HGeomOra2Io::write(HGeomHit* hits) {
+  // Stores the hit definition in Oracle
+  if (!hits||!pConn->isOpen()||!pConn->isWritable()) return kFALSE;
+  Int_t version=createHitVersion(hits->getDetectorName(),hits->GetName());
+  if (version<=0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int    vers[NMAX_GEOSMALL];
+    int    cnum[NMAX_GEOSMALL];     
+    char   chn[NMAX_GEOSMALL][5];
+    int    nbi[NMAX_GEOSMALL];
+    float  ori[NMAX_GEOSMALL];
+    float  fac[NMAX_GEOSMALL];
+    int    nComp;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO error_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO error_found;
+  nComp = hits->getNh();
+  Char_t* chnamh=hits->getChnamh();
+  for (Int_t i=0;i<nComp;i++) {
+    vers[i]=version;
+    cnum[i]=i+1;
+    memcpy(chn[i],&chnamh[i*5],5);
+  }
+  memcpy((Char_t*)nbi,(Char_t*)hits->getNbitsh(),nComp*sizeof(Int_t));
+  memcpy((Char_t*)ori,(Char_t*)hits->getOrig(),nComp*sizeof(Float_t));
+  memcpy((Char_t*)fac,(Char_t*)hits->getFact(),nComp*sizeof(Float_t));
+  EXEC SQL FOR :nComp
+    INSERT INTO hgeom.geant_hit_component
+      (hit_id,comp_num,comp_chnamh,comp_nbitsh,comp_orig,comp_fact)
+      VALUES (:vers,:cnum,:chn,:nbi,:ori,:fac); 
+  cout<<nComp<<" rows inserted\n";
+  pConn->commit();
+  return kTRUE;
+error_found:
+  pConn->showSqlError("write(HGeomHit*)");
+  pConn->rollback();
+  return kFALSE;
+}

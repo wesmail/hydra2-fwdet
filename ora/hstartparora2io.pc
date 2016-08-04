@@ -1,0 +1,748 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 09/02/2010
+
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+// HStartParOra2Io
+//
+// Interface class to database Oracle for input/output of parameters needed
+// by the Start detector for runs since 2010
+// (uses the Oracle C/C++ precompiler)
+//
+//////////////////////////////////////////////////////////////////////////////
+using namespace std;
+#include "hstartparora2io.h"
+#include "hparora2set.h"
+#include "hstart2calpar.h"
+#include "hstart2trb2lookup.h"
+#include "hstart2geompar.h"
+#include "hgeomcompositevolume.h"
+#include "hora2geomdetversion.h"
+#include "hstart2trb3calpar.h"
+#include "hstart2trb3lookup.h"
+#include "TClass.h"
+#include <iostream>
+#include <iomanip>
+#include <unistd.h>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HStartParOra2Io)
+
+#define START_MAXMODULES        10
+#define START_MAXMODCELLS      128
+#define START_MAXCELLS        1280
+#define START_MAXTRBCHANNELS   128
+#define START_MAXTDC           256
+#define LOB_BUFSIZE          32512
+
+HStartParOra2Io::HStartParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC) {
+  // constructor
+  // sets the name of the I/O class "HStartParIo"
+  // gets the pointer to the connection class
+  fName="HStartParIo";
+  initModules=new TArrayI(START_MAXMODULES);
+  geomVers=0;
+}
+
+HStartParOra2Io::~HStartParOra2Io(void) {
+  // destructor
+  if (initModules) delete initModules;
+  if (geomVers) delete geomVers;
+}
+
+Bool_t HStartParOra2Io::init(HParSet* pPar,Int_t* set) {
+  // calls special read-function for each parameter container
+  if (getRunStart(pPar)<0) {
+    pPar->setInputVersion(-1,inputNumber);
+    return kFALSE;
+  }
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HStart2Calpar")==0)     return read(((HStart2Calpar*)pPar),set);
+  if (strcmp(name,"HStart2Trb2Lookup")==0) return read(((HStart2Trb2Lookup*)pPar));
+  if (strcmp(name,"HStart2GeomPar")==0)    return read(((HStart2GeomPar*)pPar),set);
+  if (strcmp(name,"HStart2Trb3Calpar")==0) return read(((HStart2Trb3Calpar*)pPar));
+  if (strcmp(name,"HStart2Trb3Lookup")==0) return read(((HStart2Trb3Lookup*)pPar));
+  cout<<"No read-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return kFALSE;
+}
+
+Int_t HStartParOra2Io::write(HParSet* pPar) {
+  // calls the appropriate write function for the container
+  if (getRunStart(pPar)<=0) return -1;
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HStart2Calpar")==0)     return writePar((HStart2Calpar*)pPar);
+  if (strcmp(name,"HStart2Trb2Lookup")==0) return writePar((HStart2Trb2Lookup*)pPar);
+  if (strcmp(name,"HStart2GeomPar")==0)    return writeAlignment((HStart2GeomPar*)pPar);
+  if (strcmp(name,"HStart2Trb3Calpar")==0) return writePar(((HStart2Trb3Calpar*)pPar));
+  if (strcmp(name,"HStart2Trb3Lookup")==0) return writePar(((HStart2Trb3Lookup*)pPar));
+  cout<<"No write-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return 0;
+}
+
+Bool_t HStartParOra2Io::getVersion(HParSet* pPar,Int_t& version) {
+  // checks, if the parameter container needs to be reinitialized
+  // reads the newest version valid for the current event file
+  // returns kTRUE, if new parameters must be read
+  // returns kFALSE, if no reinitialization needed or not valid version found
+  HParOra2Set* oraSet=getOraSet(pPar);
+  if (oraSet->contextId==-1 || runStart==-1) {
+    pPar->setInputVersion(-1,inputNumber);
+    version=-1;
+    return kFALSE;
+  }
+  Int_t contVers=pPar->getInputVersion(inputNumber);
+  if (contVers!=-1 && runStart>=oraSet->versDate[0] && runStart<=oraSet->versDate[1]) {
+    version=contVers;
+    return kFALSE;
+  }
+  const Char_t* containerClass=pPar->IsA()->GetName();
+  oraSet->clearVersDate();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers;
+    double since;
+    double until;
+  EXEC SQL END DECLARE SECTION;
+  context=oraSet->contextId;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("getVersion(HParSet*,Int_t&)");
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  if (strcmp(containerClass,"HStart2Calpar")==0) {
+    EXEC SQL SELECT version,
+                    hanadate.date_to_number(valid_since),
+                    hanadate.date_to_number(valid_until)
+             INTO :vers, :since, :until
+             FROM start_ana2.start2_calpar_vers_at_date
+             WHERE context_id = :context;
+  } else {
+    if (strcmp(containerClass,"HStart2Trb2Lookup")==0) {
+      EXEC SQL SELECT version,
+                      hanadate.date_to_number(valid_since),
+                      hanadate.date_to_number(valid_until)
+               INTO :vers, :since, :until
+               FROM start_ana2.start2_trb2lookup_vers_at_date
+               WHERE context_id = :context;
+    } else {
+      if (strcmp(containerClass,"HStart2Trb3Calpar")==0) {
+        EXEC SQL SELECT version,
+                        hanadate.date_to_number(valid_since),
+                        hanadate.date_to_number(valid_until)
+                 INTO :vers, :since, :until
+                 FROM start_ana2.start2_trb3calpar_vers_at_date
+                 WHERE context_id = :context;
+      } else {
+        if (strcmp(containerClass,"HStart2Trb3Lookup")==0) {
+          EXEC SQL SELECT version,
+                          hanadate.date_to_number(valid_since),
+                          hanadate.date_to_number(valid_until)
+                   INTO :vers, :since, :until
+                   FROM start_ana2.start2_trb3lookup_vers_at_date
+                   WHERE context_id = :context;
+        }
+      }
+    }
+  }
+  version=vers;
+  oraSet->versDate[0]=since;
+  oraSet->versDate[1]=until;
+  return kTRUE;
+notfound:
+  pPar->setInputVersion(-1,inputNumber);
+  version=-1;
+  return kFALSE;
+};
+
+Bool_t HStartParOra2Io::read(HStart2Calpar* pPar, Int_t* set) {
+  // reads the calibration parameters and fill the Start2Calpar container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  initModules->Reset();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int module[START_MAXCELLS];
+      int cell[START_MAXCELLS];
+      float tdcslope[START_MAXCELLS];
+      float tdcoffset[START_MAXCELLS];
+      float adcslope[START_MAXCELLS];
+      float adcoffset[START_MAXCELLS];
+    } cal;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HStart2Calpar*,Int_t*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT module, cell, tdc_slope, tdc_offset, adc_slope, adc_offset
+           INTO :cal
+           FROM start_ana2.start2_calpar_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  Int_t m=-1;
+  for (Int_t i=0;i<nData;i++) {
+    m=cal.module[i];
+    if (set[m]) {
+      (*pPar)[m][cal.cell[i]].fill(cal.tdcslope[i],cal.tdcoffset[i],
+                                   cal.adcslope[i],cal.adcoffset[i]);
+      initModules->AddAt(1,m);
+    }
+  }
+  rc=kTRUE;
+  for(Int_t i=0;i<START_MAXMODULES;i++) {
+    if (set[i]==1 && initModules->At(i)==0) rc=kFALSE;
+  }
+  if (rc) {
+    setChanged(pPar,oraVersion);
+    printInfo(pPar->GetName());
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+  }
+  return rc;
+}
+
+Bool_t HStartParOra2Io::read(HStart2Trb2Lookup* pPar) {
+  // reads the lookup table for the Trb2 unpacker and fills the parameter container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int  address[START_MAXCELLS];
+      int  chan[START_MAXCELLS];
+      int  module[START_MAXCELLS];
+      int  cell[START_MAXCELLS];
+    } lookup;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HStart2Trb2Lookup*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT trbnet_address, channel,
+                  module, cell
+           INTO :lookup
+           FROM start_ana2.start2_trb2lookup_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  for (Int_t i=0;i<nData;i++) {
+    pPar->fill(lookup.address[i],lookup.chan[i],
+               lookup.module[i],lookup.cell[i]);
+  }
+  if (nData>0) {
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+    rc=kTRUE;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    rc=kFALSE;
+  }
+  return rc;
+}
+
+Bool_t HStartParOra2Io::read(HStart2GeomPar* pPar, Int_t* set) {
+  // reads the geometry of the Start detector and fills the Start2GeomPar container
+  Bool_t allFound=kTRUE;
+  Int_t detId=-1;
+  if (!geomVers) {
+    detId=getDetectorId(pPar->getDetectorName());
+    geomVers=new HOra2GeomDetVersion(pPar->getDetectorName(),detId);
+  } else {
+    detId=geomVers->getDetectorId();
+  }
+  if (detId<=0) {
+    allFound=kFALSE;
+    delete geomVers;
+    geomVers=0;
+  }
+  if (detId>0&&pPar->isFirstInitialization()) {
+    TString name("VSTA");
+    HModGeomPar* pMod=pPar->getModule(-1,0);
+    if (pMod) {
+      pMod->SetName(name);
+      pMod->setRefName(name);
+      HGeomCompositeVolume* refMod=pPar->getRefVolume(0);
+      if (refMod==0) {
+        refMod=new HGeomCompositeVolume(pPar->getMaxComponents());
+        refMod->SetName(name);
+        pPar->addRefVolume(refMod,0);
+      }
+      pMod->setVolume(refMod);
+      for (Int_t c=1;c<=pPar->getMaxComponents();c++) {
+        name.Form("VSTD%i",c); 
+        HGeomVolume* volu=refMod->getComponent(c-1);
+        volu->SetName(name);
+      }
+      addGeomOraSet(pPar);  
+    } else allFound=kFALSE;
+  }
+  if (allFound) allFound=readDetectorGeometry(pPar,set,geomVers);
+  return allFound;    
+}
+
+Bool_t HStartParOra2Io::read(HStart2Trb3Calpar* pPar) {
+  // reads the calibration parameters for the Trb3 TDCs and fills the parameter container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int  address[START_MAXTDC];
+      int  subevtid[START_MAXTDC];
+      int  nedge[START_MAXTDC];
+      int  nChan[START_MAXTDC];
+      int  nBin[START_MAXTDC];
+      int  dataid[START_MAXTDC];
+    } tdccal;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HStart2Trb3Calpar*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT trbnet_address, subevent_id, nedges_mask, nchannels, nbins, data_id
+           INTO :tdccal
+           FROM start_ana2.start2_trb3calpar_data
+           WHERE vers_id = :vers;
+  Int_t nTdc=sqlca.sqlerrd[2];
+  for (Int_t i=0;i<nTdc&&rc;i++) {
+    HTrb3CalparTdc* tdc = pPar->addTdc(tdccal.address[i]);
+    Int_t nData = tdc->makeArray(tdccal.subevtid[i],tdccal.nedge[i],tdccal.nChan[i],tdccal.nBin[i]);
+    if (nData>0) rc=readTrb3CalData(tdc,tdccal.dataid[i],nData);
+  }
+  if (nTdc>0&&rc) {
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+    rc=kTRUE;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    rc=kFALSE;
+  }
+  return rc;
+}
+
+Bool_t HStartParOra2Io::readTrb3CalData(HTrb3CalparTdc* ptdc,Int_t dataId,Int_t nData) {
+  Float_t* calData = ptdc->getBinsPar();
+  Int_t totlen=nData*sizeof(Float_t);
+  EXEC SQL BEGIN DECLARE SECTION;
+    int            id;
+    int            amount;
+    int            offset;
+    unsigned char  buffer[LOB_BUFSIZE];
+    EXEC SQL VAR buffer IS RAW(LOB_BUFSIZE);
+  EXEC SQL END DECLARE SECTION;
+  id=dataId;
+  amount= (totlen>LOB_BUFSIZE) ? LOB_BUFSIZE : totlen;
+  Int_t restlen=totlen;
+  offset=1;
+  EXEC SQL WHENEVER SQLERROR GOTO notfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL EXECUTE
+    BEGIN
+      start_ana2.start2_par_query.read_trb3_caldata(:id,:amount,:buffer);
+    END;
+  END-EXEC;
+  restlen=totlen-amount;
+  memcpy(&calData[0],buffer,amount);
+  while (restlen>0) {
+    offset+=LOB_BUFSIZE;
+    Int_t pos=(offset-1)/sizeof(Float_t);
+    amount= (restlen>LOB_BUFSIZE) ? LOB_BUFSIZE : restlen;
+    EXEC SQL EXECUTE
+      BEGIN
+        start_ana2.start2_par_query.read_next_trb3_caldata_buffer(:amount,:offset,:buffer);
+      END;
+    END-EXEC;
+    memcpy(&calData[pos],buffer,amount);
+    restlen-=amount;
+  }
+  return kTRUE;
+notfound:
+  showSqlError("readTrb3CalData");
+  Error("readTrb3CalData","Blob for data_id %i not read",dataId);
+  return kFALSE;
+}
+
+Bool_t HStartParOra2Io::read(HStart2Trb3Lookup* pPar) {
+  // reads the lookup table for the Trb3 unpacker and fills the parameter container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int  address[START_MAXCELLS];
+      int  chan[START_MAXCELLS];
+      int  module[START_MAXCELLS];
+      int  cell[START_MAXCELLS];
+    } lookup3;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HStart2Trb3Lookup*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT trbnet_address, channel,
+                  module, cell
+           INTO :lookup3
+           FROM start_ana2.start2_trb3lookup_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  for (Int_t i=0;i<nData;i++) {
+    pPar->fill(lookup3.address[i],lookup3.chan[i],
+               lookup3.module[i],lookup3.cell[i]);
+  }
+  if (nData>0) {
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+    rc=kTRUE;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    rc=kFALSE;
+  }
+  return rc;
+}
+
+Int_t HStartParOra2Io::createVers(HParSet* pPar) {
+  // creates a new version for the calibration parameters
+  // returns the new version
+  cout<<"---------------  "<<pPar->GetName()<<"   ---------------\n";
+  if (strlen(pPar->getAuthor())==0) {
+    Error("createVers(HParSet*)",
+          "author of parameters not defined");
+    return -1;
+  }
+  if (strlen(pPar->getDescription())==0) {
+    Error("createVers(HParSet*)",
+          "descriction of parameters not defined");
+    return -1;
+  }
+  const Char_t* contName=pPar->IsA()->GetName();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   vers=-1;
+    int   context;
+    int   run;
+    char* creator;
+    char* descript;
+  EXEC SQL END DECLARE SECTION;
+  context = getContextId(contName,pPar->getParamContext());
+  if (context==-1) return -1;
+  run=getActRunId();
+  creator=(Char_t*)pPar->getAuthor();
+  descript=(Char_t*)pPar->getDescription();
+  EXEC SQL WHENEVER SQLERROR GOTO not_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+  if (strcmp(contName,"HStart2Calpar")==0) {
+    EXEC SQL EXECUTE
+      BEGIN
+        SELECT start_ana2.start2_par_query.next_version INTO :vers FROM DUAL;
+        INSERT INTO start_ana2.start2_calpar_vers
+                   (vers_id, orig_context_id, run_id, author, description)
+            VALUES (:vers, :context, :run, :creator, :descript);
+      END;
+    END-EXEC;
+  } else {
+    if (strcmp(contName,"HStart2Trb2Lookup")==0) {
+      EXEC SQL EXECUTE
+        BEGIN
+          SELECT start_ana2.start2_par_query.next_version INTO :vers FROM DUAL;
+          INSERT INTO start_ana2.start2_trb2lookup_vers
+                     (vers_id, orig_context_id, run_id, author, description)
+              VALUES (:vers, :context, :run, :creator, :descript);
+        END;
+      END-EXEC;
+    } else {
+      if (strcmp(contName,"HStart2Trb3Calpar")==0) {
+        EXEC SQL EXECUTE
+          BEGIN
+            SELECT start_ana2.start2_par_query.next_version INTO :vers FROM DUAL;
+            INSERT INTO start_ana2.start2_trb3calpar_vers
+                       (vers_id, orig_context_id, run_id, author, description)
+                VALUES (:vers, :context, :run, :creator, :descript);
+          END;
+        END-EXEC;
+      } else {
+        if (strcmp(contName,"HStart2Trb3Lookup")==0) {
+          EXEC SQL EXECUTE
+            BEGIN
+              SELECT start_ana2.start2_par_query.next_version INTO :vers FROM DUAL;
+              INSERT INTO start_ana2.start2_trb3lookup_vers
+                         (vers_id, orig_context_id, run_id, author, description)
+                  VALUES (:vers, :context, :run, :creator, :descript);
+            END;
+          END-EXEC;
+        }
+      }
+    }
+  }
+  cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
+  return vers;
+not_found:
+  showSqlError("createVers(HParSet*)");
+  return vers;
+}
+
+Int_t HStartParOra2Io:: writePar(HStart2Calpar* pPar) {
+  // creates a new version and writes the calibration parameters to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int module[START_MAXMODCELLS];
+    int cell[START_MAXMODCELLS];
+    int vers[START_MAXMODCELLS];
+    float tdcslope[START_MAXMODCELLS];
+    float tdcoffset[START_MAXMODCELLS];
+    float adcslope[START_MAXMODCELLS];
+    float adcoffset[START_MAXMODCELLS];
+    int rows_to_insert;
+  EXEC SQL END DECLARE SECTION;
+  Int_t nCell=0;
+  for(Int_t m=0; m<pPar->getSize(); m++) {
+    HStart2CalparMod& rMod= (*pPar)[m];
+    nCell=0;
+    for(Int_t c=0; c<rMod.getSize(); c++) {
+      if (nCell >= START_MAXMODCELLS) {
+        Error("writePar(HStart2Calpar*)","Array size too small for module %i",m);
+        rollback();
+        pPar->setChanged(kFALSE);
+        return -1;
+      }         
+      HStart2CalparCell& rCell= rMod[c];
+      if (rCell.getTdcOffset()!=0.F||rCell.getAdcOffset()!=0.F
+          ||rCell.getTdcSlope()!=1.F||rCell.getAdcSlope()!=1.F) {
+        module[nCell]=m;
+        cell[nCell]=c;
+        vers[nCell]=version;
+        tdcslope[nCell]=rCell.getTdcSlope();
+        tdcoffset[nCell]=rCell.getTdcOffset();
+        adcslope[nCell]=rCell.getAdcSlope();
+        adcoffset[nCell]=rCell.getAdcOffset();
+        nCell++;
+      }
+    }
+    if (nCell==0) continue;
+    rows_to_insert=nCell;
+    EXEC SQL WHENEVER SQLERROR GOTO not_found;
+    EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+    EXEC SQL FOR :rows_to_insert
+        INSERT INTO start_ana2.start2_calpar_data
+               (vers_id, cell_id, tdc_slope, tdc_offset, adc_slope, adc_offset )
+
+        VALUES (:vers, start_ana2.start2_par_query.get_cell_id(:module,:cell),
+                :tdcslope, :tdcoffset, :adcslope, :adcoffset);
+    cout<<"module "<<m<<"    "<<rows_to_insert<<" rows inserted\n";
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+not_found:
+  showSqlError("writePar(HStart2Calpar*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+Int_t HStartParOra2Io::writePar(HStart2Trb2Lookup* pPar) {
+  // creates a new version and writes the lookup table to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   rows_to_insert;
+    int   vers[START_MAXTRBCHANNELS];
+    int   address[START_MAXTRBCHANNELS];
+    int   chan[START_MAXTRBCHANNELS];
+    int   module[START_MAXTRBCHANNELS];
+    int   cell[START_MAXTRBCHANNELS];
+  EXEC SQL END DECLARE SECTION;
+  Int_t nChan=0;
+  Int_t arrayOffset=pPar->getArrayOffset();
+  for(Int_t b=0;b<pPar->getSize();b++) {
+    HStart2Trb2LookupBoard* board=(*pPar)[b];
+    if (board) {
+      nChan=0;
+      for(Int_t t=0;t<board->getSize();t++) {
+        HStart2Trb2LookupChan& rChan=(*board)[t];
+        if (rChan.getModule()!=-1&&rChan.getCell()!=-1) {
+          vers[nChan]=version;
+          address[nChan]=arrayOffset+b;
+          chan[nChan]=t;
+          module[nChan]=rChan.getModule();
+          cell[nChan]=rChan.getCell();
+          nChan++;
+        }
+      }
+      rows_to_insert=nChan;
+      EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+      EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+      EXEC SQL FOR :rows_to_insert
+      INSERT INTO start_ana2.start2_trb2lookup_data
+                  (vers_id, trbnet_address, channel_id, cell_id)
+             VALUES (:vers, :address, :chan,
+                     start_ana2.start2_par_query.get_cell_id(:module,:cell));
+      cout<<"Trbnet-address "<<"0x"<<hex<<(arrayOffset+b)<<dec<<":  "<<rows_to_insert<<" rows inserted\n";
+    }
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HStart2Trb2Lookup*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+Int_t HStartParOra2Io::writePar(HStart2Trb3Calpar* pPar) {
+  // creates a new version and writes the lookup table to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int           vers;
+    int           address;
+    int           subevtid;
+    int           nedge;
+    int           nchan;
+    int           nbin;
+    unsigned char buffer[LOB_BUFSIZE];
+    int           amount;
+    int           offset;
+    int           dataid;
+    EXEC SQL VAR buffer IS RAW(LOB_BUFSIZE);
+  EXEC SQL END DECLARE SECTION;
+  Int_t arrayOffset=pPar->getArrayOffset();
+  Int_t nTdcs=0;
+  for(Int_t i=0;i<pPar->getSize();i++) {
+    HTrb3CalparTdc* tdc=(*pPar)[i];
+    if (tdc) {
+      vers     = version;
+      address  = arrayOffset+i;
+      subevtid = tdc->getSubEvtId();
+      nedge    = tdc->getEdgesMask();
+      nchan    = tdc->getNChannels();
+      nbin     = tdc->getNBinsPerChannel();
+      Float_t* data = tdc->getBinsPar();
+      offset=1;
+      Int_t totlen=tdc->getArraySize()*sizeof(Float_t);
+      if (totlen>0) {
+        amount= (totlen>LOB_BUFSIZE) ? LOB_BUFSIZE : totlen;
+        memcpy(buffer,&data[0],amount);
+        dataid=-1;
+        Int_t restlen=totlen-amount;
+        EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+        EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+        EXEC SQL EXECUTE
+          DECLARE
+          BEGIN
+            start_ana2.start2_par_query.add_trb3_caldata(
+                  :vers,:address,:subevtid ,:nedge,:nchan,:nbin,
+                  :amount,:buffer,:dataid);
+          END;
+        END-EXEC;
+        while (dataid>0&&restlen>0) {
+          offset+=LOB_BUFSIZE;
+          Int_t pos=(offset-1)/sizeof(Float_t);
+          amount= (restlen>LOB_BUFSIZE) ? LOB_BUFSIZE : restlen;
+          memcpy(buffer,&data[pos],amount);
+          EXEC SQL EXECUTE
+            DECLARE
+            BEGIN
+              start_ana2.start2_par_query.append_trb3_caldata(:dataid,:amount,:offset,:buffer);
+            END;
+          END-EXEC;
+          restlen-=amount;
+        }
+        cout<<"***  Trbnet-address: "<<"0x"<<hex<<(address)<<dec<<":  "<<"   New Tdc calpar: "<<dataid
+            <<"  nBytes: "<<totlen<<endl;
+        nTdcs++;
+      }
+    }
+  }
+  cout<<"****************************************************************\n";
+  cout<<"***  Trb3 TDC calpar: "<<nTdcs<<" TDC(s) written to Oracle"<<endl;
+  if (nTdcs > 0) {
+    commit();
+  }
+  cout<<"****************************************************************\n";
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HStart2Trb3Calpar*");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+Int_t HStartParOra2Io::writePar(HStart2Trb3Lookup* pPar) {
+  // creates a new version and writes the lookup table to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   rows_to_insert;
+    int   vers[START_MAXTRBCHANNELS];
+    int   address[START_MAXTRBCHANNELS];
+    int   chan[START_MAXTRBCHANNELS];
+    int   module[START_MAXTRBCHANNELS];
+    int   cell[START_MAXTRBCHANNELS];
+  EXEC SQL END DECLARE SECTION;
+  Int_t nChan=0;
+  Int_t arrayOffset=pPar->getArrayOffset();
+  for(Int_t t=0;t<pPar->getSize();t++) {
+    HStart2Trb3LookupTdc* tdc=(*pPar)[t];
+    if (tdc) {
+      nChan=0;
+      for(Int_t c=0;c<tdc->getSize();c++) {
+        HStart2Trb3LookupChan& rChan=(*tdc)[c];
+        if (rChan.getModule()!=-1&&rChan.getCell()!=-1) {
+          vers[nChan]=version;
+          address[nChan]=arrayOffset+t;
+          chan[nChan]=c;
+          module[nChan]=rChan.getModule();
+          cell[nChan]=rChan.getCell();
+          nChan++;
+        }
+      }
+      rows_to_insert=nChan;
+      EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+      EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+      EXEC SQL FOR :rows_to_insert
+      INSERT INTO start_ana2.start2_trb3lookup_data
+                  (vers_id, trbnet_address, channel_id, cell_id)
+             VALUES (:vers, :address, :chan,
+                     start_ana2.start2_par_query.get_cell_id(:module,:cell));
+      cout<<"Trbnet-address "<<"0x"<<hex<<(arrayOffset+t)<<dec<<":  "<<rows_to_insert<<" rows inserted\n";
+    }
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HStart2Trb3Lookup*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+void HStartParOra2Io::printInfo(const Char_t* contName) {
+  // prints the sectors initialized from Oracle
+  Bool_t first=kTRUE;
+  for(Int_t i=0;i<START_MAXMODULES;i++) {
+    if (initModules->At(i)) {
+      if (first) {
+        cout<<contName<<": module(s) initialized from Oracle: ";
+        first=kFALSE;
+      }
+      cout<<i<<" ";
+    }
+  }
+  cout<<'\n';
+}

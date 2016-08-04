@@ -1,0 +1,11 @@
+#!/bin/bash
+find . -name "*.toc" | xargs rm 
+find . -name "*.log" | xargs rm
+find . -name "*.blg" | xargs rm
+find . -name "*.bbl" | xargs rm
+find . -name "*.aux" | xargs rm
+find . -name "*.brf" | xargs rm
+find . -name "*.out" | xargs rm
+find . -name "*.lot" | xargs rm
+find . -name "*.lof" | xargs rm
+find . -name "*~" | xargs rm

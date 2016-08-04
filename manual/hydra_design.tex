@@ -1,0 +1,1413 @@
+\chapter{The analysis framework}
+
+
+\section{The HADES class}
+
+The \verb+Hades+ class is the fundamental class which controls and 
+coordinates all the different parts of the reconstruction 
+software. Essentially it is formed by %see figure [*]):
+
+%Figure: Hades class structure.
+\begin{enumerate}
+    \item a data source where to read event data from.
+    \item a \verb+HTaskSet+ storing the tasks to be performed for each event.
+    \item a \verb+HEvent+ where to store the event in process.
+    \item a \verb+HSpectrometer+ created during initialization and 
+          storing information.about the spectrometer's structure.
+    \item a database where to read reconstruction parameters from.
+    \item a \verb+ROOT+ output tree.
+    \item an output file. 
+\end{enumerate}
+
+There must be one and only one object instantiating the Hades 
+class for a execution of the program, that is, the \verb+Hades+ class 
+is a \verb+soliton+. This object is accessible from every part of 
+the program through a global pointer which is called \verb+gHades+. 
+For more information on this class and the services provided by 
+it, check the reference documentation.
+
+\section{Classes to contain data}
+
+\subsection{The event structure}
+
+An event is the record of all physical interactions in the detector 
+resulting from the reaction between a beam particle and the target, 
+and it can be real or simulated. A calibration event contains the 
+response of one or several detectors to one or several particles or 
+to a calibration signal (a laser signal, for example). The event is 
+the unit for the data processing. From the reconstruction program's 
+point of view, an event is an object instantiating some \verb+HEvent+ 
+subclass and holding all relevant information coming from a 
+beam-target interaction or resulting from a calibration signal. The 
+event can contain both the original data coming from the spectrometer 
+(raw data) and the more elaborated data which result from the 
+reconstruction process.
+
+One event is reconstructed in steps, so each step in the reconstruction 
+process produces one level of reconstructed data. The number and kinds 
+of reconstruction levels (or data levels) which are stored in an event 
+is not fixed beforehand, since it can change as a function of the kind 
+of event (simulated or real), as well as the specific task we want to 
+accomplish at a given moment. If, for example, we are studying the 
+calibration for the MDC we are not required to bother with the data 
+level of the other detectors, or even with those MDC levels which are 
+not used at that moment.
+There is only one \verb+HEvent+ object within the \verb+Hades+ soliton. 
+This \verb+HEvent+ object acts as a central repository, globally 
+accessible, with all the information for one event, storing also 
+structural information about that event. In this way, the different 
+components of the reconstruction program (event display, data input, 
+reconstruction algorithms, etc.) can access the event information in 
+an independent way.
+
+Data contained in an event are \verb+HDataObject+ objects. Within each 
+event, these objects are organized in categories, that is, the event 
+holds ``categories'' and these categories hold the data objects. 
+During the initialization of the program the user decides which 
+categories (how many and what kind of) he wants to have in the event, 
+as well as the kind of data objects stored in each category.
+To access a particular category within an event, one can use the 
+\verb+getCategory(Cat_t aCat)+ function from \verb+HEvent+. This 
+function returns the event's category identified by ``aCat'', 
+where ``aCat'' is the value of a constant which univocally identifies 
+one particular category (for example, \verb+catMdcRaw+ for the 
+category holding raw data in the MDC).
+As for the event storage in an output file, ROOT provides us with 
+an automatic mechanism to store any ROOT object into a file, this 
+can seem enough at a first glance. However, it turns out to be 
+convenient to store the event's information in a more adequate and 
+ordered form for its further analysis. In particular, we want to 
+store event information using a ROOT tree. This is the reason for 
+the function \verb+makeBranch()+ in the \verb+HEvent+ 
+declaration \footnote{ In principle, ROOT has an automatic mechanism 
+to build a tree from any object, however this mechanism doesn't provide 
+the flexibility required for an object as complex as HEvent}.
+In addition to storing the data objects we must be able to clear the 
+information held in a \verb+HEvent+ so as to leave free place for 
+the next event. This can be better understood watching the basic 
+reconstruction cycle. The steps are the following:
+
+\begin{enumerate}
+\item Clear information in the current event; 
+\item Read information from the active data source; 
+\item Launch the reconstruction for the current event; 
+\item Store the event data in an output file. 
+\end{enumerate}
+
+To accomplish the first step in this list we can use the functions 
+\verb+Clear()+ and \newline \verb+clearAll(Int_t level)+. The first of them 
+clears all data objects in the event but preserves its structure. 
+The second one, on the other side, deletes both the data objects 
+and the part of the event's structure which is selected by the 
+parameter ``level'' \footnote{ For example, if level=0 every 
+data object, as well as the whole event structure will be deleted, 
+otherwise, if level>0, only cleared.}.
+These are the fundamental characteristics of a general event. Now 
+we will see different kinds of event and how the previous functions 
+are implemented for each of them. 
+
+%If you prefer to know more about the ``categories'' before, just jump to section [*].
+
+\subsubsection{The partial event: HPartialEvent}
+
+As its name suggests, a partial event is part of an event under 
+reconstruction. In fact it is each part of an \verb+HRecEvent+ which 
+has to do with a particular detection system. So, for Hades, we 
+have one partial event for the RICH, another one for the MDC, etc.
+Each partial event holds an array with all the categories belonging 
+to it; so we can get any of them through the \verb+getCategory()+ method.
+Beside the categories, each partial event maintains a ``reconstruction level'' 
+in the same way as \verb+HRecEvent+. This allows one to know what is the 
+state of the reconstruction for some event.
+Obviously, this kind of event has also all the functions required to 
+any ``HEvent'', like those intended to build an output ROOT tree 
+starting from the array of categories held by the event.
+
+\subsubsection{The simulated event}
+
+The simulated events are the events produced by the Hades simulation 
+program \verb+HGeant+. Simulated events can be used as input for the 
+reconstruction program instead of real ones, therefore the simulated 
+events must have the same structure as the real ones, so that the 
+software can seamlessly process both real and simulated events. As 
+for now this is achieved by using the same class both for simulated 
+events and events under reconstruction.
+The extra information in a simulated event, regarding kinematics, 
+is stored in a dedicated partial event within the event under 
+reconstruction.
+
+
+
+\subsection{The data container}
+
+A category is essentially a container of objects within an event, with 
+the extra point that every object in a category belongs to (instantiates) 
+the same class. For example, the raw data for MDC make up a category, 
+but raw data in the RICH correspond to a different category since they 
+are instances of a different class. Other categories can be the one 
+storing calibrated MDC data, hits, tracks, particle candidates, etc.
+
+The category concept is represented by the \verb+HCategory+ class. In 
+fact this is an abstract class which declares a basic API to be implemented 
+by any kind of category. These implementations correspond to different 
+strategies for storing data, both in memory and in file(s). 
+
+%In figure [*] you can see the HCategory's definition, as well as some inherited classes.
+
+%Figure: HCategory structure
+
+A category's API must have functions to access the data objects held by it. 
+This access can be of two kinds: 
+\begin{enumerate}
+\item one can ask for one single data object or a set of them verifying some condition, 
+\item one can iterate on all or part of the objects held by a category. The first mode requires random access, the second mode needs sequential access only.
+\end{enumerate}
+
+To access a particular object in a category we need ``something'' which 
+identifies it in a univocal way. This ``something'' is an object instantiating 
+the \verb+HLocation+ class and it's nothing more than an array of indexes. 
+So, as we can see, it's as if data objects in a category were stored in a 
+multi-dimensional matrix. Summarizing, each object is stored in a category 
+at the location defined by a set of indexes encapsulated in a \verb+HLocation+ 
+object; to access the data object we can use \verb+getLocation(HLocation &loc)+. 
+The following example will help to make it clearer:
+
+\begin{lstlisting}
+
+{
+  // Let's say, cat is a category with raw MDC data.
+  HCategory *cat;
+  // A raw hit in an MDC
+  HMdcRaw *raw;
+  // A new location object
+  HLocation loc;
+
+  // Let's set loc pointing to the fourth hit at the first layer 
+  // of MDC 2 in the second sector. For this, we need to call
+  // HLocation::set(n,...) with the number of indexes in the
+  // location as the first argument, and then the actual indexes
+  // themselves, in order:
+  loc.set(4,1,1,0,3);     // all indexes start at 0!
+
+  // Let's set raw pointing to the desired data object. This is
+  // accomplished by calling the getObject(loc) method from
+  // class HCategory. This method returns a pointer to the
+  // object in the category at the location given by the
+  // method's argument (loc).
+  raw=cat->getObject(loc);
+}
+\end{lstlisting}
+
+
+If we want a set of data verifying some condition, then we can use 
+\newline 
+\verb+query(TCollection *aCol, HLocation &loc, HFilter &filter))+. 
+This function places within the collection aCol every object in 
+the category which verifies the condition given by the filter 
+``filter'' \footnote{See the HFilter class in the reference 
+documentation} and corresponding to the location ``loc''. If ``loc'' 
+is omitted, then any location is valid. If ``filter'' is not 
+specified every object corresponding to the location ``loc'' is 
+added to the collection. Let's see an example:
+
+\begin{lstlisting}
+{
+  // Let cat be a category with MDC raw data. Each raw data is 
+  // identified by 4 indexes: sector, module, layer and cell.
+  HCategory *cat;
+  // Let array be the target array of selected data objects
+  TObjArray *array;
+
+  // Let's set loc pointing to the first module in the first sector
+  HLocation loc;
+  loc.set(2,0,0); //Again, indexes start at 0!
+
+  // Let filter be a filter implementing condition ``cond1''
+  HCond1Filter filter;
+
+  // Do the job. Now we have array filled with those data 
+  // objects in the category which correspond to the first 
+  // module in the first sector of the MDC and verify the 
+  // condition ``cond1''
+  cat->query(array,loc,filter);
+}
+\end{lstlisting}
+
+At the end we treat the iteration on all or part of a category. This 
+is accomplished using iterators, in the Standard Template Library 
+(STL) way. To get an iterator for a category we can use the function 
+\verb+MakeIterator()+; this function will return an \verb+HIterator+ 
+object iterating on the whole category. If we want to restrict the 
+iteration to a location we can use the \verb+gotoLocation(HLocation &loc)+ 
+method from \verb+HIterator+. Let's see now an example with an iterator 
+running on all raw data for chambers 1 and 2:
+
+\begin{lstlisting}
+
+{
+  // The usual stuff
+  HCategory *cat;
+  HMdcRaw *raw;
+  HLocation loc;
+
+  // Set loc pointing to sector 1, module 2
+  loc.set(2,0,1)    // Remember, indexes start at 0!
+
+  // Build the iterator up
+  HIterator *iterator=cat->MakeIterator();
+
+  // Now we do a loop on the data objects using the iterator we
+  // got before. This is accomplished with a "while" loop whose
+  // condition equals the pointer "raw" to the next data object
+  // in the category and checks if "raw" is different from NULL.
+  // Once raw==NULL the iteration stops.
+  while ( (raw=(HMdcRaw *)iterator->Next())!=NULL) {
+    raw->Dump(); //print the data object pointed to by "raw" 
+  }
+}
+\end{lstlisting}
+
+Besides having objects stored in a category we must be able to add 
+new objects to that category. The adopted solution consists in the 
+user having to ask the category for a place in memory (a slot) where 
+to place the new object. Then the user instantiates the object using 
+the ``new with placement'' \footnote{The ``new with placement'' 
+operator is used to instantiate an object at a predefined memory 
+address. The syntax to instantiate an object of class, let's say 
+HMdcRaw, at the address pointed at by a pointer named ``pMemAddress'' 
+is: ``raw=new(pMemAddress) HMdcRaw'', where, ``raw'' is a pointer 
+to HMdcRaw. Note that the ``new'' operator does not need to actually 
+allocate memory but uses the memory pointed at by ``pMemAddress'', 
+assuming it is already allocated} operator. In case the object is not 
+instantiated using the ``new'' operator, what we have is just a piece 
+of memory, not a real object. That means, for example that the virtual 
+table is not built and therefore no virtual function can be called. 
+Since each object in a category is associated with a location, to get 
+a slot we use the method \verb+getSlot(HLocation &loc)+ if we know all 
+indexes of the location, or we can use \verb+getNewSlot(HLocation &loc)+ 
+if we know the indexes of the desired location, except the last one. 
+Any of these two functions will return a pointer to the requested slot, 
+or NULL if no slot was available at that location.
+
+To summarize:
+\verb+getObject(HLocation &loc)+ returns a pointer to the object at 
+location loc, or NULL if that object does not (yet) exist.
+\verb+getSlot(HLocation &loc)+ returns a pointer to (free) memory 
+where a new object, corresponding to location loc in the category, 
+can be instantiated, i.e. a pointer to slot loc.
+\verb+getNewSlot(HLocation &loc)+ returns a pointer to the next free 
+memory slot of the category following location loc, where a new object 
+can be instantiated.
+
+The main reason to let the category do the memory management instead of 
+simply using the C++ ``new'' operator comes from the large number of 
+data objects instantiated per event, and the large number of events 
+to process. The ``new'' operator calls a costly routine in the operating 
+system to get the requested memory. However a category can have a 
+preallocated block of memory for the data objects which are going to be 
+instantiated; this can speed up memory management because the category 
+knows beforehand the size of the data objects which are going to be 
+instantiated, as well as the kind of memory request it will be asked 
+for. Let's now see an example:
+
+\begin{lstlisting}
+
+{
+   //The usual stuff
+   HLocation loc;
+   HMdcRaw *raw;
+   HCategory *cat;
+   ...
+   // Set loc pointing to sector 2, module 2, layer 1, cell 1
+   loc.set(4,1,1,0,0)   // indexes start at..., well, you know it!
+   // Ask for a slot
+   raw=cat->getSlot(loc);
+
+   // If the slot is valid (raw!=NULL), instantiate the object
+   if (raw!=NULL) raw=new(raw) HMdcRaw;
+   else Error("No slot available");
+}
+\end{lstlisting}
+
+Below follows the description of the variuos kind of categories which 
+have been implemented. This description deals with specific issues for 
+each category, in particular their implementation.
+
+\subsubsection{The HMatrixCategory}
+
+This kind of category stores data objects in a matrix-like structure. 
+In this way, when we ask for an object in the category, the location 
+indexes which identify the objects are the same as the indexes of the 
+underlying matrix. To initialize a matrix category one needs to provide 
+the following data to the constructor:
+\begin{enumerate}
+    \item Number of indexes in the matrix;
+    \item Maximum value for each of the indexes (that is, the matrix dimensions);
+    \item fillRate; this is a number between 0 and 1 which corresponds to the maximum fraction of occupied locations we expect. 
+\end{enumerate}
+
+Looking in more detail into this category's implementation we notice that 
+the mentioned matrix is actually linearized, i.e. in practice, the data 
+objects are stored in a linear array (a \verb+TClonesArray+ from ROOT).
+The internal structure of the category is the following: on one side we 
+have a \verb+TClonesArray+ A with every data object, and we have an 
+\verb+HIndexTable+ object T which behaves as a matrix of integers. When 
+we are looking for an object associated with a location, we fetch from 
+table T the matrix element corresponding to the indexes of that location. 
+This matrix element is an integer giving in turn the position of the 
+requested data object in the array A.
+
+In this way it is not necessary to reserve for A all the memory which 
+would be used if every location were filled and we can keep the 
+\verb+TClonesArray+ without holes (this fact is important when we want 
+to store the array in an output file). We have already said that 
+\verb+HIndexTable+ behaves as an integer matrix. However, again, we can 
+see that internally we have a linear array of integers. This is done to 
+be able to work with an arbitrary number of indexes. 
+
+\subsubsection{The HCategorySplit}\label{Chapter_catsplit}
+
+To understand what this category does, we have to define beforehand the 
+idea of ``terminal'' which will be used in the remaining of this section. 
+Given a category where each data object is identified by a location of n 
+indexes, we call ``terminal'' the location with n-1 indexes. An example 
+will make this clearer: let's consider raw data in the MDC. Each data 
+object is identified by 4 indexes (sector, module, layer, cell), therefore 
+a ``terminal'' corresponds to a layer (location with 4-1=3 indexes).
+What makes a \verb+HCategorySplit+ special is its ability to store the 
+data objects for each ``terminal'' in an independent \verb+TClonesArray+, 
+so that when generating the ROOT output tree we have one branch for 
+each ``terminal''.
+The category is internally made up of a matrix of pointers to 
+\verb+TClonesArray+ objects. These, on their side, hold the data objects 
+for each ``terminal''. As usual, the mentioned pointer matrix is realized 
+in practice as an array. 
+
+%You can see this structure in figure [*]
+%Figure: HCategorySplit structure
+
+Using \verb+TClonesArrays+ directly brings about an important consequence: 
+one should not leave holes on the nth index when filling a \verb+HCategorySplit+. 
+If this rule is not respected one will get a ``segmentation violation'' 
+when storing the category in split mode. This means we will not be able to 
+write to a file in split mode if we have one object at (1,2,1,0) and another 
+at (1,2,1,2) and nothing in (1,2,1,1). But there is no problem having one in 
+(1,2,1,0) and another at (1,2,3,0), or if we store data in non split mode.
+As for initialization, this is done in two steps: In the first step, when the 
+category is instantiated, one must set:
+\begin{enumerate}
+    \item Class name for the data objects to be stored in the category;
+    \item Number of indexes needed to identify one ``terminal'';
+    \item Dimensions of the ``terminal'' matrix;
+    \item Pattern to name each of the branches for the different ``terminals''. In order to produce those names, a loop is done on all the active ``terminals'' in the category and for each ``terminal'', its location is matched against the before-mentioned pattern in order to produce a unique name. The matching is done by copying each character in the pattern to the branch's name until a sequence like ``%i%'' is found, which is substituted by the value + 1 of the i-th index in the location for the current ``terminal'', then the following characters in the pattern are copied to the branch's name until another sequence like ``%i%'' is found and so on until one reaches the end of the pattern. For example, if our category has 3 indexes and the ``terminal'' matrix has dimensions 2*2; a pattern like ``S%0%.M%1%'' will cause the branches to be created with names:
+     \begin{itemize}
+       \item S1.M1
+       \item S1.M2
+       \item S2.M1
+       \item S2.M2
+     \end{itemize} 
+\end{enumerate}
+The second step consists in calling one of the \verb+setup()+ functions to 
+set the active ``terminals'', that is which modules we want memory and an 
+output branch for. In order to set this, two ways are foreseen: 
+\begin{enumerate}
+ \item by providing the number of active ``terminals'' and their id numbers, or 
+ \item by providing a table of integers (one per module) where a -1 stands for an inactive ``terminal'' and a number greater than 0 corresponds to the number of data objects expected for that ``terminal''. 
+\end{enumerate}
+
+\subsubsection{The HCategoryMatrixSplit}
+
+Essentially it is the same as the \verb+HCategorySplit+, in fact, it inherits 
+from \verb+HCategorySplit+. The main difference between the two is that 
+\verb+HCategoryMatrixSplit+ uses \verb+HClonesTable+ objects instead of the 
+\verb+TClonesArrays+. A \verb+HClonesTable+ is a descendant of \verb+TClonesArray+, 
+but modified in order to allow for having holes even in split mode. On the other 
+hand it is more complex and slower when accessing one particular data object.
+
+\subsubsection{The HLinearCategory}
+
+This is the simplest kind of category, in fact, an \verb+HLinearCategory+ is 
+nothing more than a wrapper to a \verb+TClonesArray+, so the latter can be 
+used within the Hydra framework. Therefore, the data stored in a \verb+HLinearCategory+ 
+are identified by one single index (the location has just one index) which 
+corresponds to the position of the data object in the underlying \verb+TClonesArray+.
+This category can be useful in a variety of situations where data are accessed 
+sequentially only, e.g. for calibration. Indeed, if we want to go from raw data 
+in the Mdc to calibrated data, each raw datum is identified by four indexes 
+(sector, module, layer, cell). The first step is to read from the acquisition 
+system and place the data into the ``catMdcRaw'' category. After that the data 
+are calibrated sequentially. In this example, one possibility is to place the 
+data in the category without an order (putting data in a \verb+HLinearCategory+ 
+as we read them) and store the four indexes as a data member of the data object. 
+Later, during calibration, we iterate over all data objects, and for each of 
+them we do the calibration with the parameters specified by the indexes stored 
+in the data object.
+
+\section{Classes to manage the input/output of data}
+
+This sections describes essentially which mechanisms are foreseen in the framework, 
+both for data reading and writing. In the first case, the adopted solution must be 
+able to deal with several input sources and, on the other hand, data output is always 
+realized through ROOT files and using essentially, but not only, ROOT trees.
+
+\subsection{Data input}
+
+In this section we will describe how the data are read from the different available 
+data sources. The only thing the Hades class needs to know is the definition of a 
+``data source'' in terms of C++, that is, which methods are provided by a ``data source'' 
+and their meaning. In this way we can call those methods without knowing which concrete 
+source is used.
+The abstract class defining a data source is \verb+HDataSource+, and mainly defines one 
+function \verb+getNextEvent()+ which must be implemented by all the inherited classes. 
+When this function is called, one event is read from the data source into the event 
+structure. The returned value of the operation can be one of the following:
+
+\begin{itemize}
+    \item \verb+kDsOk+: the event was successfully read; 
+    \item \verb+kDsEndFile+: we have reached the end of a file (set of data with the same reconstruction parameters), but more data are available; 
+    \item \verb+kDsEndData+: we have reached the end of the data source; 
+    \item \verb+kDsError+: error. 
+\end{itemize}
+
+Up to now there is provision made for two data sources within the Hades soliton. 
+We can combine data sources, e.g. mix real with simulated data like it is used in the 
+event embedding.
+Another very important function of the \verb+HDataSource+ class is the \verb+init()+ 
+method used during initialization. Within this method each particular data source 
+must check whether an event object exists or not and if it doesn't exist then it 
+is the data source's first responsibility to instantiate an event object. Usually, 
+the data source will also have to add to the instantiated event object those 
+categories where data will be read into. Note that if an event object or the 
+needed categories do already exist, then the data source must not destroy them, 
+but use them directly. 
+
+\subsubsection{Data input from the Data Acquisition System: HldSource}
+
+\verb+HldSource+ is the base class for those data sources reading data from the 
+HADES data acquisition system (DAQ), either from file (in hld format) or from the 
+event server (via TCP/IP). 
+%The class structure can be seen in figure [*].
+%Figure: HLdSource
+
+The \verb+HldSource+ reads raw data in the order and format provided by the DAQ and 
+puts them at their place within the event structure; this usually implies some reordering. 
+This process is what is known as unpacking and is realized by unpackers (objects 
+instantiating the \verb+HldUnpack+ class) within an \verb+HldSource+.
+
+\verb+HldUnpack+ is an abstract class from which several different unpackers are derived, 
+as \newline
+\verb+HRichUnpacker+ or \verb+HTofUnpacker+. In fact, we have one different unpacker for 
+each detection system in HADES (MDC, TOF, RICH, SHOWER, START), so each unpacker only knows 
+how to deal with a particular kind of data, i.e. subevent(s). The most important method of 
+this class is the \verb+execute()+ function, in which the unpacking process is realized. 
+Another important function is \verb+init()+ which is used during the initialization 
+procedure. Within this function, the unpacker has to do the following:
+
+\begin{itemize}
+    \item Get frome the event structure (\verb+HEvent+) pointers to the category where 
+    events will be written. If the needed category is not in the event structure, then 
+    it is the responsibility of the unpacker to instantiate it and add it to the event 
+    structure. The recommended way to do such an instantiation is through the \verb+HDetector+ 
+    classes which will be discussed later.
+
+    \item Get pointers to the parameter containers of the runtime database. If a container 
+    needed is not in the data base, then it is the responsibility of the unpacker to 
+    instantiate it and add it to the data base (but without initializing the container).
+
+    \item Do other specific initializations. 
+\end{itemize}
+
+The \verb+HldSource+ maintains a list of unpackers active at a given moment 
+\footnote{This list is built by the user in the initialization of the HldSource using 
+addUnpacker(HldUnpacker *unpacker)}, so that only the information corresponding to those 
+unpackers is actually processed. This modular organization allows to select which kind 
+of information we want to read, as well as it supports the case of ``.hld'' files only 
+containing data for part of the spectrometer (which is an usual situation). Furthermore 
+it makes it easier to incorporate not previously foreseen changes of the spectrometer 
+into the analysis software (as adding a new detector or modifying the data format for 
+a detector).
+
+The preceding paragraph has presented general information about \verb+HldSource+. However, 
+in practice, we will use always one of its subclasses, e.g. \verb+HldFileSource+ or 
+\verb+HldRemoteSource+. Both of them work in a very similar way, the main difference being 
+that the first one reads data from a file and the second one reads it from a RPC connection 
+to the DAQ through the intranet. Clearly, the first one will be most useful for offline 
+analysis, while the second one allows to implement a true online analysis.
+An example of initialization for an HldFileSource is:
+
+\begin{lstlisting}
+{
+  HldFileSource *source = new HldFileSource;
+  source->addUnpacker(new HRichUnpacker);
+}
+\end{lstlisting}
+
+Note that the unpackers used, both in \verb+HldFileSource+ and \verb+HldRemoteSource+, are 
+identical; this is possible because of the common infrastructure in \verb+HldSource+.
+The following describes in more details what happens when the \verb+getNextEvent()+ function 
+is called:
+
+\begin{enumerate}
+    \item A buffer is filled with the information to be unpacked. This buffer is an \verb+HldEvt+ 
+    object inheriting from \verb+HldBase+. It stores generic information about the event read 
+    (event number, length, etc.). Each \verb+HldEvt+ is made of sub-events, \verb+HldSubEvt+ 
+    objects, which are read in with the \verb+HldEvt+. 
+  
+     \item The \verb+execute()+ function is called for each of the active unpackers. Each unpacker 
+     has an associated \verb+HldSubEvt+ where it gets data from, transforming them into objects 
+     and placing the latter into the event structure. 
+\end{enumerate}
+
+
+\subsubsection{Simulated data input: HGeantSource}
+
+\verb+HGeantSource+ is another kind of data source which allows to read into the 
+event structure data stored in ntuples from one or several files. This data source 
+is intended to read output data from the simulation code \verb+HGeant+.
+As with \verb+HldSource+, the ntuples format depends on the detection system and 
+the adopted solution consists again in defining a class for every hardware component. 
+Therefore, we have a \verb+HGeantReader+ class playing the same role as \verb+HldUnpack+ 
+in \verb+HldSource+ and different subclasses for the different detection systems, like 
+\verb+HTofGReader+ or \verb+HMdcGReader+.
+In addition to this, \verb+HGeantSource+ also manages a list with all the files where 
+the ntuples are located, in such a way that the reader classes don't need to worry 
+about their ntuples being in one single file or spread over several files.
+The list of readers, as well as the input files used by the \verb+HGeantSource+ are 
+specified by the user during the program initialization. One other important point 
+to note is, that, unlike for \verb+HldSource+, those data in the input file for 
+which no \verb+HGeantReader+ exist are not read into any intermediate buffer. 
+
+\subsubsection{Partially reconstructed data: HRootSource}
+
+In this case, the data source is a ROOT file holding an event tree. Usually this tree 
+has been generated by the reconstruction program itself in a previous pass; it holds 
+completely or partially reconstructed events. As for the internals, the only important 
+point to consider is the use of \verb+activateBranch()+ from the \verb+HEvent+ and 
+\verb+HCategory+ classes, as well as \verb+activateTree()+ from the Hades classes. 
+These methods are used to associate the memory where data are read with the 
+corresponding branch.
+
+
+
+
+
+
+
+\subsection{Data output}
+
+The ROOT facilities are used for data output, both object serialization and ROOT trees.
+The \verb+Hades+ soliton itself manages an output file if the user wants to have one. 
+In this file the reconstructed events and the relevant information about how those 
+events were reconstructed are stored. That is, besides the reconstructed events are 
+also stored:
+\begin{itemize}
+    \item The event structure, namely how many categories and of which kind are contained 
+    in the event;
+    \item Which algorithms were used for the reconstruction;
+    \item The parameters used by the reconstruction algorithms, i.e. geometry, setup, 
+    calibration parameters, etc. (This feauture has to be manuallay enabled). 
+\end{itemize}
+
+This last two feauture has to be manuallay enabled. By default they are not written to
+the ROOT file to save file size. To set the output file one has to call the 
+\newline
+\verb+setOutputFile(Tex_t *name, Option_t *opt, Text_t *title, Int_t comp)+ during 
+
+initialization (see chapter [*]), where:
+\begin{itemize}
+    \item ``name'': is the file name; 
+    \item ``opt'': indicates if the file is opened for writing (\verb+opt=''UPDATE''+), reading, etc.; 
+    \item ``title'': is an optional title for the file; 
+    \item ``comp'': indicates the compression level for the output file (from 0 to 9). 
+\end{itemize}
+
+Data are stored in the output file as follows: in first place a new entry for an Hades 
+object is created in the output file, so the global object ``gHades'' is stored there. 
+Even though the event structure and the event tree are parts of gHades, entries are 
+also created for them in the output file's top level for convenience. In this way, we 
+can access them in two different ways: through gHades or directly.
+The events are stored using a ROOT tree whose structure \footnote{The branch layout} 
+is determined by the event structure and by the so-called ``split level''. The split 
+level is a number, stored in the \verb+Hades+ class, which controls the branching 
+level in the output ROOT tree. In principle the allowed values for this ``split level'' are:
+
+\begin{itemize}
+    \item 0: Only one branch is created for the whole event, which is stored as a whole; 
+    \item 1: There is one branch for each partial event, which is stored as a whole. 
+    However, the header, final track and some other data are stored creating one branch per data member; 
+    \item 2: One branch is created for each category, and connected to it, one branch 
+    per data member of the class contained in the category. However, each category 
+    still can decide how the branching is done in detail. 
+\end{itemize}
+
+In conclusion, the split level tells down to which level the event structure is expanded 
+in the output tree. In any case the value of the ``split level'' is just a hint and how 
+the splitting is actually done is determined by the event classes (\verb+HRecEvent+, 
+\verb+HPartialEvent+, etc.). The split level can be set with \verb+setSplitLevel(Int_t sl)+ 
+of the \verb+Hades+ class.
+
+Any category can decide how it is doing the split of its data. For example, the 
+\verb+HMatrixCategory+ creates one single branch for all its data, and hanging from 
+that branch one sub-branch per data member in the class held by the category. However, 
+\verb+HCategorySplit+ builds one independent branch per ``terminal'' 
+\footnote{See the definition of ``terminal'' in section \ref{Chapter_catsplit} } with 
+sub-branches for each data member in the class stored in the category.
+
+One common characteristic of all categories and which affects the output file is the 
+persistence. We can decide on a per category basis if a category is or is not persistent. 
+That is, if it will be stored or not in the output file. A category's persistence is 
+controlled through \verb+setPersistency(Bool_t per)+. 
+
+
+\section{Classes to manage tasks}
+
+One of the requirements we have seen in the previous chapter was to have a flexible system 
+allowing to select which algorithms are used for event reconstruction, as well as in which 
+way those algorithms are combined.
+This objective is realized by defining an abstract class \verb+HTask+ representing a 
+generic task. Tasks can be chained by connecting one task to the exit of another one, 
+with several exits being allowed. This done using the function 
+\verb+HTask::connectTask(HTask *task,Int_t n)+, where ``task'' is the task to connect 
+and ``n'' is the exit code to which it is connected.
+A task is run calling the \verb+HTask+ member function \verb+HTask *next(Int_t &errCode)+. 
+This function executes the task and returns the next task to be executed, that is the 
+task connected to the resulting exit. If any problem was found, an error code must be 
+written to errCode. Note that it is the task itself that decides which task is going 
+to be executed next, making possible to control the execution flow of the program. 
+In particular, one can define a task to have two possible exits, so when the \verb+next()+ 
+method is called it just checks some condition and selects one of the two exits 
+depending on the outcome. One concrete example where such a functionality is useful 
+would be to run a specific analysis code for some special events, a task could 
+look at the event header and depending on a flag in that header select the adequate 
+analysis task.
+Other important functions of the \verb+HTask+ class are \verb+Bool_t init()+ and 
+\verb+Bool_t finalize()+ which should be called before the first execution of the task 
+and after the last one, respectively.
+
+The init() function, as its name suggests, is used during initialization. Essentially 
+what this function has to do can be summarized in the following points:
+\begin{itemize}
+    \item Get pointers to parameter containers in the runtime database using 
+    \newline
+    \verb+HParSet *HRuntimeDb::getContainer(Text_t name[])+. There are two possibilities:
+     \begin{enumerate}
+        \item The returned value is not NULL and the pointer is used; 
+        \item The returned value is NULL and in this case it is responsibility of the 
+        task to instantiate the ``container'' and add it to the runtime database, which 
+        has to initialize it. 
+      \end{enumerate}
+      
+    \item Get pointers to the needed \verb+HCategorys+. Typically this is done using 
+    \newline
+    \verb+HCategory *HEvent::getCategory(Cat_t cat)+. If it returns NULL, it is the 
+    task's responsibility to instantiate the category and add it to the event structure. 
+    To instantiate the category, it is recommended to use the 
+    \newline
+    \verb+HDetector::buildCategory()+ function (see section \ref{Chapter_init} instead of 
+    instantiating it directly with the ``new'' operator.
+    \item  Do the specific initialization for the task. For example, calculate local parameters 
+    starting from those in the database \footnote{This is not possible without an initialized 
+    parameter container in the database. However, one cannot initialize containers within the 
+    HTask::init function, as this can only be done at the very beginning of the analysis. What 
+    happens in that case is that (1) the HTask::init() function has to be called once to add 
+    the containers to the runtime database, (2) the runtime database initializes those containers 
+    and (3) the HTask::init() function is called again to compute the local parameters.} 
+\end{itemize}
+There are two kinds of standard task: reconstructors, which represent particular algorithms or 
+procedures to transform the data, and task sets 
+%(see figure [*]). 
+Task sets are important because they allow to group several tasks into one. In fact, what the 
+\verb+Hades+ class executes for each event is a task set. This task set is built during 
+initialization (see chapter \ref{Chapter_init}).
+
+%Figure: Tasks structure
+
+
+
+\subsubsection{Reconstructors}
+
+Reconstructors are a particular kind of task implemented through the derived \verb+HReconstructor+ 
+class: reconstructors are represented by objects instantiating the \verb+HReconstructor+ class. 
+The latter is an abstract class which defines the common interface for every algorithm. Examples 
+of reconstructors are calibration of raw data in MDC, a particular algorithm for segment finding 
+in MDC or a calibration function for the TOF. Every reconstructor has a function \verb+Int_t execute()+, 
+available for the user to call, in which the real reconstruction process takes place. The 
+\verb+HReconstructor+ class overloads the function \verb+HTask::next()+ so that it actually 
+calls \verb+execute()+. If the value returned by \verb+execute()+ is less than 0, it is 
+interpreted as an error code. If the value is greater than or equal 0, it is associated 
+with one of the possible exits in the reconstructor, such that the task connected to that 
+particular exit is returned by the \verb+next()+ function.
+
+\subsubsection{Tasks sets} \label{Chapter_tasks}
+
+A task set is another fundamental kind of task, it is implemented by the class \verb+HTaskSet+. It 
+represents a set of tasks arbitrarily connected among them. To add tasks to a task set, one of 
+the following functions must be used:
+\begin{itemize}
+    \item \verb+Bool_t connect(HTask t)+: used to connect the first task (the head task) to the task set;
+    \item \verb+Bool_t connect(HTask t,HTask w,Int_t n=0)+: connects task ``t'' to the exit number 
+    ``n'' of task ``w'' of the task set;
+    \item \verb+Bool_t connect(HTask t,Text_t where,Int_t n=0))+: connects task ``t'' to the 
+    n-th exit of the task named ``where'' of the task set;
+    \item \verb+Bool_t connect(Text_t task[],Text_t where[],Int_t n=0))+: connects task named 
+    ``task'' to the n-th exit of task named ``where'', both tasks being in the set already. 
+\end{itemize}
+
+The \verb+connect()+ methods which take a task's name as an argument are provided for convenience. 
+The user doesn't need to keep pointers to those tasks in order to connect them to other tasks.
+The tasks connected using these methods belong to the task set where they live, so they are 
+destroyed at the same time as the task set. You should not connect tasks in a \verb+HTaskSet+ 
+directly using 
+\newline
+\verb+HTask::connectTask()+ unless you really know what you are doing.
+When calling function \verb+next()+ in an \verb+HTaskSet+, its tasks are executed starting from 
+the first one and following the order dictated by the \verb+next()+ function in each executed 
+task until a NULL is returned. At this moment the execution of the internal tasks in the task 
+set is stopped and the task set's \verb+next()+ function returns a pointer to the next task 
+connected to the task set (or NULL if none exists).
+Note also that a task set is an \verb+HTask+ object, so one can put an \verb+HTaskSet+ within 
+another \verb+HTaskSet+, building a recursive structure. 
+
+\section{Classes handling reconstruction Parameters}
+
+The reconstruction parameters include all the information needed to steer and actually do 
+the reconstruction process, as for example, positions or dimensions of the detectors (geometry), 
+readout look-up tables, calibration parameters, pattern recognition parameters, etc. All 
+parameters are organized in sets of functionally related items. Each of these sets is 
+represented by a subclass of HParSet, which itself is the generic ``parameter set''. 
+Each set of parameters can also have different versions, corresponding e.g. to different 
+configurations of the spectrometer or changed experimental settings. For example, the 
+detector calibration parameters can have a different version for each experimental 
+run\footnote{A run is a sequential set of data with the same reconstruction parameters 
+corresponding to one event file}, since these numbers are bound to change with time. 
+Furthermore, there can be different versioning sequences as different parameter sets 
+will change more or less often, depending on their respective nature.
+
+The parameters can come from different sources, a versatility implemented with the \verb+HParIo+ 
+class. It manages input and output of the parameters from or to the different sources. 
+In principle three parameter sources are foreseen:
+\begin{itemize}
+    \item ORACLE: a commercial database where the master copy of all parameters will be 
+    stored. This data base is maintained at GSI and will be mirrored to other analysis sites;
+    \item ASCII file: this mode is intended for an easy and convenient access to the 
+    parameters, mostly for prototyping and testing purposes;
+    \item ROOT file: this mechanism is automatically provided by ROOT and it is a 
+    convenient way of having local copies of the reconstruction parameters at sites 
+    without ORACLE access. 
+\end{itemize}
+
+The ORACLE and ROOT modes support versioning, whereas the ASCII mode does not.
+Now that we have a place where to put data and a mechanism to read and write it 
+we need ``somebody'' to manage all this. This job is done by the runtime database, 
+which is a HRuntimeDb object within the Hades soliton. This object is responsible 
+for the version management and it is the owner of all the parameter containers. 
+It provides functions to get/add parameter containers to the database, as well 
+as functions to update the database.
+Next we will see in more detail how the \verb+HParIo+ and \verb+HRuntimeDb+ work. 
+For a detailed description of the runtime database and container initialization scheme, 
+see http://hades.gsi.de/persons/ilse/initialization.htm written by I. Koenig.
+
+
+\subsection{Parameter input/output} 
+
+The \verb+HParIo+ abstract class holds an array of \verb+HDetParIo+ objects. The 
+\verb+HDetParIo+ abstract class defines the generic interface used to actually 
+read and write the parameter containers of a detector. It defines an API which 
+consists mainly of two functions:
+\begin{itemize}
+    \item \verb+HDetParIo::init(HParSet *par,Int_t *set)+: fills the ``par'' container, 
+    with ``set'' being an array of active modules; 
+    \item \verb+HDetParIo::write(HParSet *par)+: writes out the ``par'' container. 
+\end{itemize}
+
+The concrete implementation of these functions is done within two levels: a first 
+level sets the ``source'' by deriving a class from \verb+HParIo+ and another from 
+\verb+HDetParIo+ for the particular data source; let's call them \verb+HParXXXIo+ 
+and \verb+HDetParXXXIo+, where XXX stands for Ora, File or Ascii. The first of 
+these two class sets handles source-specific questions, while the second set 
+handles the detector-specific details. The second level of implementation 
+consists therefore in defining an \verb+HYYYXXXIo+ derived class for each 
+detector, where YYY stands now for Mdc, Rich, Tof, Shower, etc. These subclasses 
+have a \verb+init()+ and \verb+write()+ function for each supported parameter 
+container. Let's consider, for example, input and output from/to ROOT file for 
+the MDC parameters. The first implementation level sets the ``source'', which 
+is a ROOT file here, defining two classes: \verb+HParFileIo+ and \verb+HDetParFileIo+, 
+which are used for all detector components. The second level sets the detector, 
+MDC here, by deriving \verb+HMdcParFileIo+ from \verb+HDetParFileIo+. This class, 
+\verb+HMdcParFileIo+, has several \verb+init()+ and \verb+write()+ methods, one 
+for each kind of parameter container managed by the class. 
+
+\subsection{The runtime database}
+
+The runtime database consists essentially of three pointers to \verb+HParIo+ 
+objects and a list of parameter containers (\verb+HParSet+ objects).
+%Figure: Runtime Database structure
+Each container in the list is identified by a name. One can retrieve a container, 
+given its name, with the function \verb+HRuntimeDb::getContainer()+ and one can 
+add new containers with \verb+HRuntimeDb::addContainer()+.
+As for the three \verb+HParIo+ objects, two of them correspond to inputs, one 
+primary input and one secondary input, while the third corresponds to the output, 
+if any. Having two inputs has the advantage that, if some data are not available 
+from the first one, they will be retrieved from the second input before the 
+runtime database returns an error. This is specially useful for combining part 
+of the data one holds locally (in a ROOT file) with data from the ORACLE database.
+
+The version management is done with the aid of so-called ``event files'' 
+(\verb+HEventFile+ objects). An event file identifies a set of events for which 
+the reconstruction parameters remain unchanged, i.e. a run. Each event file holds 
+a list of \verb+HParVersion+ objects, one per parameter container. Each 
+\verb+HParVersion+ object in turn holds the version numbers (eventually for 
+different parameter sources) pertaining to its particular container. When the 
+active event data source reports the end of an event file, the runtime database 
+is notified and the \verb+init()+ function of all containers are called. If 
+a container's version ID has changed, it is updated and the ``changed'' flag 
+is set with \verb+HParSet::setChanged(kTRUE)+.
+
+Another interesting possibility of the \verb+HParSet+ objects is that they can 
+be made static 
+\newline
+(\verb+HRuntimeDb::setStatic()+), meaning that the container is 
+not updated when the runtime database receives an update signal. This allows the 
+user to initialize the container at will at start-up and these parameters will 
+then not be overwritten by the versioning mechanism. 
+
+\section{Initialization}\label{Chapter_init}
+
+In the initialization of the program the user sets and/or selects the options 
+pertaining to the various customizable parts of the analysis. These include:
+\begin{itemize}
+    \item What detectors are going to be used, that is, the spectrometer configuration;
+    \item What inputs (up to a maximum of two) and output are going to be used for 
+    the runtime database, that is, where reconstruction parameters will be read from 
+    and where they will be stored (if the user wants to store them);
+    \item What versions of the reconstruction parameters are going to be used for 
+    data analysis. For example, in the calibration, we have to select which calibration 
+    parameters will be used to calibrate a file's data;
+    \item What structure is going to be used to store event data in memory. However, 
+    if the user does not explicitly set an event structure, a default one will be used. 
+    This default is determined by the selected tasks to be performed.
+    \item What data source will be used to read the event data from;
+    \item  What tasks will be performed for each event;
+\end{itemize}
+
+The user not only can select among a set of precoded options, but can add his own options. 
+This is possible thanks to the modular design organized in dynamically linked libraries, 
+which can be loaded at any moment using functions provided by ROOT.
+Initialization is normally done in a ROOT macro, i.e. a file with C++ code interpreted 
+at execution time (From now on we will call this file the configuration macro). This 
+allows a direct interaction with every part of the analysis, since the latter is C++ 
+as well. In fact, one of the possible ways of working is to use a C++ macro as the 
+main program and call up the different services provided by the analysis when needed.
+
+The initialization procedure is largely automated, so the user can chose to customize 
+only a minimum set of features (or choose a pre-made configuration macro). In this case, 
+default values are set for those aspects not explicitly customized by the user. 
+These default values are determined depending on the tasks the user has chosen to 
+perform, and they are considered optimal for that set of tasks. However, if the 
+user makes a selection it will be respected, overriding the default values. Let's 
+see how this works with an example:
+In principle, if we tell the program that we want to calibrate the MDCs, we are not 
+interested in the data structure used by the developers of this calibration procedure, 
+so we leave it uninitialized. However, at a given moment we may be interested in using 
+another data structure than the predefined one
+\footnote{For example, for mass production we may want a linear structure because of 
+its performance, but when doing detector studies, we may want a very ramified structure 
+in order to make every kind of correlation easier} 
+In that case we only have to initialize the data structure we want to use and our 
+selection will be respected. As a consequence of this freedom we must store the 
+data structure along with the output data, or else it would be difficult to know 
+which structure was used to analyze a given set of data.
+
+One should note here that using default values is a safe bet, but setting them manually 
+is not. So, a user is expected to know what he is doing before overriding default values.
+In a typical initialization macro the main steps are:
+\begin{enumerate}
+ \item Ask for the shared libraries to be used;
+ \item Instantiate inputs and output for the runtime database and select them;
+ \item Select detectors to use by instantiating class objects representing those 
+ detectors and adding them to the \verb+HSpectrometer+ object in the \verb+Hades+ soliton;
+ \item Select which versions of the reconstruction parameters are going to be used 
+ by the runtime database (specifying the event files);
+ \item Build the list of tasks to be performed for each event; to build this list we 
+ can use the detector classes;
+ \item Select the data source instantiating an \verb+HDataSource+ object and setting 
+ it as the current data source with \verb+Hades::setDataSource()+;
+ \item Call function \verb+Hades::init()+ and check if the return value is kTRUE;
+ \item Set (optionally) the output file and the event tree. 
+\end{enumerate}
+
+The numbering in this list is important as it corresponds to the order of the different 
+initialization steps. Next we will see in more detail the different aspects of initialization, 
+as well as discuss a few examples.
+
+\subsection{Spectrometer configuration}
+
+The HADES spectrometer is represented within the analysis by a \verb+HSpectrometer+ 
+class object, which holds a list of detectors (\verb+HDetector+ objects, like 
+HMdc, HTof, etc.). The detectors needed for analysis are added to this list 
+using the function 
+\newline
+\verb+void HSpectrometer::addDetector(HDetector *det)+. 
+From there on the \verb+Hades+ soliton can access the \verb+HSpectrometer+ 
+through the function 
+\newline 
+\verb+Hades::getSpectrometer()+ and a particular 
+detector in the spectrometer is accessed through 
+\verb+HSpectrometer::getDetector(Text_t *name)+, where ``name'' is the 
+detector name.
+
+On their side, the \verb+HDetector+ objects store configuration information 
+for their particular detector: number of sectors, active modules in each sector, 
+etc. These configuration parameters can be set by calling the appropriate 
+functions for each detector and will be used extensively by other parts of 
+the software.
+
+One of the places where this configuration information is used is in functions 
+\verb+buildCategory()+ and \verb+buildTask()+ of the \verb+HDetector+ class. 
+These two functions set the default values for the data structure and task 
+structure for each particular detector. Therefore they are a very important 
+part of the initialization mechanism and deserve further attention.
+\begin{itemize}
+    \item \verb+buildCategory()+: The full syntax is \verb+HCategory *buildCategory(Cat_t cat)+. 
+    It is a virtual function, whose behavior depends on the particular detector we 
+    are working with. Given a category identifier ``cat'', this function instantiates 
+    a category of the appropriate type and with its configuration adapted to that of 
+    the detector. That is, an \verb+HCategory+ subclass is selected and an object of 
+    this class is instantiated according to the configuration parameters in the detector. 
+    If the ``cat'' identified is not recognized, then NULL is returned.
+    \item \verb+buildTask()+: The complete syntax is 
+    \newline
+    \verb+HTask *buildTask(Text_t task[], Text_t opt[])+. 
+    This function builds a task identified by ``task'' with the options in ``opt''. 
+    Again, it is a virtual function which only gets its concrete meaning for each 
+    detector, in which the valid values for both ``task'' and ``opt'' are defined.
+\end{itemize}
+This procedure frees the user of knowing a task's internal structure, that is, 
+its subtasks and how are they are connected. 
+
+\subsection{Data base initialization}
+
+During the database initialization the user sets:
+\begin{itemize}
+    \item inputs: At least one input must be set, but the user can set up to a 
+    maximum of two. To set one input, one only needs to create the Io object 
+    and use either \verb+HRuntimeDb::setFirstInput()+ or 
+    \verb+HRuntimeDb::setSecondInput()+ ,depending on what one wants.
+    \item output: The procedure is the same as before: create a \verb+HParIo+ 
+    object and call 
+    \newline
+    \verb+HRuntimeDb::setOutput()+ passing a pointer to the 
+    object as parameter.
+    \item event files: Select which event files are going to be analyzed by 
+    calling for each file 
+    \newline
+    \verb+HRuntimeDb::addEventFile()+, giving the file 
+    name as argument.
+    \item set current event file: Call \verb+HRuntimeDb::setCurrentEventFile()+ 
+    with the event file number as parameter, -1 to start from the beginning.
+\end{itemize}
+
+Of course these functions are called for the \verb+HRuntimeDb+ object in the 
+\verb+Hades+ soliton, which is accessed with \verb+Hades::getRuntimeDb()+
+
+\subsection{Tasks selection}
+
+Selecting tasks means instantiating objects for the task we want to be performed 
+for each event and adding those objects to the \verb+HTaskSet+ within the \verb+Hades+ 
+soliton. For that purpose we need a pointer to the \verb+HTaskSet+ which can be 
+obtained with \verb+Hades::getTask()+. Once we have that pointer, we only need 
+to use the \verb+connect()+ functions discussed in section \ref{Chapter_tasks} to 
+chain the different tasks we want to execute.
+To instantiate the task objects, the instantiated detector's \verb+buildTask()+ 
+functions can be used. Or we can create those objects directly by calling the 
+``new'' operator. Choosing one or another option will depend on the situation. 
+The first of these methods is an easy-to-use way of selecting a premade task 
+set which is built by the corresponding \verb+HDetetor+ class. On the other 
+hand, when there is no premade task set fulfilling our needs, we should 
+exhaustively define our own task set by using the ``new'' operator.
+
+\subsection{Selecting the data source}
+
+A data source is chosen by instantiating an appropriate data source object and 
+activating it as the current data source by calling the function void 
+\verb+Hades::setDataSource(HDataSource *dataS)+.
+Obviously each data source needs its specific initialization parameters, for 
+instance, the server's IP number when reading data from DAQ, a file name when 
+reading from file, or nothing at all. Since our configuration file is a C++ macro, 
+it is enough to call the functions specified in each data source's documentation 
+to set these parameters.
+
+\subsection{Event structure}
+
+As has already been said, it is not necessary to explicitly define an event structure 
+in the configuration macro, a default structure is created automatically. If one wants 
+to override the default, it is enough to create an event object (an \verb+HRecEvent+ 
+typically) where all or part of the needed categories are added manually. Next this 
+object is set as the current event by calling void 
+\newline
+\verb+Hades::setCurrentEvent(HEvent *ev)+.
+
+\subsection{Examples}
+
+Next we will see some examples to setup the different parts of a DST macro. 
+A simple main program for DST production is shown in \ref{dst_macro}.
+The main part of the job is hidden in \verb+Bool_t createHades(....)+ \ref{createHades}
+function which we will inspect soon.
+
+\begin{lstlisting}
+int main(int argc, char **argv)
+{
+   //-----------------------------------------------------------
+   // setup Hades
+   
+   // get number of events from 1st argument
+   Int_t   nEvents      = atoi(argv[1]); 
+   
+   Bool_t  writeOutput  = kFALSE;
+   Int_t   startEvt     = 0;
+   Int_t   datasource   = 1; // 0 = hld, 1 = hldgrep 2 = hldremote
+   Int_t   refId        = 1;
+   TString eventbuilder = "lxhadeb02.gsi.de";         // dataosoure = 2
+   TString inputDir     = "/misc/kempter/grepfiles/"; // dataosoure = 1,2
+   TString inputFile    = "be10252191423_4.hld";      // dataosoure = 1
+
+   // ASCII, ROOT, ORACLE (ASCII always first input, 
+   // ORACLE second if ASCII or ROOT is used)
+   TString paramSource  ="ASCII,ORACLE";  
+   TString asciiParFile ="allParMerged.txt";
+   TString rootParFile  ="";
+
+   
+   //-----------------------------------------------------------
+   // setup spectrometer, parameter source, datasource and tasks
+   Bool_t ok = createHades(datasource,
+        	           inputDir,
+			   inputFile,
+			   refId,
+			   eventbuilder,
+			   paramSource,
+			   asciiParFile,
+			   rootParFile
+			   );
+   
+   if(!ok){
+           cout<<"Error: Hades could not be created!"<<endl;
+           exit(1);
+   }
+   //-----------------------------------------------------------
+
+   //-----------------------------------------------------------
+   if(writeOutput) {
+     // output file
+     gHades->setOutputFile("test.root","RECREATE","Test",2);
+     gHades->makeTree();
+   }
+   //-----------------------------------------------------------
+   
+   Int_t nProcessed = myHades->eventLoop(nEvents,startEvt);
+
+
+   delete gHades;
+
+   return 0;
+}
+\end{lstlisting} \label{dst_macro}
+\clearpage
+
+
+
+
+
+\begin{lstlisting}
+Bool_t createHades(Int_t   datasource,
+		   TString inputDir,
+		   TString inputFile,
+		   Int_t   refId,
+                   TString eventbuilder,
+		   TString paramSource,
+		   TString asciiParFile,
+                   TString rootParFile
+		  )
+{
+
+    cout<<"-----------------------------------------------------------------------------"<<endl;
+    cout<<"CREATE HADES : INPUT FILE: "<<inputDir.Data()<<inputFile.Data()<<endl;
+    cout<<"-----------------------------------------------------------------------------"<<endl;
+    Hades* myHades = new Hades();
+    gHades->makeCounter(100);     // print each 100 events
+    
+    HRuntimeDb* rtdb = gHades->getRuntimeDb();
+
+    // ------------ Set input data file: NO NEED TO CHANGE  --------------
+    // 0 = hld, 1 = hld grep 2= hldremote
+    if(!setDataSource(datasource,inputDir,inputFile,refId,eventbuilder)) exit(1);
+    //--------------------------------------------------------------------
+    
+    // ----------Add detectors to the setup: NO NEED TO CHANGE -----------
+    if(!initDetectorSetup())                                 exit(1);
+    //--------------------------------------------------------------------
+    
+    //--------------------------------------------------------------------
+    //  PARAMETER SOURCES
+    if(!setParamSource(paramSource,asciiParFile,rootParFile))exit(1);
+    //--------------------------------------------------------------------
+
+    Int_t mdcUnpackers   [12] = {0x1100,0x1110, ..... ,0x1040,0x1050};
+    ... some more unpacker settings
+
+
+    HldSource* source = (HldSource*)gHades->getDataSource();
+
+
+    for(UInt_t i=0; i<(sizeof(wallUnpackers)/sizeof(Int_t)); i++)
+    {
+	HWallTrb2Unpacker* wallUnpacker=new HWallTrb2Unpacker(wallUnpackers[i]);
+        ... some settings
+	source->addUnpacker( wallUnpacker);
+    }
+
+    .... some more unpackers
+    
+
+    //--------------------------------------------------------------------
+    // ALIGNMENT OF WIRE PLANES  (container has to exist)
+    HMdcLayerCorrPar* fMdcLayerCorrPar =  (HMdcLayerCorrPar*)rtdb->getContainer("MdcLayerCorrPar");
+    fMdcLayerCorrPar->setStatic();
+    //--------------------------------------------------------------------
+
+    // ----------- Build TASK SETS (using H***TaskSet::make) -------------
+    HStartTaskSet  *startTaskSet        = new HStartTaskSet();
+    ... some more tasksets
+    HMdcTaskSet    *mdcTaskSet          = new HMdcTaskSet();
+
+    HTask *startTasks  = startTaskSet  ->make("","");
+    ... some more taskslists
+    HTask *mdcTasks    = mdcTaskSet    ->make("rtdb","");
+
+    //----------------SPLINE and RUNGE-KUTTA TACKING----------------------------------------
+    HSplineTaskSet  *splineTaskSet  = new HSplineTaskSet("","");
+    HTask *splineTasks=splineTaskSet->make("","spline,runge");
+
+    //-----------------------------------------------------------------------
+    // particle candidate etc
+    HParticleCandFiller   *pParticleCandFiller = new HParticleCandFiller  ("particlecandfiller","particlecandfiller","");
+    HParticleTrackCleaner *pParticleCleaner    = new HParticleTrackCleaner("particlecleaner"   ,"particlecleaner");
+    HParticleEvtInfoFiller *pParticleEvtInfo   = new HParticleEvtInfoFiller("particleevtinfo"  ,"particleevtinfo");
+
+    //------------------------ Master task set --------------------------
+
+    HTaskSet *masterTaskSet = gHades->getTaskSet("real");
+
+    masterTaskSet->add(startTasks);
+    ... add the other taskslists
+    masterTaskSet->add(mdcTasks);
+
+    masterTaskSet->add(splineTasks);
+    masterTaskSet->add(pParticleCandFiller);
+    masterTaskSet->add(pParticleCleaner);
+    masterTaskSet->add(pParticleEvtInfo);
+
+    masterTaskSet->isTimed(kTRUE);
+
+    //--------------------------------------------------------------------
+    if (!gHades->init())
+    {
+	cerr<<"CREATE HADES : ERROR IN INIT, EXITING! #############"<<endl;
+	delete myHades;
+	return kFALSE;
+    }
+    //--------------------------------------------------------------------
+
+
+    return kTRUE;
+}
+\end{lstlisting}\label{createHades}
+\clearpage
+
+As we have seen \verb+Bool_t createHades(....)+ calls its self
+the functions  \verb+Bool_t initDetectorSetup()+ \ref{setup_spectrometer}
+to create the different detectors and add them to the spectrometer. 
+Furthermore the function \verb+Bool_t setParamSource(...)+ \ref{setup_paramsource} 
+to enable the parameter Io for the analysis.
+
+\begin{lstlisting}
+Bool_t initDetectorSetup()
+{
+    // Detectors setup configuration
+    Int_t richMods[1]   = {1};
+
+    Int_t mdcMods[6][4] = {
+	{1,1,1,1},
+	{1,1,1,1},
+	{1,1,1,1},
+	{1,1,1,1},
+	{1,1,1,1},
+	{1,1,1,1} };
+
+    Int_t tofMods   [22] = {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    Int_t rpcMods   [1]  = {1};
+    Int_t showerMods[3]  = {1,2,3};
+    Int_t startMods [10] = {1,1,1,1,0,0,0,0,0,0};
+    Int_t wallMods  [1]  = {1};
+    Int_t nTrigMods[]    = {1};
+
+    HSpectrometer* spec = gHades->getSetup();
+
+    spec->addDetector(new HTBoxDetector);
+    spec->addDetector(new HStart2Detector);
+    spec->addDetector(new HRichDetector);
+    spec->addDetector(new HMdcDetector);
+    spec->addDetector(new HTofDetector);
+    spec->addDetector(new HRpcDetector);
+    spec->addDetector(new HWallDetector);
+    spec->addDetector(new HShowerDetector);
+
+
+    spec->getDetector("TBox")->setModules(-1,nTrigMods);
+    spec->getDetector("Start")->setModules(-1,startMods);
+    spec->getDetector("Wall")->setModules(-1,wallMods);
+
+    for (Int_t is=0; is<6; is++) {
+	spec->getDetector("Rich")  ->setModules(is,richMods);
+	spec->getDetector("Mdc")   ->setModules(is,mdcMods[is]);
+	spec->getDetector("Tof")   ->setModules(is,tofMods);
+	spec->getDetector("Rpc")   ->setModules(is,rpcMods);
+	spec->getDetector("Shower")->setModules(is,showerMods);
+    }
+
+    return kTRUE;
+}
+\end{lstlisting} \label{setup_spectrometer}
+\clearpage
+
+The second example showes how to setup the parameter Io for the macro.
+You want to initialize from ORACLE, ROOT or ASCII file. A typical
+scenario is , that you get the bulk of parameters from ORACLE or
+ROOT file, but you want to change some parameters. So, you read
+the parmeters which you want to change from ASCII file with the
+first input and the rest from the second input. Each parameter
+container is first searched in first input and only if it was not 
+found the second input is used.
+
+
+\begin{lstlisting}
+
+Bool_t setParamSource(TString paramSource,TString asciiParFile,TString rootParFile)
+{
+    // paramSource : for example "ASCII,ORACLE"
+    // asciiParFile: "/mypath/myparams.txt"
+    // rootParFile : "/mypath/myparams.root"
+    
+    if(paramSource == "" ||
+       (!paramSource.Contains("ROOT")  &&
+	!paramSource.Contains("ASCII") &&
+	!paramSource.Contains("ORACLE")
+       )
+      ){
+	cout<<"Error: setDataSource(): Unknown parameter source = "<<paramSource.Data()<<"!"<<endl;
+	return kFALSE;
+    }
+    HRuntimeDb *rtdb = gHades->getRuntimeDb();
+
+    if (paramSource.Contains("ROOT")) {
+	HParRootFileIo *input1=new HParRootFileIo;
+	input1->open(((Char_t *)rootParFile.Data()),"READ");
+	if(paramSource.Contains("ASCII") == 0) rtdb->setFirstInput(input1);
+	else                                   rtdb->setSecondInput(input1);
+    }
+
+    if (paramSource.Contains("ASCII")) {
+	HParAsciiFileIo *input2 = new HParAsciiFileIo();
+	input2->open((Text_t*)asciiParFile.Data(),"in");
+	rtdb->setFirstInput(input2);
+    }
+
+    if (paramSource.Contains("ORACLE")) {
+	HParOra2Io* ora=new HParOra2Io;
+	ora->open();
+	ora->setHistoryDate("now");
+	rtdb->setSecondInput(ora);
+    }
+
+    return kTRUE;
+}
+\end{lstlisting} \label{setup_paramsource}
+
+
+\subsection{Initialization internals}
+
+Here we will explain in detail how the initialization procedure works. The procedure 
+starts when \verb+Hades::init()+ is called. What happens then is:
+\begin{itemize}
+    \item The event address is set in the active data source.
+    \item The \verb+init()+ function is called for the data source. This function 
+    does some specific initialization, for example, in the case of \verb+HldSource+, 
+    it calls the init function for each unpacker. The data source is responsible 
+    for creating an event object if none exists.
+    \item The init function is called for each task in the task set to be performed. 
+\end{itemize}
+
+
+\section{Event processing}
+
+This section discusses in more detail how the loop over events is realized. This is, in 
+fact, an explanation in ``pseudocode'' of the \verb+Hades::eventLoop(Int_t nEvents)+ 
+implementation: reading the source code for that function is recommended. This function 
+does the following:
+\begin{enumerate}
+ \item Ensure there is a current event, that is, an event structure and a data source. 
+ \item Clear the event structure. 
+ \item While the number of processed events is less than ``nEvents'' and the data 
+ source does not return an error code or an end-of-data code:
+      \begin{enumerate}
+         \item (Re)initialize the task list. 
+         \item While the number of processed events is less than ``nEvents'' and 
+         there are still data in the current data source file:
+
+            \begin{enumerate}
+              \item Read a new event from the data source; 
+              \item Execute the task set for this event; 
+              \item Fill the output ROOT tree if one exists; 
+              \item Clear the event structure. 
+            \end{enumerate}
+      \end{enumerate}
+ \item Check if the data source has returned an error code and notify it. 
+
+\end{enumerate}
+
+
+Note that the tasks' \verb+reinit()+ function will be called in the event loop each 
+time it starts the processing of a new event file, including the first event file. 
+So during \verb+Hades::init()+ new parameter containers are added to the runtime 
+database and categories are added to the event structure. In the event loop the 
+runtime database is already initialized and therefore the parameter containers 
+are only read, as the \verb+reinit()+ function is called for each event file, 
+allowing tasks to calculate some local parameters if needed.
+
+
+\section{Running the program}
+
+There are several ways to run Hydra. The first is by launching the executable file ``hydra''; 
+this runs the software in batch mode. The syntax is simply: ``hydra filename [numEvents]'', 
+where ``filename'' is the configuration macro used to initialize the analysis and ``numEvents'' 
+is an optional parameter which specifies the maximum number of events to be processed. 
+By default, all available events will be processed.
+
+Another method is to use the software as a extension to ROOT and to work in a ROOT 
+interactive session, with or without macros. In this case the user is responsible for 
+some more things, like creating the Hades soliton at the very beginning of the session 
+and deleting it at the end.
+
+There is, at the user's disposal, a set of standard macros to make work with the 
+analysis software easier. These macros automatically do some tedious jobs which 
+otherwise would fall under the user's responsibility. The following subsections 
+document those macros:
+
+
+
+
+
+
+
+
+

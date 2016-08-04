@@ -1,0 +1,264 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 27/05/2015 by Ilse Koenig
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// HOraMagnetImport
+//
+// Class to storage the MAGNET data in Oracle
+//
+//////////////////////////////////////////////////////////////////////////////
+
+#include "horamagnetimport.h"
+#include "hdbconn.h"
+#include <stdlib.h>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// Include the SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HOraMagnetImport)
+
+#define MAGNET_MAXROWS 2000
+
+HOraMagnetImport::HOraMagnetImport() {
+  // Constructor
+  pConn=new HDbConn();
+  fin=0;
+}
+
+HOraMagnetImport::~HOraMagnetImport() {
+  // Destructor
+  // Closes the Oracle connection and the input file
+  close();
+  if (pConn) {
+    delete pConn;
+    pConn=0;
+  }
+  if (fin) {
+    closeFile();
+    delete fin;
+    fin=0;
+  }
+}
+
+Bool_t HOraMagnetImport::open(TString userName, TString dbName) {
+  // Opens an oracle connection (account userName)
+  return pConn->connectDb(userName,dbName);
+}
+
+void HOraMagnetImport::close() {
+  // Disconnects from ORACLE
+  pConn->closeDbConn();
+}
+
+Bool_t HOraMagnetImport::check() {
+  // Checks the Oracle connection
+  if (pConn->isOpen() && !pConn->isReadonly()) return kTRUE;
+  return kFALSE;
+}
+
+void HOraMagnetImport::print() {
+  // Prints information about the database connection
+  if (pConn->isOpen()) {
+    cout<<"Connected to Oracle as user "<<pConn->getUserName()<<endl;
+  } else cout<<"No connection to Oracle open\n";
+  if (fileDirectory.Length()>0) cout<<"FileDirectory: "<<fileDirectory<<'\n';
+}
+
+void HOraMagnetImport::commit(void) {
+  // Commits all inserts
+  EXEC SQL COMMIT WORK;
+  cout<<"Transaction committed"<<endl;
+  return;
+}
+
+void HOraMagnetImport::rollback(void) {
+  // Discards all inserts since last commit
+  EXEC SQL ROLLBACK WORK;
+  cout<<"Transaction rolled back"<<endl;
+  return;
+}
+
+Bool_t HOraMagnetImport::openFile(const Char_t* filename) {
+  // Opens the input file
+  fileName=filename;
+  TString fName;
+  if (fin) {
+    closeFile();
+    fin->clear();
+  } else fin=new ifstream;
+  if (fileDirectory.Length()>0) {
+    fName=fileDirectory + "/" + filename;
+  } else fName=filename;
+  fin->open(fName.Data(),ios::in);
+  if (fin && fin->rdbuf()->is_open()==1) return kTRUE;
+  else {
+    Error("readDataFile","******** File %s not found\n",fName.Data());
+    return kFALSE;
+  }
+}
+
+void HOraMagnetImport::closeFile() {
+  // Closes the input file
+  if (fin && fin->rdbuf()->is_open()==1) fin->close();
+}
+
+Bool_t HOraMagnetImport::storeData(const Char_t* filename) {
+  // Reads the input file and stores the data in a temporary table ikoenig.tmp_magnet_history
+  Bool_t rc=openFile(filename);
+  if (!rc) return kFALSE;
+  const Int_t maxbuf=4000;
+  Text_t buf[maxbuf], time[9];
+  Int_t nData=0, k=0;
+  TString timeStr(filename);
+  timeStr+=" ";  
+  EXEC SQL BEGIN DECLARE SECTION;
+    int rows_to_insert;
+    char   p_TIME[MAGNET_MAXROWS][18];
+    double p_TC1200[MAGNET_MAXROWS];  
+    double p_TC1266[MAGNET_MAXROWS]; 
+    double p_TC1202[MAGNET_MAXROWS]; 
+    double p_TC1208[MAGNET_MAXROWS]; 
+    double p_TC1214[MAGNET_MAXROWS];
+    double p_TC1220[MAGNET_MAXROWS];
+    double p_TC1226[MAGNET_MAXROWS];
+    double p_TC1232[MAGNET_MAXROWS];
+    double p_TC1206[MAGNET_MAXROWS];
+    double p_TC1212[MAGNET_MAXROWS];
+    double p_TC1218[MAGNET_MAXROWS];
+    double p_TC1224[MAGNET_MAXROWS];
+    double p_TC1230[MAGNET_MAXROWS];
+    double p_TC1236[MAGNET_MAXROWS];
+    double p_TC1238[MAGNET_MAXROWS];
+    double p_TC1248[MAGNET_MAXROWS];
+    double p_FI1400[MAGNET_MAXROWS];
+    double p_PSUI_rbk[MAGNET_MAXROWS];
+    double p_PSUV_rbk[MAGNET_MAXROWS];
+    double p_BBI[MAGNET_MAXROWS];
+    double p_LL1708[MAGNET_MAXROWS];
+    double p_TP1240[MAGNET_MAXROWS];
+    double p_PI2610[MAGNET_MAXROWS];
+    double p_TP2200[MAGNET_MAXROWS];
+    double p_TP2202[MAGNET_MAXROWS];
+    double p_TP2204[MAGNET_MAXROWS];
+    double p_TP2206[MAGNET_MAXROWS];
+    double p_TP2208[MAGNET_MAXROWS];
+    double p_TP2210[MAGNET_MAXROWS];
+    double p_TP2212[MAGNET_MAXROWS];
+    double p_TP2214[MAGNET_MAXROWS];
+    double p_TP2216[MAGNET_MAXROWS];
+    double p_TP2218[MAGNET_MAXROWS];
+    double p_TP2220[MAGNET_MAXROWS];
+    double p_TP2222[MAGNET_MAXROWS];
+    double p_TP2224[MAGNET_MAXROWS];
+    double p_TP2226[MAGNET_MAXROWS];
+    double p_TP2228[MAGNET_MAXROWS];
+    double p_TP2230[MAGNET_MAXROWS];
+    double p_PI2600[MAGNET_MAXROWS];
+    double p_VG3000[MAGNET_MAXROWS];
+    double p_PI1600[MAGNET_MAXROWS];
+    double p_PI1602[MAGNET_MAXROWS];
+    double p_PI1604[MAGNET_MAXROWS];
+    double p_EV1100R[MAGNET_MAXROWS];
+    double p_EV1122R[MAGNET_MAXROWS];
+    double p_EV1128R[MAGNET_MAXROWS];
+    double p_TC1200M[MAGNET_MAXROWS];
+    double p_PI1600I[MAGNET_MAXROWS];
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+  while (!fin->eof()) {
+    fin->getline(buf,maxbuf);
+    if (buf[0]=='#'||strlen(buf)==0) continue;
+    sscanf(buf,
+           "%s%lf%lf%lf%lf%lf%lf%lf%lf%lf"
+           "%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf"
+           "%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf"
+           "%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf"
+           "%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf",
+           time,         &p_TC1200[k], &p_TC1266[k], &p_TC1202[k],   &p_TC1208[k],
+           &p_TC1214[k], &p_TC1220[k], &p_TC1226[k], &p_TC1232[k],   &p_TC1206[k],
+           &p_TC1212[k], &p_TC1218[k], &p_TC1224[k], &p_TC1230[k],   &p_TC1236[k],
+           &p_TC1238[k], &p_TC1248[k], &p_FI1400[k], &p_PSUI_rbk[k], &p_PSUV_rbk[k],
+           &p_BBI[k],    &p_LL1708[k], &p_TP1240[k], &p_PI2610[k],   &p_TP2200[k],
+           &p_TP2202[k], &p_TP2204[k], &p_TP2206[k], &p_TP2208[k],   &p_TP2210[k],
+           &p_TP2212[k], &p_TP2214[k], &p_TP2216[k], &p_TP2218[k],   &p_TP2220[k],
+           &p_TP2222[k], &p_TP2224[k], &p_TP2226[k], &p_TP2228[k],   &p_TP2230[k],
+           &p_PI2600[k], &p_VG3000[k], &p_PI1600[k], &p_PI1602[k],   &p_PI1604[k],
+           &p_EV1100R[k],&p_EV1122R[k],&p_EV1128R[k],&p_TC1200M[k],  &p_PI1600I[k]);
+    strcpy(p_TIME[k],timeStr.Data());
+    strcat(p_TIME[k],time);
+    k++;
+    if (MAGNET_MAXROWS==k) {
+      rows_to_insert=k;
+      EXEC SQL FOR :rows_to_insert
+        insert into ikoenig.tmp_magnet_history
+          ( Time,    TC1200,  TC1266,  TC1202,   TC1208,
+            TC1214,  TC1220,  TC1226,  TC1232,   TC1206,
+            TC1212,  TC1218,  TC1224,  TC1230,   TC1236,
+            TC1238,  TC1248,  FI1400,  PSUI_rbk, PSUV_rbk,
+            BBI,     LL1708,  TP1240,  PI2610,   TP2200,
+            TP2202,  TP2204,  TP2206,  TP2208,   TP2210,
+            TP2212,  TP2214,  TP2216,  TP2218,   TP2220,
+            TP2222,  TP2224,  TP2226,  TP2228,   TP2230,
+            PI2600,  VG3000,  PI1600,  PI1602,   PI1604,
+            EV1100R, EV1122R, EV1128R, TC1200M,  PI1600I )
+          values
+          ( to_date(:p_TIME,'ddmmyyyy hh24:mi:ss'),
+                        :p_TC1200,  :p_TC1266,  :p_TC1202,   :p_TC1208,
+            :p_TC1214,  :p_TC1220,  :p_TC1226,  :p_TC1232,   :p_TC1206,
+            :p_TC1212,  :p_TC1218,  :p_TC1224,  :p_TC1230,   :p_TC1236,
+            :p_TC1238,  :p_TC1248,  :p_FI1400,  :p_PSUI_rbk, :p_PSUV_rbk,
+            :p_BBI,     :p_LL1708,  :p_TP1240,  :p_PI2610,   :p_TP2200,
+            :p_TP2202,  :p_TP2204,  :p_TP2206,  :p_TP2208,   :p_TP2210,
+            :p_TP2212,  :p_TP2214,  :p_TP2216,  :p_TP2218,   :p_TP2220,
+            :p_TP2222,  :p_TP2224,  :p_TP2226,  :p_TP2228,   :p_TP2230,
+            :p_PI2600,  :p_VG3000,  :p_PI1600,  :p_PI1602,   :p_PI1604,
+            :p_EV1100R, :p_EV1122R, :p_EV1128R, :p_TC1200M,  :p_PI1600I );
+      k=0;
+      nData+=rows_to_insert;
+    }
+  }
+  if (k>0) {
+    rows_to_insert=k;
+    EXEC SQL FOR :rows_to_insert
+      insert into ikoenig.tmp_magnet_history
+        ( Time,    TC1200,  TC1266,  TC1202,   TC1208,
+          TC1214,  TC1220,  TC1226,  TC1232,   TC1206,
+          TC1212,  TC1218,  TC1224,  TC1230,   TC1236,
+          TC1238,  TC1248,  FI1400,  PSUI_rbk, PSUV_rbk,
+          BBI,     LL1708,  TP1240,  PI2610,   TP2200,
+          TP2202,  TP2204,  TP2206,  TP2208,   TP2210,
+          TP2212,  TP2214,  TP2216,  TP2218,   TP2220,
+          TP2222,  TP2224,  TP2226,  TP2228,   TP2230,
+          PI2600,  VG3000,  PI1600,  PI1602,   PI1604,
+          EV1100R, EV1122R, EV1128R, TC1200M,  PI1600I )
+        values
+        ( to_date(:p_TIME,'ddmmyyyy hh24:mi:ss'),
+                      :p_TC1200,  :p_TC1266,  :p_TC1202,   :p_TC1208,
+          :p_TC1214,  :p_TC1220,  :p_TC1226,  :p_TC1232,   :p_TC1206,
+          :p_TC1212,  :p_TC1218,  :p_TC1224,  :p_TC1230,   :p_TC1236,
+          :p_TC1238,  :p_TC1248,  :p_FI1400,  :p_PSUI_rbk, :p_PSUV_rbk,
+          :p_BBI,     :p_LL1708,  :p_TP1240,  :p_PI2610,   :p_TP2200,
+          :p_TP2202,  :p_TP2204,  :p_TP2206,  :p_TP2208,   :p_TP2210,
+          :p_TP2212,  :p_TP2214,  :p_TP2216,  :p_TP2218,   :p_TP2220,
+          :p_TP2222,  :p_TP2224,  :p_TP2226,  :p_TP2228,   :p_TP2230,
+          :p_PI2600,  :p_VG3000,  :p_PI1600,  :p_PI1602,   :p_PI1604,
+          :p_EV1100R, :p_EV1122R, :p_EV1128R, :p_TC1200M,  :p_PI1600I );
+      nData+=rows_to_insert;
+  }
+  cout<<"File: "<<filename<<"  Inserts: "<<nData<<endl;
+  commit();
+  fin->close();
+  return kTRUE;
+errorfound:
+  pConn->showSqlError("storeData");
+  rollback();
+  fin->close();
+  return kFALSE;
+}

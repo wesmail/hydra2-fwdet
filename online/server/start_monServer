@@ -1,0 +1,17 @@
+#!/bin/bash
+
+serverDir=$1
+serverHost=$2
+serverPort=$3
+setup=$4
+
+
+echo "start_monServer started :" 
+echo "serverHost = $serverHost"
+echo "serverPort = $serverPort"
+echo "setup      = $setup"
+
+
+cd $serverDir
+. $setup
+nice -n19 ./hadesonlineserver.exe SUPER $serverHost $serverPort

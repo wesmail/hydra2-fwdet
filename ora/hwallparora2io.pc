@@ -1,0 +1,434 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 09/02/2010
+
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+//
+// HWallParOra2Io
+//
+// Interface class to database Oracle for input/output of parameters needed
+// by the Forward Wall
+// (uses the Oracle C/C++ precompiler)
+//
+//////////////////////////////////////////////////////////////////////////////
+
+using namespace std;
+#include "hwallparora2io.h"
+#include "hparora2set.h"
+#include "hwalltrb2lookup.h"
+#include "hwallcalpar.h"
+#include "hwallgeompar.h"
+#include "hgeomcompositevolume.h"
+#include "hora2geomdetversion.h"
+#include "TClass.h"
+#include <iostream>
+#include <iomanip>
+#include <unistd.h>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HWallParOra2Io)
+
+#define WALL_MAXCELLS 302
+#define WALL_MAXTRBCHANNELS 128
+
+HWallParOra2Io::HWallParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC) {
+  // constructor
+  // sets the name of the I/O class "HWallParIo"
+  // gets the pointer to the connection class
+  fName="HWallParIo";
+  geomVers=0;
+}
+
+HWallParOra2Io::~HWallParOra2Io() {
+  // destructor
+  if (geomVers) delete geomVers;
+}
+
+Bool_t HWallParOra2Io::init(HParSet* pPar,Int_t* set) {
+  // calls special read-function for each parameter container
+  if (getRunStart(pPar)<0) {
+    pPar->setInputVersion(-1,inputNumber);
+    return kFALSE;
+  }
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HWallTrb2Lookup")==0) return read(((HWallTrb2Lookup*)pPar));
+  if (strcmp(name,"HWallCalPar")==0) return read(((HWallCalPar*)pPar));
+  if (strcmp(name,"HWallGeomPar")==0) return read(((HWallGeomPar*)pPar),set);
+  // cout<<"initialization of "<<pPar->GetName()<<" not possible from Oracle!"<<endl;
+  return kFALSE;
+}
+
+Int_t HWallParOra2Io::write(HParSet* pPar) {
+  // calls the appropriate write function for the container
+  if (getRunStart(pPar)<=0) return -1;
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HWallTrb2Lookup")==0) return writePar((HWallTrb2Lookup*)pPar);
+  if (strcmp(name,"HWallCalPar")==0) return writePar((HWallCalPar*)pPar);
+  if (strcmp(name,"HWallGeomPar")==0) return writeAlignment((HWallGeomPar*)pPar);
+  cout<<"No write-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return 0;
+}
+
+Bool_t HWallParOra2Io::getVersion(HParSet* pPar,Int_t& version) {
+  // checks, if the parameter container needs to be reinitialized
+  // reads the newest version valid for the current event file
+  // returns kTRUE, if new parameters must be read
+  // returns kFALSE, if no reinitialization needed or not valid version found
+  HParOra2Set* oraSet=getOraSet(pPar);
+  if (oraSet->contextId==-1 || runStart==-1) {
+    pPar->setInputVersion(-1,inputNumber);
+    version=-1;
+    return kFALSE;
+  }
+  Int_t contVers=pPar->getInputVersion(inputNumber);
+  if (contVers!=-1 && runStart>=oraSet->versDate[0] && runStart<=oraSet->versDate[1]) {
+    version=contVers;
+    return kFALSE;
+  }
+  const Char_t* containerClass=pPar->IsA()->GetName();
+  oraSet->clearVersDate();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers;
+    double since;
+    double until;
+  EXEC SQL END DECLARE SECTION;
+  context=oraSet->contextId;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("getVersion(HParSet*,Int_t&)");
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  if (strcmp(containerClass,"HWallTrb2Lookup")==0) {
+    EXEC SQL SELECT version,
+                    hanadate.date_to_number(valid_since),
+                    hanadate.date_to_number(valid_until)
+             INTO :vers, :since, :until
+             FROM wall_ana.trb2lookup_vers_at_date
+             WHERE context_id = :context;
+  } else if (strcmp(containerClass,"HWallCalPar")==0) {
+    EXEC SQL SELECT version,
+                    hanadate.date_to_number(valid_since),
+                    hanadate.date_to_number(valid_until)
+             INTO :vers, :since, :until
+             FROM wall_ana.calpar_vers_at_date_2
+             WHERE context_id = :context;
+  }
+  version=vers;
+  oraSet->versDate[0]=since;
+  oraSet->versDate[1]=until;
+  return kTRUE;
+notfound:
+  pPar->setInputVersion(-1,inputNumber);
+  version=-1;
+  return kFALSE;
+};
+
+Bool_t HWallParOra2Io::read(HWallTrb2Lookup* pPar) {
+  // reads the lookup table for the Trb2 unpacker and fill the parameter container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int  address[WALL_MAXCELLS];
+      int  chan[WALL_MAXCELLS];
+      int  cell[WALL_MAXCELLS];
+    } lookup;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HWallTrb2Lookup*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT trbnet_address, channel, cell
+           INTO :lookup
+           FROM wall_ana.trb2lookup_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  for (Int_t i=0;i<nData;i++) {
+    pPar->fill(lookup.address[i],lookup.chan[i],lookup.cell[i]-1);
+  }
+  if (nData>0) {
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle\n";
+    rc=kTRUE;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    rc=kFALSE;
+  }
+  return rc;
+}
+
+Bool_t HWallParOra2Io::read(HWallCalPar* pPar) {
+  // reads the calibration parameters
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int   cell[WALL_MAXCELLS];
+      float tslope[WALL_MAXCELLS];
+      float toffset[WALL_MAXCELLS];
+      float aslope[WALL_MAXCELLS];
+      float aoffset[WALL_MAXCELLS];
+      float wcorr1[WALL_MAXCELLS];
+      float wcorr2[WALL_MAXCELLS];
+    } cal;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HWallCalPar*,Int_t*)");
+  EXEC SQL WHENEVER NOT FOUND continue;
+  vers=oraVersion;
+  EXEC SQL SELECT cell_id, tdc_slope, tdc_offset, adc_slope, adc_offset,
+                  tdc_walk_corr1, tdc_walk_corr2
+           INTO :cal
+           FROM wall_ana.calpar_data
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  if (nData>0) {
+    for(Int_t i=0;i<nData;i++) {
+      (*pPar)[cal.cell[i]-1].fill(cal.tslope[i],cal.toffset[i],
+                                  cal.wcorr1[i],cal.wcorr2[i],
+                                  cal.aslope[i],cal.aoffset[i]);
+    }
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle\n";
+    rc=kTRUE;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    rc=kFALSE;
+  }
+  return rc;  
+}
+
+Bool_t HWallParOra2Io::read(HWallGeomPar* pPar, Int_t* set) {
+  // reads the geometry of the Forward Wall and fills the WallGeomPar container
+  Bool_t allFound=kTRUE;
+  Int_t detId=-1;
+  if (!geomVers) {
+    detId=getDetectorId(pPar->getDetectorName());
+    geomVers=new HOra2GeomDetVersion(pPar->getDetectorName(),detId);
+  } else {
+    detId=geomVers->getDetectorId();
+  }
+  if (detId<=0) {
+    allFound=kFALSE;
+    delete geomVers;
+    geomVers=0;
+  }
+  if (detId>0&&pPar->isFirstInitialization()) {
+    if (!readModGeomNames(pPar) || !readCompGeomNames(pPar)) {
+      allFound=kFALSE;
+      pPar->clear();
+    } else addGeomOraSet(pPar);
+  }
+  if (allFound) allFound=readDetectorGeometry(pPar,set,geomVers);
+  return allFound;
+}
+
+Bool_t HWallParOra2Io::readModGeomNames(HWallGeomPar* pPar) {
+  // sets the geometry object name of the module and creates the reference volume if not existing
+  Bool_t allFound=kFALSE;
+  TString modName=pPar->getDetectorName();
+  modName.ToUpper();
+  HModGeomPar* pMod=pPar->getModule(-1,0);
+  if (pMod) {
+    pMod->SetName(modName);
+    pMod->setRefName(modName);
+    HGeomCompositeVolume* refMod=pPar->getRefVolume(0);
+    if (refMod==0) {
+      refMod=new HGeomCompositeVolume(pPar->getNumComponents());
+      refMod->SetName(modName);
+      pPar->addRefVolume(refMod,0);
+    }
+    pMod->setVolume(refMod);
+    allFound=kTRUE;
+  }
+  return allFound;
+}
+
+Bool_t HWallParOra2Io::readCompGeomNames(HWallGeomPar* pPar) {
+  // reads the names of all cells in the geometry tables
+  EXEC SQL BEGIN DECLARE SECTION;
+    struct {
+      int cell[WALL_MAXCELLS];
+      varchar oname[WALL_MAXCELLS][9];
+    } lrecG;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("readCompGeomNames(...)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT id, geom_obj_name
+    INTO :lrecG
+    FROM wall_ana.detector_cell
+    WHERE geom_obj_name IS NOT NULL;
+  Int_t nCells=sqlca.sqlerrd[2];
+  for(Int_t k=0;k<nCells;k++) {
+    HModGeomPar* pMod=pPar->getModule(-1,0);
+    HGeomCompositeVolume* pRefMod=pMod->getRefVolume();
+    lrecG.oname[k].arr[lrecG.oname[k].len]='\0';
+    HGeomVolume* volu=pRefMod->getComponent((lrecG.cell[k]-1));
+    volu->SetName((Char_t*)(lrecG.oname[k].arr));
+  }
+  return (nCells>0) ? kTRUE : kFALSE;
+}
+
+Int_t HWallParOra2Io::createVers(HParSet* pPar) {
+  // creates a new version for the parameters
+  // returns the new version
+  cout<<"---------------  "<<pPar->GetName()<<"   ---------------\n";
+  if (strlen(pPar->getAuthor())==0) {
+    Error("createVers(HParSet*)",
+          "author of parameters not defined");
+    return -1;
+  }
+  if (strlen(pPar->getDescription())==0) {
+    Error("createVers(HParSet*)",
+          "descriction of parameters not defined");
+    return -1;
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   vers=-1;
+    int   context;
+    int   run;
+    char* creator;
+    char* descript;
+  EXEC SQL END DECLARE SECTION;
+  context = getContextId(pPar->IsA()->GetName(),pPar->getParamContext());
+  if (context==-1) return -1;
+  run=getActRunId();
+  creator=(Char_t*)pPar->getAuthor();
+  descript=(Char_t*)pPar->getDescription();
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+  const Char_t* contName=pPar->IsA()->GetName();
+  if (strcmp(contName,"HWallTrb2Lookup")==0) {
+    EXEC SQL EXECUTE
+      BEGIN
+        SELECT wall_ana.wall_par_query.next_version INTO :vers FROM DUAL;
+        INSERT INTO wall_ana.trb2lookup_vers
+                   (vers_id, orig_context_id, run_id, author, description)
+            VALUES (:vers, :context, :run, :creator, :descript);
+      END;
+    END-EXEC;
+  } else if (strcmp(contName,"HWallCalPar")==0) {
+    EXEC SQL EXECUTE
+      BEGIN
+        SELECT wall_ana.wall_par_query.next_version INTO :vers FROM DUAL;
+        INSERT INTO wall_ana.calpar_vers
+                   (vers_id, orig_context_id, run_id, author, description)
+            VALUES (:vers, :context, :run, :creator, :descript);
+      END;
+    END-EXEC;
+  }
+  cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
+  return vers;
+errorfound:
+  showSqlError("createVers(HParSet*)");
+  return vers;
+}
+
+Int_t HWallParOra2Io:: writePar(HWallTrb2Lookup* pPar) {
+  // creates a new version and writes the lookup table to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   rows_to_insert;
+    int   vers[WALL_MAXTRBCHANNELS];
+    int   address[WALL_MAXTRBCHANNELS];
+    int   chan[WALL_MAXTRBCHANNELS];
+    int   cell[WALL_MAXTRBCHANNELS];
+  EXEC SQL END DECLARE SECTION;
+  Int_t nChan=0;
+  Int_t arrayOffset=pPar->getArrayOffset();
+  for(Int_t b=0;b<pPar->getSize();b++) {
+    HWallTrb2LookupBoard* board=(*pPar)[b];
+    if (board) {
+      nChan=0;
+      for(Int_t t=0;t<board->getSize();t++) {
+        HWallTrb2LookupChan& rChan=(*board)[t];
+        if (rChan.getCell()!=-1) {
+          vers[nChan]=version;
+          address[nChan]=arrayOffset+b;
+          chan[nChan]=t;
+          cell[nChan]=rChan.getCell()+1;
+          nChan++;
+        }
+      }
+      rows_to_insert=nChan;
+      EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+      EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+      EXEC SQL FOR :rows_to_insert
+      INSERT INTO wall_ana.trb2lookup_data
+                  (vers_id, trbnet_address, channel_id, cell_id)
+             VALUES (:vers, :address, :chan, :cell);
+      cout<<"trbnet-address "<<"0x"<<hex<<(arrayOffset+b)<<dec<<":  "<<rows_to_insert<<" rows inserted\n";
+    }
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HWallTrb2Lookup*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+Int_t HWallParOra2Io:: writePar(HWallCalPar* pPar) {
+  // creates a new version and writes the calibration parameters to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers[WALL_MAXCELLS];
+    int cell[WALL_MAXCELLS];
+    float tslope[WALL_MAXCELLS];
+    float toffset[WALL_MAXCELLS];
+    float aslope[WALL_MAXCELLS];
+    float aoffset[WALL_MAXCELLS];
+    float wcorr1[WALL_MAXCELLS];
+    float wcorr2[WALL_MAXCELLS];
+    int rows_to_insert;
+  EXEC SQL END DECLARE SECTION;
+  rows_to_insert=pPar->getSize();
+  for(Int_t i=0;i<rows_to_insert;i++) {
+    HWallCalParCell& c=(*pPar)[i];
+    cell[i]=i+1; 
+    vers[i]=version;
+    tslope[i]=c.getTDC_Slope();
+    toffset[i]=c.getTDC_Offset();
+    aslope[i]=c.getADC_Slope();
+    aoffset[i]=c.getADC_Offset();
+    wcorr1[i]=c.getTDC_WalkCorr1();
+    wcorr2[i]=c.getTDC_WalkCorr2();
+  }
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+  EXEC SQL FOR :rows_to_insert
+  INSERT INTO wall_ana.calpar_data
+              (cell_id, vers_id, tdc_slope, tdc_offset, adc_slope, adc_offset,
+               tdc_walk_corr1, tdc_walk_corr2)
+         VALUES (:cell, :vers, :tslope, :toffset, :aslope, :aoffset,
+                 :wcorr1, :wcorr2);
+  commit();
+  cout<<rows_to_insert<<" rows inserted\n";
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HWallCalPar*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+
+
+

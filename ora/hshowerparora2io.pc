@@ -1,0 +1,628 @@
+//*-- AUTHOR : Ilse Koenig
+
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+// HShowerParOra2Io
+//
+// Interface class to database Oracle for input/output of parameters needed
+// by the SHOWER detector for runs since 2010
+// (uses the Oracle C/C++ precompiler)
+//
+//////////////////////////////////////////////////////////////////////////////
+using namespace std;
+#include "hshowerparora2io.h"
+#include "hparora2set.h"
+#include "hshowercalpar.h"
+#include "hshowergeompar.h"
+#include "hgeomcompositevolume.h"
+#include "hora2geomdetversion.h"
+#include "TClass.h"
+#include <iostream>
+#include <iomanip>
+#include <unistd.h>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+#include <sqlcpr.h>
+
+ClassImp(HShowerParOra2Io)
+	
+#define SHOWER_MAXSEC      6
+#define SHOWER_MAXSECMODS  3
+#define SHOWER_MAXMODS 	  18
+#define SHOWER_MAXARR 	5000
+#define SHOWER_MAXPADS  1024
+
+
+HShowerParOra2Io::HShowerParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC) {
+  // constructor
+  // sets the name of the I/O class "HShowerParIo"
+  // gets the pointer to the connection class
+  fName="HShowerParIo";
+  initModules=new TArrayI(SHOWER_MAXMODS);
+  geomVers=0;
+}
+
+
+HShowerParOra2Io::~HShowerParOra2Io() {
+  // destructor
+  if (initModules) delete initModules;
+  if (geomVers) delete geomVers;
+}
+
+
+Bool_t HShowerParOra2Io::init(HParSet* pPar,Int_t* set) {
+  // calls special read-function for each parameter container
+  if (getRunStart(pPar)<0) {
+    pPar->setInputVersion(-1,inputNumber);
+    return kFALSE;
+  }
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HShowerCalPar")==0)
+    return read(((HShowerCalPar*)pPar),set);
+  if (strcmp(name,"HShowerGeomPar")==0) 
+    return read(((HShowerGeomPar*)pPar),set);
+  Error("init","Initialization of %s not possible from Oracle!",name);
+  return kFALSE;
+}
+
+
+Int_t HShowerParOra2Io::write(HParSet* pPar) {
+  // calls the appropriate write function for the container
+  if (getRunStart(pPar)<=0) return -1;
+  const Text_t* name=pPar->IsA()->GetName();
+  if (!strcmp(name,"HShowerCalPar"))
+    return writePar((HShowerCalPar*)pPar);
+  if (strcmp(name,"HShowerGeomPar")==0)
+    return writeAlignment((HShowerGeomPar*)pPar);
+  Error("write","Storage of %s not possible in Oracle!",name);
+  return 0;
+}
+
+Bool_t HShowerParOra2Io::getVersion(HParSet* pPar,Int_t& version) {
+  // checks, if the parameter container needs to be reinitialized
+  // reads the newest version valid for the current event file
+  // returns kTRUE, if new parameters must be read
+  // returns kFALSE, if no reinitialization needed or not valid version found
+  HParOra2Set* oraSet=getOraSet(pPar);
+  if (oraSet->contextId==-1 || runStart==-1) {
+    pPar->setInputVersion(-1,inputNumber);
+    version=-1;
+    return kFALSE;
+  }
+  Int_t contVers=pPar->getInputVersion(inputNumber);
+  if (contVers!=-1 && runStart>=oraSet->versDate[0] && runStart<=oraSet->versDate[1]) {
+    version=contVers;
+    return kFALSE;
+  }
+  const Char_t* containerClass=pPar->IsA()->GetName();
+  oraSet->clearVersDate();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers;
+    double since;
+    double until;
+  EXEC SQL END DECLARE SECTION;
+  context=oraSet->contextId;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("getVersion(HParSet*,Int_t&)");
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  if (strcmp(containerClass,"HShowerCalPar")==0) {
+    EXEC SQL SELECT vers_id,
+                    hanadate.date_to_number(valid_since),
+                    hanadate.date_to_number(valid_until)
+             INTO :vers, :since, :until
+             FROM shower_ana2.shw_calpar_vers_at_date
+             WHERE context_id = :context;
+  }
+  version=vers;
+  oraSet->versDate[0]=since;
+  oraSet->versDate[1]=until;
+  return kTRUE;
+notfound:
+  pPar->setInputVersion(-1,inputNumber);
+  version=-1;
+  return kFALSE;
+};
+
+Bool_t HShowerParOra2Io::read(HShowerCalPar* pPar, Int_t* set) {
+  // reads the calibration parameters and fill the ShowerCalPar container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  initModules->Reset();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int p_sec[SHOWER_MAXARR];
+      int p_mod[SHOWER_MAXARR];
+      int p_col[SHOWER_MAXARR];
+      int p_row[SHOWER_MAXARR];
+      float slo[SHOWER_MAXARR];
+      float ofs[SHOWER_MAXARR];
+      float thr[SHOWER_MAXARR];
+      float gai[SHOWER_MAXARR];
+    } cal;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HShowerCalPar*,Int_t*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL DECLARE cal_cur CURSOR FOR
+    SELECT sector, module, pad_col, pad_row, slope, offset, threshold, gain
+      FROM shower_ana2.shw_calpar_data_view
+      WHERE vers_id = :vers;
+  Bool_t isOpenCursor=kFALSE;
+  Bool_t allFound=kTRUE;
+  Int_t s=-1, m=-1, nTot=0, nLast=0;
+  HLocation loc;
+  loc.setNIndex(4);
+  HShowerCalParCell* pCell=0;
+  vers=oraVersion;
+  EXEC SQL OPEN cal_cur;
+  isOpenCursor=kTRUE;
+  do {
+    EXEC SQL FETCH cal_cur INTO :cal;
+    nLast=sqlca.sqlerrd[2]-nTot;
+    if (nLast>0) {
+      for (Int_t i=0;i<nLast;i++) {
+        s=cal.p_sec[i]-1;
+        m=cal.p_mod[i];
+        if (set[s*3+m]) {
+          loc[0] = s;
+          loc[1] = m;
+          loc[2] = cal.p_row[i];
+          loc[3] = cal.p_col[i];
+          pCell = (HShowerCalParCell*)pPar->getSlot(loc);
+          if (pCell) {
+            pCell = new(pCell) HShowerCalParCell;
+            pCell->setSlope(cal.slo[i]);
+            pCell->setOffset(cal.ofs[i]);
+            pCell->setThreshold(cal.thr[i]);
+            pCell->setGain(cal.gai[i]);
+          } else {
+            Error("read(HShowerCalPar*,Int_t*)",
+                  "slot not found:  %i %i %i %i",loc[0],loc[1],loc[2],loc[3]);
+
+            allFound=kFALSE;
+            break;
+          }
+          initModules->AddAt(1,s*3+m);
+        }
+        nTot++;
+      }
+    }
+  } while (nLast==SHOWER_MAXARR&&nTot<=20000&&allFound);
+  if (isOpenCursor) {
+    EXEC SQL CLOSE cal_cur;
+    for(Int_t i=0;i<SHOWER_MAXMODS;i++) {
+      if (set[i]>0 && initModules->At(i)==0) allFound=kFALSE;
+    }
+  } else allFound=kFALSE;
+  if (allFound) {
+    setChanged(pPar,oraVersion);
+    printInfo(pPar->GetName());
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+  }
+  return allFound;
+}
+
+
+Bool_t HShowerParOra2Io::read(HShowerGeomPar* pPar, Int_t* set) {
+  // reads the geometry of the Shower and fills the ShowerGeomPar container
+  Bool_t allFound=kTRUE;
+  Int_t detId=-1;
+  if (!geomVers) {
+    detId=getDetectorId(pPar->getDetectorName());
+    geomVers=new HOra2GeomDetVersion(pPar->getDetectorName(),detId);
+  } else {
+    detId=geomVers->getDetectorId();
+  }
+  if (detId<=0) {
+    allFound=kFALSE;
+    delete geomVers;
+    geomVers=0;
+  }
+  if (detId>0&&pPar->isFirstInitialization()) {
+    if (!readGeomNames(pPar,set)) {
+      allFound=kFALSE;
+      pPar->clear();
+    } else addGeomOraSet(pPar);
+  }  
+  if (allFound) allFound=readDetectorGeometry(pPar,set,geomVers);
+  return allFound;    
+}
+
+Bool_t HShowerParOra2Io::readGeomNames(HShowerGeomPar* pPar,Int_t* set) {
+  EXEC SQL BEGIN DECLARE SECTION;
+    struct {
+      int id[SHOWER_MAXMODS];
+      int sector[SHOWER_MAXMODS];
+      int module[SHOWER_MAXMODS];
+      varchar modName[SHOWER_MAXMODS][9];
+      varchar compName[SHOWER_MAXMODS][9];
+    } mods;
+    struct {
+      short id_Ind[SHOWER_MAXMODS];
+      short sector_Ind[SHOWER_MAXMODS];
+      short module_Ind[SHOWER_MAXMODS];
+      short modName_Ind[SHOWER_MAXMODS];
+      short compName_Ind[SHOWER_MAXMODS];
+    } mods_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("readGeomNames()");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+
+  EXEC SQL SELECT module_id, sector, module, geom_module_name, geom_component_name
+           INTO :mods INDICATOR :mods_Ind
+           FROM shower_ana2.shw_setup_at_date;
+  Int_t pos, sec, mod;
+  Char_t ref[10];
+  initModules->Reset();
+  for(Int_t i=0;i<sqlca.sqlerrd[2];i++) {
+    sec=mods.sector[i]-1;
+    mod=mods.module[i];
+    HModGeomPar* pMod=pPar->getModule(sec,mod);
+    pos=sec*SHOWER_MAXSECMODS + mod;
+    if (pMod && set[pos]) {
+      if (mods_Ind.modName_Ind[i]!=-1) {
+        mods.modName[i].arr[mods.modName[i].len]='\0';
+        pMod->SetName((Char_t*)(mods.modName[i].arr));
+        initModules->AddAt(pos+1,pos);
+        strcpy(ref,(Char_t*)(mods.modName[i].arr));
+        ref[4]='1'; // reference module in sector 1
+                    // not yet introduced in database
+        pMod->setRefName(ref);
+        Int_t mr=pPar->getModNumInMod(ref);
+        HGeomCompositeVolume* refMod=pPar->getRefVolume(mr);
+        if (refMod==0) {
+          refMod=new HGeomCompositeVolume(pPar->getNumComponents());
+          refMod->SetName(ref);
+          pPar->addRefVolume(refMod,mr);
+        }
+        pMod->setVolume(refMod);
+        //In Shower case this is  a wires plane (3)
+        if (mods_Ind.compName_Ind[i]!=-1) {
+          HGeomVolume* volu=refMod->getComponent(0);
+          mods.compName[i].arr[mods.compName[i].len]='\0';
+          volu->SetName((Char_t*)(mods.compName[i].arr));          
+        }
+      }
+    }
+  }
+  Bool_t allFound=kTRUE;
+  for(Int_t i=0;i<SHOWER_MAXMODS;i++) {
+    if (set[i]>0 && initModules->At(i)==0) allFound=kFALSE;
+  }
+  return allFound;
+}
+
+Int_t HShowerParOra2Io::createVers(HParSet* pPar) {
+  // creates a new version for the parameters
+  // returns the new version
+  cout<<"---------------  "<<pPar->GetName()<<"   ---------------\n";
+  if (strlen(pPar->getAuthor())==0) {
+    Error("createVers(...)",
+          "author of parameters not defined");
+    return -1;
+  }
+  if (strlen(pPar->getDescription())==0) {
+    Error("createVers(...)",
+          "descriction of parameters not defined");
+    return -1;
+  }
+  const Char_t* contName=pPar->IsA()->GetName();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers=-1;
+    int run;
+    char* creator;
+    char* descript;
+  EXEC SQL END DECLARE SECTION;
+  context = getContextId(contName,pPar->getParamContext());
+  if (context==-1) return -1;
+  run=getActRunId();
+  creator=(Char_t*)pPar->getAuthor();
+  descript=(Char_t*)pPar->getDescription();
+  EXEC SQL WHENEVER SQLERROR GOTO not_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+  if (strcmp(contName,"HShowerCalPar")==0) {
+    EXEC SQL EXECUTE
+      BEGIN
+        SELECT shower_ana2.shower_par_query.next_version INTO :vers FROM DUAL;
+        INSERT INTO shower_ana2.shw_calpar_vers
+                     (vers_id, orig_context_id, run_id, author, description)
+               VALUES (:vers, :context, :run, :creator, :descript);
+      END;
+    END-EXEC;
+  }
+  cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
+  return vers;
+not_found:
+  showSqlError("createVers()");
+  return -1;
+}
+
+Int_t HShowerParOra2Io::writePar(HShowerCalPar* pPar) {
+  // creates a new version and writes the calibration parameters to Oracle
+  if(!pPar) return -1;
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int p_sec[SHOWER_MAXARR];
+    int p_mod[SHOWER_MAXARR];
+    int p_col[SHOWER_MAXARR];
+    int p_row[SHOWER_MAXARR];
+    int vers[SHOWER_MAXPADS];
+    float slo[SHOWER_MAXPADS];
+    float ofs[SHOWER_MAXPADS];
+    float trh[SHOWER_MAXPADS];
+    float gai[SHOWER_MAXPADS];
+    int rows_to_insert;
+  EXEC SQL END DECLARE SECTION;
+  HLocation loc;
+  loc.set(4,0,0,0,0);
+  HShowerCalParCell* pCell=0;
+  Float_t cs=0, co=0, cg=0, ct=0;
+  for(Int_t s=0;s<pPar->getNSectors();s++){ 
+    for(Int_t m=0;m<pPar->getNModules();m++){ 
+      Int_t nCell=-1;
+      Int_t sId=(s+1)*10+m;
+      if (sId>0){ 
+        loc[0] = s;
+        loc[1] = m;
+        for(Int_t r=0;r<pPar->getNRows();r++) {
+          loc[2]=r;
+          for(Int_t c=0;c<pPar->getNColumns();c++){ 
+            loc[3]=c;
+            pCell = (HShowerCalParCell*)pPar->getObject(loc);
+            if (pCell) {
+              cs=pCell->getSlope();
+              co=pCell->getOffset();
+              ct=pCell->getThreshold();
+              cg=pCell->getGain();
+              if (co!=0 || cs!=1) { // only non-default values
+                nCell++;
+                if (nCell==SHOWER_MAXPADS) {
+                  Error("writePar(HShowerCalPar*)","\n Number of Pads > 1024\n");
+                  rollback();
+                  return -1;
+                }
+                p_sec[nCell]=s+1;
+                p_mod[nCell]=m;
+                p_row[nCell]=r;
+                p_col[nCell]=c;
+                vers[nCell]=version;
+                slo[nCell]=cs;
+                ofs[nCell]=co;
+                trh[nCell]=ct;
+                gai[nCell]=cg;
+              }
+            }
+          }
+        }
+      }
+      if (nCell==-1) continue;
+      rows_to_insert=nCell+1;
+      EXEC SQL WHENEVER SQLERROR GOTO not_found;
+      EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+      EXEC SQL FOR :rows_to_insert
+        INSERT INTO shower_ana2.shw_calpar_data
+            (vers_id, pad_id, slope, offset,threshold,gain )
+            VALUES (:vers,
+                    shower_ana2.shower_par_query.get_pad_id(:p_sec,:p_mod,:p_row,:p_col),
+                    :slo, :ofs, :trh,:gai);
+      cout<<"sector: "<<s<<" module: "<<m<<"    "<<rows_to_insert<<" rows inserted\n";
+    }
+  }
+  cout<<"****************************************************************\n";
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+not_found:
+  showSqlError("writePar(HShowerCalPar*)");
+  rollback();
+  return -1;
+}
+  
+void HShowerParOra2Io::printInfo(const Char_t* contName) {
+  // prints the modules initialized from Oracle
+  Bool_t first=kTRUE;
+  cout<<'\n';
+  for(Int_t i=0;i<SHOWER_MAXMODS;i++) {
+    if (initModules->At(i)>0) {
+      if (first) {
+        cout<<contName<<": modules(s) initialized from Oracle: ";
+        first=kFALSE;
+      }
+      cout<<i<<" ";
+    }
+  }
+  cout<<endl;
+}
+
+
+
+
+
+/*
+Bool_t HShowerParOra2Io::fillGeom(HShowerGeometry* pPar){
+  //Function for calculating the module centers and tranformation used in analysis
+  //(corresponding to the PAD_FIBREs)
+  //For more info see documentation:
+  //http://hades.if.uj.edu.pl/docs/shower/geometry
+  HGeomVector vm[3] = { HGeomVector(0.000 , 0.00 ,  -4.0), 
+                        HGeomVector(0.000 , 0.00 ,  67.6), 
+                        HGeomVector(0.000 , 0.00 , 134.9)};
+  pPar->m_nSectors = pPar->getMaxSectors();
+  pPar->m_nModules = pPar->getMaxModules();
+  pPar->m_nRows = 32; //! 
+  pPar->m_nColumns = 32;//!
+  pPar->m_nLab = 1;//!
+  Int_t angle[6] = {0,300,240,180,120,60};
+  for (Int_t s=0;s<pPar->getMaxSectors();s++){
+    pPar->sectors[s].reset();
+    pPar->sectors[s].setAngleRot(angle[s]);
+    pPar->sectors[s].transform.setRotMatrix(
+                     pPar->getModule(s,0)->getLabTransform().getRotMatrix());
+    pPar->sectors[s].transform.setTransVector(
+                     pPar->getModule(s,0)->getLabTransform().getTransVector());
+    for(Int_t m=0;m<pPar->getMaxModules();m++){
+      HModGeomPar* pMod = pPar->getModule(s,m);
+      HShowerModuleGeom *pModGeom = new HShowerModuleGeom;
+      pModGeom->setModuleID(m);
+      HGeomRotation rotM = pMod->getLabTransform().getRotMatrix();
+      pModGeom->transform.setRotMatrix(pMod->getLabTransform().getRotMatrix());
+      HGeomVector v = pMod->getLabTransform().getTransVector();
+      HGeomVector v_mod = rotM*vm[m]+v;
+      //set new vector for modules;
+      pModGeom->transform.setTransVector(v_mod);
+      pPar->sectors[s].addModule(pModGeom);
+    }  
+  }
+  HGeomVector *points[4];
+  HShowerFrameCorner *pFC;
+
+  for(Int_t m = 0; m < 3; m++) {
+    HGeomCompositeVolume* refMod=pPar->getRefVolume(m);
+    HGeomVolume *comp = refMod->getComponent(0);//only one comp; wires plane
+    points[0] = comp->getPoint(3);//geant coordinate system is left-handed!! 
+    points[1] = comp->getPoint(2);//
+    points[2] = comp->getPoint(1);//
+    points[3] = comp->getPoint(0);//
+    pPar->frames[m].reset();
+    pPar->frames[m].setModuleID(m);
+    for (Int_t i=0;i<4;i++){
+      pFC = new HShowerFrameCorner;
+      pFC->setX(points[i]->getX()*0.1);
+      pFC->setY(points[i]->getY()*0.1);
+      if(i==0 || i==3) pFC->setFlagArea(1);
+      else pFC->setFlagArea(0);
+      pPar->frames[m].addCorner(pFC);
+    }
+  }
+  if(!readGeom(pPar)) return kFALSE;
+  pPar->attachTables(); 
+  return kTRUE;
+}
+
+
+Bool_t HShowerParOra2Io::readGeom(HShowerGeometry* pPar){
+  //Function for reading information about pads, wires etc.
+  //which is not accesible via HDetGeomPar interface
+  EXEC SQL BEGIN DECLARE SECTION;
+    struct  {
+      int id[267]; //3*89 wires
+      int wire_id[267];
+      float wire_coord[267];
+      float distance[267];
+      int   module_type_id[267];
+    }wire;
+    struct {
+      int id[SHOWER_MAXPADS];
+      int module_type_id[SHOWER_MAXPADS];
+      float x_ld[SHOWER_MAXPADS];
+      float x_lu[SHOWER_MAXPADS];
+      float x_rd[SHOWER_MAXPADS];
+      float x_ru[SHOWER_MAXPADS];
+      float y_ld[SHOWER_MAXPADS];
+      float y_lu[SHOWER_MAXPADS];
+      float y_rd[SHOWER_MAXPADS];
+      float y_ru[SHOWER_MAXPADS];
+      int pad_flag[SHOWER_MAXPADS];
+      int linked_to[SHOWER_MAXPADS] ;
+    }data;
+    int mod_id;
+  EXEC SQL END DECLARE SECTION;
+
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("readWires()");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL DECLARE pad_cur CURSOR FOR
+            SELECT id,module_type_id,
+                   X_LD,Y_LD, X_LU, Y_LU, X_RD,Y_RD, X_RU,Y_RU,PAD_FLAG,LINKED_TO  
+            FROM shower_ana.shw_pad_geom
+            WHERE module_type_id= :mod_id;
+  Int_t l;
+  for(Int_t m=0;m<3;m++){  //3 modules 0,1,2
+    mod_id=m;
+    EXEC SQL OPEN pad_cur;
+    EXEC SQL FETCH pad_cur INTO :data;
+    Int_t nPads = sqlca.sqlerrd[2];
+    pPar->pads[m].createPads(32,32);
+    pPar->pads[m].setModuleID(m);
+    HShowerPad* p = new HShowerPad;
+    for(Int_t i=0; i <nPads; i++) {
+      p->setPadNr((data.id[i]-1)-(m*1024));
+      pPar->pads[m].setPad(p, (data.id[i]-1)-(m*1024));
+    }
+    delete p;
+    for(Int_t n=0; n<nPads;n++){
+      HShowerPad* pad = pPar->pads[m].getPad((data.id[n]-1)-(m*1024));
+      if(pad){
+        pad->fXld = data.x_ld[n];
+        pad->fYld = data.x_lu[n];
+        pad->fXlu = data.x_rd[n];
+        pad->fYlu = data.x_ru[n];
+        pad->fXrd = data.y_ld[n];
+        pad->fYrd = data.y_lu[n];
+        pad->fXru = data.y_rd[n];
+        pad->fYru = data.y_ru[n];
+        pPar->pads[m].setFrame(pPar->getFrame(m));
+        //Calculate pad flag (0,1,2)  
+        HShowerFrame* phFrame = pPar->pads[m].getFrame();
+        if ((!phFrame->isOut(pad->fXld, pad->fYld)) &&
+            (!phFrame->isOut(pad->fXlu, pad->fYlu)) &&
+            (!phFrame->isOut(pad->fXru, pad->fYru)) &&
+            (!phFrame  ->isOut(pad->fXrd, pad->fYrd))) {
+          pad->setPadFlag(1);
+        } else if (!phFrame->isOut(pad->fXld, pad->fYld) ||
+                   !phFrame->isOut(pad->fXlu, pad->fYlu) ||
+                   !phFrame->isOut(pad->fXru, pad->fYru) ||
+                   !phFrame->isOut(pad->fXrd, pad->fYrd)) {
+          pad->setPadFlag(2);
+        } else {
+          pad->setPadFlag(0);
+        }
+
+        pad->setLinkedNr(data.pad_flag[n]);
+        if (pad->getLinkedNr()) {
+          if (pad->linkPad) delete [] pad->linkPad;
+          pad->linkPad = new HShowerPad*[pad->getLinkedNr()];
+          for (Int_t k=0; k<pad->getLinkedNr(); k++) {
+            l = data.linked_to[n];
+            pad->linkPad[k] = pPar->pads[m].getPad(l);
+          }
+        }
+      }
+    }
+  }
+  EXEC SQL CLOSE pad_cur;
+  EXEC SQL SELECT id,wire_id,wire_coord,distance,module_type_id
+           INTO :wire
+           FROM shower_ana.shw_wire
+           ORDER BY id;
+  HShowerWire* pWire;
+  Int_t nWires = sqlca.sqlerrd[2];
+  pPar->wires[0].reset();
+  pPar->wires[1].reset();
+  pPar->wires[2].reset();
+
+  for(Int_t w=0;w<nWires;w++){
+    pPar->wires[wire.module_type_id[w]].setModuleID(wire.module_type_id[w]);
+    pWire = new HShowerWire;
+    pWire->setNrWire(wire.wire_id[w]);
+    pWire->setYWire(wire.wire_coord[w]);
+    pPar->wires[wire.module_type_id[w]].setDistWire(wire.distance[w]);
+    pPar->wires[wire.module_type_id[w]].addWire(pWire);
+  }
+  return kTRUE;
+}                  
+
+*/
+

@@ -1,0 +1,24 @@
+1.  The official PC for online Monitoring is lxg0447.gsi.de
+2.  The online monitor software is installed in
+    . /u/hades-qa/HYDRA/online_xxxxx/defall.h
+
+3.  For data access the corresponding disks on the
+    Eventbuilder have to be mounted via
+
+    sshfs hadaq@lxhadeb01:/data22/data/res DataMount
+
+4.  The script
+     
+     /u/hades-qa/bin/start_OLM.sh
+     has to be configured. If it dows not exist
+     in the ~/bin it has to copied from
+     /u/hades-qa/HYDRA/online_xxxxx/online/server
+
+5.  To run the software:
+
+    .  start_OLM.sh
+
+6.  For further information about server/client see
+
+    /u/hades-qa/HYDRA/online_xxxxx/online/server/README.txt
+

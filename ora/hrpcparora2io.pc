@@ -1,0 +1,566 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 04/02/2010
+
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+// HRpcParOra2Io
+//
+// Interface class to database Oracle for input/output of parameters needed
+// by the RPC for runs since 2010
+// (uses the Oracle C/C++ precompiler)
+//
+//////////////////////////////////////////////////////////////////////////////
+using namespace std;
+#include "hrpcparora2io.h"
+#include "hparora2set.h"
+#include "hrpccalpar.h"
+#include "hrpcgeompar.h"
+#include "hgeomcompositevolume.h"
+#include "hora2geomdetversion.h"
+#include "hrpctrb2lookup.h"
+#include "TClass.h"
+#include <iostream>
+#include <iomanip>
+#include <unistd.h>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HRpcParOra2Io)
+
+#define RPC_MAXSEC           6
+#define RPC_MAXSECCELLS    192
+#define RPC_MAXCELLS      1152
+#define RPC_MAXTRBS         24
+#define RPC_NCHAN_TRB      128
+#define RPC_MAXCHANNELS   3072
+#define RPC_MAXSECCHANNELS 512
+
+HRpcParOra2Io::HRpcParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC) {
+  // constructor
+  // sets the name of the I/O class "HRpcParIo"
+  // gets the pointer to the connection class
+  fName="HRpcParIo";
+  initModules=new TArrayI(RPC_MAXSEC);
+  geomVers=0;
+}
+
+HRpcParOra2Io::~HRpcParOra2Io(void) {
+  // destructor
+  if (initModules) delete initModules;
+  if (geomVers) delete geomVers;
+}
+
+Bool_t HRpcParOra2Io::init(HParSet* pPar,Int_t* set) {
+  // calls special read-function for each parameter container
+  if (getRunStart(pPar)<0) {
+    pPar->setInputVersion(-1,inputNumber);
+    return kFALSE;
+  }
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HRpcCalPar")==0) return read(((HRpcCalPar*)pPar),set);
+  if (strcmp(name,"HRpcGeomPar")==0) return read(((HRpcGeomPar*)pPar),set);
+  if (strcmp(name,"HRpcTrb2Lookup")==0) return read(((HRpcTrb2Lookup*)pPar));
+  cout<<"No read-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return kFALSE;
+}
+
+Int_t HRpcParOra2Io::write(HParSet* pPar) {
+  // calls the appropriate write function for the container
+  if (getRunStart(pPar)<=0) return -1;
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HRpcCalPar")==0) return writePar((HRpcCalPar*)pPar);
+  if (strcmp(name,"HRpcGeomPar")==0) return writeAlignment((HRpcGeomPar*)pPar);
+  if (strcmp(name,"HRpcTrb2Lookup")==0) return writePar((HRpcTrb2Lookup*)pPar);
+  cout<<"No write-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return 0;
+}
+
+Bool_t HRpcParOra2Io::getVersion(HParSet* pPar,Int_t& version) {
+  // checks, if the parameter container needs to be reinitialized
+  // reads the newest version valid for the current event file
+  // returns kTRUE, if new parameters must be read
+  // returns kFALSE, if no reinitialization needed or not valid version found
+  HParOra2Set* oraSet=getOraSet(pPar);
+  if (oraSet->contextId==-1 || runStart==-1) {
+    pPar->setInputVersion(-1,inputNumber);
+    version=-1;
+    return kFALSE;
+  }
+  Int_t contVers=pPar->getInputVersion(inputNumber);
+  if (contVers!=-1 && runStart>=oraSet->versDate[0] && runStart<=oraSet->versDate[1]) {
+    version=contVers;
+    return kFALSE;
+  }
+  const Char_t* containerClass=pPar->IsA()->GetName();
+  oraSet->clearVersDate();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers;
+    double since;
+    double until;
+  EXEC SQL END DECLARE SECTION;
+  context=oraSet->contextId;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("getVersion(HParSet*,Int_t&)");
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  if (strcmp(containerClass,"HRpcCalPar")==0) {
+    EXEC SQL SELECT version,
+                    hanadate.date_to_number(valid_since),
+                    hanadate.date_to_number(valid_until)
+             INTO :vers, :since, :until
+             FROM rpc_ana2.calpar_vers_at_date
+             WHERE context_id = :context;
+  } else {
+    if (strcmp(containerClass,"HRpcTrb2Lookup")==0) {
+      EXEC SQL SELECT version,
+                      hanadate.date_to_number(valid_since),
+                      hanadate.date_to_number(valid_until)
+               INTO :vers, :since, :until
+               FROM rpc_ana2.trb2lookup_vers_at_date
+               WHERE context_id = :context;
+    }
+  }
+  version=vers;
+  oraSet->versDate[0]=since;
+  oraSet->versDate[1]=until;
+  return kTRUE;
+notfound:
+  pPar->setInputVersion(-1,inputNumber);
+  version=-1;
+  return kFALSE;
+};
+
+Bool_t HRpcParOra2Io::read(HRpcCalPar* pPar, Int_t* set) {
+  // reads the calibration parameters and fill the RpcCalPar container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  initModules->Reset();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int sec[RPC_MAXCELLS];
+      int col[RPC_MAXCELLS];
+      int cell[RPC_MAXCELLS];
+      float rtimeo[RPC_MAXCELLS];
+      float ltimeo[RPC_MAXCELLS];
+      float rtoto[RPC_MAXCELLS];
+      float ltoto[RPC_MAXCELLS];
+      float t2t[RPC_MAXCELLS];
+      float t2c[RPC_MAXCELLS];
+      float oo[RPC_MAXCELLS];
+    } cal;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HRpcCalPar*,Int_t*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT sector, column_number, cell_number,
+                  right_time_offset, left_time_offset,
+                  right_tot_offset, left_tot_offset,
+                  tdc2time, tot2charge, overall_offset
+           INTO :cal
+           FROM rpc_ana2.calpar_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  Int_t s=-1;
+  for (Int_t i=0;i<nData;i++) {
+    s=cal.sec[i]-1;
+    if (set[s]) {
+      (*pPar)[s].fill(cal.col[i],cal.cell[i],cal.rtimeo[i],cal.ltimeo[i],
+                      cal.rtoto[i],cal.ltoto[i],cal.t2t[i],cal.t2c[i],cal.oo[i]);
+        initModules->AddAt(1,s);
+    }
+  }
+  rc=kTRUE;
+  for(Int_t i=0;i<RPC_MAXSEC;i++) {
+    if (set[i]==1 && initModules->At(i)==0) rc=kFALSE;
+  }
+  if (rc) {
+    setChanged(pPar,oraVersion);
+    printInfo(pPar->GetName());
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+  }
+  return rc;
+}
+
+Bool_t HRpcParOra2Io::read(HRpcGeomPar* pPar, Int_t* set) {
+  // reads the geometry of the RPC and fills the RpcGeomPar container
+  Bool_t allFound=kTRUE;
+  Int_t detId=-1;
+  if (!geomVers) {
+    detId=getDetectorId(pPar->getDetectorName());
+    geomVers=new HOra2GeomDetVersion(pPar->getDetectorName(),detId);
+  } else {
+    detId=geomVers->getDetectorId();
+  }
+  if (detId<=0) {
+    allFound=kFALSE;
+    delete geomVers;
+    geomVers=0;
+  }
+  if (detId>0&&pPar->isFirstInitialization()) {
+    if (!readModGeomNames(pPar,set) || !readCompGeomNames(pPar,set)) {
+      allFound=kFALSE;
+      pPar->clear();
+    } else addGeomOraSet(pPar);
+  }  
+  if (allFound) allFound=readDetectorGeometry(pPar,set,geomVers);
+  return allFound;    
+}
+
+Bool_t HRpcParOra2Io::readModGeomNames(HRpcGeomPar* pPar,Int_t* set) {
+  // reads the GEANT geometry names of all modules
+  EXEC SQL BEGIN DECLARE SECTION;
+    struct {
+      int sec[RPC_MAXSEC];
+      varchar oname[RPC_MAXSEC][9];
+    } mods;
+    struct {
+      short sec[RPC_MAXSEC];
+      short oname[RPC_MAXSEC];
+    } mods_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("readModGeomNames()");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT sector, geom_obj_name
+    INTO :mods INDICATOR :mods_Ind
+    FROM rpc_ana2.detector_setup_at_date;
+  Int_t nMods=sqlca.sqlerrd[2];
+  Int_t s;
+  Char_t ref[10];
+  initModules->Reset();
+  for(Int_t i=0;i<nMods;i++) {
+    s=mods.sec[i]-1;
+    HModGeomPar* pMod=pPar->getModule(s,0);
+    if (pMod && set[s]) {
+      if (mods_Ind.oname[i]!=-1) {
+        mods.oname[i].arr[mods.oname[i].len]='\0';
+        pMod->SetName((Char_t*)(mods.oname[i].arr));
+        initModules->AddAt(s+1,s);
+        strcpy(ref,(Char_t*)(mods.oname[i].arr));
+        ref[4]='1'; // reference module in sector 1
+        pMod->setRefName(ref);
+        HGeomCompositeVolume* refMod=pPar->getRefVolume(0);
+        if (refMod==0) {
+          refMod=new HGeomCompositeVolume(pPar->getNumComponents());
+          refMod->SetName(ref);
+          pPar->addRefVolume(refMod,0);
+        }
+        pMod->setVolume(refMod);
+      }
+    }
+  }
+  Bool_t allFound=kTRUE;
+  for(Int_t i=0;i<RPC_MAXSEC;i++) {
+    if (set[i]>0 && initModules->At(i)==0) allFound=kFALSE;
+  }
+  return allFound;
+}
+
+Bool_t HRpcParOra2Io::readCompGeomNames(HRpcGeomPar* pPar,Int_t* set) {
+  // reads the names of all cells in the geometry tables
+  EXEC SQL BEGIN DECLARE SECTION;
+    struct {
+      int column_number[RPC_MAXCELLS];
+      int cell_number[RPC_MAXCELLS];
+      varchar oname[RPC_MAXCELLS][9];
+    } lrecG;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("readCompGeomNames(...)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT column_number, cell_number, geom_obj_name
+    INTO :lrecG
+    FROM rpc_ana2.module_cell
+    WHERE geom_obj_name IS NOT NULL;
+  HGeomCompositeVolume* pRefMod=pPar->getRefVolume(0);
+  Int_t nCells=sqlca.sqlerrd[2];
+  Int_t cell=-1;
+  for(Int_t k=0;k<nCells;k++) {
+    lrecG.oname[k].arr[lrecG.oname[k].len]='\0';
+    cell=pPar->getCompNum(lrecG.column_number[k],lrecG.cell_number[k]);
+    HGeomVolume* volu=pRefMod->getComponent(cell);
+    if (volu) volu->SetName((Char_t*)(lrecG.oname[k].arr));
+    else {
+      Error("readCompGeomNames","Index for cell %s not found",(Char_t*)(lrecG.oname[k].arr));
+      return kFALSE;
+    }
+  }
+  return (nCells>0) ? kTRUE : kFALSE;
+}
+
+Bool_t HRpcParOra2Io::read(HRpcTrb2Lookup* pPar) {
+  // reads the lookup table for the Trb2 unpacker and fill the container RpcTrb2Lookup
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int  address[RPC_MAXCHANNELS];
+      int  chan[RPC_MAXCHANNELS];
+      int  sector[RPC_MAXCHANNELS];
+      int  col[RPC_MAXCHANNELS];
+      int  cell[RPC_MAXCHANNELS];
+      char side[RPC_MAXCHANNELS][2];
+      int  feaddress[RPC_MAXCHANNELS];
+    } lookup;
+    struct {
+      short address_Ind[RPC_MAXCHANNELS];
+      short chan_Ind[RPC_MAXCHANNELS];
+      short sector_Ind[RPC_MAXCHANNELS];
+      short module_Ind[RPC_MAXCHANNELS];
+      short cell_Ind[RPC_MAXCHANNELS];
+      short side_Ind[RPC_MAXCHANNELS];
+      short feaddress_Ind[RPC_MAXCHANNELS];
+    } lookup_Ind;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HRpcTrb2Lookup*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT trbnet_address, channel,
+                  sector, column_no, cell_no, side, fe_address
+           INTO :lookup INDICATOR :lookup_Ind
+           FROM rpc_ana2.trb2lookup_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  for (Int_t i=0;i<nData;i++) {
+    Char_t s='\0';
+    if (lookup_Ind.side_Ind[i]!=-1) {
+      s=lookup.side[i][0];
+    }
+    pPar->fill(lookup.address[i],lookup.chan[i],
+               lookup.sector[i]-1,lookup.col[i],lookup.cell[i],
+               s,lookup.feaddress[i]);
+  }
+  rc=kTRUE;
+  if (nData>0) {
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    rc=kFALSE;
+  }
+  return rc;
+}
+
+Int_t HRpcParOra2Io::createVers(HParSet* pPar) {
+  // creates a new version for parameters
+  // returns the new version
+  cout<<"---------------  "<<pPar->GetName()<<"   ---------------\n";
+  if (strlen(pPar->getAuthor())==0) {
+    Error("createVers(HParSet*)",
+          "author of parameters not defined");
+    return -1;
+  }
+  if (strlen(pPar->getDescription())==0) {
+    Error("createVers(HParSet*)",
+          "descriction of parameters not defined");
+    return -1;
+  }
+  const Char_t* contName=pPar->IsA()->GetName();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   vers=-1;
+    int   context;
+    int   run;
+    char* creator;
+    char* descript;
+  EXEC SQL END DECLARE SECTION;
+  context = getContextId(contName,pPar->getParamContext());
+  if (context==-1) return -1;
+  run=getActRunId();
+  creator=(Char_t*)pPar->getAuthor();
+  descript=(Char_t*)pPar->getDescription();
+  EXEC SQL WHENEVER SQLERROR GOTO not_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+  if (strcmp(contName,"HRpcCalPar")==0) {
+    EXEC SQL EXECUTE
+      BEGIN
+        SELECT rpc_ana2.rpc_par_query.next_version INTO :vers FROM DUAL;
+        INSERT INTO rpc_ana2.calpar_vers
+                   (vers_id, orig_context_id, run_id, author, description)
+            VALUES (:vers, :context, :run, :creator, :descript);
+      END;
+    END-EXEC;
+  } else {
+    if (strcmp(contName,"HRpcTrb2Lookup")==0) {
+      EXEC SQL EXECUTE
+        BEGIN
+          SELECT rpc_ana2.rpc_par_query.next_version INTO :vers FROM DUAL;
+          INSERT INTO rpc_ana2.trb2lookup_vers
+                     (vers_id, orig_context_id, run_id, author, description)
+              VALUES (:vers, :context, :run, :creator, :descript);
+        END;
+      END-EXEC;
+    }
+  }
+  cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
+  return vers;
+not_found:
+  showSqlError("createVers(HParSet*)");
+  return vers;
+}
+
+Int_t HRpcParOra2Io:: writePar(HRpcCalPar* pPar) {
+  // creates a new version and writes the calibration parameters to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int sec[RPC_MAXSECCELLS];
+    int col[RPC_MAXSECCELLS];
+    int cell[RPC_MAXSECCELLS];
+    int vers[RPC_MAXSECCELLS];
+    float rtimeo[RPC_MAXSECCELLS];
+    float ltimeo[RPC_MAXSECCELLS];
+    float rtoto[RPC_MAXSECCELLS];
+    float ltoto[RPC_MAXSECCELLS];
+    float t2t[RPC_MAXSECCELLS];
+    float t2c[RPC_MAXSECCELLS];
+    float oo[RPC_MAXSECCELLS];
+    int rows_to_insert;
+  EXEC SQL END DECLARE SECTION;
+  Int_t nCell=0, maxNumCell=0;
+  for(Int_t s=0; s<pPar->getSize(); s++) {
+    HRpcCalParSec& rSec= (*pPar)[s];
+    nCell=0;
+    for(Int_t m=0; m<rSec.getSize(); m++) {
+      HRpcCalParCol& rCol= rSec[m];
+      for(Int_t c=0; c<rCol.getSize(); c++) {
+	HRpcCalParCell& rCell= rCol[c];
+        if (rCell.getRightTimeOffset()!=0||rCell.getLeftTimeOffset()!=0
+            ||rCell.getTDC2Time()!=1||rCell.getTOT2Charge()!=1) {
+	  if (nCell >= RPC_MAXSECCELLS) {
+	      Error("writePar(HRpcCalPar*)","Too many cells in sector %i",s);
+	      rollback();
+	      pPar->setChanged(kFALSE);
+	      return -1;
+	  }
+          sec[nCell]=s+1;
+          col[nCell]=m;
+          cell[nCell]=c;
+          vers[nCell]=version;
+          rtimeo[nCell]=rCell.getRightTimeOffset();
+          ltimeo[nCell]=rCell.getLeftTimeOffset();
+          rtoto[nCell]=rCell.getRightTOTOffset();
+          ltoto[nCell]=rCell.getLeftTOTOffset();
+          t2t[nCell]=rCell.getTDC2Time();
+          t2c[nCell]=rCell.getTOT2Charge();
+          oo[nCell]=rCell.getT0();
+	  nCell++;
+        }
+      }
+    }
+    if (nCell==0) continue;
+    rows_to_insert=nCell;
+    if (nCell>maxNumCell) maxNumCell=nCell;
+    EXEC SQL WHENEVER SQLERROR GOTO not_found;
+    EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+    EXEC SQL FOR :rows_to_insert
+        INSERT INTO rpc_ana2.calpar_data
+               (cell_id, vers_id, right_time_offset, left_time_offset,
+                right_tot_offset, left_tot_offset,
+                tdc2time, tot2charge, overall_offset)
+        VALUES (rpc_ana2.rpc_par_query.get_cell_id(:sec,:col,:cell),
+                :vers, :rtimeo, :ltimeo, :rtoto, :ltoto, :t2t, :t2c, :oo);
+    cout<<"sector "<<s<<"    "<<rows_to_insert<<" rows inserted\n";
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+not_found:
+  showSqlError("writePar(HRpcCalPar*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+Int_t HRpcParOra2Io::writePar(HRpcTrb2Lookup* pPar) {
+  // creates a new version and writes the lookup table to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   rows_to_insert;
+    int   vers[RPC_NCHAN_TRB];
+    int   address[RPC_NCHAN_TRB];
+    int   chan[RPC_NCHAN_TRB];
+    int   sector[RPC_NCHAN_TRB];
+    int   col[RPC_NCHAN_TRB];
+    int   cell[RPC_NCHAN_TRB];
+    char  side[RPC_NCHAN_TRB][2];
+    short side_Ind[RPC_NCHAN_TRB];
+    int   feaddress[RPC_NCHAN_TRB];
+  EXEC SQL END DECLARE SECTION;
+  Int_t nChan=0;
+  Int_t arrayOffset=pPar->getArrayOffset();
+  for(Int_t b=0;b<pPar->getSize();b++) {
+    HRpcTrb2LookupBoard* board=(*pPar)[b];
+    if (board) {
+      nChan=0;
+      for(Int_t t=0;t<board->getSize();t++) {
+        HRpcTrb2LookupChan& rChan=(*board)[t];
+        if (rChan.getSector()!=-1&&rChan.getCell()!=-1&&rChan.getFeAddress()!=-1) {
+          vers[nChan]=version;
+          address[nChan]=arrayOffset+b;
+          chan[nChan]=t;
+          sector[nChan]=rChan.getSector()+1;
+          col[nChan]=rChan.getColumn();
+          cell[nChan]=rChan.getCell();
+          side[nChan][0]=rChan.getSide();
+          if (side[nChan][0]!='\0') {
+            side[nChan][1]='\0';
+            side_Ind[nChan]=0;
+          } else side_Ind[nChan]=-1;
+          feaddress[nChan]=rChan.getFeAddress();
+          nChan++;
+        }
+      }
+      rows_to_insert=nChan;
+      EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+      EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+      EXEC SQL FOR :rows_to_insert
+      INSERT INTO rpc_ana2.trb2lookup_data
+                  (vers_id, trbnet_address, channel_id,
+                   module_id, cell_index, side, fe_address)
+             VALUES (:vers, :address, :chan,
+                     :sector, rpc_ana2.rpc_par_query.get_cell_index(:col,:cell),
+                     :side:side_Ind, :feaddress);
+      cout<<"trbnet-address "<<"0x"<<hex<<(arrayOffset+b)<<dec<<":  "<<rows_to_insert<<" rows inserted\n";
+    }
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HRpcTrb2Lookup*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+void HRpcParOra2Io::printInfo(const Char_t* contName) {
+  // prints the sectors initialized from Oracle
+  Bool_t first=kTRUE;
+  for(Int_t i=0;i<RPC_MAXSEC;i++) {
+    if (initModules->At(i)) {
+      if (first) {
+        cout<<contName<<": sector(s) initialized from Oracle: ";
+        first=kFALSE;
+      }
+      cout<<i<<" ";
+    }
+  }
+  cout<<'\n';
+}
+
+

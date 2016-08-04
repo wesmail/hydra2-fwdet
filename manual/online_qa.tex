@@ -1,0 +1,266 @@
+\chapter{HADES online monitor}
+
+\section{How-to setup and run server/client}
+
+%-----------------------------------------------------
+\begin{enumerate}
+   \item  set environment : \verb+. /misc/kempter/svn/hydraTrans/defalls.sh+
+   \item  build sever/client:
+\begin{lstlisting}
+   
+cd /misc/kempter/svn/hydraTrans/online/server/
+make clean build install
+cd /misc/kempter/svn/hydraTrans/online/client/
+make clean build install
+make clean build install
+\end{lstlisting}
+   \item  copy config files: 
+   \newline
+   \verb+cp 	hydraTrans/online/client/ClientConfig.xml .+
+   \item  setup  \verb+ClientConfig.xml+ for needed hists (if needed)
+   \newline
+   setup  \verb+analysisParams.txt+ to define parameter input , file input etc
+   \item start server
+ \begin{lstlisting}
+ hadesonlineserver.exe name hostname port ""
+ hadesonlineserver.exe OnlineMon lxg0453.gsi.de 9876 ""
+ \end{lstlisting}
+ \item	start client
+ \begin{lstlisting}
+ ./hadesonlineclient.exe  ClientConfig.xml
+ ./hadesonlineclient.exe  hostname port stop   ==> stop server
+ ./hadesonlineclient.exe  hostname port list   ==> print available histograms on the server
+ \end{lstlisting}
+\end{enumerate}
+%-----------------------------------------------------
+
+
+\section{How-to add/change histograms to monitoring}
+
+
+\begin{enumerate}
+ \item	each detector has its own monitor. 
+ in online/server you find different macros:
+ \begin{enumerate}
+    \item \verb+hadesonlineserver.cc ==>+ main program
+    \item \verb+createHades.C        ==>+ setup your server program
+    \item \verb+Detectorname.C       ==>+ monitoring the detector
+  \end{enumerate}
+  This file contains
+  \verb+createHistsDetectorname()+ 
+  add hists to the histpool and a local map which is
+  used to access the histograms by name
+  \verb+fillHistsDetectorname()+ 
+  access the histograms by name to fill them (the function
+  will be called once per event)
+  both functions are called from \verb+hadesonlineserver.cc+.
+  \verb+hadesonlineserver.cc+ has to be recompiled and restarted
+  after changes.
+
+ \item	After the histograms are added and the fill routine is
+      	defined the histogram has to be added to the Monitor GUI.
+       	Simply add the histogram \verb+online/client/ClientConfig.xml+
+      	New detectors can be added on the fly. The monitor client
+       	does not need to be recompiled, it creates the GUI dynamically
+       	by parsing the xml file. Changes on the client side needs
+       	no restart of the server as long as no new histograms have
+       	been defined.
+\end{enumerate}
+
+\section{Available monitoring histograms and how to use them}
+
+\begin{enumerate}
+  \item  All histogram types are derived from \verb+HOnlineMonHistAddon+.
+\begin{lstlisting}         
+HOnlineMonHist	   : 1-Dim Histogram
+HOnlineMonHist2	   : 2-Dim Histogram
+HOnlineTrendHist   : 1-Dim Trend Histgram
+                     (new values added on
+                     the left side of the histogram, 
+                     old values moved to the right)
+                
+HOnlineHistArray   : 1/2-Dim Array of 1-Dim Histograms
+HOnlineHistArray2  : 1/2-Dim Array of 2-Dim Histograms
+HOnlineTrendArray  : 1/2-Dim Array of Trend Histograms
+\end{lstlisting}         
+       
+  \item All histograms are created by a definition String:
+In \verb+Detector.C+ in 
+\newline
+\verb+createHistsDetectorname.C+ :
+                
+\begin{lstlisting}         
+Text_t* hists[] = 
+{
+ "FORMAT#array TYPE#1F NAME#hMdctime1Cal1 TITLE#Mdc_timeCal1 ACTIVE#1 RESET#1 REFRESH#5000 BIN#800:-100:700:0:0:0 SIZE#1:2 AXIS#time_[channel]:counts:no DIR#no OPT#no STATS#0 LOG#0:1:0 GRID#1:1 LINE#1:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99"
+ ,"FORMAT#mon TYPE#1F NAME#hMdctime1Cal1MeanTrendtemp TITLE#time1Cal1MeanTrendtemp ACTIVE#1 RESET#1 REFRESH#5000  BIN#1200:0:1200:0:0:0 SIZE#0:0 AXIS#no:no:no DIR#no OPT#no STATS#0 LOG#0:0:0 GRID#0:0 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99"
+ ,"FORMAT#mon TYPE#2F NAME#hMdccal1hits TITLE#Mdc_hcal1hits ACTIVE#1 RESET#1 REFRESH#5000 BIN#8:0:4:12:0:6 SIZE#0:0 AXIS#module:sector:no DIR#no OPT#lego2 STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99"
+ ,"FORMAT#trendarray TYPE#1F NAME#hMdccal1hitstrend TITLE#Mdc_hcal1hits_trend ACTIVE#1 RESET#0 REFRESH#500 BIN#50:0:50:0:0:0 SIZE#6:4 AXIS#trend:multiplicity:no DIR#no OPT#p STATS#0 LOG#0:0:0 GRID#0:1 LINE#0:0 FILL#0:0 MARKER#1:20:0.5 RANGE#-99:-99"
+ ,"FORMAT#mon TYPE#2F NAME#hMdcrawRoc_Subev TITLE#Mdc_Raw_Roc_SubEvent_Size ACTIVE#1 RESET#0 REFRESH#5000 BIN#120:0:24:40:0:160 SIZE#0:0 AXIS#no:sub_evt_size:counts DIR#no OPT#COLZ STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99"
+ ,"FORMAT#array TYPE#2F NAME#hMdcmbotdcCalib TITLE#Mdc_mbo_tdc_calib ACTIVE#1 RESET#1 REFRESH#5000 BIN#16:0:16:12:0:12 SIZE#6:4 AXIS#mbo:tdc:no DIR#no OPT#colz STATS#0 LOG#0:0:0 GRID#1:1 LINE#0:0 FILL#0:0 MARKER#0:0:0 RANGE#-99:-99"
+};
+\end{lstlisting}         
+
+  \begin{enumerate}
+    \item The names of the histograms must be unique.
+    To avoid overlap with other detectors use
+    \verb+hDetectorname+..... 
+    They are used to retrieve the histograms by the
+    clients and inside the macros.
+    \item FLAGS inside the definition:
+\begin{lstlisting}         
+FORMAT:         mon             ==> HOnlineMonHist
+                array           ==> HOnlineHistArray / OnlineHistArray2
+                trendarry       ==> HOnlineTrendArray
+TYPE:           1F / 2F         ==> 1/2 Dim Histograms
+NAME:                           ==> name of Histogram
+ACTIVE:         0/1             ==> Create Histogram
+RESET:          0/1             ==> Should the Histogram be refreshed if the 
+                                    Refresh count is reached ?
+REFRESH:                        ==> N events before reset 
+BIN:   nBinsX:xMin:xMax:nBinsY:yMin:yMax
+                                ==> definition for Histogram (leave y values 0 for 1 Dim)
+SIZE:      nx:ny                ==> 2-Dim array definition for FORMAT 
+                                    array/trendarray
+           1:n         1-Dim
+           0:0         no array
+\end{lstlisting}         
+    \item \verb+mapHolder::createHists(Int_t size,hists,histpool)+;
+     will create the Histrograms according to the definition and add them to the 
+     pool of Histograms on the server and the 
+     \newline
+     \verb+std::map <TString, HOnlineMonHistAddon*> detnameMap+
+     defined inside the macro.
+    \item The histograms can be accessed with \verb+get("histogramname")+
+    inside the macro. In case the name is not contained in 
+    \item Fill histograms : From any histogram type you can retrieve the
+    pointer to the standard ROOT histograms by
+\begin{lstlisting}         
+                        
+get("histogramname") -> getP()     // 1-Dim
+get("histogramname") -> getP(0,i)  // 1-Dim array
+get("histogramname") -> getP(i,j)  // 2-Dim array
+                        
+For trend histograms / array trend histograms
+use special fill() function.
+ 
+get("histogramname") -> fill(val)     // 1-Dim
+get("histogramname") -> fill(0,i,val) // 1-Dim array
+get("histogramname") -> fill(i,j,val) // 2-Dim array
+\end{lstlisting}         
+                      
+    \item How-to USE trend histograms: trend histgrams are usually filled 
+    with some variables which are obtained as avarage over several events 
+    (like avarage count rate, mean values, rms etc). The strategy is to 
+    fill a temporary histogram to collect the values over the events and 
+    if the refreshrate of the trend histogram is reached get the needed 
+    values from the temp histograms and fill them to the trend. It could 
+    look like:
+\begin{lstlisting}         
+                        
+ // loop over data for each event
+ // inside fillHistsDetectorname(evtCt)
+        
+ HCategory* mdcRawCat = gHades->getCurrentEvent()->getCategory(catMdcRaw);
+ HMdcRaw* raw;
+ for(Int_t i = 0; i < mdcRawCat->getEntries(); i ++) {                  	
+     raw = (HMdcRaw*)mdcRawCat->getObject(i);
+     if(raw) {
+              get("histtrendtemp")->getP()->Fill(raw->getTime(1));
+     }
+ }
+ // end loop
+                        
+ //---------------------------------------
+ // now fill trend hist
+ if(get("histtrend") && get("histtrendtemp") && // both hists exists
+    evtCt%get("histtrend")->getRefreshRate() ==0 && evtCt > 0){ 
+    // reached refresh
+    get("histtrend")->fill(get("histtrendtemp")->getP()->GetMean());
+    get("histtrendtemp")->getP()->Reset(); // now rest the tem hist
+ }
+ //---------------------------------------
+\end{lstlisting}         
+  \end{enumerate}                 
+\end{enumerate}                 
+                        
+                        
+\section{How-to add histograms to the client GUI} 
+        
+\begin{enumerate}        
+\item The configuration of the Client is done via \verb+online/clien/ClientConfig.xml+
+\item The Client does not need to be recompiled
+\item Each detector GUI is created on the fly by parsing 
+the xml file.It might look like:
+          	
+\begin{lstlisting} [language=XML]        
+  // in xml file
+  //---------------------------------------
+  <client> 
+             
+    <!-- program configuration -->
+    <config>
+    <server>
+    <host>hostname</host>     // host where the server is running
+    <port>portnumber</port>   // potnumber for connection to server
+    </server>
+    </config>
+    
+    
+     <!-- configuration for main window -->
+     <MainWindow>
+        <name>HADESMonitoring</name>
+        <title>HADES Monitoring</title>
+        <width>200</width>
+        <height>400</height>
+     </MainWindow>
+             
+             
+     <!-- detector configuration -->
+     <detector>
+        <name>TOF</name>     // this name will be use inthe main panel
+        <title>TOF</title>
+       	<window>
+          <name>TOFMon</name>
+          <title>TOFMon</title>
+          <tabbed>true</tabbed>  // the window will contain tabs
+          <tab>
+             <name>Main</name>   // first tab name
+             <title>Main</title>
+             <canvas>            // canvas inside tab
+             	<name>Main</name>
+              	<width>1000</width>  // size of canvas
+              	<height>800</height>
+               	<splitted>true</splitted> // create 3x2pads
+               	<nx>3</nx>
+               	<ny>2</ny>
+              	<histogram>               
+              	    <name>hdetectorname</name> //name of histogram
+              	    <type>single</type>        // plot hist or allhists of array
+              	    <subpad>1</subpad>         // pad number starts from 1 (0 if not splitted)
+               	</histogram>
+                <histogram>               
+               	    <name>hdetectorname2array</name> //name of histogram
+              	    <type>array:0:0</type>           //plot hist with index of array
+               	    <subpad>1</subpad>               //pad number starts from 1 (0 if not splitted)
+               	</histogram>
+                             
+              </canvas>
+          </tab>
+        </window>
+     </detector>
+  </client>
+  //---------------------------------------
+            
+  DO NOT PUT THE // comments INTO YOUR REAL CONFIG!!
+  FOR ALL POSSIBLE TAGS LOOK DOCU INSIDE XML FILE.
+\end{lstlisting}         
+\end{enumerate}        
+       
+        
+
+
+
+
+
+

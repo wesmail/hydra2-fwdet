@@ -1,0 +1,400 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 22/04/2014
+
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+// HPionTrackerParOra2Io
+//
+// Interface class to database Oracle for input/output of parameters needed
+// by the PionTracker
+// (uses the Oracle C/C++ precompiler)
+//
+//////////////////////////////////////////////////////////////////////////////
+using namespace std;
+#include "hpiontrackerparora2io.h"
+#include "hparora2set.h"
+#include "hpiontrackercalpar.h"
+#include "hpiontrackertrb3lookup.h"
+#include "TClass.h"
+#include <iostream>
+#include <iomanip>
+#include <unistd.h>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HPionTrackerParOra2Io)
+
+#define PIONTRACKER_MAXMODULES        10
+#define PIONTRACKER_MAXMODCELLS      128
+#define PIONTRACKER_MAXCELLS        1280
+#define PIONTRACKER_MAXTRBCHANNELS   128
+#define PIONTRACKER_MAXTDC           256
+
+HPionTrackerParOra2Io::HPionTrackerParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC) {
+  // constructor
+  // sets the name of the I/O class "HPionTrackerParIo"
+  // gets the pointer to the connection class
+  fName="HPionTrackerParIo";
+  initModules=new TArrayI(PIONTRACKER_MAXMODULES);
+}
+
+HPionTrackerParOra2Io::~HPionTrackerParOra2Io(void) {
+  // destructor
+  if (initModules) delete initModules;
+}
+
+Bool_t HPionTrackerParOra2Io::init(HParSet* pPar,Int_t* set) {
+  // calls special read-function for each parameter container
+  if (getRunStart(pPar)<0) {
+    pPar->setInputVersion(-1,inputNumber);
+    return kFALSE;
+  }
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HPionTrackerCalPar")==0)     return read(((HPionTrackerCalPar*)pPar),set);
+  if (strcmp(name,"HPionTrackerTrb3Lookup")==0) return read(((HPionTrackerTrb3Lookup*)pPar));
+  cout<<"No read-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return kFALSE;
+}
+
+Int_t HPionTrackerParOra2Io::write(HParSet* pPar) {
+  // calls the appropriate write function for the container
+  if (getRunStart(pPar)<=0) return -1;
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HPionTrackerCalPar")==0)     return writePar((HPionTrackerCalPar*)pPar);
+  if (strcmp(name,"HPionTrackerTrb3Lookup")==0) return writePar(((HPionTrackerTrb3Lookup*)pPar));
+  cout<<"No write-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return 0;
+}
+
+Bool_t HPionTrackerParOra2Io::getVersion(HParSet* pPar,Int_t& version) {
+  // checks, if the parameter container needs to be reinitialized
+  // reads the newest version valid for the current event file
+  // returns kTRUE, if new parameters must be read
+  // returns kFALSE, if no reinitialization needed or not valid version found
+  HParOra2Set* oraSet=getOraSet(pPar);
+  if (oraSet->contextId==-1 || runStart==-1) {
+    pPar->setInputVersion(-1,inputNumber);
+    version=-1;
+    return kFALSE;
+  }
+  Int_t contVers=pPar->getInputVersion(inputNumber);
+  if (contVers!=-1 && runStart>=oraSet->versDate[0] && runStart<=oraSet->versDate[1]) {
+    version=contVers;
+    return kFALSE;
+  }
+  const Char_t* containerClass=pPar->IsA()->GetName();
+  oraSet->clearVersDate();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers;
+    double since;
+    double until;
+  EXEC SQL END DECLARE SECTION;
+  context=oraSet->contextId;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("getVersion(HParSet*,Int_t&)");
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  if (strcmp(containerClass,"HPionTrackerCalPar")==0) {
+    EXEC SQL SELECT version,
+                    hanadate.date_to_number(valid_since),
+                    hanadate.date_to_number(valid_until)
+             INTO :vers, :since, :until
+             FROM start_ana2.ptracker_calpar_vers_at_date
+             WHERE context_id = :context;
+  } else {
+    if (strcmp(containerClass,"HPionTrackerTrb3Lookup")==0) {
+      EXEC SQL SELECT version,
+                      hanadate.date_to_number(valid_since),
+                      hanadate.date_to_number(valid_until)
+               INTO :vers, :since, :until
+               FROM start_ana2.ptracker_lookup_vers_at_date
+               WHERE context_id = :context;
+    }
+  }
+  version=vers;
+  oraSet->versDate[0]=since;
+  oraSet->versDate[1]=until;
+  return kTRUE;
+notfound:
+  pPar->setInputVersion(-1,inputNumber);
+  version=-1;
+  return kFALSE;
+}
+
+Bool_t HPionTrackerParOra2Io::read(HPionTrackerCalPar* pPar, Int_t* set) {
+  // reads the calibration parameters and fill the PionTrackerCalPar container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  initModules->Reset();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int module[PIONTRACKER_MAXCELLS];
+      int cell[PIONTRACKER_MAXCELLS];
+      float tdcslope[PIONTRACKER_MAXCELLS];
+      float tdcoffset[PIONTRACKER_MAXCELLS];
+      float adcslope[PIONTRACKER_MAXCELLS];
+      float adcoffset[PIONTRACKER_MAXCELLS];
+    } cal;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HPionTrackerCalPar*,Int_t*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT module, cell, tdc_slope, tdc_offset, adc_slope, adc_offset
+           INTO :cal
+           FROM start_ana2.ptracker_calpar_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  Int_t m=-1;
+  for (Int_t i=0;i<nData;i++) {
+    m=cal.module[i];
+    if (set[m]) {
+      (*pPar)[m][cal.cell[i]].fill(cal.tdcslope[i],cal.tdcoffset[i],
+                                   cal.adcslope[i],cal.adcoffset[i]);
+      initModules->AddAt(1,m);
+    }
+  }
+  rc=kTRUE;
+  for(Int_t i=0;i<PIONTRACKER_MAXMODULES;i++) {
+    if (set[i]==1 && initModules->At(i)==0) rc=kFALSE;
+  }
+  if (rc) {
+    setChanged(pPar,oraVersion);
+    printInfo(pPar->GetName());
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+  }
+  return rc;
+}
+
+Bool_t HPionTrackerParOra2Io::read(HPionTrackerTrb3Lookup* pPar) {
+  // reads the lookup table for the Trb3 unpacker and fills the parameter container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int  address[PIONTRACKER_MAXCELLS];
+      int  chan[PIONTRACKER_MAXCELLS];
+      int  module[PIONTRACKER_MAXCELLS];
+      int  cell[PIONTRACKER_MAXCELLS];
+    } lookup3;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HPionTrackerTrb3Lookup*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT trbnet_address, channel,
+                  module, cell
+           INTO :lookup3
+           FROM start_ana2.ptracker_lookup_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  for (Int_t i=0;i<nData;i++) {
+    pPar->fill(lookup3.address[i],lookup3.chan[i],
+               lookup3.module[i],lookup3.cell[i]);
+  }
+  if (nData>0) {
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+    rc=kTRUE;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    rc=kFALSE;
+  }
+  return rc;
+}
+
+Int_t HPionTrackerParOra2Io::createVers(HParSet* pPar) {
+  // creates a new version for the calibration parameters
+  // returns the new version
+  cout<<"---------------  "<<pPar->GetName()<<"   ---------------\n";
+  if (strlen(pPar->getAuthor())==0) {
+    Error("createVers(HParSet*)",
+          "author of parameters not defined");
+    return -1;
+  }
+  if (strlen(pPar->getDescription())==0) {
+    Error("createVers(HParSet*)",
+          "descriction of parameters not defined");
+    return -1;
+  }
+  const Char_t* contName=pPar->IsA()->GetName();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   vers=-1;
+    int   context;
+    int   run;
+    char* creator;
+    char* descript;
+  EXEC SQL END DECLARE SECTION;
+  context = getContextId(contName,pPar->getParamContext());
+  if (context==-1) return -1;
+  run=getActRunId();
+  creator=(Char_t*)pPar->getAuthor();
+  descript=(Char_t*)pPar->getDescription();
+  EXEC SQL WHENEVER SQLERROR GOTO not_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+  if (strcmp(contName,"HPionTrackerCalPar")==0) {
+    EXEC SQL EXECUTE
+      BEGIN
+        SELECT start_ana2.ptracker_par_query.next_version INTO :vers FROM DUAL;
+        INSERT INTO start_ana2.ptracker_calpar_vers
+                   (vers_id, orig_context_id, run_id, author, description)
+            VALUES (:vers, :context, :run, :creator, :descript);
+      END;
+    END-EXEC;
+  } else {
+    if (strcmp(contName,"HPionTrackerTrb3Lookup")==0) {
+      EXEC SQL EXECUTE
+        BEGIN
+          SELECT start_ana2.ptracker_par_query.next_version INTO :vers FROM DUAL;
+          INSERT INTO start_ana2.ptracker_trb3lookup_vers
+                     (vers_id, orig_context_id, run_id, author, description)
+              VALUES (:vers, :context, :run, :creator, :descript);
+        END;
+      END-EXEC;
+    }
+  }
+  cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
+  return vers;
+not_found:
+  showSqlError("createVers(HParSet*)");
+  return vers;
+}
+
+Int_t HPionTrackerParOra2Io:: writePar(HPionTrackerCalPar* pPar) {
+  // creates a new version and writes the calibration parameters to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int module[PIONTRACKER_MAXMODCELLS];
+    int cell[PIONTRACKER_MAXMODCELLS];
+    int vers[PIONTRACKER_MAXMODCELLS];
+    float tdcslope[PIONTRACKER_MAXMODCELLS];
+    float tdcoffset[PIONTRACKER_MAXMODCELLS];
+    float adcslope[PIONTRACKER_MAXMODCELLS];
+    float adcoffset[PIONTRACKER_MAXMODCELLS];
+    int rows_to_insert;
+  EXEC SQL END DECLARE SECTION;
+  Int_t nCell=0;
+  for(Int_t m=0; m<pPar->getSize(); m++) {
+    HPionTrackerCalParMod& rMod= (*pPar)[m];
+    nCell=0;
+    for(Int_t c=0; c<rMod.getSize(); c++) {
+      if (nCell >= PIONTRACKER_MAXMODCELLS) {
+        Error("writePar(HPionTrackerCalPar*)","Array size too small for module %i",m);
+        rollback();
+        pPar->setChanged(kFALSE);
+        return -1;
+      }         
+      HPionTrackerCalParCell& rCell= rMod[c];
+      if (rCell.getTdcOffset()!=0.F||rCell.getAdcOffset()!=0.F
+          ||rCell.getTdcSlope()!=1.F||rCell.getAdcSlope()!=1.F) {
+        module[nCell]=m;
+        cell[nCell]=c;
+        vers[nCell]=version;
+        tdcslope[nCell]=rCell.getTdcSlope();
+        tdcoffset[nCell]=rCell.getTdcOffset();
+        adcslope[nCell]=rCell.getAdcSlope();
+        adcoffset[nCell]=rCell.getAdcOffset();
+        nCell++;
+      }
+    }
+    if (nCell==0) continue;
+    rows_to_insert=nCell;
+    EXEC SQL WHENEVER SQLERROR GOTO not_found;
+    EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+    EXEC SQL FOR :rows_to_insert
+        INSERT INTO start_ana2.ptracker_calpar_data
+               (vers_id, cell_id, tdc_slope, tdc_offset, adc_slope, adc_offset )
+
+        VALUES (:vers, start_ana2.ptracker_par_query.get_cell_id(:module,:cell),
+                :tdcslope, :tdcoffset, :adcslope, :adcoffset);
+    cout<<"module "<<m<<"    "<<rows_to_insert<<" rows inserted\n";
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+not_found:
+  showSqlError("writePar(HPionTrackerCalPar*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+Int_t HPionTrackerParOra2Io::writePar(HPionTrackerTrb3Lookup* pPar) {
+  // creates a new version and writes the lookup table to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   rows_to_insert;
+    int   vers[PIONTRACKER_MAXTRBCHANNELS];
+    int   address[PIONTRACKER_MAXTRBCHANNELS];
+    int   chan[PIONTRACKER_MAXTRBCHANNELS];
+    int   module[PIONTRACKER_MAXTRBCHANNELS];
+    int   cell[PIONTRACKER_MAXTRBCHANNELS];
+  EXEC SQL END DECLARE SECTION;
+  Int_t nChan=0;
+  Int_t arrayOffset=pPar->getArrayOffset();
+  for(Int_t t=0;t<pPar->getSize();t++) {
+    HPionTrackerTrb3LookupBoard* tdc=(*pPar)[t];
+    if (tdc) {
+      nChan=0;
+      for(Int_t c=0;c<tdc->getSize();c++) {
+        HPionTrackerTrb3LookupChan& rChan=(*tdc)[c];
+        if (rChan.getModule()!=-1&&rChan.getCell()!=-1) {
+          vers[nChan]=version;
+          address[nChan]=arrayOffset+t;
+          chan[nChan]=c;
+          module[nChan]=rChan.getModule();
+          cell[nChan]=rChan.getCell();
+          nChan++;
+        }
+      }
+      rows_to_insert=nChan;
+      EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+      EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+      EXEC SQL FOR :rows_to_insert
+      INSERT INTO start_ana2.ptracker_trb3lookup_data
+                  (vers_id, trbnet_address, channel_id, cell_id)
+             VALUES (:vers, :address, :chan,
+                     start_ana2.ptracker_par_query.get_cell_id(:module,:cell));
+      cout<<"Trbnet-address "<<"0x"<<hex<<(arrayOffset+t)<<dec<<":  "<<rows_to_insert<<" rows inserted\n";
+    }
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HPionTrackerTrb3Lookup*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+void HPionTrackerParOra2Io::printInfo(const Char_t* contName) {
+  // prints the sectors initialized from Oracle
+  Bool_t first=kTRUE;
+  for(Int_t i=0;i<PIONTRACKER_MAXMODULES;i++) {
+    if (initModules->At(i)) {
+      if (first) {
+        cout<<contName<<": module(s) initialized from Oracle: ";
+        first=kFALSE;
+      }
+      cout<<i<<" ";
+    }
+  }
+  cout<<'\n';
+}

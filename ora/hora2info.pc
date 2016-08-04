@@ -1,0 +1,547 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 25/05/2010 by Ilse Koenig
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+// HOra2Info
+//
+// Class for additional information from database Oracle
+// (uses the Oracle C/C++ precompiler)
+// Functions in this class are not used by the analysis but can be called
+// by the user on the ROOT interpreter to get additional information from
+// Oracle tables.
+//
+//////////////////////////////////////////////////////////////////////////////
+using namespace std;
+#include "hora2info.h"
+#include "hora2conn.h"
+#include "hruninfo.h"
+#include "hfileinfo.h"
+#include <iostream>
+#include <iomanip>
+#include <cstdlib>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// Include the SQL Communications Area
+#include <sqlca.h>
+ 
+ClassImp(HOra2Info)
+
+#define NMAX_INFO 2000
+ 
+void HOra2Info::showRunStart(Int_t run) {
+  // prints the start date and time of given run
+  EXEC SQL BEGIN DECLARE SECTION;
+    int id; 
+    char runDate[21];
+    short runDate_Ind=-1;
+  EXEC SQL END DECLARE SECTION;
+  id=run;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound; 
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL SELECT TO_CHAR(run_start,'DD-MON-YYYY HH24:MI:SS')
+           INTO :runDate INDICATOR :runDate_Ind
+           FROM daq.daq_runs_hydra2
+           WHERE run_id = :id;
+  if (runDate_Ind>=0) cout<<"Run "<<run<<" started at "<<runDate<<'\n';
+  else cout << "no Run_Start for run "<<run<<'\n';
+  return;
+notfound:
+  cout << "Run not found" <<endl;
+  return;
+errorfound:
+  pConn->showSqlError("showRunStart(Int_t)");
+}
+
+Int_t HOra2Info::getRunId(const Text_t* daqFilename) {
+  // returns the run id of a daq file
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* daqfile;
+    int run;
+  EXEC SQL END DECLARE SECTION;
+  daqfile=(Char_t*)daqFilename;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL SELECT run_id INTO :run
+           FROM daq.daq_files_hydra2
+           WHERE UPPER(filename) = UPPER(:daqfile);           
+  return run;
+notfound:
+  Error("getRunId(Text_t*)","No such DAQ file %s",daqFilename);
+  return -1;
+errorfound:
+  pConn->showSqlError("getRunId(Text_t*)");
+  return -1;
+}
+
+
+Int_t HOra2Info::getRefRunId(const Text_t* daqFilename) {
+  // returns the run id of the last run, where run start <= timestamp extracted
+  // from daqFilename, or -1 if no run is found
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* daqfile;
+    int   run = -1;
+  EXEC SQL END DECLARE SECTION;
+  daqfile=(Char_t*)daqFilename;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;    
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL EXECUTE
+    BEGIN
+      :run := hades_oper.get_reference_run(:daqfile);
+    END;
+  END-EXEC;
+  return run;
+notfound:
+  pConn->showSqlError("getRefRunId(Text_t*)");
+  return -1;
+errorfound:
+  pConn->showSqlError("getRefRunId(Text_t*)");
+  return -1;
+}
+
+
+Int_t HOra2Info::getLastRun(const Text_t* beamtime) {
+  // returns the id of the last run of the specified beamtime
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* bt;
+    int run;
+  EXEC SQL END DECLARE SECTION;
+  bt=(Char_t*)beamtime;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL SELECT MAX(run_id) INTO :run
+           FROM daq.daq_runs_hydra2
+           WHERE exp_id = :bt
+           AND run_start = ( SELECT MAX(run_start)
+                             FROM daq.daq_runs_hydra2           
+                             WHERE exp_id = :bt );
+  return run;
+notfound:
+  Error("getLastRun(Text_t*)","No run found for beamtime %s",beamtime);
+  return -1;
+errorfound:
+  pConn->showSqlError("getLastRun(Text_t*)");
+  return -1;
+}
+
+Bool_t HOra2Info::getDaqFilename(Int_t runId,TString& filename) {
+  // returns the DAQ filename of the specified runId
+  // generates a filename (prefix auto) from the starttime in case the filename is null
+  EXEC SQL BEGIN DECLARE SECTION;
+    int     id;
+    varchar fname[128];
+    varchar fstart[20];
+    short   fname_Ind; 
+    short   fstart_Ind; 
+  EXEC SQL END DECLARE SECTION;
+  id=runId;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL SELECT filename, to_char(run_start,'YYDDDHH24MISS')
+           INTO :fname:fname_Ind, :fstart:fstart_Ind
+           FROM daq.daq_runs_hydra2
+           where run_id = :id;
+  if (fname_Ind!=-1) {
+    fname.arr[fname.len]='\0';
+    filename=(Char_t*)(fname.arr);
+  }
+  if (filename.CompareTo("null")==0) {
+    if (fstart_Ind!=-1) {
+      fstart.arr[fstart.len]='\0';
+      filename="auto";
+      filename.Append((Char_t*)(fstart.arr));
+      filename.Append(".hld");
+    } else {
+      filename="\0";
+      Warning("getDaqFilename","No runStart for runId %i",runId);
+      return kFALSE;
+    }
+  }
+  return kTRUE;
+notfound:
+  Warning("getDaqFilename","RunId %i not found",runId);
+  return kFALSE;
+errorfound:
+  pConn->showSqlError("getDaqFilename");
+  return kFALSE;
+}
+
+TList* HOra2Info::getListOfRuns(const Char_t* beamtime,
+                               const Char_t* startAt, const Char_t* endAt) {
+  // returns the list of runs for the specifies experiment and range
+  // accepts dates (format DD-MON-YYYY HH24:MI:SS), hld-filenames and run ids
+  if (strlen(beamtime)==0) return 0;
+  TString expName(beamtime);
+  expName.ToUpper();
+  TString rangeStart;
+  TString rangeEnd;
+  Bool_t rc=kTRUE;
+  if (expName.Contains("SIM")) return getListOfSimRefRuns(expName.Data(),startAt,endAt);
+  if (strlen(startAt)!=0) {
+    rc=getRunStart(startAt,rangeStart);
+  } else {
+    rangeStart="01-JAN-2010 00:00:00";
+  }
+  if (!rc) return 0;
+  if (strlen(endAt)!=0) {
+    rc=getRunStart(endAt,rangeEnd);
+  } else {
+    rangeEnd="01-JAN-4000 00:00:00";
+  }
+  if (!rc) return 0;
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* pexp;
+    char* pstart;
+    char* pend;
+    struct {
+      int     rid[NMAX_INFO];
+      varchar rname[NMAX_INFO][81];
+      char    ts[NMAX_INFO][21];
+      char    te[NMAX_INFO][21];
+      int     nevt[NMAX_INFO];
+    } runs;
+    struct {
+      short rid_Ind[NMAX_INFO];
+      short rname_Ind[NMAX_INFO];
+      short ts_Ind[NMAX_INFO];
+      short te_Ind[NMAX_INFO];
+      short nevt_Ind[NMAX_INFO];
+    } runs_Ind;
+  EXEC SQL END DECLARE SECTION;
+  pexp=(Char_t*)expName.Data();
+  pstart=(Char_t*)rangeStart.Data();
+  pend=(Char_t*)rangeEnd.Data();
+  Int_t nTot=0;
+  Int_t nLast=0;
+  TList* runsList=new TList();
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL DECLARE runs_cursor CURSOR FOR
+           SELECT run_id, filename,
+                  TO_CHAR(run_start,'DD-MON-YYYY HH24:MI:SS'),
+                  TO_CHAR(run_stop,'DD-MON-YYYY HH24:MI:SS'),
+                  events
+           FROM daq.daq_runs_hydra2
+           WHERE upper(exp_id)= :pexp
+             AND run_start IS NOT NULL
+             AND run_start BETWEEN TO_DATE(:pstart,'DD-MON-YYYY HH24:MI:SS')
+                           AND TO_DATE(:pend,'DD-MON-YYYY HH24:MI:SS')
+             AND filename is not null and filename != 'null'
+           ORDER BY run_start;
+  EXEC SQL OPEN runs_cursor;
+  do {
+    EXEC SQL FETCH runs_cursor INTO :runs INDICATOR :runs_Ind;
+    nLast=sqlca.sqlerrd[2]-nTot;
+    for (Int_t i=0;i<nLast;i++) {
+      runs.rname[i].arr[runs.rname[i].len]='\0';
+      HRunInfo* p=new HRunInfo((Char_t*)(runs.rname[i].arr));
+      p->setRunId(runs.rid[i]);
+      runs.ts[i][20]='\0';
+      p->setStartTime((Char_t*)(runs.ts[i]));
+      if (runs_Ind.te_Ind[i]!=-1) {
+        runs.te[i][20]='\0';
+        p->setEndTime((Char_t*)(runs.te[i]));
+      }
+      if (runs_Ind.nevt_Ind[i]!=-1) {
+        p->setNumEvents(runs.nevt[i]);
+      }
+      runsList->Add(p);
+      nTot++;
+    }
+  } while (nLast==NMAX_INFO);
+  EXEC SQL CLOSE runs_cursor;
+  cout<<"*** Total number of runs: "<<nTot<<endl;
+  return runsList;
+errorfound:
+  pConn->showSqlError("getListOfRuns");
+  if (runsList) {
+    runsList->Delete();
+    delete runsList;
+    runsList=0;
+  }
+  return 0;
+}
+
+TList* HOra2Info::getListOfHldFiles(const Char_t* beamtime,
+                                    const Char_t* startAt, const Char_t* endAt,
+                                    const Char_t* runType) {
+  // returns the list of HLD files (objects of type HFileInfo) for the
+  // specified experiment and range
+  // accepts dates (format DD-MON-YYYY HH24:MI:SS), hld-filenames and run ids
+  if (strlen(beamtime)==0) return 0;
+  TString expName(beamtime);
+  expName.ToUpper();
+  TString rangeStart;
+  TString rangeEnd;
+  TString rType="%";
+  Bool_t rc=kTRUE;
+  if (expName.Contains("SIM")) return 0;
+  if (strlen(startAt)!=0) {
+    rc=getRunStart(startAt,rangeStart);
+  } else {
+    rangeStart="01-JAN-2010 00:00:00";
+  }
+  if (!rc) return 0;
+  if (strlen(endAt)!=0) {
+    rc=getRunStart(endAt,rangeEnd);
+  } else {
+    rangeEnd="01-JAN-4000 00:00:00";
+  }
+  if (!rc) return 0;
+  if (strlen(runType)>0) {
+    rType=runType;
+    rType=rType+"%";
+    rType.ToUpper();
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* pexp;
+    char* pstart;
+    char* pend;
+    char* ptype;
+    struct {
+      int     rid[NMAX_INFO];
+      int     evtb[NMAX_INFO];
+      varchar rname[NMAX_INFO][81];
+      char    ts[NMAX_INFO][21];
+      char    te[NMAX_INFO][21];
+      int     nevt[NMAX_INFO];
+      int     current[NMAX_INFO];
+    } files;
+    struct {
+      short rid_Ind[NMAX_INFO];
+      short rvtb[NMAX_INFO];
+      short rname_Ind[NMAX_INFO];
+      short ts_Ind[NMAX_INFO];
+      short te_Ind[NMAX_INFO];
+      short nevt_Ind[NMAX_INFO];
+      short current_Ind[NMAX_INFO];
+    } files_Ind;
+  EXEC SQL END DECLARE SECTION;
+  pexp=(Char_t*)expName.Data();
+  pstart=(Char_t*)rangeStart.Data();
+  pend=(Char_t*)rangeEnd.Data();
+  ptype=(Char_t*)rType.Data();
+  Int_t nTot=0;
+  Int_t nLast=0;
+  TList* fileList=new TList();
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL DECLARE files_cursor CURSOR FOR
+           SELECT a.run_id, a.evt_builder, a.filename,
+                  TO_CHAR(a.run_start,'DD-MON-YYYY HH24:MI:SS'),
+                  TO_CHAR(a.run_stop,'DD-MON-YYYY HH24:MI:SS'),
+                  a.events, b.mean_current
+           FROM daq.daq_files_hydra2 a,
+                cryo.runs_magnet_current b
+           WHERE upper(a.exp_id)= :pexp
+             AND a.run_start IS NOT NULL
+             AND a.run_start BETWEEN TO_DATE(:pstart,'DD-MON-YYYY HH24:MI:SS')
+                             AND TO_DATE(:pend,'DD-MON-YYYY HH24:MI:SS')
+             AND a.run_type_id like :ptype
+             AND a.events IS NOT NULL and a.events > 1
+             AND a.run_id = b.run_id(+)
+           ORDER BY a.run_start, a.evt_builder;
+  EXEC SQL OPEN files_cursor;
+  do {
+    EXEC SQL FETCH files_cursor INTO :files INDICATOR :files_Ind;
+    nLast=sqlca.sqlerrd[2]-nTot;
+    for (Int_t i=0;i<nLast;i++) {
+      files.rname[i].arr[files.rname[i].len]='\0';
+      HFileInfo* p=new HFileInfo((Char_t*)(files.rname[i].arr));
+      p->setRunId(files.rid[i]);
+      files.ts[i][20]='\0';
+      p->setStartTime((Char_t*)(files.ts[i]));
+      if (files_Ind.te_Ind[i]!=-1) {
+        files.te[i][20]='\0';
+        p->setEndTime((Char_t*)(files.te[i]));
+      }
+      if (files_Ind.nevt_Ind[i]!=-1) {
+        p->setNumEvents(files.nevt[i]);
+      }
+      if (files_Ind.current_Ind[i]!=-1) {
+        p->setMagnetCurrent(files.current[i]);
+      }
+      fileList->Add(p);
+      nTot++;
+    }
+  } while (nLast==NMAX_INFO);
+  EXEC SQL CLOSE files_cursor;
+  cout<<"*** Total number of files: "<<nTot<<endl;
+  return fileList;
+errorfound:
+  pConn->showSqlError("getListOfHldFiles");
+  if (fileList) {
+    fileList->Delete();
+    delete fileList;
+    fileList=0;
+  }
+  return 0;
+}
+
+Bool_t HOra2Info::getRunStart(const Char_t* pString,TString& pTime) {
+  // gets the run start for a DAQ run
+  // pString can be a filename with extension .hld or a run id
+  // or a date with date format DD-MON-YYYY HH24:MI:SS
+  TString s(pString);
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* pfile;
+    int   pid;    
+    char  ts[21];
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  pfile=0;
+  pid=-1;
+  if (s.Contains("-")) {
+    pTime=pString;
+  } else {
+    if (s.Contains(".hld")) {
+      pfile=(Char_t*)pString;
+      EXEC SQL SELECT TO_CHAR(run_start,'DD-MON-YYYY HH24:MI:SS')
+               INTO :ts
+               FROM daq.daq_files_hydra2
+               WHERE filename = :pfile;
+    } else {
+      pid=atoi(pString);
+      EXEC SQL SELECT TO_CHAR(run_start,'DD-MON-YYYY HH24:MI:SS')
+               INTO :ts
+               FROM daq.daq_runs_hydra2
+               WHERE run_id = :pid;
+    }
+    ts[20]='\0';    
+    pTime=ts;
+  }
+  return kTRUE;
+errorfound:
+  pConn->showSqlError("getRunStart");
+  return kFALSE;
+notfound:
+  Error("getRunStart","Run not found for %s",pString);
+  return kFALSE;
+}
+
+TList* HOra2Info::getListOfSimRefRuns(const Char_t* project,
+                               const Char_t* startAt, const Char_t* endAt) {
+  // returns the list of simulation reference runs (only last generation)
+  // for the specifies project and range
+  TString rangeStart;
+  TString rangeEnd;
+  Bool_t rc=kTRUE;
+  if (strlen(startAt)!=0) {
+    rc=getSimRefRunStart(startAt,rangeStart);
+  } else {
+    rangeStart="01-JAN-2010 00:00:00";
+  }
+  if (!rc) return 0;
+  if (strlen(endAt)!=0) {
+    rc=getSimRefRunStart(endAt,rangeEnd);
+  } else {
+    rangeEnd="01-JAN-4000 00:00:00";
+  }
+  if (!rc) return 0;
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* pexp;
+    char* pstart;
+    char* pend;
+    struct {
+      int     rid[NMAX_INFO];
+      varchar rname[NMAX_INFO][81];
+      char    ts[NMAX_INFO][21];
+      char    te[NMAX_INFO][21];
+    } refruns;
+    struct {
+      short rid_Ind[NMAX_INFO];
+      short rname_Ind[NMAX_INFO];
+      short ts_Ind[NMAX_INFO];
+      short te_Ind[NMAX_INFO];
+    } refruns_Ind;
+  EXEC SQL END DECLARE SECTION;
+  pexp=(Char_t*)project;
+  pstart=(Char_t*)rangeStart.Data();
+  pend=(Char_t*)rangeEnd.Data();
+  Int_t nRuns=0;
+  TList* runsList=new TList();
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL SELECT ref_run_id, ref_run_name,
+                  TO_CHAR(run_start,'DD-MON-YYYY HH24:MI:SS'),
+                  TO_CHAR(run_stop,'DD-MON-YYYY HH24:MI:SS')
+           INTO :refruns INDICATOR :refruns_Ind
+           FROM hanal2.simul_project p,
+                hanal2.simul_ref_run rr
+           WHERE upper(exp_id)= :pexp
+             AND p.project_id = rr.project_id
+             AND run_start BETWEEN TO_DATE(:pstart,'DD-MON-YYYY HH24:MI:SS')
+             AND TO_DATE(:pend,'DD-MON-YYYY HH24:MI:SS')
+           ORDER BY ref_run_id;
+  nRuns=sqlca.sqlerrd[2];
+  for (Int_t i=0;i<nRuns;i++) {
+    refruns.rname[i].arr[refruns.rname[i].len]='\0';
+    HRunInfo* p=new HRunInfo((Char_t*)(refruns.rname[i].arr));
+    p->setRunId(refruns.rid[i]);
+    refruns.ts[i][20]='\0';
+    p->setStartTime((Char_t*)(refruns.ts[i]));
+    if (refruns_Ind.te_Ind[i]!=-1) {
+      refruns.te[i][20]='\0';
+      p->setEndTime((Char_t*)(refruns.te[i]));
+    }
+    runsList->Add(p);
+  }
+  cout<<"*** Total number of runs: "<<nRuns<<endl;
+  return runsList;
+errorfound:
+  pConn->showSqlError("getListOfSimRefRuns");
+  if (runsList) {
+    runsList->Delete();
+    delete runsList;
+    runsList=0;
+  }
+  return 0;
+}
+
+Bool_t HOra2Info::getSimRefRunStart(const Char_t* pString,TString& pTime) {
+  // gets the run start for a simulation reference run
+  // pString can be a filename with extension .hld or a run id
+  // or a date with date format DD-MON-YYYY HH24:MI:SS
+  TString s(pString);
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* pfile;
+    int   pid;    
+    char  ts[21];
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  pfile=0;
+  pid=-1;
+  if (s.Contains("-")) {
+    pTime=pString;
+  } else {
+    Char_t c=pString[0];
+    if (c=='1'||c=='2'||c=='3'||c=='4'||c=='5'||c=='6'||c=='7'||c=='8'||c=='9') {
+      pid=atoi(pString);
+
+      EXEC SQL SELECT TO_CHAR(run_start,'DD-MON-YYYY HH24:MI:SS')
+               INTO :ts
+               FROM hanal2.simul_ref_run
+               WHERE ref_run_id = :pid;
+    } else {
+      pfile=(Char_t*)pString;
+      EXEC SQL SELECT TO_CHAR(run_start,'DD-MON-YYYY HH24:MI:SS')
+               INTO :ts
+               FROM hanal2.simul_ref_run
+               WHERE ref_run_name = :pfile;
+    }
+    ts[20]='\0';    
+    pTime=ts;
+  }
+  return kTRUE;
+errorfound:
+  pConn->showSqlError("getRefRunStart");
+  return kFALSE;
+notfound:
+  Error("getRefRunStart","Simulation reference run not found for %s",pString);
+  return kFALSE;
+}

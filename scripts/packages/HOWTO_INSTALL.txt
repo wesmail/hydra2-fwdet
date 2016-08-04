@@ -1,0 +1,195 @@
+build tarball (in GSI):
+
+
+
+    svn checkout https://subversion.gsi.de/hades/hydra/trunk/scripts scripts
+    cd scripts
+    . ./makeHadesTarBall.sh ~/tarball
+
+    all scripts are form svn, tarballs are
+    copied form /misc/hadessoftware/etch32/repos
+
+    the tarball will be named hades_packages_ddmmYYYY.tar.gz
+
+    The oracle cleint taball can be found in:
+
+    /misc/hadessoftware/etch32/ora/10.2.0.1_linux_x86_64_fixed.tar.gz
+
+
+
+Recommended installation:
+
+
+
+
+1. read the documentation in installHades.sh
+2. configure according to your needs
+3. run  . ./installHades.sh
+
+
+order of installation:
+
+
+1. install gsl libs first. They usually complile without problems.
+
+2. install ROOT:
+   a. If you install ROOT for the first time you have to prepare
+      the system for the requirements.
+      see  http://root.cern.ch/drupal/content/build-prerequisites
+   
+    Parallel compiling : since ROOT uses cmake memory is an issue.
+    On small computers (<2GB RAM) use only 1-2 threads otherwise the 
+    compiler can crash with an internal compiler error.
+   
+   
+    //--------------------------------------------------------------
+    Below a typical list of packages used by our standard
+    configuration of ROOT for ubuntu /debian
+    
+    
+    subversion
+                for /usr/bin/svn
+    dpkg-dev
+                for dpkg-architecture (needed by configure to locate system libraries starting from 11)
+    make
+                for /usr/bin/make
+    g++
+                for /usr/bin/g++
+    gcc
+                for /usr/bin/gcc
+    binutils
+                for /usr/bin/ld
+    libx11-dev
+                for usr/include/X11/Xlib.h and for /usr/lib/libX11.so
+    libxpm-dev
+                for /usr/include/X11/xpm.h and for /usr/lib/libXpm.so
+    libxft-dev
+                for /usr/include/X11/Xft/Xft.h and for /usr/lib/libXft.so
+    libxext-dev
+                for /usr/include/X11/extensions/shape.h and for /usr/lib/libXext.so
+
+    
+    
+      
+    common packages
+    
+    gfortran
+               for /usr/bin/gfortran
+    libpcre3-dev
+               for /usr/bin/pcre-config
+    libglew1.5-dev
+               for /usr/include/GL/glew.h and for /usr/lib/libGLEW.so
+    libftgl-dev
+               for /usr/bin/pkg-config
+    libfftw3-dev
+               for /usr/include/fftw3.h and for /usr/lib/libfftw3.so
+    graphviz-dev
+               for /usr/include/graphviz/gvc.h and for /usr/lib/libgvc.so
+    libxml2-dev
+               for /usr/bin/xml2-config
+    libqt4-dev
+               for /usr/include/qt4/Qt/qglobal.h and for /usr/lib/libQtCore.so
+    python-dev
+               for /usr/include/python2.6/Python.h and for /usr/lib/libpython2.6.so
+    openssl-dev or libssl-dev
+               for /usr/include/openssl/pem.h and /usr/lib/libssl.so and /usr/lib/libcrypto.so
+
+    libkrb5-dev
+               for /usr/include/krb5.h and for /usr/lib/libkrb5.so    
+    libldap2-dev
+               for /usr/include/ldap.h and for /usr/lib/libldap.so              
+   //--------------------------------------------------------------
+
+
+    b. untar the ROOT source to a temp dir for testing
+       the configuration. 
+       
+       
+    tar -zxf root-XXXXXX.tar.gz
+    cd  root
+    export ROOTSYS=$(pwd)
+
+   
+    target=linuxx8664gcc
+   
+
+    ./configure ${target} --enable-soversion \
+                        --enable-table \
+                        --enable-asimage \
+                        --enable-opengl \
+                        --enable-minuit2 \
+                        --enable-mathmore \
+                        --enable-roofit \
+                        --enable-xml \
+                        --enable-builtin-pcre \
+                        --enable-builtin-ftgl \
+                        --enable-builtin-glew \
+                        --disable-mysql \
+                        --disable-pgsql \
+                        --disable-monalisa \
+                        --disable-globus \
+                        --disable-xrootd \
+                        --disable-explicitlink \
+                        --disable-rpath \
+                        --disable-pythia6 \
+                        --disable-python \
+ 			--with-gsl-incdir=${myinstalldir}/gsl-${gslversion}/include/ \
+ 			--with-gsl-libdir=${myinstalldir}/gsl-${gslversion}/lib
+
+
+      check if the configure finds all ingredients to build
+      the requested libraries! If not install the missing ones
+      and try gain the configure command
+
+      After success you might remove the root dir, it will be created
+      by installHades.sh
+      
+      If not already there add .roorc to your homedir
+      containing the following directives:
+      
+      Unix.*.Root.MacroPath:  .:$(MYHADDIR)/macros:$(HADDIR)/macros
+      Rint.Logon:             rootlogon.C
+      Canvas.ShowEventStatus: true
+      Unix.*.Root.UseTTFonts: true
+      
+3. Now install ROOT using installHades.sh      
+      
+4. Install the ORACLE client software if neeeded.
+   You can untar the   10.2.0.1_linux_x86_64_fixed.tar.gz   
+   tar -zxf  10.2.0.1_linux_x86_64_fixed.tar.gz  /my_oracle_path/
+   Tar file works on 64bit debian sqeeze/ubuntu 12. The
+   original oracle software can be downloaded from the vendor webpage
+   for other systems.
+   
+   
+5. Install hydra2 from svn repository using installHades.sh (needs ROOT , optional oracle)
+
+   install before if not existing  :
+   
+   1. libxp-dev
+   2. libxmu-dev
+
+
+6. Install cernlib
+   a. cernlib is an old software package from CERN. It needs
+      several non standard tools on the system to build. Many
+      things can go wrong and in that case you have to investigate
+      the build log files. The build procedures have no tools
+      to tell you waht is missing. To give you some hints 
+      checkBeforCompile.sh is provided with this scripts.
+      
+      . checkBeforeMake.sh
+
+      Install the mssing libraries and fix the softlinks.
+   b. build cernlib using installHades.sh  (CLEANCERN=no for debugging log files )
+7. Install HGEANT using installHades.sh from svn  (needs ROOT,cernlib,hydra)
+
+8. Install UrQmd + converter using installHades.sh
+
+9. Install GARFIELD using installHades.sh  (needs cernlib)
+
+   
+   
+   
+   
+

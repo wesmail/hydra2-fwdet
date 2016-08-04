@@ -1,0 +1,86 @@
+testHAFT.f is broken.  Type
+
+make libHAFT
+
+to get the library done.
+
+
+====================================================================
+
+            The HADES Acceptance Filter for Theorists  (HAFT)
+            =================================================
+
+The fiter consists of acceptance matrices, one per particle type, e.g.
+e-, e+, pi-, pi+, protons, etc., and of smearing functions that model the
+finite detector resolution.
+
+The HADES acceptance matrices are produced and stored as ROOT TH3F objects,
+i.e. basically 3-dimensional histograms of type Float_t Acc[p,theta,phi].
+However, as most theorists still prefer (!) to code their transport theories
+in FORTRAN, the easiest way to provide the filter to them is to code it in
+ANSI FORTRAN 77 as well.  This means, among other things, that it is best
+to transform the acceptance matrices into a FORTRAN-readable format:
+ascii or binary tables.  We opted for the more compact, loss-less and
+temper-proof binary format.
+
+The 3d tables are interpolated using different methods according to parameter mode:
+
+mode = 0 : nearest neighbour
+     = 1 : tri-linear interpolation (average over 8 nearest voxels)
+     = 2 : tri-quadratic interpolation
+     = 3 : tri-cubic interpolation (better for fine structures, but can induce
+           spurious oscillations due to curvature over/undershoot)
+
+     + more modes.
+
+
+- The Root C++ macro writeHAFT.C is used to do the conversion and writing of
+  TH3F objects in FORTRAN-readable format to file HadesAcceptanceFilter.acc.
+
+  Eventually the mass unit is converted from MeV/c**2 to GeV/c**2.
+
+  writeHAFT() can be called several times in a row to write more than one matrix
+  to the same file.  All matrices MUST have unique pid and MUST have the same
+  dimensions.
+
+
+- The FORTRAN code readHAFT.f is used to open, read and interpolate the
+  acceptance matrices for various particle types.  The matrices are opened
+  in direct unformatted access mode as linear arrays.  The 3 actual matrix 
+  dimensions are read from file first and used to determine the appropriate
+  number of bins to be read.   The maximum number of bins, i.e. the maximal matrix
+  size is hard-coded in readHAFT.inc and MUST be adapted if too small
+  (default=250000, enough for e.g. 150x45x30 bins).
+
+  readHAFT also provides support for applying the Hades resolution to a given
+  particle via a call to smearHadesMomentum(mom,mode,pid), where mode = 1, 2 or 3
+  for low resolution, medium resolution or high resolution, respectively.
+  This function needs the random number generator ran returning uniform random
+  numbers between 0 and 1.  One possible implementation is given in file ran.f.
+
+- libHAFT.so can be loaded into Root to make the following FORTRAN calls available:
+
+    void setfilename_(char *name, int nchar);                             // set file name
+    float gethadesacceptance_(int *pid, float *p, float *th, float *ph, int *mode);
+    float getmatrixval_(int *ix,int *iy, int *iz, int *id);
+    void getlimits_(float *plo, float *phi, float *dp, float *thlo, float *thhi,
+                    float *dth,float *phlo, float *phhi, float *dph,);
+    void get dimensions_(int *xdim, int *dim, int *zdim);
+    void smearhades3momentum_(Float_t *mom[3], Int_t *mode, Int_t *pid);  // smear 3-momentum
+    void smearhades4momentum_(Float_t *mom[4], Int_t *mode, Int_t *pid);  // smear 4-momentum
+    void smearhadesmomentum_(Float_t *px, Float_t *py, Float_t *pz, Float_t *Etot,
+                             Int_t *mode, Int_t *pid);                    // smear 4-momentum
+
+    UNITS: Momentum in GeV/c, angles in degrees, pid in GEANT3 notation.
+
+  Don't forget that function arguments are to be passed by address for calling
+  FORTRAN functions from C, that function names are all lower-case and that
+  calls must be appended with a "_"!
+
+
+- To link an executable usercode (Fortran) with libHAFT use e.g.
+    g77 usercode.o libHAFT.o ran.o -o usercode
+
+
+HAFT code v1.0        10/02/06  R. Holzmann
+

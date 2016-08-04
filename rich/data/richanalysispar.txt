@@ -1,0 +1,101 @@
+
+ [ RICH Analysis Initial Data ]
+
+Signal cut-off threshold = 2
+Ring radius = 4
+Ring radius error = 1
+
+
+[ RICH Analysis Algorithms ]
+
+Clean Alone Pad Status = 1
+Clean Alone Pad border = 3
+Clean Alone Pad border = 4
+Clean Alone Pad lower threshold = 6
+
+Clean High Pulse Status = 1
+Clean High Pulse border = 2
+Clean High Pulse upper threshold = 300
+
+Label Pads Status = 1
+Label Pads distance = 7
+
+ [ RICH Ring Recognition Algorithms ]
+
+Maximal number of fired pads per sector = 1000
+
+Amplitude reduction at the border Status = 1
+
+Ring Test Density Status = 1
+Pads Density threshold = 0.4
+Surface Area (in ring units) = 2.0
+
+Dynamic Amplitude Threshold Status = 1
+Minimal Amplitude fraction = 0.75
+Formula Parameter 1 = 0.055
+Formula Parameter 2 = 0.5
+Formula Parameter 3 = 0.15
+
+Fired Pads Ratio in ring Status = 1
+Fired Pads Out of Ring/In Ring Ratio = 0.33
+
+Test Ring Centroid Status = 1
+Test Ring Radius Status = 1
+
+Test Ring Asymmetry Status = 1
+
+Test Ring Charge = 1
+Minimal Ring Charge = 5.
+Maximal Ring Charge = 50.
+
+Close Fakes Rejection = 1
+Minimal Neighbour Quality = 0.3
+Minimal Centroid Shift = 3.
+
+Superior Algorithm ID = 3
+
+Ring Find Fit Pattern Matrix Status = 1
+Minimal Ring Quality in Fit Matrix = 4
+Minimal Rings Distances in Fit Matrix = 4
+Number of Rings to be sought by Fit Matrix = 3
+
+Ring Find Hough Transformation Status = 1
+Minimal Ring Quality in Hough Transformation = 2
+Minimal Rings Distances in Hough Transformation = 4
+Number of Rings to be sought by Hough Transformation = 3
+
+ [ RICH Pattern Matrixes ]
+
+Ring Pattern Matrix Size = 11
+Ring Pattern Matrix =
+
+\  -46 -40 -25   1  14  16  14   1 -25 -40 -46
+\  -40 -15  25  40  47  45  47  40  25 -15 -40
+\  -25  25  47  30  16  14  16  30  47  25 -25
+\    1  40  30  -5 -33 -35 -33  -5  30  40   1
+\   14  47  16 -33 -36 -36 -36 -33  16  47  14
+\   16  45  14 -35 -36 -36 -36 -35  14  45  16
+\   14  47  16 -33 -36 -36 -36 -33  16  47  14
+\    1  40  30  -5 -33 -35 -33  -5  30  40   1
+\  -25  25  47  30  16  14  16  30  47  25 -25
+\  -40 -15  25  40  47  45  47  40  25 -15 -40
+\  -46 -40 -25   1  14  16  14   1 -25 -40 -46
+
+Ring Mask Matrix Size = 13
+Ring Mask Matrix =
+
+\  0 0 0 0 0 0 0 0 0 0 0 0 0
+\  0 0 0 0 1 1 1 1 1 0 0 0 0
+\  0 0 1 1 1 1 1 1 1 1 1 0 0
+\  0 0 1 1 1 1 1 1 1 1 1 0 0
+\  0 1 1 1 1 2 2 2 1 1 1 1 0
+\  0 1 1 1 2 2 2 2 2 1 1 1 0
+\  0 1 1 1 2 2 2 2 2 1 1 1 0
+\  0 1 1 1 2 2 2 2 2 1 1 1 0
+\  0 1 1 1 1 2 2 2 1 1 1 1 0
+\  0 0 1 1 1 1 1 1 1 1 1 0 0
+\  0 0 1 1 1 1 1 1 1 1 1 0 0
+\  0 0 0 0 1 1 1 1 1 0 0 0 0
+\  0 0 0 0 0 0 0 0 0 0 0 0 0
+
+

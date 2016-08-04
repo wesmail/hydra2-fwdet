@@ -1,0 +1,417 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Modified : 15/09/2000
+
+//_HADES_CLASS_DESCRIPTION 
+/////////////////////////////////////////////////////////////
+// HDbColumnTable
+//
+// Class for an Oracle table
+//
+/////////////////////////////////////////////////////////////
+using namespace std;
+#include "hdbtable.h"
+#include "hdbconn.h"
+#include "hdbfileutil.h"
+#include "hdbcolumn.h"
+#include "hdbcolumntype.h"
+#include <stdio.h>
+#include <iostream>
+#include <iomanip>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HDbTable)
+
+#define MAXCOLNUM 254
+#define MAXROWS   200
+
+HDbTable::HDbTable() {
+  // Default constructor
+  dbConn=0;
+  dbUtil=0;
+  tabColumns=new TList;
+  nColumns=0;
+  tempTable=kFALSE;
+  existing=kTRUE;
+}
+
+HDbTable::HDbTable(HDbConn* p, HDbFileUtil* u, const Char_t* tName) {
+  // Constructor
+  // Parameters: pointer to the Oracle connection class, the Oracle utility class
+  // and the name of the table
+  dbConn=p;
+  dbUtil=u;
+  setNames(tName);
+  tabColumns=new TList;
+  nColumns=0;
+  tempTable=kFALSE;
+  existing=kTRUE;
+}
+
+HDbTable::HDbTable(HDbConn* p, HDbFileUtil* u, HDbTable& t) {
+  // Copy constructor
+  // Parameters: pointer to the Oracle connection class, the Oracle utility class
+  // and reference to an other table
+  dbConn=p;
+  dbUtil=u;
+  setNames(t.GetName());
+  tabColumns=new TList;
+  nColumns=t.getNColumns();
+  for(Int_t i=0;i<nColumns;i++) {
+    HDbColumn* tc=t.getColumn(i);
+    HDbColumn* c=new HDbColumn(*tc);
+    tabColumns->Add(c);
+  }  
+  tempTable=t.isTempTable();
+  existing=t.isExisting();
+}
+
+HDbTable::~HDbTable() {
+  // Destructor
+  if (tabColumns) {
+    tabColumns->Delete();
+    delete tabColumns;
+  }  
+}
+
+HDbColumn* HDbTable::getColumn(Int_t n) {
+  // Returns the column number n (starting with index 0)
+  return (HDbColumn*)tabColumns->At(n);
+}
+
+HDbColumn* HDbTable::getColumn(const Char_t* colName) {
+  // Returns the column with the specified name
+  if (colName) {
+    TString c(colName);
+    c=c.Strip(c.kBoth);
+    if (c.Length()>0)
+      c.ToUpper();
+      return (HDbColumn*)tabColumns->FindObject(c.Data());
+  }
+  return 0;
+}
+
+HDbColumn* HDbTable::addColumn(const Char_t* colName, const Char_t* columnType) {
+  // Adds a column to the list. The type of the column is optional and needed
+  // only for the creation of a non-existing table with non default types.
+  HDbColumn* p=0;
+  TString c(colName);
+  c=c.Strip(c.kBoth);
+  c.ToUpper();
+  if (tabColumns->FindObject(c.Data()))
+    cout<<"Column "<<c<<" already exists!"<<endl;
+  else {
+    p=new HDbColumn(c.Data());
+    if(columnType) p->setColType(columnType);
+    tabColumns->Add(p);
+    nColumns++;
+  }
+  return p;
+}
+
+void HDbTable::addColumn(HDbColumn* p) {
+  // Adds a copy of the column p to the list
+  if (!p) return;
+  if (!tabColumns->FindObject(p->GetName())) {
+    HDbColumn* c=new HDbColumn(*p);             // copies the column
+    tabColumns->Add(c);
+    nColumns++;
+  }
+  else cout<<"Column "<<p->GetName()<<" already exists!"<<endl;
+}
+
+
+void HDbTable::removeColumn(const Char_t* colName) {
+  // Removes the column with this name and deletes it
+  HDbColumn* p=getColumn(colName);
+  if (p) {
+    tabColumns->Remove(p);
+    delete p;
+    nColumns--;
+  }
+}
+
+void HDbTable::clearColumns() {
+  // Clears the list of columns
+  tabColumns->Delete();
+  nColumns=0;
+}
+
+void HDbTable::setColumns(const Char_t* colNames, const Char_t* colTypes) {
+  // Sets a list of columns and types(optional). The lists must be comma separated.
+  TString sNames, sTypes;
+  Int_t nlen=0, tlen=0; 
+  if (colNames) {
+    sNames=colNames;
+    sNames.Strip(sNames.kBoth);
+    sNames.ToUpper();
+    nlen=sNames.Length();
+  }
+  if (colTypes) {
+    sTypes=colTypes;
+    sTypes.Strip(sTypes.kBoth);
+    sTypes.ToUpper();
+    tlen=sTypes.Length();
+  }
+  if (nlen==0) {
+    Error("HDbTable::setColumns","List of column is empty ");
+    return;
+  }
+  TString ssn, sst;
+  while (nlen>0) {
+    nlen=dbUtil->getTokString(sNames,ssn,",");
+    if (tlen>0) {
+      tlen=dbUtil->getTokString(sTypes,sst,",");
+      if (sst.First("(")>0 && sst.First(")")<0) {
+        TString s;
+        tlen=dbUtil->getTokString(sTypes,s,",");
+        sst=sst + "," + s;
+      }
+      addColumn(ssn.Data(),sst.Data());
+    } else addColumn(ssn.Data(),colDefaultType);
+  }
+}
+
+void HDbTable::setCondition(const Char_t* s) {
+  // Sets the condition for a SELECT statement ("WHERE" is added internally!)
+  if (s) {
+    cond=s;
+    cond=cond.Strip(cond.kBoth);
+    cond.ToUpper();
+  } else cond="";
+}
+
+void HDbTable::setOrderBy(const Char_t* s) {
+  // Sets the ORDER BY clause for a SELECT statement
+  // Multiple columns must by separated by commas.
+  // ("ORDER BY" is added internally!)
+  if (s) {
+    orderClause=s;
+    orderClause=orderClause.Strip(orderClause.kBoth);
+    orderClause.ToUpper();
+  } else orderClause="";
+}
+
+     
+Bool_t HDbTable::describeTable() {
+  // Gets the table definition (columns, types, nullable) from Oracle
+  if (!dbConn->isOpen()) return kFALSE;
+  tempTable=kFALSE;
+  existing=kTRUE;
+  clearColumns();
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* dynstmt;
+    varchar colName[MAXCOLNUM][30];
+    int     colId[MAXCOLNUM];
+    int     dLen[MAXCOLNUM];
+    varchar colType[MAXCOLNUM][30];
+    int     dPrec[MAXCOLNUM];
+    int     dScale[MAXCOLNUM];
+    varchar nn[MAXCOLNUM][1];
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO  errorFound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  TString s(("select column_name,column_id,data_length,data_type,"
+                   "nvl(data_precision,0),nvl(data_scale,0), nullable "
+                   "from all_tab_columns where table_name='")); 
+  s=s + tabName + "' and owner='" + tabOwner +"' order by column_id";
+  dynstmt=(Char_t*)s.Data();
+  EXEC SQL PREPARE S FROM :dynstmt;
+  EXEC SQL DECLARE C CURSOR FOR S;
+  EXEC SQL OPEN C;
+  EXEC SQL FETCH C INTO :colName, :colId, :dLen, :colType, : dPrec, :dScale, :nn;
+  nColumns=sqlca.sqlerrd[2];
+  if (nColumns<=0) {
+    cout<<"Table "<<GetName()<<" does not exist!"<<endl;
+    tempTable=kTRUE;
+    existing=kFALSE;
+    return kFALSE;
+  }
+  for(Int_t i=0;i<nColumns;i++) {
+    colName[i].arr[colName[i].len]='\0';
+    colType[i].arr[colType[i].len]='\0';
+    HDbColumn* p=new HDbColumn((const Char_t*)colName[i].arr);
+    p->setColumnId(colId[i]);
+    p->setColType((const Char_t*)colType[i].arr,dLen[i],dPrec[i],dScale[i]);
+    if (nn[i].arr[0]=='N') p->setNullable(kFALSE);
+    tabColumns->Add(p);
+  }
+  return kTRUE;
+errorFound:
+  dbUtil->showSqlError("HDbTable::describeTable");
+  EXEC SQL CLOSE C;
+  return kFALSE;
+}
+
+Bool_t HDbTable::createTable() {
+  // Creates the table in Oracle (created only in the account of the connected user)
+  if (!dbConn->isOpen() || dbConn->isReadonly()) return kFALSE;
+  if (nColumns==0) {
+    Error("HDbTable::createTable()","No columns defined");
+    return kFALSE;
+  }
+  if (tabOwner.CompareTo(dbConn->getUserName())!=0) {
+    Error("HDbTable::createTable()","Table cannot be created in an other user account");
+    return kFALSE;
+  }
+  TString str="create table ";
+  str=str + GetName() + " (\n  ";
+  TIter next(tabColumns);
+  HDbColumn* p;
+  Int_t n=0;
+  while ((p=(HDbColumn*)next())) {
+    str=str + p->GetName() + " " + p->getColType()->getTypeString();
+    if (!p->isNullable()) str=str + " " + "NOT NULL";
+    if (++n<nColumns) str=str + ",\n  ";
+  }
+  str=str + " )";
+  cout<<"-----------------------------------------"<<endl;
+  cout<<"-------------  Create table  ------------"<<endl;
+  cout<<"-----------------------------------------"<<endl;
+  cout<<str<<endl;
+  if (dbUtil->confirm("creation")==kFALSE) return kFALSE;
+  Bool_t rc=dbUtil->executeDirect(str);
+  if (rc) {
+    cout<<"Temporary table "<<GetName()<<" created."<<endl;
+    tempTable=kTRUE;
+    existing=kTRUE; 
+  }
+  return rc;
+}
+
+Bool_t HDbTable::dropTable() {
+  // Drops the table (drops the table only if created inside the current Oracle session)
+  if (!dbConn->isOpen() || dbConn->isReadonly()) return kFALSE;
+  if (!tempTable) {
+    Error("HDbTable::dropTable","\nCannot drop permanent table %s",
+          GetName());
+    return kFALSE;
+  }
+  if (!existing) {
+    Error("HDbTable::dropTable","Table does not exist");
+    return kFALSE;
+  }
+  if (tabOwner.CompareTo(dbConn->getUserName())!=0) {
+    Error("HDbTable::dropTable","\nA table in an other user account cannot be dropped");
+    return kFALSE;
+  }
+  TString s("drop table ");
+  s=s + GetName();  TString      tabOwner;       // Owner of the table
+
+  cout<<"-----------------------------------------"<<endl;
+  cout<<"-------------  Drop table  --------------"<<endl;
+  cout<<"-----------------------------------------"<<endl;
+  cout<<s<<endl;
+  if (dbUtil->confirm("drop")==kFALSE) return kFALSE;
+  Bool_t rc=dbUtil->executeDirect(s);
+  if (rc) cout<<"Temporary table "<<GetName()<<" dropped."<<endl;
+  return rc;
+}
+
+void HDbTable::show() {
+  // Shows the table definition 
+  TIter next(tabColumns);
+  HDbColumn* p;
+  cout<<"---------------------------------------------------------------------"<<endl;
+  cout<<"            Table: "<<GetName();
+  if (tempTable) {
+    if (existing) cout<<"   (Existing temporary table)"<<endl;
+    else cout<<"   (Non-existing temporary table)"<<endl;
+  } 
+  else cout<<"  (Permanent table)"<<endl;
+  cout<<setiosflags(ios::left)<<setw(30)<<"ColumnName"
+                      <<setw(4) <<"NN"
+                      <<setw(12)<<"ColumnType"
+                      <<setw(6) <<"Size"
+                      <<setw(12)<<"Precision"
+                      <<setw(12)<<"Scale"<<endl;
+  cout<<"---------------------------------------------------------------------"<<endl;
+  while ((p=(HDbColumn*)next())) {
+    p->show();
+  }
+}
+
+Int_t HDbTable::writeTable(ostream& pout, const Char_t* colDelim,
+                           const Char_t* textDelim, const Char_t* nullString) {
+  // Writes the content of the table to a stream.
+  // Fetches the table in batches of 200 rows.
+  if (!dbConn->isOpen()) {
+    cout<<"Connection closed before end of reading!"<<endl;
+    return -1;
+  }
+  TString stm("select ");
+  HDbColumn* p;
+  TString c;
+  for(Int_t i=0;i<nColumns;i++) {
+    p=(HDbColumn*)tabColumns->At(i);
+    if (p->isNullable())
+      c=p->getColType()->getNvlSelectString(p->GetName(),textDelim,nullString);
+    else c=p->getColType()->getSelectString(p->GetName(),textDelim);
+    if (c.Length()==0) return -1;
+    stm=stm + c;
+    if (i<(nColumns-1)) stm=stm + "||'" + colDelim + "'||";
+  }
+  stm=stm + "from " + GetName();
+  if (cond.Length()>0) {
+    stm=stm + " where " + cond;
+    pout<<"// Condition:  "<<cond<<endl;
+  }
+  if (orderClause.Length()>0) {
+    stm=stm + " order by " + orderClause;
+    pout<<"// Order by:  "<<orderClause<<endl;
+  }
+  //cout<<stm<<endl;
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* dynstmt;
+    varchar sResult[MAXROWS][4000];
+  EXEC SQL END DECLARE SECTION;
+  dynstmt=(Char_t*)stm.Data();
+  Int_t nbs=0, nbslast=0;
+  EXEC SQL WHENEVER SQLERROR GOTO errorFound;
+  EXEC SQL PREPARE SW FROM :dynstmt;
+  EXEC SQL DECLARE CW CURSOR FOR SW;
+  EXEC SQL OPEN CW;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  do {
+    EXEC SQL FETCH CW INTO :sResult; 
+    nbs=sqlca.sqlerrd[2] - nbslast;
+    nbslast+=nbs;
+    for(Int_t i=0;i<nbs;i++) {
+      sResult[i].arr[sResult[i].len]='\0';
+      pout<<(Char_t*)sResult[i].arr<<endl;
+    }
+  } while (nbs==MAXROWS);
+  EXEC SQL CLOSE CW;
+  return nbslast;
+errorFound:
+  dbUtil->showSqlError("HDbTable::writeTable");
+  EXEC SQL CLOSE CW;
+  cout<<"SQL statement:"<<endl<<stm<<endl;
+  return -1;
+}
+
+void HDbTable::setNames(const Char_t* tName) {
+  // Sets the table owner and name from a concatinated string (separated by ".")
+  TString s(tName);
+  s.ToUpper();
+  s=s.Strip(s.kBoth);
+  Ssiz_t n=s.First(".");
+  if (n>0) {
+    SetName(s.Data());
+    tabOwner=s(0,n);
+    n++;
+    tabName=s(n,s.Length()-n);
+  } else {
+    tabOwner=dbConn->getUserName();
+    tabName=s;    
+    s=tabOwner;
+    s=s + "." + tabName;
+    SetName(s.Data());
+  }
+}

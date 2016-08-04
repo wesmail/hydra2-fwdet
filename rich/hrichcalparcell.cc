@@ -1,0 +1,29 @@
+//////////////////////////////////////////////////////////////////////////////
+//
+// $Id: $
+//
+//*-- Author  : RICH team member
+//*-- Revised : Martin Jurkovic <martin.jurkovic@ph.tum.de> 2010
+//
+//_HADES_CLASS_DESCRIPTION
+//////////////////////////////////////////////////////////////////////////////
+//
+//  HRichCalParCell
+//
+//
+//////////////////////////////////////////////////////////////////////////////
+
+
+#include "hrichcalparcell.h"
+
+ClassImp(HRichCalParCell)
+
+HRichCalParCell::HRichCalParCell()
+{
+   reset();
+}
+
+HRichCalParCell::HRichCalParCell(Float_t offset, Float_t sigma)
+{
+   setParams(offset, sigma);
+}

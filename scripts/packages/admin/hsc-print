@@ -1,0 +1,7 @@
+#!/bin/bash
+
+. SCRIPTSADMIN/hsc-functions.sh
+
+hsc_longPrintout
+
+hsc_finalizeScript

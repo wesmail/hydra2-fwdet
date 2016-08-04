@@ -1,0 +1,5 @@
+#!/bin/bash
+pdflatex parameter_initialization.tex
+bibtex   parameter_initialization
+pdflatex parameter_initialization.tex
+pdflatex parameter_initialization.tex

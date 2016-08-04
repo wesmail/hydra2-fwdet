@@ -1,0 +1,393 @@
+\chapter{Software environment}
+
+
+The HADES software environment HYDRA2 is base a C++ frame work based
+on ROOT. The be able to compile and run HYDRA2 you therefore have to 
+install ROOT and setup the .rootrc in your homedir.
+The .rootrc is analyzed by ROOT at startup and can be used to setup
+the default behaviour for ROOT. 
+
+For HYDRA2 we set the path from where macros are started and the name
+of the macro which should be loaded at startup to load the HYDRA2 libaries
+into the ROOT session. The libries provide all functionalty of HYDRA2.
+The most simple version of .rootrc is shown in listing \ref{rootrc}.
+
+
+\lstinputlisting[label=rootrc,caption=.rootrc]{macros/.rootrc}
+
+
+
+\section{Documentation}
+
+Since HYDRA is build on top of ROOT using C++ the user should
+learn ho to use C++ and ROOT. ROOT has a very rich documentation, 
+tutorial and how-to section.
+
+
+\begin{itemize}
+
+\item C++ : http://www.cplusplus.com/
+      \newline
+       http://www.cppreference.com/wiki/
+
+\item Fortran  :   http://www.star.le.ac.uk/~cgp/prof77.html
+
+\item ROOT 
+       \begin{itemize}
+       \item classes :	http://root.cern.ch/drupal/content/reference-guide
+       \item tutorials : http://root.cern.ch/root/html/tutorials/
+       \item how-to : http://root.cern.ch/drupal/content/howtos
+       \item manual : http://root.cern.ch/drupal/content/users-guide
+       \end{itemize}
+\item HYDRA 
+  \begin{itemize}
+    \item online documentation (classes) :  http://www-hades.gsi.de/docs/hydra/classDocumentation/
+    \item code version: see \ref{Chapter_trac}
+   \end{itemize}
+\end{itemize}
+
+\section{Software locations at GSI}\label{Chapter_softlocations}
+
+HYDRA2 and the former HYDRA has been developed over many years. Operating
+systems have been changed during that time. We decided to create the HADES
+software tree in a common place which is accessible form all HADES machines 
+and the batch farm. A branch for OS (debian) is added.
+ 
+
+\begin{lstlisting}
+
+binaries are installed here:
+/misc/hadessoftware/etch32/install/hydra-dev
+  
+source code for compilation is here:
+/misc/hadessoftware/etch32/hades/hydra-dev
+  
+\end{lstlisting}
+
+hydra-dev indicates the development status of HYDRA2. If you use this version 
+be aware that it can be recompiled and changed at any time! For DST production
+and analysis we provide fixed release versions. Each install dir keeps a defalls.h
+script to set the full environment for HYDRA2
+
+\begin{lstlisting}
+
+to set the HYDRA2 environment:
+. /misc/hadessoftware/etch32/install/hydra-dev/defall.sh
+  
+\end{lstlisting}
+
+The content of the defall.sh script is shown in \ref{defall}.
+Inside the script the following environtment variables
+are set:
+
+\begin{enumerate}
+ \item \verb+ROOTSYS    : The install location of ROOT+
+ \item \verb+HADDIR     : The global HYDRA2 install location+
+ \item \verb+MYHADDIR   : The user   HYDRA2 install location (optional)+
+ \item \verb+CERN_ROOT  : The install location for the CERNLIB+
+ \item \verb+ORACLEHOME : The install location of ORACLE+
+ \item \verb+ORA_USER   : The HADES ORACLE user to access parameters+
+\end{enumerate}
+
+
+The \verb+MYHADDIR+ is needed if a local changed HYDRA library should be 
+loaded/linked with HYDRA libs form the global HYDRA dir (\verb+HADDIR\lib+). 
+This allows the user to have a local dir where changes can be applied. The 
+seach order for the the linker/compiler takes the local libdir (\verb+MYHADDIR\lib+)
+first and second the global dir. The ORACEL variables have to be set if
+HYDRA2 should be compiled with ORACLE access (switch in Makefile).
+\verb+CERN_ROOT+ specifies tyhe CERNLIB location. The CERNLIB is needed
+for the GEANT simulation of HADES.
+
+\clearpage
+
+\lstinputlisting[label=defall,caption=defall.sh]{macros/defall.sh}
+
+\clearpage
+
+
+\section{How-to install}
+
+\subsection{HYDRA2}
+
+HYDRA2 cand be run and installed in ether 32bit or 64bit
+version. A tarball including ROOT, CERNLIB, GARFIELD and gsl
+sources is located in
+
+\begin{lstlisting}
+/misc/hadessoftware/squeeze64/packages/hades_packages.tar.gz
+\end{lstlisting}
+
+This tar contains installHades.sh which does the full 
+installation of the software tree. The ORACLE client software
+has to installed before. The needed package you will find
+on the ORACLE webpage (see chapter \ref{Chapter_ORA_install}).
+
+All other instructions of the setup are documented inside the
+the tar file. For HYDRA2 you can ignore the dicussion of
+32bit/64bit.
+
+
+
+\subsection{HYDRA}
+
+The instruction below assume 32bit system. Currently
+we compile our software 32bit. On the batchfarm we run in
+64bit systems using the compatibility libs from Debian.
+To compile everything in native 64bit is not easily possible
+because of the CERNLIB. You can try yourself, but you will
+get no support from GSI. For future we have to find a way
+to get rid of the old CERNLIB.
+
+\subsubsection{CERNLIB installation at GSI}\label{Chapter_CERNLIB_install}
+
+The CERNLIB is needed for the \verb+HGeant+ detector simulation of HYDRA2.
+Currently Cernlib 2006 is used with g77 compiled 32bit. The 
+installation is not straight forward and needs special patches.
+For our current system Debian etch32 you can install the CERNLIB
+in the following way:
+
+\begin{lstlisting}
+ 
+  find the script:
+ /misc/hadessoftware/etch32/install/installCernlib.sh
+ 
+ edit the script to set you fortran compiler (g77 recommended)
+ 
+ run the script
+ 
+\end{lstlisting}
+
+\subsubsection{ROOT installation at GSI}\label{Chapter_ROOT_install}
+
+Our current installation of ROOT is using a private 
+gsl (Gnu Scientificc Library). Therfore the first step is to install gsl:
+
+\begin{lstlisting}
+#-------------------------------------------
+#Install gsl
+
+tar -zxf  gsl-1.12.tar.gz
+mv  gsl-1.12  gsl-1.12_make
+cd gsl-1.12_make
+
+./configure  --prefix=/misc/hadessoftware/etch32/install/gsl-1.12
+make -s -j16
+
+# run test suite (optional)
+make check > log_test.txt 2>&1
+make install
+#-------------------------------------------
+\end{lstlisting}
+
+
+
+HYDRA2 currently is using ROOT 5.22.00a and soon will be update to 5.28.00.
+The GSI configuration for compiling ROOT is listed below.
+
+The location at GSI: \verb+/misc/hadessoftware/etch32/install/root-5.22.00a+
+
+\begin{lstlisting}
+
+cd  /misc/hadessoftware/etch32/install
+
+svn co https://root.cern.ch/svn/root/tags/v5-22-00a root-5.22.00a
+
+cd  root-5.22.00a
+
+export ROOTSYS=`pwd`
+
+ ./configure linux --enable-exceptions \
+                        --enable-soversion \
+                        --enable-table \
+                        --enable-asimage \
+                        --enable-opengl \
+                        --enable-minuit2 \
+                        --enable-mathmore \
+                        --enable-roofit \
+                        --enable-xml \
+                        --disable-mysql \
+                        --disable-globus \
+                        --disable-explicitlink \
+                        --disable-rpath \
+                        --disable-pythia6 \
+ 			--with-gsl-incdir=/misc/hadessoftware/etch32/install/gsl-1.12/include \
+ 			--with-gsl-libdir=/misc/hadessoftware/etch32/install/gsl-1.12/lib
+
+make
+
+#-------------------------------------------
+\end{lstlisting}
+
+\subsection{ORACLE client installation}\label{Chapter_ORA_install}
+
+Currently we use at GSI ORACLE 10.2.0.1client to access the data base.
+If you want to use data base support for HYDRA2 you have to install
+The ORACLE software at your local system. The packages can be downloaded
+from
+\newline
+http://www.oracle.com/technetwork/database/enterprise-edition/downloads/index.html
+
+Follow the instructions.
+
+
+
+\begin{lstlisting}[language=bash]
+---------------------------------------------------------------------------------
+# checkout a repository
+
+# get full repository from trunk (main branch) into a folder hydraTrans
+svn co https://subversion.gsi.de/hades/hydraTrans/trunk /mypath/hydraTrans
+
+cd /mypath/hydraTrans
+
+cp /misc/hadessoftware/etch32/admin/hsc-dev defall.sh
+
+edit the path to ROOTSYS and HADDIR according to your installation
+
+cp admin/*.mk .
+cp admin/Makefile .
+
+edit the Makefile according to your needs:
+INSTALL_DIR      = /mypath/hydraTrans
+USES_RFIO        = no
+
+. ./defall.sh
+make -s -j16
+
+make install
+---------------------------------------------------------------------------------
+\end{lstlisting}
+
+\subsubsection{HGeant}
+
+\begin{lstlisting}
+   1. Install Root, Cernlib and Hydra.
+   2. Setup your shell environment (including Root,Cernlib and Hydra settings)
+   3. Create a source code directory:
+          
+          mkdir /mypath/hgeant-version (use appropriate version number or snapshot date)
+   
+   4. Checkout the HGeant code:
+      HGeant code is located in CVS: CVSROOT=/misc/halo/repos/simul
+          cd /mypath/hgeant-version
+          /misc/hadessoftware/etch32/admin/full-hgeant-checkout.sh CVSROOT 
+   
+   5. Build it:
+          cp /mypath/hgeant-version/admin/Makefile /mypath/hgeant-version/
+          edit INSTALL_DIR
+          
+          make
+   6. Install it:
+          make install
+   7. Remove the files created durning build:
+          make distclean
+\end{lstlisting}
+
+\section{HYDRA2 source code repositories at GSI}\label{Chapter_HYDRA_repos}
+
+The Hades Subversion (svn , http://subversion.tigris.org/) repositories are 
+located at the GSI web-server. Some information about subversion at GSI can 
+be found at http://wiki.gsi.de/Linux/SubVersion The access authentification 
+uses the ORACLE data base of GSI. Read permission is granted anonymously. For 
+commiting code you have to have an account at http://www-oracle.gsi.de/ . 
+This is the same account as used for the documentation of working time or 
+the radiation savety. You do not need to have GSI linux or windows account 
+to get an user account. The user name has to added to the subversion access 
+management. Mail your user name and which directories you want to work with 
+to j.markert@gsi.de.
+
+
+For the documentaion of subversion see http://svnbook.red-bean.com/
+
+\begin{lstlisting}
+---------------------------------------------------------------------------------
+# checkout a repository
+
+# get full repository from trunk (main branch) into a folder hydraTrans
+svn co https://subversion.gsi.de/hades/hydraTrans/trunk hydraTrans
+
+# get a directory from the repository trunk (main branch) into a folder hydraTrans
+svn co https://subversion.gsi.de/hades/hydraTrans/trunk/mdc hydraTrans/mdc
+---------------------------------------------------------------------------------
+# view all commands
+svn help
+
+# view help on commands
+svn help status 
+---------------------------------------------------------------------------------
+# most usefull commands
+# to work on the local working copy
+
+[file] means filename is optional. In this case the commands
+apply to all files in the current directory
+
+// show local changes (stat=status)
+svn stat    [file]                                        
+
+// show local changes and changes on the server (-u == in update mode)
+svn stat -u [file]                                        
+
+// show modification of a file against a revision
+svn diff [file]                                           
+
+// schedule a new file for adding. Needs commit afterwards to 
+// send it to the repository
+svn add file                            
+
+// update file to newest revision
+svn update [file]                                         
+
+// send file [or all modified files] to repository (requires access 
+// permissions). takes the user name from checkout log
+svn commit -m "your comment" [file]                       
+
+// send file [or all modified files] as agiven svn user to repository 
+// (requires access permissions). helpful to commit from a checkout 
+// dir of another user
+svn --username yourname commit -m "your comment" [file]   
+                                                          
+                                                          
+                                                          
+
+
+// show graphical diff of file to svn base revision
+tkdiff file                                               
+// show graphical diff of file to newest svn head revision
+tkdiff file -r head                   
+
+\end{lstlisting}
+
+
+
+
+\subsection{Web-frontend TRAC} \label{Chapter_trac}
+
+The GSI IT provides Trac , a web-frontend for the subversion repositories, 
+running on the apache webserver. This web-frontend replaces our old CVS frontend. 
+Besides the standard source browsing features Trac support a bug tracking 
+system (see below).
+
+https://subversion.gsi.de/trac/hydra
+
+https://subversion.gsi.de/trac/hydraTrans
+
+Up to now the bugs of Hydra have been reported in the Hades Forum. Since our new web frontend for subversion supports a simple bug tracking system I will use this feauture.
+
+The bug tracking systen has the following features:
+
+\begin{enumerate}
+    \item Each registered user of the HADES repositories (see ORACLE account above) can add new bug reports. In Trac the reports are called "tickets". You have to login to Trac to add a new Ticket.
+    \item The ticket can contain code snippets and it is possible to attach pictures
+    \item Each ticket can be accepted and assigned to a person who should take care about it.
+    \item The ticket also can be reassigned to another person.
+    \item The tickets are uniquely numbered like \verb+"#1"+.
+    \item If a bug is fixed. The developer will quote the bug number in the commit comment. Trac will recognize the bug number \verb+#number+ and create a link to the bug report.
+    \item After fixing the bug. The ticket can be set to status fixed and will be removed from the list of active bugs. All bugs can be still displayed.
+    \item Any change on the bug report will cause a mail to the assigned person and the person who created the report.
+\end{enumerate}
+
+
+
+
+

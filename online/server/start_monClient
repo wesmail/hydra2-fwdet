@@ -1,0 +1,14 @@
+#!/bin/bash
+
+clientDir=$1
+clientConf=$2
+setup=$3
+
+echo "start_monClient started :"
+echo "clientDir   = $clientDir"
+echo "clientConf  = $clientConf"
+echo "setup       = $setup"
+
+cd $clientDir
+. $setup
+./hadesonlineclient.exe  $clientConf

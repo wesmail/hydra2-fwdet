@@ -1,0 +1,26 @@
+The folowing instruction assume that you will run
+the scan in the checkout dir. if not, you have to care about
+pathes.
+
+1. svn checkout https://subversion.gsi.de/hades/hydra2/trunk/scripts/tools/diskmon diskmon
+2. cd diskmon
+3. . ./getSource.sh (copies Makefiles and hdiskspace.h/cc from repository)
+4. edit defall.sh :  set HADDIR for install of libs
+5. edit Makefile  :  set HADDIR to same as in defall.sh
+6. build libs:
+   . ./defall.sh
+   make
+   make install
+7. edit runStat.sh :
+      set  groupID for group quota
+      set  isCompositeDir=yes (no: run disk in one shot, yes : catalogs will be proced per subdir, master catalog created, good for big projects)
+      set  outdir and weboutdir, (default is subdir out and web inside diskmon dir)
+      set  sourcedir             (to find the diskspace.C when runStat.sh is called from outside diskmon dir)
+      set path to defall.sh      (default is ./defall.sh when running from inside dismon dir)
+8. run  :  ./runStat.sh  mydirincludingpath leveltoprint 
+   hint :  rootlogon.C should be used to load the lib, make
+           sure it is found by root (HADES default search path includes current dir and HADDIR)
+   If everything works out you should have root files  in outdir/mydirincludingpath and 
+   figures+html in webout/mydirincludingpath
+
+ 

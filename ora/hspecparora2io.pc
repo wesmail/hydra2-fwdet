@@ -1,0 +1,896 @@
+//*-- AUTHOR : Ilse Koenig
+//*-- Created : 21/10/2010
+
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+// HSpecParOra2Io
+//
+// Interface class to database Oracle for input/output of parameters needed
+// by the Spectrometer (used for data since 2010)
+// (uses the Oracle C/C++ precompiler)
+//
+//////////////////////////////////////////////////////////////////////////////
+
+using namespace std;
+#include "hspecparora2io.h"
+#include "hparora2set.h"
+#include "hora2geomobj.h"
+#include "hspecgeompar.h"
+#include "hgeomcompositevolume.h"
+#include "hora2geomdetversion.h"
+#include "htrbnetaddressmapping.h"
+#include "htrb2correction.h"
+#include "hslowpar.h"
+#include "TClass.h"
+#include <iostream>
+#include <iomanip>
+#include <unistd.h>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HSpecParOra2Io)
+
+#define NMAX_GEOSMALL  100
+#define NMAX_SCS      2000
+#define NMAX_TRB      1000
+#define NCHAN_TRB      128
+#define LOB_BUFSIZE  32512
+#define NMAX_PERIOD   5000
+
+HSpecParOra2Io::HSpecParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC) {
+  // constructor
+  // sets the name of the I/O class "HSpecParIo"
+  // gets the pointer to the connection class
+  fName="HSpecParIo";
+  geomCaveVers=0;
+  geomSectorVers=0;
+  geomTargetVers=0;
+  alignTargetVers=0;
+  slowVers=0;
+  slowPartition="";
+}
+
+HSpecParOra2Io::~HSpecParOra2Io() {
+  if (geomCaveVers) {
+    delete geomCaveVers;
+    geomCaveVers=0;
+  }
+  if (geomSectorVers) {
+    delete geomSectorVers;
+    geomSectorVers=0;
+  }
+  if (geomTargetVers) {
+    delete geomTargetVers;
+    geomTargetVers=0;
+  }
+  if (alignTargetVers) {
+    delete alignTargetVers;
+    alignTargetVers=0;
+  }
+  if (slowVers) {
+    delete slowVers;
+    slowVers=0;
+  }
+}
+
+Bool_t HSpecParOra2Io::init(HParSet* pPar,Int_t* set) {
+  // calls the special read-function for the parameter container
+  if (getRunStart(pPar)<=0) {
+    pPar->setInputVersion(-1,inputNumber);
+    return kFALSE;
+  }
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HSpecGeomPar")==0)       return read(((HSpecGeomPar*)pPar),set);
+  if (strcmp(name,"HTrbnetAddressMapping")==0) return read((HTrbnetAddressMapping*)pPar);
+  if (strcmp(name,"HSlowPar")==0) return read((HSlowPar*)pPar);
+  cout<<"initialization of "<<pPar->GetName()<<" not possible from Oracle!"<<endl;
+  return kFALSE;
+}
+
+Int_t HSpecParOra2Io::write(HParSet* pPar) {
+  // calls the appropriate write function for the parameter container
+  if (getRunStart(pPar)<=0) return -1;
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HSpecGeomPar")==0) return writeAlignment((HSpecGeomPar*)pPar);
+  if (strcmp(name,"HTrbnetAddressMapping")==0) return writeTrbnetAddressMapping((HTrbnetAddressMapping*)pPar);
+  cout<<"No write-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return 0;
+}
+
+
+Bool_t HSpecParOra2Io::read(HSpecGeomPar* pPar, Int_t* set) {
+  // Reads the geometry of the cave, the sectors and the target(s)
+  Int_t contVers=pPar->getInputVersion(inputNumber);
+  if (!geomCaveVers) {
+    geomCaveVers=new HOra2GeomDetVersion("CAVE");
+  }
+  if (!geomSectorVers) {
+    geomSectorVers=new HOra2GeomDetVersion("SECT");
+  }
+  if (!geomTargetVers) {
+    geomTargetVers=new HOra2GeomDetVersion("TARGET");
+  }
+  if (!alignTargetVers&&strcmp(getExpLocation(),"VIRTUAL")!=0) {
+    alignTargetVers=new HParOra2Set(pPar->GetName());
+    Int_t contextId=getContextId("HDetGeomPar",pPar->getParamContext());
+    if (contextId==-1) return kFALSE;
+    alignTargetVers->contextId=contextId;
+  }
+  Bool_t allFound=kTRUE;
+  if (runStart<geomCaveVers->getSince()||runStart>geomCaveVers->getUntil()) {
+    TList geomObjects;
+    if (!pPar->getCave()) {
+      HGeomVolume v;
+      v.SetName("CAVE");
+      pPar->addCave(&v);
+    }
+    geomObjects.Add(new HOra2GeomObj("CAVE",pPar->getCave(),'R',0));
+    Int_t v=getGeomVersion("CAVE",geomCaveVers);
+    if (v>0) allFound=readIdealGeometry(&geomObjects,geomCaveVers);
+    geomObjects.Delete();
+    pPar->setChanged();
+  }
+  if (allFound&&(runStart<geomSectorVers->getSince()||runStart>geomSectorVers->getUntil())) {
+    TList geomObjects;
+    for(Int_t i=0;i<pPar->getNumSectors();i++) {
+      TString s="SEC";
+      s+=(i+1);
+      if (!pPar->getSector(i)) {     
+        HGeomVolume v;
+        v.SetName(s.Data());
+        v.setMother("CAVE");
+        pPar->addSector(&v);
+      }
+      geomObjects.Add(new HOra2GeomObj(s,pPar->getSector(i),'R',0));
+    }
+    Int_t v=getGeomVersion("SECT",geomSectorVers);
+    if (v>0) allFound=readIdealGeometry(&geomObjects,geomSectorVers);
+    geomObjects.Delete();
+    pPar->setChanged();
+  }
+  Bool_t needsGeomInit=kFALSE, needsAlignmentInit=kFALSE;
+  Int_t geomVers=geomTargetVers->getGeomVersion();
+  Int_t alignVers=-1;
+  Int_t detId=geomTargetVers->getDetectorId();
+  if (allFound&&(runStart<geomTargetVers->getSince()||runStart>geomTargetVers->getUntil())) {
+    needsGeomInit=kTRUE;
+    if (detId<0) {
+      geomVers=getGeomVersion("TARGET",geomTargetVers);
+    } else {
+      geomVers=getGeomVersion(detId,geomTargetVers);
+    }
+  }
+  if (geomVers<=0) {
+    allFound=kFALSE;
+  }
+  if (allFound&&alignTargetVers) {
+    Double_t oldUntil=alignTargetVers->versDate[1];    
+    if (contVers<=0 || needsGeomInit || runStart<alignTargetVers->versDate[0]
+                    || runStart>oldUntil) {
+      alignVers=getAlignmentVersion(alignTargetVers,"TARGET");
+      if (alignVers>0) needsAlignmentInit=kTRUE;
+      else if (oldUntil!=-1) needsGeomInit=kTRUE;
+    }
+  }
+  if (allFound&&(needsGeomInit||needsAlignmentInit)) {
+    TList geomObjects;
+    pPar->clear();
+    allFound=readTargetVolumes(pPar,geomObjects);
+    if (allFound) {
+      cout<<pPar->GetName()<<": Target geometry read from Oracle (version "<<geomVers<<")\n";
+      if (needsAlignmentInit) {
+        allFound=readAlignmentTransform(&geomObjects,alignVers);
+        if (allFound) {
+          cout<<pPar->GetName()<<": Target alignment read from Oracle(version "<<alignVers<<")\n";
+        }
+      }
+    }
+    geomObjects.Delete();
+    pPar->setChanged();
+  }
+  if (allFound) {
+    if (pPar->hasChanged()) {
+      pPar->setInputVersion(getActRunId(),inputNumber);
+      pPar->setNotFirstInit();
+    }
+  } else {
+    pPar->clear();
+    pPar->setChanged(kFALSE);
+  }
+  return allFound;
+}
+
+
+Bool_t HSpecParOra2Io::readTargetVolumes(HSpecGeomPar* pPar, TList& geomObjects) {
+  // Reads the target volumes
+  EXEC SQL BEGIN DECLARE SECTION;
+    int     vers;
+    int     detid;
+    struct {
+      int     p_id[NMAX_GEOSMALL];
+      varchar p_name[NMAX_GEOSMALL][11];
+      varchar p_shape[NMAX_GEOSMALL][5];
+      int     p_vol_id[NMAX_GEOSMALL];
+      int     p_trans_id[NMAX_GEOSMALL];
+    } vol;
+    struct {
+      short p_id_Ind[NMAX_GEOSMALL];
+      short p_name_Ind[NMAX_GEOSMALL];
+      short p_shape_Ind[NMAX_GEOSMALL];
+      short p_vol_id_Ind[NMAX_GEOSMALL];
+      short p_trans_id_Ind[NMAX_GEOSMALL];
+    } vol_Ind;
+  EXEC SQL END DECLARE SECTION;
+  vers=(Int_t)geomTargetVers->getGeomVersion();
+  detid=(Int_t)geomTargetVers->getDetectorId();
+  Int_t numTargets=0, i;
+  Bool_t allFound=kFALSE;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT object_id, object_name, geant3_shape, volume_id, trans_id
+           INTO :vol INDICATOR :vol_Ind
+           FROM hgeom.volume_data_at_histdate_2
+           WHERE det_part_id = :detid
+             AND :vers BETWEEN geom_vers_min AND geom_vers_max
+             AND ( object_name LIKE 'TARG%' OR object_name LIKE 'TX%' );
+  numTargets=sqlca.sqlerrd[2];
+  if (numTargets>0) {
+    pPar->createTargets(numTargets);
+    for(i=0;i<numTargets;i++) {
+      if (vol_Ind.p_name_Ind[i]!=-1) {
+        HGeomVolume v;
+        vol.p_name[i].arr[vol.p_name[i].len]='\0';
+        Char_t* nName=(Char_t*)(vol.p_name[i].arr);
+        v.SetName(nName);
+        if (vol_Ind.p_shape_Ind[i]!=-1) {
+          vol.p_shape[i].arr[vol.p_shape[i].len]='\0';
+          v.setShape((Char_t*)(vol.p_shape[i].arr));
+        }
+        v.setMother("CAVE");
+        pPar->addTarget(&v);
+        Int_t nt=pPar->getTargetIndex(nName);
+        HOra2GeomObj* obj=new HOra2GeomObj(nName,pPar->getTarget(nt),'T',0);
+        obj->objId=vol.p_id[i];
+        obj->volId=vol.p_vol_id[i];
+        if (vol_Ind.p_trans_id_Ind[i]!=-1) obj->transId=vol.p_trans_id[i];
+        geomObjects.Add(obj);
+      }
+    }
+    allFound=readGeomPoints(&geomObjects);
+    if (allFound) allFound=readGeomTransform(&geomObjects);
+  }    
+  return allFound;
+errorfound:
+  showSqlError("readTargetVolumes");  
+  return kFALSE;
+}
+
+
+Bool_t HSpecParOra2Io::getVersion(HParSet* pPar,Int_t& version) {
+  // checks, if the parameter container needs to be reinitialized
+  // reads the newest version valid for the current event file
+  // returns kTRUE, if new parameters must be read
+  // returns kFALSE, if no reinitialization needed or not valid version found
+  HParOra2Set* oraSet=getOraSet(pPar);
+  if (oraSet->contextId==-1 || runStart==-1) {
+    pPar->setInputVersion(-1,inputNumber);
+    version=-1;
+    return kFALSE;
+  }
+  Int_t contVers=pPar->getInputVersion(inputNumber);
+  if (contVers!=-1 && runStart>=oraSet->versDate[0] && runStart<=oraSet->versDate[1]) {
+    version=contVers;
+    return kFALSE;
+  }
+  const Char_t* containerClass=pPar->IsA()->GetName();
+  oraSet->clearVersDate();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers;
+    double since;
+    double until;
+  EXEC SQL END DECLARE SECTION;
+  context=oraSet->contextId;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("getVersion(HParOra2Set*,Int_t&)");
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  if (strcmp(containerClass,"HTrbnetAddressMapping")==0) {
+    EXEC SQL SELECT version,
+                    hanadate.date_to_number(valid_since),
+                    hanadate.date_to_number(valid_until)
+             INTO :vers, :since, :until
+             FROM daq.trbnet_addr_map_vers_at_date
+             WHERE context_id = :context;
+  }
+  version=vers;
+  oraSet->versDate[0]=since;
+  oraSet->versDate[1]=until;
+  return kTRUE;
+notfound:
+  pPar->setInputVersion(-1,inputNumber);
+  version=-1;
+  return kFALSE;
+};
+
+
+Bool_t HSpecParOra2Io::read(HTrbnetAddressMapping* pPar) {
+  // reads the mapping of TRBs to trbnet addresses and the tdc correction data
+  Int_t oraVersion=-1;
+  Bool_t isNew=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&isNew==kFALSE) return kTRUE;
+  pPar->clear();
+  HTrb2Correction* pTrb=0;
+  Bool_t rc=kTRUE;
+  HParOra2Set* oraSet=getOraSet(pPar);
+  Int_t nTrb=0;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    int minAddress;
+    int maxAddress;
+    struct {
+      int     address[NMAX_TRB];
+      int     subevtid[NMAX_TRB];
+      varchar temp_sensor[NMAX_TRB][21];
+      varchar board_type[NMAX_TRB][31];
+      int     tdcres_mode[NMAX_TRB];
+      int     hres_flag[NMAX_TRB];
+      int     dataid[NMAX_TRB];
+      double  since[NMAX_TRB];
+      double  until[NMAX_TRB];
+    } lrecC;
+    struct {
+      short address_Ind[NMAX_TRB];
+      short subevtid_Ind[NMAX_TRB];
+      short temp_sensor_Ind[NMAX_TRB];
+      short board_type_Ind[NMAX_TRB];
+      short tdcres_mode[NMAX_TRB];
+      short hres_flag[NMAX_TRB];
+      short dataid_Ind[NMAX_TRB];
+      short since_Ind[NMAX_TRB];
+      short until_Ind[NMAX_TRB];
+    } lrecC_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR goto errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  vers=oraVersion;
+  minAddress=pPar->getArrayOffset();
+  maxAddress=minAddress+pPar->getSize()-1;
+  EXEC SQL SELECT a.trbnet_address, a.subevent_id, a.temperature_sensor,
+                  a.board_type, NVL(a.tdc_resolution_mode,-1),
+                  NVL(b.high_resolution_flag,-1), b.data_id, 
+                  hanadate.date_to_number(b.valid_since),
+                  hanadate.date_to_number(b.valid_until)
+           INTO :lrecC INDICATOR :lrecC_Ind
+           FROM daq.trbnet_address_map_view a,
+                daq.trb_corrections_at_date b
+           WHERE a.vers_id = :vers
+             AND a.trbnet_address BETWEEN :minAddress AND :maxAddress
+             AND a.board_id = b.board_id(+);
+  nTrb=sqlca.sqlerrd[2];
+  for(Int_t i=0;i<nTrb&&rc;i++) {
+    if (lrecC_Ind.temp_sensor_Ind[i]!=-1) {
+      lrecC.temp_sensor[i].arr[lrecC.temp_sensor[i].len]='\0';
+      if (lrecC_Ind.board_type_Ind[i]!=-1) {
+        lrecC.board_type[i].arr[lrecC.board_type[i].len]='\0';
+      } else {
+        lrecC.board_type[i].arr[0]='\0';
+      }        
+      pTrb=pPar->addBoard(lrecC.address[i], (Char_t*)(lrecC.temp_sensor[i].arr),
+                          (Char_t*)(lrecC.board_type[i].arr), lrecC.subevtid[i],
+                          lrecC.tdcres_mode[i]);
+      if (pTrb) {
+        if ((lrecC.tdcres_mode[i]==0&&lrecC.hres_flag[i]>0)||          
+            (lrecC.tdcres_mode[i]>0&&lrecC.hres_flag[i]==0)) {
+          Error("read(HTrbnetAddressMapping*)",
+                "*****  TDC resolution mode %x from daq different from mode "
+                "of correction data %i for board with temeratur sensor %s *****\n",
+                lrecC.tdcres_mode[i],lrecC.hres_flag[i],(Char_t*)(lrecC.temp_sensor[i].arr));
+          rc=kFALSE;
+          break;
+        }
+        if (lrecC_Ind.dataid_Ind[i]!=-1) {
+          if (lrecC.since[i]>oraSet->versDate[0]) oraSet->versDate[0]=lrecC.since[i];
+          if (lrecC.until[i]<oraSet->versDate[1]) oraSet->versDate[1]=lrecC.until[i];
+          if (pTrb->makeArray()) rc=readTrb2CorrData(pTrb,lrecC.dataid[i]);
+        } else {
+          Double_t timerange[]={0.,1.e+12};
+          findTrb2CorrDataTimeRange(pTrb,timerange);
+          if (timerange[0]>oraSet->versDate[0]) oraSet->versDate[0]=timerange[0];
+          if (timerange[1]<oraSet->versDate[1]) oraSet->versDate[1]=timerange[1];
+          Warning("read(HTrbnetAddressMapping*)",
+                  "*****  No correction data found for TRB %s  *****\n",
+                  (Char_t*)(lrecC.temp_sensor[i].arr));
+        }
+      } else {
+        Error("read(HTrbnetAddressMapping*)","No board found for trbnet_address %x\n",
+              lrecC.address[i]);
+        rc=kFALSE;
+      }
+    }
+  }
+  if (nTrb>0&&rc) {
+    pPar->setInputVersion(oraVersion,inputNumber);
+    setChanged(pPar);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+    return kTRUE;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    return kFALSE;
+  }
+errorfound:
+  showSqlError("read(HTrbnetAddressMapping*)");
+  pPar->setInputVersion(-1,inputNumber);
+  return kFALSE;
+}
+
+
+void HSpecParOra2Io::findTrb2CorrDataTimeRange(HTrb2Correction* pTrb,
+                                               Double_t* timerange) {
+  // reads the time range where no corrections are stored for this board
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* temp_sensor;
+    double nsince;
+    double puntil;
+    short  nsince_ind;
+    short  puntil_ind;
+  EXEC SQL END DECLARE SECTION;
+  temp_sensor=(Char_t*)pTrb->GetName();
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL SELECT hanadate.date_to_number(previous_until),
+                  hanadate.date_to_number(next_since)
+           INTO :puntil:puntil_ind, :nsince:nsince_ind
+           FROM daq.trb_correction_range_check
+           WHERE temperature_sensor  = :temp_sensor;
+  timerange[0]=(puntil_ind!=-1) ? (puntil+1) : 0.;
+  timerange[1]=(nsince_ind!=-1) ? (nsince-1) : 1.e+12;
+  return;
+errorfound:
+  showSqlError("findTrb2CorrDataTimeRange(HTrb2Correction*,Double_t*)");
+notfound:
+  timerange[0]=0.;
+  timerange[1]=1.e+12;
+}
+
+
+Bool_t HSpecParOra2Io::readTrb2CorrData(HTrb2Correction* ptrb,Int_t dataId) {
+  Float_t* corrData=ptrb->getCorrections();
+  Int_t totlen=ptrb->getSize()*sizeof(Float_t);
+  EXEC SQL BEGIN DECLARE SECTION;
+    int            id;
+    int            amount;
+    int            offset;
+    unsigned char  buffer[LOB_BUFSIZE];
+    EXEC SQL VAR buffer IS RAW(LOB_BUFSIZE);
+  EXEC SQL END DECLARE SECTION;
+  id=dataId;
+  amount= (totlen>LOB_BUFSIZE) ? LOB_BUFSIZE : totlen;
+  Int_t restlen=totlen;
+  offset=1;
+  EXEC SQL WHENEVER SQLERROR GOTO notfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL EXECUTE
+    BEGIN
+      daq.htrb_ana.read_blob(:id,:amount,:buffer);
+    END;
+  END-EXEC;
+  restlen=totlen-amount;
+  memcpy(&corrData[0],buffer,amount);
+  while (restlen>0) {
+    offset+=LOB_BUFSIZE;
+    Int_t pos=(offset-1)/sizeof(Float_t);
+    amount= (restlen>LOB_BUFSIZE) ? LOB_BUFSIZE : restlen;
+    EXEC SQL EXECUTE
+      BEGIN
+        daq.htrb_ana.read_next_buffer(:amount,:offset,:buffer);
+      END;
+    END-EXEC;
+    memcpy(&corrData[pos],buffer,amount);
+    restlen-=amount;
+  }
+  return kTRUE;
+notfound:
+  showSqlError("readTrb2CorrData");
+  Error("readTrb2CorrData","Blob for data_id %i not read",dataId);
+  return kFALSE;
+}
+
+
+Int_t HSpecParOra2Io::writeAlignment(HSpecGeomPar* pPar) {
+  // Writes the target alignment
+  Int_t version=getAlignmentOutputVersion(pPar,pPar->getParamContext());
+  if (version==-1) return -1;
+  Int_t n=0;
+  Bool_t rc=kTRUE;
+  for(Int_t i=0;i<pPar->getNumTargets();i++) {
+    HGeomVolume* pVol=pPar->getTarget(i);
+    if (!pVol) continue;
+    if ((rc=writeTransform(version,pVol->GetName(),pVol->getTransform()))) n++;
+    else break;
+  }
+  if (rc && n>0) {
+    cout<<"Target alignment:  "<<n<<" rows inserted\n";
+    commit();
+  }
+  pPar->setChanged(kFALSE);
+  return version;
+}
+
+Int_t HSpecParOra2Io::createTrbnetAddressMappingVers(HTrbnetAddressMapping* pPar) {
+  // creates a new version for the parameters
+  // returns the new version
+  cout<<"---------------  "<<pPar->GetName()<<"   ---------------\n";
+  if (strlen(pPar->getAuthor())==0) {
+    Error("createTrbnetAddressMappingVers(HTrbnetAddressMapping*)",
+          "%s: author not defined\n",pPar->GetName());
+    return -1;
+  }
+  if (strlen(pPar->getDescription())==0) {
+    Error("createTrbnetAddressMappingVers(HTrbnetAddressMapping*)",
+          "%s: description of parameters not defined",pPar->GetName());
+    return -1;
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   vers=-1;
+    int   context;
+    int   run;
+    char* creator;
+    char* descript;
+  EXEC SQL END DECLARE SECTION;
+  context = getContextId(pPar->IsA()->GetName(),pPar->getParamContext());
+  if (context==-1) return -1;
+  run=getActRunId();
+  creator=(Char_t*)pPar->getAuthor();
+  descript=(Char_t*)pPar->getDescription();
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+  EXEC SQL EXECUTE
+    BEGIN
+      daq.htrb_ana.add_mapping_version(:context,:run,:creator,:descript,:vers);
+    END;
+  END-EXEC;
+  cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
+  return vers;
+errorfound:
+  showSqlError("createTrbnetAddressMappingVers(HTrbnetAddressMapping*)");
+  return vers;
+}
+
+
+Int_t HSpecParOra2Io::writeTrbnetAddressMapping(HTrbnetAddressMapping* pPar) {
+  // creates a new version and writes the mapping of subevent ids to TRBs to Oracle
+  Int_t version=createTrbnetAddressMappingVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   rows_to_insert;
+    int   vers[NMAX_TRB];
+    int   address[NMAX_TRB];
+    int   subevtid[NMAX_TRB];
+    char  temp_sensor[NMAX_TRB][81];
+    short subevtid_Ind[NMAX_TRB];
+    int   tdcres_mode[NMAX_TRB];
+  EXEC SQL END DECLARE SECTION;
+  Int_t nRow=0;
+  Int_t arrayOffset=pPar->getArrayOffset();
+  for(Int_t i=0;i<pPar->getSize();i++) {
+    HTrb2Correction* b=(*pPar)[i];
+    if (b&&strcmp(b->getBoardType(),"TRB")==0) {
+      vers[nRow]=version;
+      address[nRow]=arrayOffset+i;
+      if (strlen(b->GetName())==0) {
+        Error("writeTrbnetAddressMapping(...)",
+              "temperature sensor not defined for trbnet-address %i\n",address[i]);
+        rollback();
+        return -1;
+      }
+      strcpy(temp_sensor[nRow],b->GetName());
+      subevtid[nRow]=b->getSubeventId();
+      subevtid_Ind[nRow] = (b->getSubeventId()==-1) ? -1 : 0;
+      tdcres_mode[nRow]=b->getHighResolutionFlag();
+      nRow++;
+    }
+  }
+  rows_to_insert=nRow;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL FOR :rows_to_insert
+       INSERT INTO daq.trbnet_address_map_data
+           (vers_id, trbnet_address, subevent_id, board_id, tdc_resolution_mode)
+         VALUES (:vers, :address, :subevtid:subevtid_Ind,
+                 daq.htrb_ana.get_board_id(:temp_sensor),
+                 :tdcres_mode);
+  cout<<pPar->GetName()<<":  "<<rows_to_insert<<" rows inserted\n";
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HTrbnetAddressMapping*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+
+Int_t HSpecParOra2Io::writeTrb2Corrections(HTrbnetAddressMapping* pPar) {
+  // writes the TRB tdc corrections to Oracle, but not the mapping between
+  // trbnet addresses and temperature sensors
+  cout<<"---------------  Storage of Trb tdc corrections  ---------------\n";
+  EXEC SQL BEGIN DECLARE SECTION;
+    char*         p_temp_sensor;
+    char*         p_author;
+    char*         p_descript;
+    int           resolflag;
+    unsigned char buffer[LOB_BUFSIZE];
+    int           amount;
+    int           offset;
+    int           p_data_id;
+    short         p_descript_Ind;
+    EXEC SQL VAR buffer IS RAW(LOB_BUFSIZE);
+  EXEC SQL END DECLARE SECTION;
+  p_author=(Char_t*)(pPar->getAuthor());
+  p_descript=(Char_t*)(pPar->getDescription());
+  if (strlen(p_author)==0) {
+    Error("writeTrb2Correction(...)",
+          "author of parameters not defined");
+    return -1;
+  }
+  if (strlen(p_descript)==0) {
+    p_descript='\0';
+    p_descript_Ind=-1;
+  } else {
+    p_descript_Ind=0;    
+  }
+  Int_t nBoards=0;
+  for(Int_t i=0;i<pPar->getSize();i++) {
+    HTrb2Correction* b=(*pPar)[i];
+    if (b) {
+      p_temp_sensor=(Char_t*)(b->GetName());
+      if (strlen(p_temp_sensor)==0) {
+        Error("writeTrb2Correction(...)",
+              "temperature sensor not defined for trbnet-address %i\n",i+pPar->getArrayOffset());
+        rollback();
+        return -1;
+      }
+      Float_t* corrData=b->getCorrections();
+      if (corrData==0) {
+        Warning("writeTrb2Correction(...)",
+                "no tdc corrections for temperature sensor %s\n",p_temp_sensor);
+        continue;
+      }
+      resolflag=b->getHighResolutionFlag();
+      Float_t diff=999.F;
+      p_data_id=compareForWrite(*b,diff);
+      if (p_data_id>0&&diff<0.0001) {
+        cout<<"***  Temperature sensor: "<<p_temp_sensor<<"   Difference to existing version "
+            <<p_data_id<<": "<<diff<<endl;
+      } else {
+        offset=1;
+        Int_t totlen=b->getSize()*sizeof(Float_t);
+        amount= (totlen>LOB_BUFSIZE) ? LOB_BUFSIZE : totlen;
+        memcpy(buffer,&corrData[0],amount);
+        p_data_id=-1;
+        Int_t restlen=totlen-amount;
+        EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+        EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+        EXEC SQL EXECUTE
+          DECLARE
+          BEGIN
+            daq.htrb_ana.add_tdc_corrections(:p_temp_sensor,:resolflag,
+                  :amount,:buffer,:p_author,:p_descript:p_descript_Ind,
+                  :p_data_id);
+          END;
+        END-EXEC;
+        while (p_data_id>0&&restlen>0) {
+          offset+=LOB_BUFSIZE;
+          Int_t pos=(offset-1)/sizeof(Float_t);
+          amount= (restlen>LOB_BUFSIZE) ? LOB_BUFSIZE : restlen;
+          memcpy(buffer,&corrData[pos],amount);
+          EXEC SQL EXECUTE
+            DECLARE
+            BEGIN
+              daq.htrb_ana.append_to_blob(:p_data_id,:amount,:offset,:buffer);
+            END;
+          END-EXEC;
+          restlen-=amount;
+        }
+        cout<<"***  Temperature sensor: "<<p_temp_sensor<<"   New data id: "<<p_data_id<<endl;
+        nBoards++;
+      }
+    }
+  }
+  cout<<"****************************************************************\n";
+  cout<<"***  Trb tdc corrections: "<<nBoards<<" board(s) written to Oracle"<<endl;
+  if (nBoards > 0) {
+    commit();
+  }
+  cout<<"****************************************************************\n";
+  pPar->setChanged(kFALSE);
+  return p_data_id;
+errorfound:
+  showSqlError("writeTrb2Correction(...)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+
+Int_t HSpecParOra2Io::compareForWrite(HTrb2Correction& newTrb,Float_t& diff) {
+  // compares the correction data of the TRB with the last version in Oracle 
+  HTrb2Correction oldTrb;
+  oldTrb.SetName(newTrb.GetName());
+  oldTrb.setBoardType(newTrb.getBoardType());  
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* p_temp_sensor;
+    int   p_data_id;
+    int   resolflag;
+  EXEC SQL END DECLARE SECTION;
+  p_temp_sensor=(Char_t*)(newTrb.GetName());
+  p_data_id=-1;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL SELECT data_id, NVL(high_resolution_flag,-1)
+             INTO :p_data_id, :resolflag 
+             FROM daq.trb_correction_data_view
+             WHERE temperature_sensor = :p_temp_sensor
+               AND data_id = ( SELECT NVL(MAX(data_id),-1)
+                               FROM daq.trb_correction_data_view
+                               WHERE temperature_sensor = :p_temp_sensor );
+  if (p_data_id>0) {
+    oldTrb.setHighResolutionFlag(resolflag);
+    oldTrb.makeArray();
+    Bool_t rc=readTrb2CorrData(&oldTrb,p_data_id);
+    if (rc) {
+      diff=oldTrb.compare(newTrb);
+    } else {
+      diff=0;
+    }
+  }
+  return p_data_id;
+errorfound:
+  showSqlError("compareForWrite(HTrb2Correction&,Float_t&)");
+  return -1;
+};
+
+
+Bool_t HSpecParOra2Io::read(HSlowPar* pPar) {
+  // fills the parameter container with all run summaries at this day
+  slowPartition=pPar->getPartition();
+  slowPartition.ToLower();
+  if (slowPartition.IsNull()) return kFALSE;
+  Int_t oraVersion=-1, nPeriods=0;
+  if (!slowVers) {
+    slowVers=new HParOra2Set(pPar->GetName());
+    slowVers->contextId=0;
+  } else {
+    oraVersion=pPar->getInputVersion(inputNumber);
+    if (oraVersion!=-1 && runStart>=slowVers->versDate[0] && runStart<=slowVers->versDate[1]) {
+      return kTRUE;
+    }
+  }
+  pPar->reset(1);
+  Bool_t rc=readSlowParRuns(pPar,oraVersion,nPeriods);
+  if (rc && nPeriods>0) readSlowSummaries(pPar);
+  if (rc) {
+    pPar->setInputVersion(oraVersion,inputNumber);
+    setChanged(pPar);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+    return kTRUE;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    return kFALSE;
+  }
+}
+
+
+Bool_t HSpecParOra2Io::readSlowParRuns(HSlowPar* pPar,Int_t& version,Int_t& nPeriods) {
+  // read listof runs at this day
+  slowVers->clearVersDate();
+  EXEC SQL BEGIN DECLARE SECTION;
+    struct {
+      int    runid[NMAX_PERIOD];
+      double runstart[NMAX_PERIOD];
+      int    periodid[NMAX_PERIOD];
+    } runs;
+    struct {
+      short runid_Ind[NMAX_PERIOD];
+      short runstart_Ind[NMAX_PERIOD];
+      short periodid_Ind[NMAX_PERIOD];
+    } runs_Ind;
+  EXEC SQL END DECLARE SECTION;
+  Int_t nRuns=0;
+  Bool_t rc=kFALSE;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  if (slowPartition.CompareTo("online")==0) {
+    EXEC SQL SELECT run_id, run_start, period_id
+               INTO :runs:runs_Ind
+             FROM hades_scs.hscs_runs_at_date
+             ORDER by run_id;
+  } else {
+    EXEC SQL SELECT run_id, run_start, period_id
+               INTO :runs:runs_Ind
+             FROM hades_slow2.hscs_runs_at_date
+             ORDER by run_id;
+  }
+  nRuns=sqlca.sqlerrd[2];
+  if (nRuns>0) {
+    for(Int_t i=0;i<nRuns;i++) {
+      pPar->setChannelMap(runs.runid[i]);
+      if (runs_Ind.periodid_Ind[i]!=-1) {
+        nPeriods++;
+      }
+    }
+    version=runs.runid[0];
+    slowVers->versDate[0]=runs.runstart[0];
+    slowVers->versDate[1]=runs.runstart[nRuns-1];
+    rc=kTRUE;
+  }  
+  return rc;
+errorfound:
+  showSqlError("readSlowParRuns(HSlowPar*,Int_t&,Int_t&)");
+  pPar->setInputVersion(-1,inputNumber);
+  version=-1;
+  return kFALSE;
+};
+
+void HSpecParOra2Io::readSlowSummaries(HSlowPar* pPar) {
+  // read the summaries at this day
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* cname;
+    struct {
+      int    runid[NMAX_PERIOD];
+      double vmean[NMAX_PERIOD];
+      double vsigma[NMAX_PERIOD];
+      double vmin[NMAX_PERIOD];
+      double vmax[NMAX_PERIOD];
+    } sums;
+    struct {
+      short runid_Ind[NMAX_PERIOD];
+      short vmean_Ind[NMAX_PERIOD];
+      short vsigma_Ind[NMAX_PERIOD];
+      short vmin_Ind[NMAX_PERIOD];
+      short vmax_Ind[NMAX_PERIOD];
+    } sums_Ind;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  const TList* channels=pPar->getChannelList();
+  TIter next(channels);
+  TObject *obj ;
+  while ((obj = next())) {
+    TString name = ((TObjString*)(obj))->GetString();
+    cname=(char*)name.Data();
+    if (slowPartition.CompareTo("online")==0) {
+      EXEC SQL SELECT run_id, mean_value, sigma_value, min_value, max_value
+                 INTO :sums:sums_Ind
+               FROM hades_scs.hscs_summaries_at_date
+               WHERE channel_name = :cname;
+    } else {
+      EXEC SQL SELECT run_id, mean_value, sigma_value, min_value, max_value
+                 INTO :sums:sums_Ind
+               FROM hades_slow2.hscs_summaries_at_date
+               WHERE channel_name = :cname;
+
+    }
+    for(Int_t i=0;i<sqlca.sqlerrd[2];i++) {
+      if (sums_Ind.vmin_Ind[i]!=-1) {
+        Double_t ar[]={sums.vmean[i],sums.vsigma[i],sums.vmin[i],sums.vmax[i]};
+        pPar->setChannel(sums.runid[i],name,ar,kTRUE);
+      }
+    }
+  }
+  return;
+errorfound:
+  showSqlError("readSlowSummaries(HSlowPar*)");
+}
+
+
+
+
+

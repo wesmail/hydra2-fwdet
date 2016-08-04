@@ -1,0 +1,585 @@
+// File: hrichparora2io.pc
+//
+// AUTHOR : Ilse Koenig
+// Created : 10/03/2010 by I. Koenig
+//
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+// HRichParOra2Io
+//
+// Interface class to database Oracle for input/output of parameters needed
+// by the Rich for runs since 2010
+// (uses the Oracle C/C++ precompiler)
+//
+//////////////////////////////////////////////////////////////////////////////
+using namespace std;
+#include "hrichparora2io.h"
+#include "hparora2set.h"
+#include "hrichmappingpar.h"
+#include "hrichcalpar.h"
+#include "hrichcalparcell.h"
+#include "hrichthresholdpar.h"
+#include "richdef.h"
+#include "TClass.h"
+#include <iostream>
+#include <iomanip>
+#include <unistd.h>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+/* Include the SQL Communications Area, a structure through
+ * which ORACLE makes runtime status information such as error
+ * codes, warning flags, and diagnostic text available to the
+ * program.
+ */
+#include <sqlca.h>
+
+ClassImp(HRichParOra2Io)
+
+#define RICH_MAXSECT 6
+#define RICH_MAXPADS 4900
+
+HRichParOra2Io::HRichParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC) {
+  // constructor
+  // sets the name of the I/O class "HRichParIo"
+  // gets the pointer to the connection class
+  fName="HRichParIo";
+  initModules=new TArrayI(RICH_MAX_SECTORS);
+}
+
+
+HRichParOra2Io::~HRichParOra2Io() {
+  // destructor
+  if (initModules) delete initModules;
+}
+
+
+Bool_t HRichParOra2Io::init(HParSet* pPar,Int_t* set) {
+  // calls special read-function for each parameter container
+  if (getRunStart(pPar)<0) {
+    pPar->setInputVersion(-1,inputNumber);
+    return kFALSE;
+  }
+  const Text_t* name=pPar->IsA()->GetName();
+  if (strcmp(name,"HRichMappingPar")==0) return read(((HRichMappingPar*)pPar),set);
+  if (strcmp(name,"HRichCalPar")==0) return read(((HRichCalPar*)pPar),set);
+  if (strcmp(name,"HRichThresholdPar")==0) return read(((HRichThresholdPar*)pPar),set);
+  cout<<"No read-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return kFALSE;
+}
+
+
+Int_t HRichParOra2Io::write(HParSet* pPar) {
+  // calls the appropriate write function for the container
+  if (getRunStart(pPar)<=0) return -1;
+  const Text_t* name=pPar->IsA()->GetName();
+  if (!strcmp(name,"HRichMappingPar"))
+     return writePar((HRichMappingPar*)pPar);
+  if (!strcmp(name,"HRichCalPar"))
+     return writePar((HRichCalPar*)pPar);
+  if (!strcmp(name,"HRichThresholdPar"))
+     return writePar((HRichThresholdPar*)pPar);
+  cout<<"No write-interface to Oracle for parameter container "
+      <<pPar->GetName()<<endl;
+  return 0;
+}
+
+
+void HRichParOra2Io::printInfo(const Char_t* contName) {
+  // prints the sectors initialized from Oracle
+  Bool_t first=kTRUE;
+  for(Int_t i=0;i<RICH_MAX_SECTORS;i++) {
+    if (initModules->At(i)) {
+      if (first) {
+        cout<<contName<<": sector(s) initialized from Oracle: ";
+        first=kFALSE;
+      }
+      cout<<(initModules->At(i)-1)<<" ";
+    }
+  }
+  cout<<'\n';
+}
+
+
+Bool_t HRichParOra2Io::getVersion(HParSet* pPar,Int_t& version) {
+  // checks, if the parameter container needs to be reinitialized
+  // reads the newest version valid for the current event file
+  // returns kTRUE, if new parameters must be read
+  // returns kFALSE, if no reinitialization needed or no valid version found
+  HParOra2Set* oraSet=getOraSet(pPar);
+  const Char_t* containerClass=pPar->IsA()->GetName();
+  if (strcmp(containerClass,"HRichThresholdPar")==0) oraSet->contextId=0;   // container has no context
+  if (oraSet->contextId==-1 || runStart<0) {
+    pPar->setInputVersion(-1,inputNumber);
+    version=-1;
+    return kFALSE;
+  }
+  Int_t contVers=pPar->getInputVersion(inputNumber);
+  if (contVers!=-1 && runStart>=oraSet->versDate[0] && runStart<=oraSet->versDate[1]) {
+    version=contVers;
+    return kFALSE;
+  }
+  oraSet->clearVersDate();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers;
+    double since;
+    double until;
+  EXEC SQL END DECLARE SECTION;
+  context=oraSet->contextId;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("getVersion(HParSet*,Int_t&)");
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  if (strcmp(containerClass,"HRichCalPar")==0) {
+    EXEC SQL SELECT version,
+                    hanadate.date_to_number(valid_since),
+                    hanadate.date_to_number(valid_until)
+             INTO :vers, :since, :until
+           FROM rich_ana2.rich_calpar_vers_at_date
+           WHERE context_id = :context;
+  } else {
+    if (strcmp(containerClass,"HRichMappingPar")==0) {
+      EXEC SQL SELECT version,
+                      hanadate.date_to_number(valid_since),
+                      hanadate.date_to_number(valid_until)
+               INTO :vers, :since, :until
+             FROM rich_ana2.rich_mappingpar_vers_at_date
+             WHERE context_id = :context;
+    } else {
+      if (strcmp(containerClass,"HRichThresholdPar")==0) {
+        EXEC SQL SELECT version,
+                        hanadate.date_to_number(valid_since),
+                        hanadate.date_to_number(valid_until)
+                 INTO :vers, :since, :until
+               FROM rich_ana2.rich_thresholdpar_vers_at_date;
+      }
+    }
+  } 
+  version=vers;
+  oraSet->versDate[0]=since;
+  oraSet->versDate[1]=until;
+  return kTRUE;
+notfound:
+  pPar->setInputVersion(-1,inputNumber);
+  version=-1;
+  return kFALSE;
+}
+
+
+Bool_t HRichParOra2Io::read(HRichMappingPar* pPar, Int_t* set) {
+  // reads the unpacker lookup table and fill the RichMappingPar container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int   p_col[RICH_MAXPADS];
+      int   p_row[RICH_MAXPADS];
+      unsigned int adc[RICH_MAXPADS];
+      unsigned int apv[RICH_MAXPADS];
+      unsigned int chan[RICH_MAXPADS];
+    } map;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HRichMappingPar*,Int_t*)");
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL SELECT pad_col, pad_row, adc, apv, channel
+             INTO :map
+             FROM rich_ana2.rich_mappingpar_data_view
+             WHERE vers_id =:vers;
+  rc=kTRUE;
+  for (Int_t i=0;i<sqlca.sqlerrd[2]&&rc;i++) {
+    rc=pPar->setAddress(map.p_row[i],map.p_col[i],map.adc[i],map.apv[i],map.chan[i]);
+  }
+  if (sqlca.sqlerrd[2]>0&&rc) {
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+  }
+  return rc;
+}
+
+
+Bool_t HRichParOra2Io::read(HRichCalPar* pPar, Int_t* set) {
+  // reads the calibration parameters and fill the RichCalPar container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  initModules->Reset();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int   sec[RICH_MAXPADS];
+      int   p_col[RICH_MAXPADS];
+      int   p_row[RICH_MAXPADS];
+      float of[RICH_MAXPADS];    //offset
+      float si[RICH_MAXPADS];    //sigma
+    } cal;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HRichCalPar*,Int_t*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL DECLARE cal_cur CURSOR FOR
+    SELECT sector, pad_col, pad_row, offset, sigma
+      FROM rich_ana2.rich_calpar_data_view
+      WHERE vers_id =:vers;
+  Bool_t isOpenCursor=kFALSE;
+  Bool_t allFound=kTRUE;
+  Int_t s=-1, nTot=0, nLast=0;
+  HLocation loc;
+  loc.setNIndex(3);
+  HRichCalParCell* pCell=0;
+  vers=oraVersion;
+  EXEC SQL OPEN cal_cur;
+  isOpenCursor=kTRUE;
+  do {
+    EXEC SQL FETCH cal_cur INTO :cal;
+    nLast=sqlca.sqlerrd[2]-nTot;
+    if (nLast>0) {
+      for (Int_t i=0;i<nLast;i++) {
+        s=cal.sec[i]-1;
+        if (set[s]) {
+          loc[0] = s;
+          loc[1] = cal.p_row[i];   // y
+          loc[2] = cal.p_col[i];   // x
+          pCell = (HRichCalParCell*)pPar->getSlot(loc);
+          if (pCell) {
+            pCell->setParams(cal.of[i],cal.si[i]);
+          } else {
+            Error("read(HRichCalPar*,Int_t*)",
+                  "slot not found:  %i %i %i",loc[0],loc[1],loc[2]);
+            allFound=kFALSE;
+            break;
+          }
+          initModules->AddAt(1,s);
+        }
+        nTot++;
+      }
+    }
+  } while (nLast==RICH_MAXPADS&&nTot<=29400&&allFound);
+  if (isOpenCursor) {
+    EXEC SQL CLOSE cal_cur;
+    for(Int_t i=0;i<RICH_MAX_SECTORS;i++) {
+      if (set[i]>0 && initModules->At(i)==0) allFound=kFALSE;
+    }
+  } else allFound=kFALSE;
+  if (allFound) {
+    setChanged(pPar,oraVersion);
+    printInfo(pPar->GetName());
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+  }
+  return allFound;
+}
+
+
+Bool_t HRichParOra2Io::read(HRichThresholdPar* pPar, Int_t* set) {
+  // reads the thresholds and fill the RichThresholdPar container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int   sec[RICH_MAXSECT];
+      int   calparvers[RICH_MAXSECT];
+      float multsigma[RICH_MAXSECT];
+    } thres;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HRichThresholdPar*,Int_t*)");
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL SELECT sector_id, calpar_vers_id, multiply_sigma
+             INTO :thres
+             FROM rich_ana2.rich_thresholdpar_data_view
+             WHERE vers_id =:vers;
+  rc=kTRUE;
+  for (Int_t i=0;i<sqlca.sqlerrd[2];i++) {
+    if (i==0) pPar->setCalParVers(thres.calparvers[i]);
+    pPar->setSigmaMultiplier(thres.sec[i]-1,thres.multsigma[i]);   
+  }
+  if (sqlca.sqlerrd[2]>0) {
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    rc=kFALSE;
+  }
+  return rc;
+}
+
+
+Int_t HRichParOra2Io::createVers(HParSet* pPar) {
+  // creates a new version for the parameters
+  // returns the new version
+  cout<<"---------------  "<<pPar->GetName()<<"   ---------------\n";
+  if (strlen(pPar->getAuthor())==0) {
+    Error("createVers(...)",
+          "author of parameters not defined");
+    return -1;
+  }
+  if (strlen(pPar->getDescription())==0) {
+    Error("createVers(...)",
+          "descriction of parameters not defined");
+    return -1;
+  }
+  const Char_t* contName=pPar->IsA()->GetName();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers=-1;
+    int run;
+    char* creator;
+    char* descript;    
+  EXEC SQL END DECLARE SECTION;
+  context = getContextId(contName,pPar->getParamContext());
+  if (context==-1) return -1;
+  run=getActRunId();
+  creator=(Char_t*)pPar->getAuthor();
+  descript=(Char_t*)pPar->getDescription();
+  EXEC SQL WHENEVER SQLERROR GOTO not_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+  if (strcmp(contName,"HRichCalPar")==0) {
+    EXEC SQL EXECUTE
+      BEGIN
+        SELECT rich_ana2.rich_par_query.next_version INTO :vers FROM DUAL;
+        INSERT INTO rich_ana2.rich_calpar_vers 
+  	          (vers_id, orig_context_id, run_id, author, description)
+           VALUES (:vers, :context, :run, :creator, :descript);
+      END;
+    END-EXEC;
+  } else {
+    if (strcmp(contName,"HRichMappingPar")==0) {
+      EXEC SQL EXECUTE
+        BEGIN
+          SELECT rich_ana2.rich_par_query.next_version INTO :vers FROM DUAL;
+          INSERT INTO rich_ana2.rich_mappingpar_vers 
+  	            (vers_id, orig_context_id, run_id, author, description)
+             VALUES (:vers, :context, :run, :creator, :descript);
+        END;
+      END-EXEC;
+    }
+  }
+  cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
+  return vers;
+not_found:
+  showSqlError("createVers()");
+  return vers;
+}
+
+
+Int_t HRichParOra2Io::writePar(HRichMappingPar* pPar) {
+  // creates a new version and writes the mapping parameters to Oracle
+  // returns the version number or -1 if an error occurs
+  cout<<"****************************************************************\n";
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers[RICH_MAXPADS];
+    int x[RICH_MAXPADS];
+    int y[RICH_MAXPADS];
+    int adc[RICH_MAXPADS];
+    int apv[RICH_MAXPADS];
+    int chan[RICH_MAXPADS];
+    int rows_to_insert;
+  EXEC SQL END DECLARE SECTION;
+  Int_t nCell=0;
+  UInt_t a1, a2, a3;
+  for(Int_t r=0;r<RICH_MAX_ROWS;r++) {
+    for(Int_t c=0;c<RICH_MAX_COLS&&nCell<RICH_MAXPADS;c++) {
+      if (pPar->getHWAddress(r,c,a1,a2,a3)) {
+        vers[nCell]=version;
+        x[nCell]=c;
+        y[nCell]=r;
+        adc[nCell]=a1;
+        apv[nCell]=a2;
+        chan[nCell]=a3;
+        nCell++;
+      }
+    }
+  }
+  if (nCell>0) {;
+    rows_to_insert=nCell;
+    EXEC SQL WHENEVER SQLERROR GOTO not_found;
+    EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+    EXEC SQL FOR :rows_to_insert
+        INSERT INTO rich_ana2.rich_mappingpar_data
+            (vers_id, pad_pos_id, adc, apv, channel)
+            VALUES (:vers,
+                    rich_ana2.rich_par_query.get_pad_pos_id(:x,:y),
+                    :adc, :apv, :chan);
+
+    cout<<rows_to_insert<<" rows inserted\n";
+  }
+  cout<<"******    Mapping parameters written to Oracle\n";
+  cout<<"****************************************************************\n";
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+not_found:
+  showSqlError("writePar(HRichMappingPar*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+
+Int_t HRichParOra2Io::writePar(HRichCalPar* pPar) {
+  // creates a new version and writes the calibration parameters to Oracle
+  // returns the version number or -1 if an error occurs
+  cout<<"****************************************************************\n";
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers[RICH_MAXPADS];
+    int sec[RICH_MAXPADS];
+    int x[RICH_MAXPADS];
+    int y[RICH_MAXPADS];
+    float ofs[RICH_MAXPADS];
+    float sig[RICH_MAXPADS];
+    int rows_to_insert;
+  EXEC SQL END DECLARE SECTION;
+  HLocation loc;
+  loc.set(3,0,0,0);
+  HRichCalParCell* pCell=0;
+  Float_t csi=0.F;
+  for(Int_t s=0;s<RICH_MAX_SECTORS;s++) {
+    Int_t nCell=0;
+    loc[0]=s;
+    for(Int_t r=0;r<RICH_MAX_ROWS;r++) {
+      loc[1]=r;    // y
+      for(Int_t c=0;c<RICH_MAX_COLS&&nCell<RICH_MAXPADS;c++) {
+        loc[2]=c;  // x
+        pCell = (HRichCalParCell*)pPar->getObject(loc);
+        if (pCell) {
+          csi=pCell->getSigma();
+       	  if (csi != 0.F) { // only non-default values
+            vers[nCell]=version;
+            sec[nCell]=s+1;
+            x[nCell]=c;
+            y[nCell]=r;
+            ofs[nCell]=pCell->getOffset();
+            sig[nCell]=csi;
+            nCell++;
+          }
+        }
+      }
+    }
+    if (nCell==0) continue;
+    rows_to_insert=nCell;
+    EXEC SQL WHENEVER SQLERROR GOTO not_found;
+    EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+    EXEC SQL FOR :rows_to_insert
+        INSERT INTO rich_ana2.rich_calpar_data
+            (vers_id, pad_id, offset, sigma)
+            VALUES (:vers,
+                    rich_ana2.rich_par_query.get_pad_id(:sec,:x,:y),
+                    :ofs, :sig);
+
+    cout<<"sector: "<<(s+1)<<"    "<<rows_to_insert<<" rows inserted\n";
+  }
+  cout<<"******    Calibration parameters written to Oracle\n";
+  cout<<"****************************************************************\n";
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+not_found:
+  showSqlError("writePar(HRichCalPar*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+
+Int_t HRichParOra2Io::createThresholdVers(HRichThresholdPar* pPar) {
+  // creates a new version for the parameters
+  // returns the new version
+  cout<<"---------------  "<<pPar->GetName()<<"   ---------------\n";
+  if (strlen(pPar->getAuthor())==0) {
+    Error("createVers(...)",
+          "author of parameters not defined");
+    return -1;
+  }
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers=-1;
+    int calparvers;
+    char* creator;
+    char* descript;
+    short descript_Ind;    
+  EXEC SQL END DECLARE SECTION;
+  calparvers=pPar->getCalParVers();
+  creator=(Char_t*)pPar->getAuthor();
+  descript=0;
+  if (strlen(pPar->getDescription())>0) {
+    descript=(Char_t*)pPar->getDescription();
+    descript_Ind=0;
+  } else descript_Ind=-1;
+  EXEC SQL WHENEVER SQLERROR GOTO not_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+  EXEC SQL EXECUTE
+    BEGIN
+      SELECT rich_ana2.rich_par_query.next_version INTO :vers FROM DUAL;
+      INSERT INTO rich_ana2.rich_thresholdpar_vers 
+   	         (vers_id, calpar_vers_id, author, description)
+          VALUES (:vers, :calparvers, :creator, :descript:descript_Ind);
+    END;
+  END-EXEC;
+  cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
+  return vers;
+not_found:
+  showSqlError("createThresholdVers()");
+  return vers;
+}
+
+
+Int_t HRichParOra2Io::writePar(HRichThresholdPar* pPar) {
+  // creates a new version and writes the mapping parameters to Oracle
+  // returns the version number or -1 if an error occurs
+  cout<<"****************************************************************\n";
+  Int_t version=createThresholdVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers[RICH_MAXSECT];
+    int sec[RICH_MAXSECT];
+    float multsigma[RICH_MAXSECT];
+    int rows_to_insert;
+  EXEC SQL END DECLARE SECTION;
+  Int_t nData=0;
+  for(Int_t s=0;s<RICH_MAXSECT;s++) {
+    vers[nData]=version;
+    sec[nData]=s+1;
+    multsigma[nData]=pPar->getSigmaMultiplier(s);
+    nData++;
+  }
+  if (nData>0) {;
+    rows_to_insert=nData;
+    EXEC SQL WHENEVER SQLERROR GOTO not_found;
+    EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+    EXEC SQL FOR :rows_to_insert
+        INSERT INTO rich_ana2.rich_thresholdpar_data
+            (vers_id, sector_id, multiply_sigma)
+            VALUES (:vers, :sec, :multsigma );
+    cout<<rows_to_insert<<" rows inserted\n";
+  }
+  cout<<"******    Threshold parameters written to Oracle\n";
+  cout<<"****************************************************************\n";
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+not_found:
+  showSqlError("writePar(HRichThresholdPar*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}

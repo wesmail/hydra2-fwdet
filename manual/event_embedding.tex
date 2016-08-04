@@ -1,0 +1,398 @@
+\chapter{Event embedding}\label{Chapter_embedding}
+
+\section{Overview}
+
+Embedding of simulated tracks into real data events is a common 
+technique to find out about the reconstruction efficiency of your 
+code under realistic conditions. Realistic in the sense that 
+background to the simulated tracks is as reaslitic as possible 
+as the real events contain any contribution from materials which 
+maybe are missing in your simulation and also you get a perfect 
+noise simulation of your detector for free.
+
+\section{Needed HYDRA and HGEANT versions}
+
+To get the embedding running up to the PID and PAIR level and to take 
+into account the event vertex properly you have to use HYDRA v8.15 or later, 
+HGeant v8.15 and PLUTO (later than Dec 12 2007). Read the entries under 
+open issues.
+
+
+\section{How does the HADES track embedding work?}
+
+To reach the goal of merging real and simulated tracks into one event one 
+has to play some tricks.
+
+\begin{itemize}
+    \item The analysis macro will more or less look like a normal DST 
+    macro for real data. The detector tasksets will be configurated 
+    for real data and added to the hades taskset real. All unpackers 
+    have to be configured and running.
+    \item The data will filled in the simulation type to allow the 
+    transportation of the \verb+HGeant+ informations
+    \item Hades has to be switched to global embedding mode (see next paragraph)
+    \item To data inputs have to be provided (see next paragraph)
+         \begin {enumerate}
+          \item hld file
+          \item root file with simulated events
+         \end{enumerate}
+    \item In the simulation input should be always more events available 
+    than in hld input. In the other case the simulation events will be 
+    reused multiple times as the ROOT source rewinds when reaching the 
+    file end. The sim source will not read a new event if the \verb+kSkipEvent+ 
+    flag is emmitted by a task. Thus the second input has to provide 
+    as many events as realy analyzed and not skipped events.
+    \item The detector taskssets are reconfigurated automatically to allow 
+    the embedding. Unpackers/calibraters have to fill the sim catgeories 
+    before the digitizers run. The digitizers will perform all neccessary 
+    actions to merge real and simulated detector hits in a realistic way. 
+    Timing detectors will sort hits by time to find out which hit would 
+    have created the hit. Charge detectors add the charge of multiple hits etc.
+    \item Detector hits resulting from real data will contain a 
+    negative tracknumber (-500 at the moment). The track number for real 
+    hits can be retrieved via \verb+gHades->getEmbeddingRealTrackId()+
+    \item All higher analysis tasks following the detector classes have 
+    to run in simulation mode if the \verb+HGeant+ information is used. This 
+    tasks should be able to handle negative \verb+HGeant+ track numbers 
+    for the real detector hits.
+    \item All parameter containers needed by the digitizers have to be 
+    validated in ORCALE for the real data to allow the parallel use of 
+    sim and real analysis.
+    \item The geometry used in simulation should be the same as in real 
+    data analysis. In embedding mode the geometry for the real data will 
+    be used thus introducing a bias to the simulated events if both 
+    geometries are not identical. This holds also for the target position.
+\end{itemize}
+
+\section{What do I need to change in my macro?}
+
+There are 2 major things which have to set in the macro:
+
+  (1) You have to tell Hades that you want to embedd simulated 
+  tracks in real events:
+
+\begin{lstlisting}
+  //--------------------------------------------------------
+  // Switch Hades to embedding mode
+  // the gHades->getEmbeddingMode() flag will be analyzed
+  // by all tasksets and the configuration will be switched
+  // to the needs of embedding
+  Hades* myHades=new Hades;
+  gHades->setEmbeddingMode(1);
+  //--------------------------------------------------------
+\end{lstlisting}
+
+  (2) You have to configure the second ROOT source to read your 
+  simulated events:
+
+\begin{lstlisting}
+  HldFileSource *source=new HldFileSource;
+  source->setDirectory("/my_dir_for_hld_files/");
+  source->addFile("myhld.hld",refRun);
+  myHades->setDataSource(source);
+
+
+  //--------------------------------------------------------
+  // root source for sim (GEANT output) (second data source)
+  HRootSource *sourceSim=new HRootSource(kTRUE,kTRUE);
+  sourceSim->setDirectory("/my_dir_for_sim_root_files/");
+  sourceSim->addFile("mysimfile.root");
+  gHades->setSecondDataSource(sourceSim);
+  //--------------------------------------------------------
+\end{lstlisting}
+
+The settings above are automatically handled if one uses the 
+\verb+HDstEmbedding+ class from the \verb+libDst.so+.
+
+\section{Needed ingredients}
+
+All parameters for the digitizers have to be validated for the real runs:
+\begin{itemize}
+    \item MDC : \verb+HMdcCellEff+ (cell effciency according to HV settings, 
+    has to be in sync with 
+    \newline
+    \verb+HMdcCal2ParSim+), \verb+HMdcWireStat+ 
+    (list of broken wires/missing Mbos), \verb+HMdcDigitPar+ (layer 
+    efficiencies adjustments), \verb+HMdcSetup+ (adjustment of digitizer 
+    parameters)
+    \item RICH : \verb+HRichDigitisationPar+
+    \item TOF : \verb+HTofCalPar+ context "TofCalProductionSimEmbedding" 
+    (validated open end, needs only to be changed if somebody decides 
+    to change something in simulation)
+    \item TOFINO: \verb+HTofinoDigitPar+ (validated open end needs to 
+    changed only if somebody wants to change something in simulation)
+    \item SHOWER: \verb+HShowerDigiDetPar+ and maybe \verb+HShowerSimulPar+ 
+    (not yet used in my version as I do not agree on the implemantation)
+    \item Geometry including target poistion: Has to be identical in 
+    simulation and real analysis to consistent in embedding
+
+\end{itemize}
+
+\section{Open issues}
+
+\begin{itemize}
+     \item Start time reconstruction in pp data: Not yet thought carefully 
+     how to do it consistently.
+    \item Event class selection: Not needed for C+C but for larger systems ....
+    \item TOF detector : double hit handling for high multiplicities
+    \item RPC detector : to be implemented
+    \item WALL detector : to be implemented
+\end{itemize}         
+
+\section{How-to take into account the event vertex}
+
+For ananalysis which applies a vertex cut the event vertex has to be 
+properly taken into account during the event embedding to estimate 
+the reconstruction efficiencies.
+\begin{enumerate}
+    \item Write out a vertex ntuple file using \verb+HMdcVertexWriter+ 
+    for the hld file which will be used for embedding. The vertex ntuple 
+    contains the 3 vertex coordinates + Event seq Number. Only events are 
+    taken into account where a vertex could be calculated.The task should 
+    be connected last to the tasklist to make shure that only events are 
+    written out which have not been skipped.
+    \item The vertex ntuple is used with a PLUTO macro to generate the 
+    embedded particles at the same vertex as in the real data. The PLUTO 
+    ascii file (.evt) contains beside the vertex the event seq number, 
+    which will be stored in \verb+HGeantKine::userVal+. After running 
+    \verb+HGeant+ the output root file contains the same vertices as the 
+    real data. The transported event seq number is used to synchronize 
+    the embedded events with the real events.
+    \item In embedding mode the \verb+HMdcVertexfind+ works different 
+    from sim or real. Several settings can be done via the static functons
+     \begin{lstlisting}
+     // setup the vertexfinder for embedding
+     HMdcVertexFind::setRejectEmbeddedTracks(kTRUE);   // (default: kTRUE)  reject embedded tracks from vertex calculation (needed if no event seq is used)
+     HMdcVertexFind::setUseEventSeqNumber   (kTRUE);   // (default: kTRUE)  use the event seq number stored in HGeantKine
+     HMdcVertexFind::setSkipNoVertex        (kFALSE);  // (default: kFALSE) kTRUE: skip events where no vertex could be calculated
+     \end{lstlisting}
+     The event seq number will be used to match the events in default mode. 
+     The vertex will not be calculated instead it will be taken from \verb+HGeant+ 
+     (primary particle) This procedure ensures to get exactly the same 
+     vertex as without embedded particles.
+\end{enumerate}
+
+\section{How-to create embedded particles with PLUTO using a vertex ntuple}
+
+The following example program reads an vertex ntuple file and creates a 
+white spectrum of positrons with PLUTO. The .evt file will contain particles 
+comming from the same vertex as the real data which have been used to 
+create the vertex file.This output can be read by \verb+HGeant+. Needs 
+HYDRA v8.15 or later, HGeant v8.15 or later and PLUTO (> Dec 12 2007). 
+Copy to your local dir.
+
+\begin{itemize}
+    \item \verb+setenv_pluto.sh+: setup environment for ROOT + PLUTO
+
+    \item \verb+run_pluto_embedded.make+: Makefile for 
+    \verb+run-pluto-embedded program+
+
+    \item \verb+run_pluto_embedded.cc+: \verb+run-pluto-embedded+ program
+
+    \item \verb+pluto_embedded.cfg+: configuration file for 
+    \verb+run-pluto-embedded+ program
+\end{itemize}
+
+To compile the program setup yout hydra like
+
+\begin{lstlisting}
+  . ./setenv_pluto.sh
+
+  make -f run_pluto_embedded.make clean build install
+
+  ./run_pluto_embedded --cfg-file pluto_embedded.cfg
+\end{lstlisting}
+
+
+
+\section{How-to setup HGEANT ini.dat for reading PLUTO with vertex coordinates}
+
+Write your \verb+HGeant+ init.dat file as usually. Your configuration should not 
+contain the \verb+HGeant+ keywords \verb+JVER+ and \verb+BEAM+. The vertices of the 
+particles are used from the .evt input file of PLUTO. \verb+HGeant+ recognizes the 
+format by analyzing the header flags of the event. Make shure that the used 
+geomtery matches the one from real data.
+
+\section{Full working embedding chain example}
+
+On the page linked here you will find a full working chain of macros 
+and scripts used for the efficiency calculation of APR06. This set 
+includes the production of vertex.root files, PLUTO .evt files, \verb+HGeant+ 
+processing and embedded DST production. Scripts for running batch 
+are provide too. 
+
+\section{Data flow}
+
+In the following the data flow of the different detector systems will be displayed 
+to explain on which entry levels the real data hits are merged with the simulated 
+ones. As usual all detectors behave a bit different according to their special 
+needs and the programmers will to stick to standards. The special actions will 
+be decribed in the detector sections below.
+
+\subsection{RICH}
+
+In embedding mode the internal noise simulation of the \verb+HRichDigitizer+ will be 
+switched of no matter if or not the rich taskset has been configured for using 
+noise simulation. The noise in that sense will be created by the real events 
+itself. Note that the real hits can be identified by the triplet 
+tracknumber/flag/energy as shown below in the table. 
+
+\begin{lstlisting}
+ realID=gHades->getEmbeddingRealTrackId()
+
+                        track Number      Flag     energy
+  Cheren. Phot.            #               0        #
+  Feedback Phot.          -5               0        0
+  Direct Hits              #               1        0
+  Noise Hits               0               0        0  
+  REAL Hits (embedding)    realID          0        0
+---------------------------------------------------------
+
+
+   ----------------                            ------------
+  |  HRichUnpacker |                          | HGeantRich |
+  |(embedding mode)| \                         ------------
+  |                |  \                             ||
+   ----------------    \                            || input 
+                        \                           \/
+                   -------------  read real     ----------------
+                  | HRichCalSim | ---------->  |                |
+                   -------------  <---------   |                |
+                                               | HRichDigitizer |
+                   -------------               |                |
+                  | HRichTrack  | <---------   |                |
+                   -------------                ----------------
+                                  write output
+\end{lstlisting}
+
+\subsection{MDC}
+
+For the embedding of the MDC data the embedding flag set in \verb+HMdcSetup+ 
+will be overridden by the global Hades embedding mode if detected. For a 
+realistic embedding the cuts on drift times are shifted from the \verb+HMdcCalibrater1+ 
+to the clusterfinder. This allows the embedding before the cuts are applied.
+
+\begin{lstlisting}
+   --------------                               -----------
+  | HMdcUnpacker |                             | HGeantMdc |
+   --------------                               -----------
+         |                                          ||
+   ----------------                                 || input 
+  |HMdcCalibrater1 |                                \/
+   ----------------      -------------   read    ---------------
+                   |--->| HMdcCal1Sim | ------> | HMdcDigitizer |
+                         -------------  <-----  |               |
+                                         write   ---------------
+                                         
+\end{lstlisting}
+
+\subsection{TOF}
+
+As the tof calibration is done for left and right rod hit together the embedding 
+is shifted to the hit level. In that case the digitizer will write a non-persistent 
+\verb+catTofRawTmp+ category. The \verb+HTofHitF+ task will create a non-persistent 
+\verb+HTofHitTmp+ category for simulated tracks and in a second step merge the 
+simulated and real hits in the final output category. The calibration for real 
+and simulated hits is fully consistent. In the case a rod was hit by a real and 
+a simulated track, the simulated hit will be propagated. In future the merging 
+should be done in a realistic fashion. In C+C at 2AGeV this cases are at the order 
+of 0.3\%. In case of a pure simulation none of those tmp categories will be used 
+and the data flow will look like in real data.
+\begin{lstlisting}
+                                      ------------                      
+                                     | HGeantTof  |                     
+                                      ------------                      
+                                           |                            
+   ----------------------           -----------------                   
+  |     HTofUnpacker     |         |  HTofDigitizer  |                  
+  |   (embedding mode)   |      -- |                 |                  
+  |                      |     /   ------------------                   
+   ----------------------     /             |                           
+              |              /       ----------------                   
+         -------------      /       |  HTofRawSimTmp |                  
+        | HTofRawSim  |----         | non persistent | (embedding mode, 
+         -------------               ----------------   sim data)       
+  sim (sim mode)      \              /                                  
+  or real (embedding)  \            /                                   
+                       -----------------                                
+                      |  HTofHitFSim    |                               
+                       -----------------                                
+                       /       |                                        
+                      /  ----------------                               
+                     /  | HTofHitSimTmp  | (embedding mode              
+                    /   | non persistent |  sim data )                  
+                   /     ----------------                               
+                  /     /                                               
+                 /     /                                                
+         -------------                                                  
+        | HTofHitSim  | sim (sim mode) or                               
+         -------------  sim and real data                               
+                        (embedding)                                     
+                                                                        
+                                                                        
+                                                                        
+  In the case of TRACK EMBEDDING of simulated tracks into
+  experimental data the real data are written by the HTofUnpacker into
+  HTofRawSim category. In embedding mode the digitizer will write his
+  output to HTofRawSimTmp to merge real and sim data on hit level
+  (keep calibrations constistent).
+\end{lstlisting}
+
+\subsection{SHOWER}
+
+Thanks to the complicated data structure of the shower analysis the embedding 
+actions had to be split to \verb+HShowerPadDigitizer+ and \verb+HShowerCopy+.
+
+\begin{lstlisting}
+   ------------------
+  | HShowerUnpacker  |                                                                   
+  |(embedding mode)  | \                                                                 
+  |                  |  \     --------------                                             
+   ------------------   |    | HGeantShower |                                            
+                        |     --------------\                                            
+                        |                    \                                           
+                        |     --------------  \---------> ----------------------          
+                        |    | HGeantWire   |  <-------- |  HShowerHitDigitizer |         
+                        |     ---------------\            ----------------------          
+                        |                     \                                      
+            -------------     ---------------  \------->  ----------------------         
+        -- | HShowerRaw  |   | HShowerRawMatr|   <------ |  HShowerPadDigitizer |        
+       |    -------------     ---------------\           |( create track objects|        
+       |                                      \          |  for real tracks in  |        
+   ----------------------     --------------   \         |  embedding mode too) |        
+  |   HShowerCalibrater  |   | HShowerTrack |  <--------- ----------------------         
+  |   (embedding mode)   |    --------------\    \                                        
+   ----------------------                    \    \       ----------------------         
+       |                      --------------  \    ----> |   HShowerCopy        |        
+        -------------------> | HShowerCal   |  \<------- |(add charge of real   |        
+                              --------------\   \        | hit in embedding too)|        
+                                             \   \        ----------------------         
+                              --------------  ----\---->  ----------------------         
+                             | HShowerHitHdr|   <--\---- |  HShowerHitFinder    |        
+                              --------------        \     ----------------------         
+                              --------------         \      |                             
+                             | HShowerPID   |   <-----\-----|                             
+                              --------------           \    |                             
+                              --------------            \   |                             
+                             | HShowerHit   |   <--------\--|                             
+                              -------------- <            \                               
+                                              \            \                              
+                                               \--------->-----------------------        
+                                                         | HShowerHitTrackMatcher|       
+                                                          -----------------------        
+
+  In the case of TRACK EMBEDDING of simulated tracks into
+  experimental data the real data are written by the HShowerUnpacker into
+  HShowerRaw category. The real hits are taken into
+  account by the digitizer (adding of charges). The embedding mode is recognized
+  automatically by analyzing the
+  gHades->getEmbeddingMode() flag.
+            Mode ==0 means no embedding
+                 ==1 realistic embedding (first real or sim hit makes the game)
+                 ==2 keep GEANT tracks   (as 1, but GEANT track numbers will always
+                     win against real data. besides the tracknumber the output will
+                     be the same as in 1)
+
+\end{lstlisting}
+
+

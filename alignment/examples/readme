@@ -1,0 +1,28 @@
+A. Rustamov
+
+To align meta detectors, shower and rpc, the following should be done:
+
+1. Create DSTs without magnetic field
+2. Go to rpc or shower directory, depending on which detector you want to align
+3. Compile the code, just type make, make install
+4. Type ./showeralign or in rpc directory ./rpcalign
+   To be provided (go inside macro, provide input and output directories ...):
+   input:
+         root files from above DSTs
+         preliminary alignment file
+   output: root file with ntuple
+5. Go to the align directory:
+6. Compile the code (make , make intsall)
+7. Type ./align
+   input:
+          created root file with ntuple from previous procedure
+          preliminary alignment file (the same like in ntuple creation)
+   output:
+          new alignment
+
+
+          and have fun with the new Alignment!!!
+
+          The results should be:
+          before:  /|/\/\/\/\
+          after :  ----------
