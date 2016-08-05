@@ -21,14 +21,25 @@ HKalSite::HKalSite() {
     momReal  = -1.F;
     nComp    = -1;
     trackNum = -1;
+    txReco   = -10.F;
+    txReal   = -10.F;
+    tyReco   = -10.F;
+    tyReal   = -10.F;
+    CxxReco  = 0.F;
+    CyyReco  = 0.F;
+    CtxReco  = 0.F;
+    CtyReco  = 0.F;
+    CqpReco  = 0.F;
 }
 
 ClassImp(HKalHit2d)
 HKalHit2d::HKalHit2d() : TObject() {
-    xMeas = 0.;
-    yMeas = 0.;
-    xReco = 0.;
-    yReco = 0.;
+    xMeas = -10000.F;
+    yMeas = -10000.F;
+    xReal = -10000.F;
+    yReal = -10000.F;
+    xReco = -10000.F;
+    yReco = -10000.F;
 }
 
 ClassImp(HKalHitWire)

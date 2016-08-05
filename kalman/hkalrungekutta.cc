@@ -396,7 +396,7 @@ void HKalRungeKutta::calcField_mm(const TVector3& xv, TVector3& btos, Double_t f
 
         btos.SetX(abtos[0]);
         btos.SetY(abtos[1]);
-        btos.SetZ(abtos[2]);
+	btos.SetZ(abtos[2]);
     }
 }
 
@@ -701,28 +701,28 @@ Bool_t HKalRungeKutta::checkTrack(TVectorD &stateVec) const {
         if(bPrintErr) {
             Error("checkTrack()", "X-position in state vector is a NaN.");
         }
-        stateVec(kIdxQP) = maxPos;
+        stateVec(kIdxX0) = maxPos;
         noerr = kFALSE;
     }
     if(TMath::IsNaN(stateVec(kIdxY0))) {
         if(bPrintErr) {
             Error("checkTrack()", "Y-position in state vector is a NaN.");
         }
-        stateVec(kIdxQP) = maxPos;
+        stateVec(kIdxY0) = maxPos;
         noerr = kFALSE;
     }
     if(TMath::IsNaN(stateVec(kIdxTanPhi))) {
         if(bPrintErr) {
             Error("checkTrack()", "State parameter tx is a NaN.");
         }
-        stateVec(kIdxQP) = maxTan;
+        stateVec(kIdxTanPhi) = maxTan;
         noerr = kFALSE;
     }
     if(TMath::IsNaN(stateVec(kIdxTanTheta))) {
         if(bPrintErr) {
             Error("checkTrack()", "State parameter ty is a NaN.");
         }
-        stateVec(kIdxQP) = maxTan;
+        stateVec(kIdxTanTheta) = maxTan;
         noerr = kFALSE;
     }
     if(TMath::IsNaN(stateVec(kIdxQP))) {

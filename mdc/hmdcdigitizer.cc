@@ -265,12 +265,14 @@ using namespace std;
 //                 ==   0 for a not filled hit (e.g. 1 hit was kicked out by efficiency)
 //         status1 ==   1 for a valid first hit
 //                 ==   2 for a valid first hit caused by noise
+//                 ==   3 for a valid first hit caused by real data embedding
 //                 ==  -3 for a not valid hit
 //                 ==  -5 for cutted by time cut
 //                 ==   0 no hit
 //                 ==   3 for REAL data (embedding)
 //         status2 ==   1 for a valid second hit
 //                 ==   2 for a valid second hit caused by noise
+//                 ==   3 for a valid second hit caused by real data embedding
 //                 ==  -3 for a not valid hit
 //                 ==  -5 for cutted by time cut
 //                 ==   0 no hit
@@ -312,12 +314,14 @@ using namespace std;
 //                 ==   0 for not filled hit (e.g. 1 hit was kicked out by efficiency)
 //         status1 ==   1 for a valid first hit
 //                 ==   2 for a valid first hit caused by noise
+//                 ==   3 for a valid first hit caused by real data embedding
 //                 ==  -3 for a not valid hit
 //                 ==  -5 for cutted by time cut
 //                 ==   0 or no hit
 //                 ==   3 REAL data (embedding)
 //         status2 ==   1 for a valid first hit
 //                 ==   2 for a valid first hit caused by noise
+//                 ==   3 for a valid first hit caused by real data embedding
 //                 ==  -3 for a not valid hit
 //                 ==  -5 for cutted by time cut
 //                 ==   no hit
@@ -357,7 +361,7 @@ using namespace std;
 //     EXAMPLES :
 //     In general: if nHits<0 ->TDC MODE=1
 //                 if nHits>0 ->TDC MODE=2
-//                 if status1/status2>0 -> valid hit (1: normal, 2: noise)
+//                 if status1/status2>0 -> valid hit (1: normal, 2: noise 3: real data (embedding))
 //                 if status1/status2<0 -> no valid hit (-3)
 //
 //     TDC MODE 1 (2 leading edges)
@@ -663,16 +667,7 @@ void HMdcDigitizer::setParContainers() {
 	    exit(1);
 	}
     }
-    if(getTimeCutUse() && gHades->getEmbeddingMode()>0)
-    {
-	// we need a second version of HMdcTimeCut to be independend
-        // from real data in embedding mode
-	fTimeCut = new HMdcTimeCut("MdcTimeCut_MdcTimeCutProductionSim",
-				   "sim/embedding cut on time1, time2 & time2-time1",
-				   "MdcTimeCutProductionSim");
-	((HRuntimeDb*)(gHades->getRuntimeDb()))->addContainer(fTimeCut);
-    }
-    if(getTimeCutUse() && gHades->getEmbeddingMode()==0)
+    if(getTimeCutUse() )
     {
         fTimeCut = (HMdcTimeCut*) gHades->getRuntimeDb()->getContainer("MdcTimeCut");
     }
@@ -1084,6 +1079,7 @@ Int_t HMdcDigitizer::execute(void) {
 		  if(mom < momMinDeltaCut[loc[0]]) continue;
 
 		  tof+=t0offset;
+		  fGeant->setHit(xcoord, ycoord, tof, ptot);  // change also TOF in of geant object to allow matching by tof with cal1 in tracking later
 	      }
 	  } else { Error("execute()","No primary for trk = %i found!",trkNum);}
       }

@@ -6,7 +6,6 @@
 #include "hmdctrackddef.h"
 #include "hmdcgeomobj.h"
 #include "hmdcgetcontainers.h"
-#include "hmdccal1sim.h"
 #include "hmdcclussim.h"
 #include "hmdccluster.h"
 #include "hmdcseg.h"
@@ -26,6 +25,7 @@
 #include "hmdcdrifttimepar.h"
 #include "hmdcclusmetamatch.h"
 #include "hmdctrackparam.h"
+#include "hmdckickcor.h"
 
 #include <stdlib.h>
 #include <iostream>
@@ -187,6 +187,7 @@ HMdc34ClFinderLayer::HMdc34ClFinderLayer(Int_t sec, Int_t mod, Int_t lay) {
   nextPartFCell = 777;
   layerNextPart = NULL;
   layerPart     = 0;
+  yCross        = -1000.;
 }
 
 HMdc34ClFinderLayer::~HMdc34ClFinderLayer() {
@@ -305,6 +306,7 @@ HMdc34ClFinderSec::HMdc34ClFinderSec(Int_t sec, Int_t inBinX, Int_t inBinY) {
   pMetaMatch    = NULL;
   useDxDyCut    = 0; //kFALSE;
   dDistYCorr    = 0.;        //???????????????
+  pKickCor      = NULL;
   
   fakeSuppFlag  = HMdcTrackDSet::getGhostRemovingParamSeg2(wLev,wBin,wLay,dWtCut);
   useDriftTime  = HMdcTrackDSet::useDriftTimeSeg2();
@@ -378,20 +380,20 @@ Bool_t HMdc34ClFinderSec::testMaxAmp(void) {
   return kFALSE;
 }
 
-Int_t HMdc34ClFinderSec::findClustersSeg2(HMdcSeg* fSeg, HMdcClus* pClus,Int_t *mBin){
-  if(mBin!=0) setMinBin(mBin);
-  if(notEnoughWrs) return 0;
-
-//   errZ0 *= 2.; //3.;
-  fkick->calcSegIntersec(fSeg,seg1,dirSeg1,segOnKick,segRegOnKick);
-
-  indexPar = pClus->getOwnIndex();
-  indexFCh = -1;
-  indexLCh = -2;
-  Int_t nClustCh = findClustersSeg2();
-  if(nClustCh>0) pClus->setIndexChilds(indexFCh,indexLCh);
-  return nClustCh;
-}
+// Int_t HMdc34ClFinderSec::findClustersSeg2(HMdcSeg* fSeg, HMdcClus* pClus,Int_t *mBin){
+//   if(mBin!=0) setMinBin(mBin);
+//   if(notEnoughWrs) return 0;
+// 
+// //   errZ0 *= 2.; //3.;
+//   fkick->calcSegIntersec(fSeg,seg1,dirSeg1,segOnKick,segRegOnKick);
+// 
+//   indexPar = pClus->getOwnIndex();
+//   indexFCh = -1;
+//   indexLCh = -2;
+//   Int_t nClustCh = findClustersSeg2();
+//   if(nClustCh>0) pClus->setIndexChilds(indexFCh,indexLCh);
+//   return nClustCh;
+// }
 
 Int_t HMdc34ClFinderSec::findClustersSeg2(HMdcTrackParam *tSeg1, HMdcClus* pClus,Int_t *mBin) {
   // Fixed "errors" for calc. region on the kick plane
@@ -416,6 +418,23 @@ Int_t HMdc34ClFinderSec::findClustersSeg2(HMdcTrackParam *tSeg1, HMdcClus* pClus
   Double_t  yPmE = p2.getY() - ye;
   Double_t  yPpE = p2.getY() + ye;
   
+  if(pKickCor != NULL && lMods[3] != 0) { // For track curvature correction. MDCIV only!
+    pKickCor->interpolateAngles(tSeg1->getThetaRad(),tSeg1->getPhiRad());
+    HGeomVector crossPnt;
+    HGeomVector pnt;
+    HMdc34ClFinderMod &pMod = (*this)[3];
+    for(Int_t l=0;l<6;l++) {
+      HMdc34ClFinderLayer &pLay = pMod[l];
+      pLay.pSCLay->calcIntersection(seg1,dirSeg1,crossPnt);
+      pnt = pLay.pSCLay->getRotLayP1SysRSec()->transTo(crossPnt);    // can be optimized
+      pLay.yCross = pnt.getY();
+      if(pLay.pSCLay->getLayerNParts() > 1) {
+        pnt = pLay.pSCLay->getRotLayP2SysRSec()->transTo(crossPnt);  // can be optimized
+        pLay.layerNextPart->yCross = pnt.getY();
+      }
+    }
+  }
+
   fkick->calcIntersection(seg1,dirSeg1,segOnKick);
   HMdcPlane *pl1 = tSeg1->getFirstPlane();
   HMdcPlane *pl2 = tSeg1->getSecondPlane();
@@ -603,6 +622,16 @@ void HMdc34ClFinderSec::calcDriftDist(void) {
     tdcTDist = pDriftTimeParSec->calcDistance(module,80.,tdcTime);
     if(tdcTDist < 0.) tdcTDist = 0;
   } else tdcTDist = 0;
+}
+
+Double_t HMdc34ClFinderSec::calcKickCor(void) {
+  // return correction for cell number
+  if(pKickCor != NULL && cFLay->module==3) {
+    Double_t wp = (*(cFLay->pSCLay))[cell].getWirePos();
+    Double_t corr  = pKickCor->calcCorrection(wp-cFLay->yCross,cFLay->module,cFLay->layer);
+    if(corr >= -60. && corr <= 60.) return corr/cFLay->pSCLay->getPitch();
+  }
+  return 0.;
 }
 
 void HMdc34ClFinderSec::setArrays(Int_t lay) {
@@ -847,14 +876,16 @@ void HMdc34ClFinderSec::calcYbinDrTm(Double_t dDCutYCellCorr) {
   // dDistCut constant for all layers and cells
   // dDCutCorr[lay] - correction for layers
   // dDCutYCellCorr = dDistYCorr*(cell/Number_cells)^2
-  Double_t cnstYC = cell*cFLay->yStep + cFLay->y0w;   // wire position in sec.coor.sys
-  Double_t cnstZC = cell*cFLay->zStep + cFLay->z0w;   // (x=0!)
+  calcDriftDist();
+  Double_t corr = calcKickCor();
+  Double_t cellCorr = cell + corr;  // +or- ? => MINUS!
+  Double_t cnstYC = cellCorr*cFLay->yStep + cFLay->y0w;   // wire position in sec.coor.sys
+  Double_t cnstZC = cellCorr*cFLay->zStep + cFLay->z0w;   // (x=0!)
   Double_t B      = prPlotSeg2->B();
   Short_t &shDnR1 = shDnArr[*numPrRegs];
   Short_t &shUpR1 = shUpArr[*numPrRegs];
   Short_t &shDnR2 = shDnArr[(*numPrRegs)+1];
   Short_t &shUpR2 = shUpArr[(*numPrRegs)+1];
-  calcDriftDist();
   Double_t dDistCutLCorr = dDistCut+dDCutCorr[layInd]+dDCutYCellCorr;
 // static Double_t ddMin = 1000.;
 // static Double_t ddMax = 0.;
@@ -1397,6 +1428,7 @@ HMdc34ClFinder::HMdc34ClFinder(const Char_t* name,const Char_t* title,const Char
   pMetaMatch    = NULL;
   useDxDyCut    = kFALSE;
   HMdcDriftTimePar::getObject();
+  pKickCor      = NULL;
 }
 
 Bool_t HMdc34ClFinder::initContainer(HMdcEvntListCells& event) {
@@ -1407,6 +1439,8 @@ Bool_t HMdc34ClFinder::initContainer(HMdcEvntListCells& event) {
   if( !status && (fSizesCells->hasChanged() || fSpecGeomPar->hasChanged() || fMdcGeomPar->hasChanged())) {
     changed = kTRUE;
     if(!fMdcClusCat) return kFALSE;
+    useKickCor = HMdcTrackDSet::getUseKickCorFlag(); //  kFALSE;
+    if(useKickCor && pKickCor == NULL) pKickCor = new HMdcKickCor();
     Int_t nBinX,nBinY;
     HMdcTrackDSet::getProjectPlotSizeSeg2(nBinX,nBinY);
     if(!quietMode) printf("Project plot size of outer segment: %ix%i\n",nBinX,nBinY);
@@ -1429,6 +1463,7 @@ Bool_t HMdc34ClFinder::initContainer(HMdcEvntListCells& event) {
         secF->setClFnStArr(stacksArr);
         secF->setClFnStack(stack);
         secF->doMetaMatch(pMetaMatch);
+        secF->setKickCorr(pKickCor);
       }
       // initialization of container ---
       if(!calcTarget(sec))        return kFALSE;
@@ -1458,14 +1493,15 @@ HMdc34ClFinder::~HMdc34ClFinder() {
     array->Delete();
     delete array;
   }
-  fMdc34ClFinder=0;
+  fMdc34ClFinder = NULL;
   if(xMinClLines) delete [] xMinClLines;
   if(xMaxClLines) delete [] xMaxClLines;
-  xMinClLines = 0;
-  xMaxClLines = 0;
+  xMinClLines = NULL;
+  xMaxClLines = NULL;
   if(stacksArr) delete stacksArr;
-  stacksArr = 0;
+  stacksArr   = NULL;
   HMdcDriftTimePar::deleteCont();
+  if(pKickCor != NULL) delete pKickCor;
 }
 
 HMdc34ClFinder* HMdc34ClFinder::getObject(void) {
@@ -1726,6 +1762,7 @@ Bool_t HMdc34ClFinder::calcWiresProj(Int_t sec) {
 
 Bool_t HMdc34ClFinderLayer::calcWiresProj(HMdcSizesCellsLayer& fSCellsLay,HGeomVector& pKick,
                                           HMdcProjPlot* prPlotSeg2,Int_t firstCell) {
+  pSCLay = &fSCellsLay;
   HGeomVector rib[4];
   HGeomVector point[2];
   HGeomVector wire[2];

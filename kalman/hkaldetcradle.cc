@@ -10,6 +10,7 @@
 
 #include "hkaldef.h"
 #include "hkaldetcradle.h"
+#include "hkalgeomtools.h"
 #include "hkalmdcmeaslayer.h"
 #include "hmaterials.h"
 #include "hkalmixture.h"
@@ -87,8 +88,6 @@ void HKalDetCradle::addMdcLayersToCradle(const HMdcSizesCells *fSizesCells,
 
     HMdcLayerGeomPar *layerGeomPar = (HMdcLayerGeomPar*)rtdb->getContainer("MdcLayerGeomPar");
 
-    Double_t x,y,z = 0;
-
     for (Int_t layer = 0; layer < nLayers; layer++) {
         // A measurement vector is modeled as a plane. A plane is defined by
         // a point on the plane and a normal vector.
@@ -109,34 +108,41 @@ void HKalDetCradle::addMdcLayersToCradle(const HMdcSizesCells *fSizesCells,
         }
 #endif
 
-        x = 0;
-        y = 0;
-        z = 0;
-        if(nLayers == 1) {
-            ((*fSizesCells)[sector][module]).transFrom(x,y,z); // transform to sector coordinate sys
+        Double_t x = 0.;
+        Double_t y = 0.;
+        Double_t z = 0.;
+
+	if(nLayers == 1) {
+	    HKalGeomTools::TransModuleToSector(x, y, z, sector, module);
+            //((*fSizesCells)[sector][module]).transFrom(x,y,z); // transform to sector coordinate sys
         } else {
-            ((*fSizesCells)[sector][module][layer]).transFrom(x,y,z); // transform to sector coordinate sys
+	    HKalGeomTools::TransLayerToSector(x, y, z, sector, module, layer);
+            //((*fSizesCells)[sector][module][layer]).transFrom(x,y,z); // transform to sector coordinate sys
         }
 
-        TVector3 vPlaneCenter(x,y,z);
+	TVector3 vPlaneCenter(x, y, z);
 
-        x = 0;
-        y = 0;
-        z = 100;
+        x = 0.;
+        y = 0.;
+        z = 1.;
         if(nLayers == 1) {
-            ((*fSizesCells)[layer][module]).transFrom(x,y,z); // transform to sector coordinate system
+	    HKalGeomTools::TransModuleToSector(x, y, z, sector, module);
+            //((*fSizesCells)[sector][module]).transFrom(x,y,z); // transform to sector coordinate system
         } else {
-            ((*fSizesCells)[sector][module][layer]).transFrom(x,y,z); // transform to sector coordinate sys
-        }
-        TVector3 vPlaneNormal(x,y,z);
+	    HKalGeomTools::TransLayerToSector(x, y, z, sector, module, layer);
+            //((*fSizesCells)[sector][module][layer]).transFrom(x,y,z); // transform to sector coordinate sys
+	}
+
+        TVector3 vZ(x, y, z);
+	TVector3 vPlaneNormal = vZ - vPlaneCenter;
+
+        vPlaneNormal.Unit();
 
         // Choose the normal vector, so that the scalar product of the normal vector
         // and the point on the plane is positive.
         if(vPlaneCenter * vPlaneNormal < 0) {
             vPlaneNormal *= -1.;
         }
-
-        vPlaneNormal = vPlaneNormal - vPlaneCenter;
 
         HKalMdcMeasLayer *meas;
         HMdcLayerGeomParLay &layerGeomParLay = (HMdcLayerGeomParLay&)(*layerGeomPar)[sector][module][layer];
@@ -209,10 +215,20 @@ HKalMixture* HKalDetCradle::getMdcMaterial(mdcComponent comp, Int_t module) cons
 
     case kSenseWi:
         // Material for sense wires.
-        mdcMix = new HKalMixture("Tungsten/Gold plated", "tu", 1);
-        getProperties(mat, "tungsten");
-        mdcMix->defineElement(0, mat, 1.F);
-        mdcMix->calcMixture();
+	Float_t vol[2], rho[2], w[2];
+	rho[0] = HMaterials::getDensity("Copper");
+	rho[1] = HMaterials::getDensity("Beryllium");
+	// Mdc layers contain a 84:16 volume percent mixture of Argon-Isobutane.
+	vol[0] = .98;
+	vol[1] = .02;
+	// Get mass fractions for gas mixtue.
+        mdcMix = new HKalMixture("Copper/Beryllium 98/2", "co/be", 2);
+	mdcMix->calcMassFracFromVolFrac(w, 2, rho, vol);
+	getProperties(mat, "Copper");
+	mdcMix->defineElement(0, mat, w[0]);
+	getProperties(mat, "Beryllium");
+	mdcMix->defineElement(1, mat, w[1]);
+	mdcMix->calcMixture();
         break;
 
     case kWindow:
@@ -224,32 +240,32 @@ HKalMixture* HKalDetCradle::getMdcMaterial(mdcComponent comp, Int_t module) cons
         break;
 
     case kGas:
-        /*
+
         // Gas in Mdc 1 is Argon-Isobutane
         if(module == 0) {
             Float_t vol[2], rho[2], w[2];
             rho[0] = HMaterials::getDensity("argon");
-            rho[1] = HMaterials::getDensity("butane");
+            rho[1] = HMaterials::getDensity("CO2");
             // Mdc layers contain a 84:16 volume percent mixture of Argon-Isobutane.
-            vol[0] = .84;
-            vol[1] = .16;
+            vol[0] = .70;
+            vol[1] = .30;
             // Get mass fractions for gas mixtue.
-            mdcMix = new HKalMixture("Argon-Isobutane 84:16", "arbutane", 2);
+            mdcMix = new HKalMixture("Argon-Isobutane 70:30", "arco2_70_30", 2);
             mdcMix->calcMassFracFromVolFrac(w, 2, rho, vol);
             getProperties(mat, "argon");
             mdcMix->defineElement(0, mat, w[0]);
-            getProperties(mat, "butane");
+            getProperties(mat, "CO2");
             mdcMix->defineElement(1, mat, w[1]);
             mdcMix->calcMixture();
         // Gas in the other Mdcs is Helium-Isobutane.
-	} else {*/
-        /*
+	} else {
+
             Float_t vol[2], rho[2], w[2];
             rho[0] = HMaterials::getDensity("helium");
             rho[1] = HMaterials::getDensity("butane");
             // Mdc layers contain a 60:40 volume percent mixture of Helium-Isobutane.
-            vol[0] = .60;
-            vol[1] = .40;
+            vol[0] = .84;
+            vol[1] = .16;
             // Get mass fractions.
             mdcMix = new HKalMixture("Helium-Isobutane 60:40", "hebutane", 2);
             mdcMix->calcMassFracFromVolFrac(w, 2, rho, vol);
@@ -258,8 +274,8 @@ HKalMixture* HKalDetCradle::getMdcMaterial(mdcComponent comp, Int_t module) cons
             getProperties(mat, "butane");
             mdcMix->defineElement(1, mat, w[1]);
 	    mdcMix->calcMixture();
-        */
 
+/*
 	// According to Oracle, the gas mixture in the MDCs in 50% helium and
 	// 50% Isobutane. Though incorrect, the Geant simulations with that
 	// mixture. In order to compare the Kalman filter results with Geant,
@@ -279,8 +295,8 @@ HKalMixture* HKalDetCradle::getMdcMaterial(mdcComponent comp, Int_t module) cons
 	getProperties(mat, "ethane");
 	mdcMix->defineElement(1, mat, w[1]);
 	mdcMix->calcMixture();
-
-        //}
+*/
+        }
         break;
 
     }

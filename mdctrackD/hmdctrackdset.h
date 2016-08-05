@@ -56,6 +56,8 @@ class HMdcTrackDSet {
     static TCutG    cutDxDyArr[36];
     static Bool_t   isDxDyInited;
 
+    static Bool_t   useKickCor;           // kTRUE - use HMdcKickCor for outer segment finder
+
     // Meta match:
     static Bool_t   doMetaMatch;
     static Bool_t   doMMPlots;
@@ -82,7 +84,12 @@ class HMdcTrackDSet {
     static Int_t    useWireOffset;       // remove signal time on wire from drift time
     static Int_t    mixFitCut;           // mixed cluster finder cut
     static Int_t    mixClusCut;          // mixed cluster finder cut
-    static Bool_t   findOffVertTrk;      //
+    
+    // OffVertex tracking param.:
+    static Bool_t   findOffVertTrk;      // kTRUE - offVertex tracking ON
+    static Int_t    nLayersCutOVT;       // Minimal number of fired layers in MDCI+II
+    static Int_t    nWiresCutOVT;        // Mum.wires cut: nWrMdcI*nWrMdcII < nWiresCutOVT^2
+    static Int_t    nCellsCutOVT;        // MDCII window (+/-,in cells) for combining wires with MDCI
     
     // HMdcTrackFitter & HMdcWireArr param.:
     static UChar_t  calcInitValue;       // =0 don't calculate initial track parameters.
@@ -146,7 +153,11 @@ class HMdcTrackDSet {
     static UChar_t  getCalcInitValueFlag(void)               {return calcInitValue;}
     static Double_t getCalcInitValueCut(Int_t seg)           {return seg==0 ? cInitValCutSeg1:cInitValCutSeg2;}
     static Bool_t   useFittedSeg1ParFlag(void)               {return useFittedSeg1Par;}
+    static Bool_t   getUseKickCorFlag(void)                  {return useKickCor;}
     static Bool_t   getFindOffVertTrkFlag(void)              {return findOffVertTrk;}
+    static Int_t    getNLayersCutOVT(void)                   {return nLayersCutOVT;}
+    static Int_t    getNWiresCutOVT(void)                    {return nWiresCutOVT;}
+    static Int_t    getNCellsCutOVT(void)                    {return nCellsCutOVT;}
 
     static HMdcTrackFinder* getMdcTrackFinder(void)          {return pTrackFinder;}
     static void     clearPTrackFinder(void)                  {pTrackFinder = NULL;}
@@ -184,6 +195,8 @@ class HMdcTrackDSet {
                                                             doMMPlots       = mp;}
     static void setDxDyKickCut(TCutG* cutR);
     
+    static void setUseKickCorFlag(Bool_t fl=kTRUE)         {useKickCor      = fl;}
+    
     static void setDrTimeProjParamSeg1(Double_t cUns, Double_t cut);
     static void setDrTimeCutYCorrSeg1(Double_t corr)       {dDistCutYcorSeg1 = corr;}
     static void setDrTimeCutLCorrSeg1(Int_t m,Double_t* corr);  // corr array for 6 layers
@@ -203,12 +216,15 @@ class HMdcTrackDSet {
     static void setTrackFinder(HMdcTrackFinder* tr);
     static void setClusterToHit(HMdcClusterToHit* cl);
     static void set12Fit(HMdc12Fit* fit);
-    static void setDxDyCut(Bool_t fl=kTRUE)                {useDxDyCut      = fl;}
-    static void setCalcInitialValue(UChar_t fl=1)          {calcInitValue   = fl;}
-    static void setCalcInitialValueSeg1(Double_t c)        {cInitValCutSeg1 = c;}
-    static void setCalcInitialValueSeg2(Double_t c)        {cInitValCutSeg2 = c;}
+    static void setDxDyCut(Bool_t fl=kTRUE)                {useDxDyCut       = fl;}
+    static void setCalcInitialValue(UChar_t fl=1)          {calcInitValue    = fl;}
+    static void setCalcInitialValueSeg1(Double_t c)        {cInitValCutSeg1  = c;}
+    static void setCalcInitialValueSeg2(Double_t c)        {cInitValCutSeg2  = c;}
     static void setUseFittedSeg1ParFlag(Bool_t fl=kTRUE)   {useFittedSeg1Par = fl;}
-    static void setFindOffVertTrkFlag(Bool_t fl=kTRUE)     {findOffVertTrk = fl;}
+    static void setFindOffVertTrkFlag(Bool_t fl=kTRUE)     {findOffVertTrk   = fl;}
+    static void setNLayersCutOVT(Int_t c)                  {nLayersCutOVT    = c;}
+    static void setNWiresCutOVT(Int_t c)                   {nWiresCutOVT     = c;}
+    static void setNCellsCutOVT(Int_t c)                   {nCellsCutOVT     = c;}
     
     static void setTrackParam(TString beamtime);
 

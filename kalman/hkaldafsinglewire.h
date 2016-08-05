@@ -18,6 +18,8 @@ private:
     TArrayD  dafT;           // Annealing factors ("temperatures") used in the DAF iterations.
 
 protected:
+    virtual Bool_t   calcEffErrMat        (Int_t iSite) const;
+
     virtual Bool_t   calcEffMeasVec       (Int_t iSite) const;
 
 public:
@@ -35,9 +37,17 @@ public:
 
     virtual Bool_t              getDoDaf        () const           { return kTRUE; }
 
+    virtual TMatrixD const&     getHitErrMat    (HKalTrackSite* const site) const;
+
+    virtual TVectorD const&     getHitVec       (HKalTrackSite* const site) const;
+
     virtual Int_t               getNdafs        () const           { return dafT.GetSize(); }
 
+    virtual Double_t            getNdf          () const;
+
     virtual void                setDafPars      (Double_t chi2cut, const Double_t *T, Int_t n);
+
+    virtual void                updateSites(const TObjArray &hits);
 
     ClassDef(HKalDafSingleWire,0)
 };

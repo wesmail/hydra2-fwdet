@@ -31,7 +31,11 @@ public:
     static void     Track2ToLine              (TVector3 &Pfinal, TVector3 &Pwire, Int_t &Iflag,
                                                Double_t &Dist, Double_t &Length,
                                                const TVector3 &X1, const TVector3 &X2,
-                                               const TVector3 &w1, const TVector3 &w2);
+					       const TVector3 &w1, const TVector3 &w2);
+
+    static void     TransModuleToSector       (Double_t &x, Double_t &y, Double_t &z, Int_t sector, Int_t module);
+
+    static void     TransLayerToSector        (Double_t &x, Double_t &y, Double_t &z, Int_t sector, Int_t module, Int_t layer);
 
     ClassDef(HKalGeomTools, 0)
 };

@@ -157,6 +157,7 @@ private:
     //-------------------------------------------------------
 
     void    initWalkHists();
+    Bool_t  isEmbedded(HParticleCand* pCand);
     void    fill();
     void    fillMETA(Float_t t0, Float_t err,Int_t sys);
     Float_t getT0   (Int_t sys);

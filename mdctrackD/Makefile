@@ -12,7 +12,7 @@ LIB_NAME := MdcTrackD
 SOURCE_FILES :=	hmdctrackdcontfact.cc	\
 		hmdcgeomobj.cc		\
 		hmdcsizescells.cc	\
-		hmdclayer.cc 		\
+		hmdclayer.cc		\
 		hmdcclfnstack.cc	\
 		hmdcclus.cc		\
 		hmdcclussim.cc		\
@@ -57,7 +57,8 @@ SOURCE_FILES :=	hmdctrackdcontfact.cc	\
 		hmdcgeanttrack.cc	\
 		hmdclayercorrpar.cc	\
 		hmdcclusmetamatch.cc    \
-		hmdckickplane.cc
+		hmdckickplane.cc        \
+                hmdckickcor.cc
 
 
 # removed from Makefile, but not from CVS

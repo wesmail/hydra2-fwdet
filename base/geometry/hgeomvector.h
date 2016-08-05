@@ -163,12 +163,14 @@ inline HGeomVector& HGeomVector::operator -= (const HGeomVector& v) {
 
 inline HGeomVector HGeomVector::operator + (const HGeomVector& v) const {
   HGeomVector p(*this);
-  return p+=v;
+  p+=v;
+  return p;
 }
 
 inline HGeomVector HGeomVector::operator - (const HGeomVector& v) const {
   HGeomVector p(*this);
-  return p-=v;
+  p-=v;
+  return p;
 }
 
 inline HGeomVector& HGeomVector::abs() {

@@ -16,36 +16,34 @@ class HGeantMdc;
 class HMdcGetContainers;
 class HMdcSeg;
 class HMdcSegIdeal;
-class HMdcTrackGFields;
 class HCategory;
 #include "hiterator.h"
-
 // from kalman
 #include "hkaldetcradle.h"
 
 class HKalInput : public TObject {
 
 private:
-    Bool_t bPrint;                //! Debug prints.
-    HMdcTrackGFieldPar *pField;
-    HMdcSizesCells     *fSizesCells;
-    HMagnetPar         *pMagnet;
-    HCategory          *geantMdcCat;
-    HCategory          *kineCat;
-    HCategory          *mdcCal1Cat;
-    HCategory          *mdcHitCat;
-    HCategory          *mdcTrkCandCat;
-    HCategory          *mdcSegCat;
-    HCategory          *mdcHitIdealCat;
-    HCategory          *mdcSegIdealCat;
-    HCategory          *mdcTrkCandIdealCat;
-    HCategory          *metaMatchCat;
-    HIterator          *iterKine;
-    HIterator          *iterMdcTrkCand;
-    HIterator          *iterMdcTrkCandIdeal;
-    HIterator          *iterMetaMatch;
-    HKalDetCradle      *pCradleHades;   //! Pointer to detector cradle.
-    HMdcGetContainers  *mdcGetContainers;
+    Bool_t bPrint;                          //! Debug prints.
+    HMdcTrackGFieldPar *pField;             //!
+    HMdcSizesCells     *fSizesCells;        //!
+    HMagnetPar         *pMagnet;            //!
+    HCategory          *geantMdcCat;        //!
+    HCategory          *kineCat;            //!
+    HCategory          *mdcCal1Cat;         //!
+    HCategory          *mdcHitCat;          //!
+    HCategory          *mdcTrkCandCat;      //!
+    HCategory          *mdcSegCat;          //!
+    HCategory          *mdcHitIdealCat;     //!
+    HCategory          *mdcSegIdealCat;     //!
+    HCategory          *mdcTrkCandIdealCat; //!
+    HCategory          *metaMatchCat;       //!
+    HIterator          *iterKine;           //!
+    HIterator          *iterMdcTrkCand;     //!
+    HIterator          *iterMdcTrkCandIdeal;//!
+    HIterator          *iterMetaMatch;      //!
+    HKalDetCradle      *pCradleHades;       //! Pointer to detector cradle.
+    HMdcGetContainers  *mdcGetContainers;   //!
 
 public:
 
@@ -100,10 +98,11 @@ public:
     virtual void                getMdcSegs           (const HMdcTrkCandIdeal *cand, HMdcSegIdeal **segs);
 
     virtual void                setDetectorCradle    (HKalDetCradle *detCradle) { pCradleHades = detCradle; }
+    virtual const HKalDetCradle* getDetectorCradle   () const { return pCradleHades ; }
 
     virtual void                setPrint             (Bool_t print) { bPrint = print; }
 
-    ClassDef(HKalInput, 0)
+    ClassDef(HKalInput, 1)
 };
 
 

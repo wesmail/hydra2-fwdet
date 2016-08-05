@@ -38,6 +38,7 @@
 
 
 #include "hmdcsetup.h"
+#include "hmagnetpar.h"
 #include "hmdclayercorrpar.h"
 #include "hmdcdedx2maker.h"
 #include "hmdcdigitizer.h"
@@ -86,10 +87,9 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     TString outFileSuffix = "_dst_" + beamtime + ".root";
 
     TString asciiParFile = "";
-    TString rootParFile = "/cvmfs/hades.gsi.de/param/sim/apr12/allParam_APR12_sim_run_12001_gen8_16082015.root";
+    TString rootParFile = "/cvmfs/hades.gsi.de/param/sim/apr12/allParam_APR12_sim_run_12001_gen8_27012016.root";
     TString paramSource = "root"; // root, ascii, oracle
-    TString paramRelease = "APR12SIM_dst_gen8"; // 16082015
-    //TString paramRelease = "now"; //"now"
+    TString paramRelease = "APR12SIM_dst_gen8a"; // 27012016
 
 
     Bool_t kParamFile        = kFALSE;
@@ -101,7 +101,7 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     Bool_t doTree            = kTRUE;
     Bool_t doMDCDeltaElectron = kTRUE;
     Bool_t doRICHDeltaElectron= kFALSE; // kFALSE : suppress inserted delta electrons
-
+    Bool_t doReverseField     = kFALSE; // kTRUE : switch magnet polarity
 
     //--------------------------------------------------------------------
     // switch off unwanted categories in the poutput
@@ -113,20 +113,24 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
 	//catRichDirClus,
 	//catRichHit,
 	//catRichCal,
-	catMdcRaw, catMdcCal1, catMdcCal2, catMdcHit,
-	catMdcClusInf,catMdcSeg, catMdcTrkCand, catMdcRawEventHeader,
+	catMdcRaw,
+	catMdcCal1,   // changed
+	catMdcCal2, catMdcHit,
+	catMdcClusInf,
+	//catMdcSeg,
+	catMdcTrkCand, catMdcRawEventHeader,
 
 	catShowerCal, catShowerPID, catShowerHitHdr, catShowerRaw,
-	catShowerHit,
+	catShowerHit,  // changed
         catShowerGeantWire,catShowerRawMatr,catShowerTrack,
 
 	catTofRaw,
-	catTofHit,
-	catTofCluster,
+	catTofHit,     // changed
+	catTofCluster, // changed
 
 	catRpcRaw,
-	catRpcHit,
-	catRpcCluster,
+	catRpcHit,      // changed
+	catRpcCluster,  // changed
 	catRpcCal,
 
 	catRKTrackB, catSplineTrack,
@@ -260,13 +264,23 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     HMdcTaskSet          *mdcTaskSet          = new HMdcTaskSet();
     //    mdcTaskSet->setVersionDeDx(1); // 0 = no dEdx, 1 = HMdcDeDx2
 
+    if(doReverseField){
 
-   // HMdcSetup* mysetup = (HMdcSetup*)rtdb->getContainer("MdcSetup");
-   // rtdb->initContainers(refId);
-   // mysetup->setStatic();
+	HMagnetPar* magnet = (HMagnetPar*)rtdb->getContainer("MagnetPar");
+	rtdb->initContainers(refId);
+	magnet->setStatic();
+        Int_t current = magnet->getCurrent();
+	magnet->setCurrent(-1*current);
+        magnet->printParams();
+
+    }
+
+    HMdcSetup* mysetup = (HMdcSetup*)rtdb->getContainer("MdcSetup");
+    rtdb->initContainers(refId);
+    mysetup->setStatic();
 
     //mysetup->getMdcCommonSet()->setIsSimulation(1);                 // fit
-    //mysetup->getMdcCommonSet()->setAnalysisLevel(4);                // fit
+    //mysetup->getMdcCommonSet()->setAnalysisLevel(1);                // fit
     //mysetup->getMdcTrackFinderSet()->setIsCoilOff(kFALSE);          // field is on
     //mysetup->getMdcTrackFinderSet()->setNLayers(nLayers[0]);
     //mysetup->getMdcTrackFinderSet()->setNLevel(nLevel);
@@ -281,15 +295,16 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     HTask *mdcTasks           = mdcTaskSet         ->make("rtdb","");
 
     HMdcDigitizer* digi = mdcTaskSet->getDigitizer();
-
-    digi->setDeltaElectronUse(doMDCDeltaElectron,kFALSE,109,-750.,600.,20.);
-    digi->setDeltaElectronMinMomCut(2.,2.,4.5,2.,2.,4.5);  // take care of glass mirrors in sec 2+5
-    digi->setTimeCutUse(kTRUE);
-
+    if(digi){
+	digi->setDeltaElectronUse(doMDCDeltaElectron,kFALSE,109,-750.,600.,20.);
+	digi->setDeltaElectronMinMomCut(2.,2.,4.5,2.,2.,4.5);  // take care of glass mirrors in sec 2+5
+	digi->setTimeCutUse(kTRUE);
+    }
     HRichDigitizer* richdigi = HRichDigitizer::getDigitizer();
-    richdigi->setDeltaElectronUse(doRICHDeltaElectron,kFALSE,109,20.,2.);
-    richdigi->setDeltaElectronMinMomCut(0.,0.,0.,0.,0.,0.);
-
+    if(richdigi){
+	richdigi->setDeltaElectronUse(doRICHDeltaElectron,kFALSE,109,20.,0.66); // 1 - prob  0.5 Mus RICH / 1.5 mus MDC
+	richdigi->setDeltaElectronMinMomCut(0.,0.,0.,0.,0.,0.);
+    }
     //----- Filling of MDC de/dx ...
     //HMdcDeDx2Maker::setFillCase(2); // 0 (default)=combined, 1=combined+seg, 2=combined+seg+mod
 
@@ -323,6 +338,7 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
 
     //------------------------ Master task set ---------------------------
     HTaskSet *masterTaskSet = gHades->getTaskSet("all");
+
     masterTaskSet->add(startTasks);
     masterTaskSet->add(tofTasks);
     masterTaskSet->add(wallTasks);
@@ -338,7 +354,7 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     masterTaskSet->add(pParticleBt);
     masterTaskSet->add(new HParticleT0Reco("T0","T0",beamtime));
 
-    if (qaMaker) masterTaskSet->add(qaMaker);
+    //if (qaMaker) masterTaskSet->add(qaMaker);
 
     HMdcTrackDSet::setTrackParam(beamtime);
     if(!doMetaMatch)HMdcTrackDSet::setMetaMatchFlag(kFALSE,kFALSE);  //do not user meta match in clusterfinder

@@ -31,72 +31,80 @@ user=$(whoami)
 currentDir=$(pwd | xargs -i basename {})
 currentDir=../$currentDir
 
+# Au+Au
 impact=bmax10
 #impact=bmax16
+
+
+
 nevents=1000
 nFiles=10000
-         # pi-,lambda,K-,K+,K0S,phiKK,Xi-,w,phi,rho0,pi0,eta,D+,wdalitz
+         # pi-,lambda,K-,K+,K0S,phiKK,Xi-,w,phi,rho0,pi0,eta,D+,wdalitz deltaelectron
          #                   PLUTO    offset  UrQMD
-         # pi0      1*10e6   1-10000  0        1-10000
-         # eta      1*10e6   1-10000  0        1-10000
-         # w        1*10e6   1-10000  0        1-10000
-         # phi      1*10e6   1-10000  10000    10001-20000
-         # rho0     2*10e6   1-20000  20000    20001-40000
-         # wdalitz  3*10e6   1-30000  40000    40001-70000
-         # D+       3*10e6   1-30000  70000    70001-100000
+         # pi0      1*10e6   1-10000  0        1-10000              ok1
+         # eta      1*10e6   1-10000  0        1-10000              ok1
+         # w        1*10e6   1-10000  0        1-10000              ok1
+         # phi      1*10e6   1-10000  10000    10001-20000          ok1
+         # rho0     2*10e6   1-20000  20000    20001-40000          ok1
+         # wdalitz  3*10e6   1-30000  40000    40001-70000          ok1
+         # D+       3*10e6   1-30000  70000    70001-100000         ok1
          
-#     no_enhancement 10*10^6 ok
-#     minbias        10*10^6
-#     K-     100*10^6 evts   ok
-#     K+      50*10^6 evts   ok
-#     K0S     50*10^6 evts   o
-#     lambda 100*10^6 evts   ok
-#     Xi-     20*10^6 evts   o
-#     phiKK   10*10^6 evts   o
+#     no_enhancement 10*10^6 ok      ok1
+#     minbias        10*10^6         ok-1
+#     K-     100*10^6 evts   ok      ok1
+#     K+      50*10^6 evts   ok      ok1
+#     K0S     50*10^6 evts   o       ok1
+#     lambda 100*10^6 evts   ok      ok1
+#     Xi-     20*10^6 evts   o       ok1
+#     phiKK   10*10^6 evts   o       ok1
 #     pi-     50*10^6 evts   ok
 #     pi+     50*10^6 evts   ok
+#     p       10*10^6 evts   ok
+#     d      100*10^6 evts   ok
+
+
+#   white          
+#     pi-   100*10^6 evts   ok        ok1 
+#     pi+   100*10^6 evts   ok        ok1
+#     e-   10*10^6 evts              ok1
+#     e+   10*10^6 evts              ok1
          
-         
-part=eta
+part=phiKK
 offset=0
 
-submmissionbase=/hera/hades/user/${user}/sub/apr12/gen6/hgeant/new/${part}
+submmissionbase=/hera/hades/user/${user}/sub/apr12/gen8/cocktail/hgeant/${part}
 submissiondir=${submmissionbase}/hgeant
- nFilesPerJob=1                                 # number of files to be analyzed by 1 job (default==1)
+ nFilesPerJob=1                               # number of files to be analyzed by 1 job (default==1)
     jobscript=${submissiondir}/jobScript.sh     # exec script (full path, call without dot, set it executable!)
-    outputdir=/hera/hades/dstsim/apr12/hgeant/${impact}/${part}     # outputdir for files AND logFiles
+    outputdir=/hera/hades/dstsim/apr12/hgeant/${impact}/new/${part}     # outputdir for files AND logFiles
 pathoutputlog=${outputdir}/out                  # protocol from batch farm for each file
      filename=testrun                           # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
      replace=${currentDir}/replaceIniDat.pl
      template=au123au.dat
-       input1=/hera/hades/dstsim/apr12/pluto/${part}/${part}
-       input3=/hera/hades/dstsim/apr12/urqmd/${impact}/new/all/evt/Au_Au_1230MeV_1000evts      # bmax10
-       output=/hera/hades/dstsim/apr12/hgeant/${impact}/${part}/Au_Au_1230MeV_1000evts
+      input1=/hera/hades/dstsim/apr12/pluto/${part}/${part}
+      input3=/hera/hades/dstsim/apr12/urqmd/${impact}/new/all/evt/Au_Au_1230MeV_1000evts      # bmax10
+      output=/hera/hades/dstsim/apr12/hgeant/${impact}/new/${part}/Au_Au_1230MeV_1000evts
 
-
-
-
-par1=/cvmfs/hades.gsi.de/install/5.34.01/hydra2-4.9h/defall.sh  # optional par1 : environment script
-par2=/cvmfs/hades.gsi.de/install/5.34.01/hgeant2-4.9h/hgeant    # optional par2 : executable
+par1=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9m/defall.sh  # optional par1 : environment script
+par2=/cvmfs/hades.gsi.de/install/5.34.34/hgeant2-4.9m/hgeant    # optional par2 : executable
 par3=""                                                        # optional par3 : geant inidatfile
 par4="no"                                                      # optional par4 : 
 par5="no"                                                      # optional par5 : number of events
 par6="no"                                                      # optional par6
 par7="no"                                                      # optional par7
-resources="-P hades -l h_rt=6:0:0,h_vmem=2G"                           # runtime < 10h, mem < 2GB
+resources="-P hadeshighprio -l h_rt=20:0:0,h_vmem=2G"                           # runtime < 10h, mem < 2GB
 
-jobarrayFile="gen6_${part}_jobarray.dat"
+jobarrayFile="gen8_${part}_jobarray.dat"
 
-#filelist=${currentDir}/all_files_${part}.list  # file list in local dir! not in submissiondir!!!
+filelist=${currentDir}/all_files_${part}_1files_${nFiles}.list  # file list in local dir! not in submissiondir!!!
 
-
-createList=no   # (yes/no) use this to create files list with generic names (for simulation, testing)
+createList=no  # (yes/no) use this to create files list with generic names (for simulation, testing)
                  # use "no" if you have a filelist available
 
 createInput=yes  # (yes/no) use this to create inidatfiles
                  # use "no" if input files are already created
 
-
+#nFiles=$(cat $filelist | wc -l)
 ######################################################################
 
 
@@ -119,27 +127,28 @@ then
 fi
 #---------------------------------------------------------------------
 
+mkdir -p $submissiondir/input
+
 #---------------------------------------------------------------------
 # create input inidat for geant
 if [ "$createInput" == "yes" ]
 then
-   if [ -d $currentDir/input ]
-   then
-     echo "===> REMOVING EXISTING INPUTFILES"
-     find $currentDir/input  -name "*.dat" -delete 
-   fi
+   #if [ -d $submisiondir/input ]
+   #then
+   #  echo "===> REMOVING EXISTING INPUTFILES"
+   #  rm -f $submissiondir/input/*.dat
+   #fi
 
    echo "===> CREATE INPUTFILES"
    for ((ct=1+$offset;ct<=$offset+$nFiles;ct++))
    do
       ct_pluto=0
       ((ct_pluto=${ct}-${offset}))
-      iniDat=${currentDir}/input/au123au_${part}_${ct}.dat
-      #$replace -t $template -d $iniDat -n $nevents -i ${input1}_${ct_pluto}.evt -s ${input2}_${ct}.evt -u ${input3}_${ct}.evt -p ${submissiondir}/geom -o ${output}_${ct}_.root   # pluto lep + lambda + urqmd
-      $replace -t $template -d $iniDat -n $nevents -i ${input1}_${ct_pluto}.evt -u ${input3}_${ct}.evt -p ${submissiondir}/geom -o ${output}_${ct}_.root   # pluto lep + urqmd
-      #$replace -t $template -d $iniDat -n $nevents -i ${input1}_${ct_pluto}.evt -p ${submissiondir}/geom -o ${output}_${ct}_.root   # pluto lep only
-      #$replace -t $template -d $iniDat -n $nevents -i ${input2}_${ct_pluto}.evt -u ${input3}_${ct}.evt -p ${submissiondir}/geom -o ${output}_${ct}_.root   # pluto lambda + urqmd
-      #$replace -t $template -d $iniDat -n $nevents -i ${input3}_${ct}.evt -p ${submissiondir}/geom -o ${output}_${ct}_.root   # urqmd
+      iniDat=${submissiondir}/input/au123au_${part}_${ct}.dat
+      #$replace -t $template -d $iniDat -n $nevents -i ${input1}_${ct_pluto}.evt -s ${input2}_${ct}.evt -u ${input3}_${ct}.evt -p ${submissiondir}/geom_rich -o ${output}_${ct}_.root   # pluto lep + lambda + urqmd
+      $replace -t $template -d $iniDat -n $nevents -i ${input1}_${ct_pluto}.evt -u ${input3}_${ct}.evt -p ${submissiondir}/geom_rich   -o ${output}_${ct}_.root   # pluto  + urqmd
+      #$replace -t $template -d $iniDat -n $nevents -i ${input1}_${ct}.evt -p ${submissiondir}/geom_rich -o ${output}_${ct}_.root   # pluto lep only
+      #$replace -t $template -d $iniDat -n $nevents -i ${input3}_${ct}.evt -p ${submissiondir}/geom_rich -o ${output}_${ct}_.root   # urqmd
    done
 fi
 #---------------------------------------------------------------------
@@ -201,6 +210,7 @@ done
 
 while ((ctF<$nFiles))
 do
+
      #---------------------------------------------------------------------
      # build comma separated file list
      # per job
@@ -245,11 +255,7 @@ do
      
      par3=${infileList}
 
-     command="-j y -wd ${submissiondir} ${resources} -o ${logfile} \
-     ${jobscript}  ${par1}   ${par2} ${par3}  ${par4} ${par5} ${par6} ${par7}"
-     #jobscript.sh defall.sh prog    filelist outdir  nev
-     
-     #echo qsub ${command}
+           #defall.sh prog filelist outdir  nev
      echo "${par1} ${par2} ${par3} ${par4} ${par5} ${par6} ${par7}" >>  $jobarrayFile
      
 

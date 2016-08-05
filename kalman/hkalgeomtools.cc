@@ -1,4 +1,6 @@
 
+#include "hmdcsizescells.h"
+
 #include "hkalgeomtools.h"
 
 // from ROOT
@@ -265,4 +267,24 @@ void HKalGeomTools::Track2ToLine(TVector3 &Pfinal, TVector3 &Pwire, Int_t &Iflag
       {
         Iflag=1;
       }
+}
+
+void HKalGeomTools::TransModuleToSector(Double_t &x, Double_t &y, Double_t &z,
+					Int_t sector, Int_t module) {
+    HMdcSizesCells* fSizesCells = HMdcSizesCells::getExObject();  // check if is already there
+    if(fSizesCells) {
+	((*fSizesCells)[sector][module]).transFrom(x,y,z); // transform to sector coordinate system
+    } else {
+	::Error("TransModuleToSector()", "No HMdcSizesCells.");
+    }
+}
+
+void HKalGeomTools::TransLayerToSector(Double_t &x, Double_t &y, Double_t &z,
+				       Int_t sector, Int_t module, Int_t layer) {
+    HMdcSizesCells* fSizesCells = HMdcSizesCells::getExObject();  // check if is already there
+    if(fSizesCells) {
+	((*fSizesCells)[sector][module][layer]).transFrom(x,y,z); // transform to sector coordinate system
+    } else {
+	::Error("TransLayerToSector()", "No HMdcSizesCells.");
+    }
 }

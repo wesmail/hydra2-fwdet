@@ -66,6 +66,8 @@ TCutG    HMdcTrackDSet::cutDxDyArr[36];
 Bool_t   HMdcTrackDSet::isDxDyInited           = kFALSE;
 Bool_t   HMdcTrackDSet::useFittedSeg1Par       = kFALSE;
 
+Bool_t   HMdcTrackDSet::useKickCor             = kTRUE;
+
 // Meta match:
 Bool_t   HMdcTrackDSet::doMetaMatch            = kTRUE; //kFALSE;
 Bool_t   HMdcTrackDSet::doMMPlots              = kFALSE;
@@ -86,7 +88,12 @@ Bool_t   HMdcTrackDSet::fprint                 = kFALSE;
 Int_t    HMdcTrackDSet::useWireOffset          = 1;
 Int_t    HMdcTrackDSet::mixFitCut              = 2;
 Int_t    HMdcTrackDSet::mixClusCut             = 4;
-Bool_t   HMdcTrackDSet::findOffVertTrk         = kFALSE;
+
+// OffVertex tracking param.:
+Bool_t   HMdcTrackDSet::findOffVertTrk         = kTRUE; //kFALSE;
+Int_t    HMdcTrackDSet::nLayersCutOVT          = 7;
+Int_t    HMdcTrackDSet::nWiresCutOVT           = 60;
+Int_t    HMdcTrackDSet::nCellsCutOVT           = 7;
 
 UChar_t  HMdcTrackDSet::calcInitValue          = 0;
 Double_t HMdcTrackDSet::cInitValCutSeg1        = 1.8;  // [mm]
@@ -2659,6 +2666,12 @@ void HMdcTrackDSet::setDefParam(void) {
   Bool_t   doMMatch            = kTRUE; //kFALSE;
   Bool_t   doMMPl              = kFALSE;
 
+  // ===================  OffVertex track finder: =================================
+  Bool_t   findOVT             = kTRUE; //kFALSE;
+  Int_t    nLayCutOVT          = 7;
+  Int_t    nWirCutOVT          = 60;
+  Int_t    nCelCutOVT          = 7;
+
   //================================================================================
   // Inner segment finder:
   HMdcTrackDSet::setProjectPlotSizeSeg1(nBinXS1,nBinYS1);
@@ -2685,6 +2698,13 @@ void HMdcTrackDSet::setDefParam(void) {
   HMdcTrackDSet::setDrTimeCutLCorrSeg2(3,dDistCorrMod4Lay);
   HMdcTrackDSet::setDxDyCut(useDxDyCuts);
   HMdcTrackDSet::setMetaMatchFlag(doMMatch,doMMPl);
+  
+  //--------------------------------------------------------------------------------
+  // OffVertex track finder:
+  HMdcTrackDSet::setFindOffVertTrkFlag(findOVT);
+  HMdcTrackDSet::setNLayersCutOVT(nLayCutOVT);
+  HMdcTrackDSet::setNWiresCutOVT(nWirCutOVT);  
+  HMdcTrackDSet::setNCellsCutOVT(nCelCutOVT); 
 }
 
 void HMdcTrackDSet::setDefParAu15Au(void) {
@@ -2699,8 +2719,8 @@ void HMdcTrackDSet::setTrackParamAug11(void) {
   // Cluster finder:
 
   // Set clusterfinder level =9 for outer segment:
-  for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,1,5);
-  for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,2,5);
+  for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,1,5);   // MDCII
+  for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,2,5);   // MDCIII
 
   // For cut of drift time distance in cluster finder:
   Double_t constUncertS1       = 0.9; // ??? 0.4; // //1.3; //0.7;
@@ -2745,8 +2765,8 @@ void HMdcTrackDSet::setTrackParamApr12(void) {
   // Cluster finder:
 
   // Set clusterfinder level =9 for outer segment:
-  for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,1,5);
-  for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,2,5);
+  for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,1,5);  // MDCII   5 -> level9,  6 -> level10
+  for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,2,5);  // MDCII
 
   Double_t distCutVF           = 0.55;  // Cut:  dDist/yProjUncer < dDistCut
   Int_t    levelVF             = 10;    // Level is used in HMdcLookUpTbSec::testBinForVertexF(...)
@@ -2813,7 +2833,11 @@ void HMdcTrackDSet::setTrackParamJul14(void) {
   HMdcTrackDSet::setClFinderType(0); // 0 - usual cluster finder
   HMdcTrackDSet::initDxDyCutApr12();
   HMdcTrackDSet::setDxDyCut(kFALSE);
+  
   HMdcTrackDSet::setFindOffVertTrkFlag(kTRUE);
+  HMdcTrackDSet::setNLayersCutOVT(7);
+  HMdcTrackDSet::setNWiresCutOVT(60);  
+  HMdcTrackDSet::setNCellsCutOVT(7);  
 
   Bool_t   useDriftTimeS1  = kFALSE; //^^^kTRUE
   Bool_t   useDriftTimeS2  = kFALSE; //^^^kTRUE
@@ -2821,7 +2845,7 @@ void HMdcTrackDSet::setTrackParamJul14(void) {
   // =================== Inner segment track finder parameters: ===================
   // Cluster finder:
 
-  // Set clusterfinder level =9 for outer segment:
+  // Set clusterfinder level =7 for inner and outer segment:
   for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,0,4); //5
   for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,1,5); //5
   for(Int_t s=0;s<6;s++) HMdcTrackDSet::setTrFnNLayers(s,2,4); //5

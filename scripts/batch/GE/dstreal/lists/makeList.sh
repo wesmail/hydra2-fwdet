@@ -22,7 +22,7 @@ then
        
        echo "NEW FILE $day"
          
-        find $dir -type f -name "be*.hld"  >> $outfile
+        find $dir -type f -name "be*.hld" | sort >> $outfile
         nfiles=$(cat $outfile  | wc -l)
         echo "FILE ${outfile} contains ${nfiles} files"
      fi

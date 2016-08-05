@@ -757,8 +757,7 @@ Bool_t HMdcGeantTrack::setMdcCal1Cat(void) {
 Short_t HMdcGeantTrack::testGeantTrack(Int_t trNum) {
   // return number of mdc segments
   HCategory* pGeantKineCat = HMdcGetContainers::getObject()->getCatGeantKine();
-  if(pGeantKineCat) return
-      testGeantTrack((HGeantKine*)pGeantKineCat->getObject(trNum-1));
+  if(pGeantKineCat) return testGeantTrack((HGeantKine*)pGeantKineCat->getObject(trNum-1));
   Error("testGeantTrack"," Can't get catGeantKine category!");
   setDefault();
   return 0;
@@ -822,13 +821,13 @@ Short_t HMdcGeantTrack::testMdcHits(void) {
     Char_t  dLay  = lay14-lay14Prev;
     Float_t dMom  = momPrev-momLay;
     Bool_t isDirOk = kTRUE;
-    if(modPrev>=0 && (hitDir!=dirDLayer(dLay) ||
-        hitDir!=segment->getDirection())) isDirOk = kFALSE;
+    if(modPrev>=0 && (hitDir!=dirDLayer(dLay) || hitDir!=segment->getDirection())) isDirOk = kFALSE;
 
     // Finding bugs in HGeantMdc:
-    if(isGeantBug1(momLay)) continue;
-    if(isGeantBug2(sec,dMod,dLay,hitDir,tof-tofPrev)) continue;
-    mayBeGeantBug(dMom);
+//     if(isGeantBug1(momLay)) continue;
+//     if(isGeantBug2(sec,dMod,dLay,hitDir,tof-tofPrev)) continue;
+//     mayBeGeantBug(dMom);
+    if( !isGeantBug1(momLay) && !isGeantBug2(sec,dMod,dLay,hitDir,tof-tofPrev)) mayBeGeantBug(dMom);
 
     if(debugPrintFlag && nGeantMdcHits==0) printf("---- New track: ----\n");
     if(modPrev<0 || !isDirOk || !segment->addHit(pGeantMdc)) {
@@ -919,9 +918,9 @@ Int_t HMdcGeantTrack::calcLay14(Int_t m, Int_t l) {
 
 Bool_t HMdcGeantTrack::isGeantBug1(Float_t momLay) {
   // Finding bug in HGeantMdc. Hit momentum > vertex momentum.
-  if(mom<momLay-0.001) {
+  if(mom < momLay-0.001) {
     if(debugPrintFlag) printDebug(pGeantMdc,-1,"! P>Pver");
-    geantBugFlag=kTRUE;
+    geantBugFlag = kTRUE;
     return kTRUE;
   }
   return kFALSE;
@@ -932,7 +931,8 @@ Bool_t HMdcGeantTrack::isGeantBug2(Char_t sec,Char_t dMod, Char_t dLay,
   // Finding bug in HGeantMdc. Too short t.o.f. between two hits.
   if(dTof>0.006 || segment->getNGMdcHits()<=0) return kFALSE;
   if(sec==segment->getSec() && dLay==0 && dMod==0) {
-    if(hitDir != segment->getDirection() || !isGeantBug3()) return kFALSE;
+//    if(hitDir != segment->getDirection() || !isGeantBug3()) return kFALSE;
+    if(hitDir != segment->getDirection() /*|| !isGeantBug3()*/) return kFALSE;
   } else if(abs(dLay) <= 1) return kFALSE;
   if(debugPrintFlag) printDebug(pGeantMdc,-1,"! dTof<0.006");
   geantBugFlag = kTRUE;
@@ -957,8 +957,7 @@ Bool_t HMdcGeantTrack::isGeantBug3(void) {
   Char_t lay=pGeantMdc->getLayer();
   if(lay!=6) {
     Int_t nwires1 = segment->getNDrTimes();
-    Int_t nwires2 = collectWires(pGeantMdc->getSector(),pGeantMdc->getModule(),
-                                 lay,tof2);
+    Int_t nwires2 = collectWires(pGeantMdc->getSector(),pGeantMdc->getModule(),lay,tof2);
     if(nwires2 > nwires1) {
       pGeantMdcPrev = pGeantMdc;
       segment->setAnotherHit(pGeantMdc);
@@ -967,8 +966,7 @@ Bool_t HMdcGeantTrack::isGeantBug3(void) {
   return kTRUE;
 }
 
-Int_t HMdcGeantTrack::collectWires(Char_t sec, Char_t mod, Char_t lay,
-    Float_t atof) {
+Int_t HMdcGeantTrack::collectWires(Char_t sec, Char_t mod, Char_t lay, Float_t atof) {
   Int_t nwires = 0;
   HMdcEvntListCells* pMdcListCells = HMdcEvntListCells::getExObject();
   if(pMdcListCells) {
@@ -977,13 +975,17 @@ Int_t HMdcGeantTrack::collectWires(Char_t sec, Char_t mod, Char_t lay,
     Int_t track1,track2;
     Float_t tof1,tof2;
     UChar_t times;
-//printf("-------------------------- trackNumber=%i atof=%f --------------------------\n",trackNumber,atof);
     while( (times=pLayListCells.nextCellSim(cell,track1,track2,tof1,tof2)) ) {
       if(track1!=trackNumber || fabs(atof-tof1)>0.0005) times &= 2;
       if(track2!=trackNumber || fabs(atof-tof2)>0.0005) times &= 1;
-//if(track1==trackNumber) printf("track1=%i, tof1=%f, times=%i\n",track1,tof1,times);
       if(times==0) continue;
+      //Int_t notAdded = segment->setTime(lay+(mod&1)*6,cell,times);
       segment->setTime(lay+(mod&1)*6,cell,times);
+// Int_t gtr=pLayListCells.getGeantTrack(cell,1);
+// if(notAdded!=0) {
+// //  HGeantKine *kine = (HGeantKine*)pGeantKineCat->getObject(gtr-1);
+//   printf("nn=%i gntr=%i pid=%i %iL %ic atof=%f\n",notAdded,gtr,pGeantKine->getID(),lay+(mod&1)*6,cell,atof);
+// }
       nwires++;
     }
     segment->setWiresAreColl();
@@ -1321,15 +1323,14 @@ Bool_t HMdcGeantEvent::collectTracks(void) {
   xVertex = yVertex = zVertex = -1000.;
   targNum = -1;
   Bool_t setVertex = kTRUE;
-  if(pMdcListCells == 0) 
-      pMdcListCells = HMdcEvntListCells::getObject(isMdcLCellsOwn);
+  if(pMdcListCells == NULL) pMdcListCells = HMdcEvntListCells::getObject(isMdcLCellsOwn);
   if(isMdcLCellsOwn) pMdcListCells->collectWires();
   if(!setGeantKineCat()) return kFALSE;
   HMdcGeantTrack* pGeantTrack;
   Int_t nTrks = pGeantKineCat->getEntries();
   for(Int_t trk=0;trk<nTrks;trk++) {
     HGeantKine* pGeantKine = (HGeantKine*)pGeantKineCat->getObject(trk);
-    if(pGeantKine == 0) continue;
+    if(pGeantKine == NULL) continue;
     if(setVertex && pGeantKine->isPrimary()) {
       pGeantKine->getVertex(xVertex,yVertex,zVertex);
       HMdcSizesCells* pMdcSizesCells = HMdcSizesCells::getExObject();
@@ -1338,13 +1339,13 @@ Bool_t HMdcGeantEvent::collectTracks(void) {
     }
     if(nTracks<size) pGeantTrack=(HMdcGeantTrack*)At(nTracks);
     else {
-      pGeantTrack=new HMdcGeantTrack(&geantSegments,&sizeGSegArr,&nGSegments);
+      pGeantTrack = new HMdcGeantTrack(&geantSegments,&sizeGSegArr,&nGSegments);
       AddAtAndExpand(pGeantTrack, nTracks);
       size++;
     }
     pGeantTrack->setDebugPrintFlag(debugPrintFlag);
     nGSegments += pGeantTrack->testGeantTrack(pGeantKine);
-    if(pGeantTrack->isGeantBug()) geantBugFlag=kTRUE;
+    geantBugFlag = pGeantTrack->isGeantBug();
     if(debugPrintFlag) pGeantTrack->print();
     if(!pGeantTrack->isInMdc()) continue;
     if(pGeantTrack->getNWires()==0) continue;
@@ -1665,8 +1666,8 @@ Bool_t HMdcTrackInfSim::collectTracksInf(void) {
   Int_t layStr = (modInd != 1) ?  0 : 6;
   Int_t layEnd = (modInd != 0) ? 12 : 6;
   for(Int_t lay=layStr; lay<layEnd; lay++) {
-    Int_t mod    = lay/6 + segment*2;
-    Int_t cell   = -1;
+    Int_t   mod  = lay/6 + segment*2;
+    Int_t   cell = -1;
     UChar_t nTms = 0;
     HMdcLayListCells& fLayListCells = fSecListCells[mod][lay%6];
     while((cell=listTmp.next(lay,cell,nTms)) >= 0) {
@@ -1687,8 +1688,8 @@ Bool_t HMdcTrackInfSim::collectTracksInf(void) {
             }
             wiresList[ind].clear();
             tracksNum[ind]    = track;
-            gntSegList[ind]   = 0;
-            gntTrackList[ind] = 0;
+            gntSegList[ind]   = NULL;
+            gntTrackList[ind] = NULL;
             numWires[ind]     = 1;
             segIngGTrack[ind] = -1;
           } else numWires[ind]++;
@@ -1696,7 +1697,7 @@ Bool_t HMdcTrackInfSim::collectTracksInf(void) {
         } else {
           // Geant track -------------------------------------------------------
           HMdcGeantTrack* pGeantTrack = pGeantEvent->getGeantTrack(track);
-          if(pGeantTrack == 0) continue; // Geant bug;
+          if(pGeantTrack == NULL) continue; // Geant bug;
           Short_t nGeantSegs = pGeantTrack->getNSegments();
           for(Int_t segn=0;segn<nGeantSegs;segn++) {
             HMdcGeantSeg* pGeantSeg = pGeantTrack->getSegment(segn);
@@ -1723,24 +1724,97 @@ Bool_t HMdcTrackInfSim::collectTracksInf(void) {
     }
   }
 
-  isGntBugEvent = pGeantEvent->isGeantBug();
+  isGntBugEvent       = pGeantEvent->isGeantBug();
   numWires[numTracks] = listTmp.getNDrTimes(layStr,layEnd-1);
   if(numWires[numTracks] == 0) isGntBugSeg = kFALSE;
   else {
-    isGntBugSeg = kTRUE;
-    Int_t ind = numTracks;
-    if(numTracks < aSize) numTracks++;
-    else {
-      for(Int_t i=0;i<aSize;i++) if(i!=noiseInd && numWires[i]<numWires[ind])
-                                                                     ind = i;
-      if(ind == embedInd) embedInd = -1;
-      numWires[ind]  = numWires[numTracks];
+    HLocation loc;
+    loc.set(4,sector,0,0,0);
+    HCategory* cat = HMdcGetContainers::getObject()->getCatMdcCal1();
+    Int_t layInd=0;
+    Int_t cell=-1;
+    while(listTmp.getNextCell(layInd,cell)) {
+      UChar_t times = listTmp.getTime(layInd,cell);
+      loc.set(4,sector,layInd/6+segment*2,layInd%6,cell);
+      HMdcCal1Sim* pMdcCal1Sim = (HMdcCal1Sim*)cat->getObject(loc);
+      Int_t tr1 = (times&1)!=0 ? pMdcCal1Sim->getNTrack1() : 0;
+      Int_t tr2 = (times&2)!=0 ? pMdcCal1Sim->getNTrack2() : 0;
+      for(Int_t ind=0;ind<numTracks;ind++) {
+        if(tracksNum[ind] == tr1) {
+          numWires[ind]++;
+          numWires[numTracks]--;
+          listTmp.delTime(layInd,cell,1);
+          tr1 = -1;
+        }
+        if(tracksNum[ind] == tr2) {
+          numWires[ind]++;
+          numWires[numTracks]--;
+          listTmp.delTime(layInd,cell,2);
+          tr2 = -1;
+        }
+      }
+      if(numWires[numTracks] == 0) break;
+//       if(tr1 > 0 && numTracks < aSize) {
+//         Int_t ind = numTracks;
+//         numTracks++; 
+//         numWires[numTracks] = numWires[ind];
+//         wiresList[ind].clear();
+//         numWires[ind]  = 1;
+//         tracksNum[ind] = tr1;
+//         numWires[numTracks]--;
+//         wiresList[ind].setTime(layInd,cell,1);
+//         listTmp.delTime(layInd,cell,1);
+//         gntSegList[ind]   = NULL;
+//         gntTrackList[ind] = NULL;
+//         segIngGTrack[ind] = -1;
+//       }
+//       if(tr2 > 0 && numTracks < aSize) {
+//         Int_t ind = numTracks;
+//         numTracks++; 
+//         numWires[numTracks] = numWires[ind];
+//         wiresList[ind].clear();
+//         numWires[ind]  = 1;
+//         tracksNum[ind] = tr2;
+//         numWires[numTracks]--;
+//         wiresList[ind].setTime(layInd,cell,2);
+//         listTmp.delTime(layInd,cell,2);
+//         gntSegList[ind]   = NULL;
+//         gntTrackList[ind] = NULL;
+//         segIngGTrack[ind] = -1;
+//       }
     }
-    tracksNum[ind]    = -9;  // GEANT bug!
-    wiresList[ind]    = listTmp;
-    gntSegList[ind]   = 0;
-    gntTrackList[ind] = 0;
   }
+    
+isGntBugSeg = kFALSE;  // The case NumWires/layer > 48 ignored now partially !!! 
+//   if(numWires[numTracks] == 0) isGntBugSeg = kFALSE;
+//   else {
+//     
+//     isGntBugSeg = kTRUE;
+//     Int_t ind = numTracks;
+//     if(numTracks < aSize) numTracks++;
+//     else {
+//       for(Int_t i=0;i<aSize;i++) if(i!=noiseInd && numWires[i]<numWires[ind]) ind = i;
+//       if(ind == embedInd) embedInd = -1;
+//       numWires[ind]  = numWires[numTracks];
+//     }
+//     tracksNum[ind]    = -9;  // GEANT bug!
+// printf("-9 => %i  nw=%i\n",tracksNum[ind],numWires[ind]);
+// // Int_t lind=0;
+// // Int_t c=-1;
+// //  HCategory* cat = HMdcGetContainers::getObject()->getCatMdcCal1();
+// //   HLocation loc;
+// //   loc.set(4,sector,0,0,0);
+// // while(listTmp.getNextCell(lind,c)) {
+// //     loc[1]=lind/6+segment*2;
+// //     loc[2]=lind%6;
+// //     loc[3]=c;
+// //  HMdcCal1Sim* cal1=(HMdcCal1Sim*)cat->getObject(loc);
+// // printf("%i %i %i %i: tttt=%i tof=%f\n",sector,loc[1],lind%6,c,cal1->getNTrack1(),cal1->getTof1());
+// // }
+//     wiresList[ind]    = listTmp;
+//     gntSegList[ind]   = NULL;
+//     gntTrackList[ind] = NULL;
+//   }
 
   TMath::Sort(numTracks, numWires, sortedInd);
   isWrCollected = kTRUE;
@@ -1760,8 +1834,7 @@ Short_t HMdcTrackInfSim::getNumWires(Int_t trInd) const {
 UChar_t HMdcTrackInfSim::getNumLayers(Int_t trInd, Int_t modi) const {
   if(trInd>=0 && trInd<numTracks) return 0;
   Int_t indx = sortedInd[trInd];
-  if(modi==0 || modi==1)
-      return HMdcBArray::getNSet(wiresList[indx].getListLayers(modi));
+  if(modi==0 || modi==1) return HMdcBArray::getNSet(wiresList[indx].getListLayers(modi));
   return HMdcBArray::getNSet(wiresList[indx].getListLayers(0))+
          HMdcBArray::getNSet(wiresList[indx].getListLayers(1));
 }

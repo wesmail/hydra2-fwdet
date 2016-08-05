@@ -18,6 +18,7 @@
 #include "hmdccal2par.h"
 #include "hmdccal2parsim.h"
 #include "hmdcgetcontainers.h"
+#include "hmdcgeomobj.h"
 #include "hmagnetpar.h"
 #include "hmdcdigitpar.h"
 #include "hmdcseg.h"
@@ -342,11 +343,11 @@ HMdcTrkCand* HKalInput::nextMdcTrackCand(TObjArray &allhits, Int_t measDim, Doub
             for(Int_t nhits = 0; nhits < 2; nhits ++) { // loop hits in segment
                 locHit = (HMdcHit*)mdcHitCat->getObject(mdcSegIndHit[io * 2 + nhits]);
                 if(!locHit) {
-                    if(bPrint) {
 #if kalDebug > 0
+                    if(bPrint) {
                         cout<<"nextMdcTrackCand(), No hit in segment "<<io<<"."<<endl;
-#endif
                     }
+#endif
                     continue;
                 }
                 locHit->getSecMod(sec, mod);
@@ -355,16 +356,20 @@ HMdcTrkCand* HKalInput::nextMdcTrackCand(TObjArray &allhits, Int_t measDim, Doub
                 // Get HMdcHit coordinates and errors in local Mdc coordinate system.
                 coordHit   [0] = locHit->getX();
                 coordHit   [1] = locHit->getY();
-                coordHit   [2] = 0;
-
+		coordHit   [2] = 0;
+#if kalDebug > 3
+		cout<<"io = "<<io<<" hit = "<<nhits<<", x = "<<locHit->getX()<<", y = "<<locHit->getY()<<endl;
+#endif
                 (*fSizesCells)[sec][mod].transFrom(coordHit[0], coordHit[1], coordHit[2]);
 
                 coordErrLay[0] = locHit->getErrX() * scaleErr;
                 coordErrLay[1] = locHit->getErrY() * scaleErr;
                 coordErrLay[2] = 0.03;
 
-                if(locHit->getErrX() == 0. || locHit->getErrY() == 0.) {
-                    Warning("nextMdcTrackCand()", "Measurement errors are zero.");
+		if(locHit->getErrX() == 0. || locHit->getErrY() == 0.) {
+#if kalDebug > 0
+		    Warning("nextMdcTrackCand()", "Measurement errors are zero.");
+#endif
                     coordErrLay[0] = 0.2;
                     coordErrLay[1] = 0.1;
                 }
@@ -383,7 +388,7 @@ HMdcTrkCand* HKalInput::nextMdcTrackCand(TObjArray &allhits, Int_t measDim, Doub
                 allhits.Add(new HKalMdcHit(&coordHit[0], &coordErrHit[0], *hitdmeas, measDim, TVector3(&coordHit[0]), Kalman::kSegHit));
                 nrhits++;
             }
-        }
+	}
         return mdcTrkCand;
     } // end loop over
 
@@ -488,7 +493,27 @@ HMdcTrkCand* HKalInput::nextWireTrack(TObjArray &allhits, Int_t minLayInSeg, Int
                             if(cal1->getStatus1() < 0) continue; // Check if hit is valid.
 
                             Double_t x1, y1, z1, x2, y2, z2 = 0.;
-                            calcSegPoints(seg, x1, y1, z1, x2, y2, z2);
+
+			    HMdcHit* locHit1 = (HMdcHit*)mdcHitCat->getObject(mdcSeg[io]->getHitInd(0));
+			    HMdcHit* locHit2 = (HMdcHit*)mdcHitCat->getObject(mdcSeg[io]->getHitInd(1));
+			    if(locHit1 && locHit2) {
+				x1 = locHit1->getX();
+				y1 = locHit1->getY();
+				z1 = 0;
+				Int_t sec1, mod1;
+				locHit1->getSecMod(sec1, mod1);
+				(*fSizesCells)[sec1][mod1].transFrom(x1, y1, z1);
+
+				x2 = locHit2->getX();
+				y2 = locHit2->getY();
+				z2 = 0;
+				Int_t sec2, mod2;
+				locHit2->getSecMod(sec2, mod2);
+				(*fSizesCells)[sec2][mod2].transFrom(x2, y2, z2);
+			    } else {
+				calcSegPoints(seg, x1, y1, z1, x2, y2, z2);
+			    }
+
 
                             HMdcSizesCellsLayer &fSizesCellsLayer = (*fSizesCells)[loccal[0]][loccal[1]][loccal[2]];
                             HMdcSizesCellsCell  &fSizesCellsCell  = (*fSizesCells)[loccal[0]][loccal[1]][loccal[2]][loccal[3]];
@@ -513,24 +538,19 @@ HMdcTrkCand* HKalInput::nextWireTrack(TObjArray &allhits, Int_t minLayInSeg, Int
                             // Offset from time of flight subtracted later.
                             Float_t t1  = cal1->getTime1() - tWireOffset;
 
-                            Double_t timeSimErr = cal2sim->calcTimeErr(loccal[0], loccal[1], alpha, mindist);
+                            Double_t timeSimErr = cal2sim->
+                                calcTimeErr(loccal[0], loccal[1], alpha, mindist);
 
-                            Double_t dist       = cal2->calcDistance  (loccal[0], loccal[1], alpha, t1);
+                            Double_t dist       = cal2->
+                                calcDistance  (loccal[0], loccal[1], alpha, t1);
 
-                            //Double_t distErr    = cal2->calcDistanceErr(loccal[0], loccal[1], alpha, t1);
                             //?
-                            Double_t sigTof[4] = { 1.23, 1.25, 1.5, 1.46 }; //? ns
+                            //Double_t sigTof[4] = { 1.23, 1.25, 1.5, 1.46 }; //? ns
+                            Double_t sigTof[4] = { 2.69, 2.72, 2.07, 2.09 }; //? ns apr12
                             Double_t vd[4]     = { 1./24., 1./24., 1./25., 1./25.5 }; //? mm/ns
                             Double_t errTof    = vd[loccal[1]] * sigTof[loccal[1]];
 
-                            Double_t distErr = cal2->calcDistanceErr(loccal[0], loccal[1], alpha, t1)  + errTof;
-
-                            const Int_t measDim = 1;
-                            // Measurement vector is drift radius.
-                            Double_t coord   [measDim];
-                            coord[0] = dist;
-                            Double_t coordErr[measDim];
-                            coordErr[0] = distErr;
+                            Double_t distErr = 0.;
 
                             HGeomVector &wire1 = fSizesCellsCell.getWirePnt1();
                             TVector3 wirePoint1(wire1.X(), wire1.Y(), wire1.Z());
@@ -540,51 +560,141 @@ HMdcTrkCand* HKalInput::nextWireTrack(TObjArray &allhits, Int_t minLayInSeg, Int
                             Int_t iflag;
                             Double_t length;
                             TVector3 pcaFinal, pcaWire;
-
-                            HKalGeomTools::Track2ToLine(pcaFinal, pcaWire, iflag, mindist, length, TVector3(x1,y1,z1), TVector3(x2,y2,z2), wirePoint1, wirePoint2);
+                            HKalGeomTools::Track2ToLine(pcaFinal, pcaWire, iflag,
+                                                        mindist, length,
+                                                        TVector3(x1,y1,z1),
+                                                        TVector3(x2,y2,z2),
+                                                        wirePoint1, wirePoint2);
 
                             // Make virtual plane.
                             // origin: PCA on wire
                             // u axis: along wire
                             // v axis: from origin to PCA on track
-                            TVector3 u = (wirePoint2 - wirePoint1).Unit();
-                            TVector3 v = (pcaFinal - pcaWire).Unit();
+                            //TVector3 u = (wirePoint2 - wirePoint1).Unit();
+			    //TVector3 v = (pcaFinal - pcaWire).Unit();
 
-                            const HKalMdcMeasLayer *hitmeas = pCradleHades->getMdcLayerAt(loccal[0], loccal[1], loccal[2]);
 
-                            // Find intersection of segment points with the measurement layer.
+
+			    if(locHit1 && locHit2) {
+				const HGeomRotation& transRotLaySysRSec =
+				    fSizesCellsLayer.getRotLaySysRSec(cell).getRotMatrix();
+				HGeomRotation transRotSecToRotLay = transRotLaySysRSec.inverse();
+				HGeomVector transVecRotLayToSec =
+				    fSizesCellsLayer.getRotLaySysRSec(cell).getTransVector();
+
+				//Double_t Rxx = transRotSecToRotLay.getElement(0,0);
+				//Double_t Rxy = transRotSecToRotLay.getElement(0,1);
+				//Double_t Rxz = transRotSecToRotLay.getElement(0,2);
+				Double_t Ryx = transRotSecToRotLay.getElement(1,0);
+				Double_t Ryy = transRotSecToRotLay.getElement(1,1);
+				Double_t Ryz = transRotSecToRotLay.getElement(1,2);
+				Double_t Rzx = transRotSecToRotLay.getElement(2,0);
+				Double_t Rzy = transRotSecToRotLay.getElement(2,1);
+				Double_t Rzz = transRotSecToRotLay.getElement(2,2);
+
+				Double_t tx  = transVecRotLayToSec.getX();
+				Double_t ty  = transVecRotLayToSec.getY();
+				Double_t tz  = transVecRotLayToSec.getZ();
+
+				Double_t errx1 = locHit1->getErrX();
+				Double_t erry1 = locHit1->getErrY();
+				Double_t errz1 = 0.03;
+				HGeomVector errLay1(errx1, erry1, errz1);
+				HGeomVector errSec1 = (*fSizesCells)[loccal[0]][loccal[1]].getSecTrans()->getRotMatrix() * errLay1;
+				errx1 = errSec1.getX();
+				erry1 = errSec1.getY();
+				errz1 = errSec1.getZ();
+
+				Double_t errx2 = locHit2->getErrX();
+				Double_t erry2 = locHit2->getErrY();
+				Double_t errz2 = 0.03;
+				HGeomVector errLay2(errx2, erry2, errz2);
+				HGeomVector errSec2 = (*fSizesCells)[loccal[0]][loccal[1]].getSecTrans()->getRotMatrix() * errLay2;
+				errx2 = errSec2.getX();
+				erry2 = errSec2.getY();
+				errz2 = errSec2.getZ();
+
+				Double_t yWire = fSizesCellsCell.getWirePos();
+                                // What could possibly go wrong?
+				distErr = TMath::Sqrt(errx2*errx2*TMath::Power(-((( 2*Ryx*(Ryx*(-x1+x2)+Ryy*(-y1-y2)+Ryz*(-z1-z2))+2*Rzx*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2)))*(-(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1))*(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2))+(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2))))/(2.*TMath::Power(TMath::Power((Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2)),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.),1.5)))+( Rzx*(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))-Ryx*(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1)))/TMath::Sqrt(TMath::Power(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.)),2.) +
+						      erry2*erry2*TMath::Power(-((( 2*Ryy*(Ryx*(-x1+x2)+Ryy*(-y1-y2)+Ryz*(-z1-z2))+2*Rzy*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2)))*(-(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1))*(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2))+(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2))))/(2.*TMath::Power(TMath::Power((Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2)),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.),1.5)))+( Rzy*(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))-Ryy*(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1)))/TMath::Sqrt(TMath::Power(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.)),2.) +
+						      errz2*errz2*TMath::Power(-((( 2*Ryz*(Ryx*(-x1+x2)+Ryy*(-y1-y2)+Ryz*(-z1-z2))+2*Rzz*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2)))*(-(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1))*(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2))+(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2))))/(2.*TMath::Power(TMath::Power((Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2)),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.),1.5)))+( Rzz*(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))-Ryz*(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1)))/TMath::Sqrt(TMath::Power(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.)),2.) +
+						      errx1*errx1*TMath::Power(-(((-2*Ryx*(Ryx*(-x1+x2)+Ryy*(-y1-y2)+Ryz*(-z1-z2))-2*Rzx*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2)))*(-(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1))*(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2))+(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2))))/(2.*TMath::Power(TMath::Power((Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2)),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.),1.5)))+(-Rzx*(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))+Ryx*(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1))-Rzx*(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2))+Ryx*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2)))/TMath::Sqrt(TMath::Power(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.)),2.) +
+						      erry1*erry1*TMath::Power(-(((-2*Ryy*(Ryx*(-x1+x2)+Ryy*(-y1-y2)+Ryz*(-z1-z2))-2*Rzy*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2)))*(-(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1))*(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2))+(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2))))/(2.*TMath::Power(TMath::Power((Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2)),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.),1.5)))+(-Rzy*(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))+Ryy*(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1))-Rzy*(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2))+Ryy*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2)))/TMath::Sqrt(TMath::Power(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.)),2.) +
+						      errz1*errz1*TMath::Power(-(((-2*Ryz*(Ryx*(-x1+x2)+Ryy*(-y1-y2)+Ryz*(-z1-z2))-2*Rzz*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2)))*(-(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1))*(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2))+(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2))))/(2.*TMath::Power(TMath::Power((Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2)),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.),1.5)))+(-Rzz*(Ryx*(-tx+x1)+Ryy*(-ty+y1)-yWire+Ryz*(-tz+z1))+Ryz*(Rzx*(-tx+x1)+Rzy*(-ty+y1)+Rzz*(-tz+z1))-Rzz*(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2))+Ryz*(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2)))/TMath::Sqrt(TMath::Power(Ryx*(-x1+x2)+Ryy*(-y1+y2)+Ryz*(-z1+z2),2.)+TMath::Power(Rzx*(-x1+x2)+Rzy*(-y1+y2)+Rzz*(-z1+z2),2.)),2.));
+			    } else {
+				distErr = cal2->calcDistanceErr(loccal[0], loccal[1],
+								alpha, t1)  + errTof;
+			    }
+
+			    const Int_t measDim = 1;
+                            // Measurement vector is drift radius.
+                            Double_t coord   [measDim];
+			    coord[0] = mindist;
+
+			    Double_t coordErr[measDim];
+                            coordErr[0] = distErr;
+
+			    Double_t yw, zw = 0.;
+			    fSizesCellsLayer.getYZinWireSys(pcaFinal.x(), pcaFinal.y(), pcaFinal.z(),
+							    loccal[3], yw, zw);
+			    if(yw < 0) coord[0] *= -1.;
+
+
+                            const HKalMdcMeasLayer *hitmeas =
+                                pCradleHades->getMdcLayerAt(loccal[0],
+                                                            loccal[1],
+                                                            loccal[2]);
+
+                            // Find intersection of segment points with
+                            // the measurement layer.
                             TVector3 pos1(x1, y1, z1);
                             TVector3 pos2(x2, y2, z2);
                             TVector3 dir = pos2 - pos1;
                             TVector3 pointIntersect;
-                            hitmeas->findIntersection(pointIntersect, pos1, dir);
+                            hitmeas->findIntersection(pointIntersect,
+                                                      pos1, dir);
 
-                            Double_t weight = 1. / nCell;
+			    Double_t weight = 1. / nCell;
                             if(dist >= 0.) {
-                                HKalMdcHit *newhit = new HKalMdcHit(&coord[0], &coordErr[0], *hitmeas, measDim, pointIntersect, Kalman::kWireHit, weight, loccal[3]);
+                                HKalMdcHit *newhit =
+                                    new HKalMdcHit(&coord[0], &coordErr[0],
+                                                   *hitmeas, measDim,
+                                                   pointIntersect,
+                                                   Kalman::kWireHit,
+                                                   weight, loccal[3]);
                                 newhit->setDriftTime(t1, timeSimErr);
                                 //newhit->setImpactAngle(alpha);
                                 newhit->setImpactAngle(cal1->getAngle1());
                                 newhit->setTime1(cal1->getTime1());
                                 newhit->setTime2(cal1->getTime2());
                                 newhit->setTimeWireOffset(tWireOffset);
-                                newhit->setTimeTofCal1(cal1->getTof1());
+				newhit->setTimeTofCal1(cal1->getTof1());
                                 allhits.Add(newhit);
                                 nComp++;
 
-                                // Get the time of flight correction by a weighted least squares estimation:
-                                // take the mean difference of the measured time t1 and the expected drift
-                                // time timeSim. These differences are calculated for each mdc module and weighted
-                                // by the variances of the calculated drift time error.
-                                Double_t timeSim   = cal2sim->calcTime   (loccal[0], loccal[1], alpha, mindist);
-                                sumTof[loccal[1]] += (t1 - timeSim) / (timeSimErr*timeSimErr);
-                                sumErr[loccal[1]] += 1. / (timeSimErr*timeSimErr); // Normalization of weights.
+                                // Get the time of flight correction by a
+                                // weighted least squares estimation:
+                                // take the mean difference of the measured
+                                // time t1 and the expected drift time timeSim.
+                                // These differences are calculated for each
+                                // mdc module and weighted by the variances of
+                                // the calculated drift time error.
+                                Double_t timeSim   =
+                                    cal2sim->calcTime(loccal[0], loccal[1],
+                                                      alpha, mindist);
+                                sumTof[loccal[1]] += (t1 - timeSim) /
+                                    (timeSimErr*timeSimErr);
+                                sumErr[loccal[1]] += 1. /
+                                    (timeSimErr*timeSimErr); // Normalization of weights.
                             }
                         } // for loop over number cells in layer
 
-                        // Weight needs to be corrected if not all cells in a layer have been added as hit.
+                        // Weight needs to be corrected if not all cells in a
+                        // layer have been added as hit.
                         if(nComp != nCell) {
-                            // Competing hits from a measurement layer are weighted equally.
+                            // Competing hits from a measurement layer are
+                            // weighted equally.
                             Double_t weight = 1. / (Double_t)nComp;
                             Int_t iLast = allhits.GetEntries() - 1;
                             for(Int_t i = iLast; i > iLast - nComp; i--) {
@@ -609,7 +719,9 @@ HMdcTrkCand* HKalInput::nextWireTrack(TObjArray &allhits, Int_t minLayInSeg, Int
             for(Int_t i = 0; i < allhits.GetEntries(); i++) {
                 HKalMdcHit *hit = (HKalMdcHit*)allhits.At(i);
                 if(hit) {
-                    hit->setDriftTime(TMath::Max(hit->getDriftTime() - tTof[hit->getModule()], 0.), hit->getDriftTimeErr());
+                    hit->setDriftTime(TMath::Max(hit->getDriftTime() -
+                                                 tTof[hit->getModule()], 0.),
+                                      hit->getDriftTimeErr());
                     hit->setTimeTof(tTof[hit->getModule()]);
                 } else {
                     cout<<"null pointer at index"<<i<<" of "<<allhits.GetEntries()<<endl;
@@ -973,7 +1085,10 @@ void HKalInput::getPosAndDir(TVector3 &pos, TVector3 &dir, HGeantMdc *geantMdc, 
 
     if(sectorCoord) {
         // Project Geant point on measurement layer.
-        const HKalMdcMeasLayer *measLay = pCradleHades->getMdcLayerAt(s, m, l);
+	const HKalMdcMeasLayer *measLay = pCradleHades->getMdcLayerAt(s, m, l);
+#if kalDebug > 3
+	cout<<"Distance Geant point to plane: "<<measLay->distanceToPlane(pos)<<endl;
+#endif
         TVector3 posNoShift = pos;
         measLay->findIntersection(pos, posNoShift, dir);
     }

@@ -2,7 +2,7 @@
 APP_NAME     := pluto_embedded
 SOURCE_FILES := analysis_pluto.cc
 
-PLUTO_DIR=/cvmfs/hades.gsi.de/install/5.34.01/pluto/v5_42
+PLUTO_DIR=/cvmfs/hades.gsi.de/install/5.34.34/pluto/v5_42
 
 
 USES_ORACLE=yes

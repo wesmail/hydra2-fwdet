@@ -26,6 +26,9 @@ protected:
   Bool_t  isInCell;      // =kFALSE if track don't cross cell
   Float_t tdcTimeErr;    // error of drift time.
   Bool_t  isUsedInFit;   // kTRUE if wire was used in fit (for alignment investigation)
+  
+  Float_t tot;           // time above threshold (t2-t1)
+  Float_t cellPath;      // track path in this cell
 
 public:
   HMdcWireFit()  {clear();}
@@ -49,6 +52,8 @@ public:
   void    setAlpha(Float_t v)        {alpha=v;}
   void    setIsInCell(Bool_t v)      {isInCell=v;}
   void    setTdcTimeErr(Float_t v)   {tdcTimeErr=v;}
+  void    setToT(Float_t v)          {tot = v;}
+  void    setCellPath(Float_t v)     {cellPath = v;}
 
   inline void getAddress(Int_t& s,Int_t& m,Int_t& l,Int_t& c) const;
   Char_t  getSec(void) const         {return sec;}
@@ -71,13 +76,15 @@ public:
   Bool_t  isOverWire(void) const     {return minDist >= 0.;}
   Float_t getAlpha(void) const       {return alpha;}
   Bool_t  getIsInCell(void) const    {return isInCell;}
-  Float_t getTdcTimeErr(void)        {return tdcTimeErr;}
+  Float_t getTdcTimeErr(void)const   {return tdcTimeErr;}
   Float_t getChi2(void) const        {Float_t c=dev/tdcTimeErr; return c*c;}
+  Float_t getToT(void) const         {return tot;}
+  Float_t getCellPath(void) const    {return cellPath;}
 
   virtual Bool_t isGeant(void) const {return kFALSE;}
   virtual void   print(void);
 
-  ClassDef(HMdcWireFit,1)  // track fit result for one wire
+  ClassDef(HMdcWireFit,2)  // track fit result for one wire
 };
 
 inline void HMdcWireFit::setAddress(Char_t s,Char_t m,Char_t l,Short_t c) {

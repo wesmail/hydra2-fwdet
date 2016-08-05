@@ -62,8 +62,8 @@ Bool_t HKalMatrixTools::checkCond(const TMatrixD &M) {
     // 1 + eps   evaluates to 1 + eps
     // 1 + eps/2 evaluates to 1.
     Double_t eps = numeric_limits<Double_t>::epsilon();
-    // A matrix is considered ill-conditioned for inversion if adding one to its condition number
-    // in computer arithmetic has no effect.
+    // A matrix is considered ill-conditioned for inversion if adding one to
+    // its condition number in computer arithmetic has no effect.
     Double_t illCond = 2./eps;
 
     TDecompSVD decomp(M);
@@ -131,26 +131,19 @@ Bool_t HKalMatrixTools::isPosDef(const TMatrixD &M) {
     TMatrixDEigen eig(M);
     TVectorD eigRe  = eig.GetEigenValuesRe();
     TVectorD eigIm  = eig.GetEigenValuesIm();
-    /*
-    // Bool_t bEigPos = kTRUE;  //unused
-   // Bool_t bEigRe  = kTRUE;  //unused
+
     for(Int_t i = 0; i < eigRe.GetNrows(); i++) {
         if(eigRe(i) <= 0.) {
-            bEigPos = kFALSE;
             bPosDef = kFALSE;
         }
         if(eigIm(i) != 0.) {
-            bEigRe  = kFALSE;
             bPosDef = kFALSE;
         }
     }
-    */
+
 #if kalDebug > 0
-    if(!bEigPos) {
-        ::Warning("isPosDef()", "Matrix is not positive definite. An eigenvalue is not positive.");
-    }
-    if(!bEigRe) {
-        ::Warning("isPosDef()", "Matrix is not positive definite. An eigenvalue is imaginary.");
+    if(!bPosDef) {
+        ::Warning("isPosDef()", "Matrix is not positive definite. An eigenvalue is not positive or is imaginary.");
     }
 #endif
     return bPosDef;
@@ -161,8 +154,9 @@ Bool_t HKalMatrixTools::checkValidElems(const TMatrixD &M) {
 
     for(Int_t iRow = 0; iRow < M.GetNrows(); iRow++) {
         for(Int_t iCol = 0; iCol < M.GetNcols(); iCol++) {
-            if(M(iRow, iCol) == numeric_limits<Double_t>::infinity() || TMath::IsNaN(M(iRow, iCol))) {
-                return kFALSE;
+	    if(M(iRow, iCol) == numeric_limits<Double_t>::infinity() ||
+	       TMath::IsNaN(M(iRow, iCol))) {
+		return kFALSE;
             }
         }
     }
@@ -191,9 +185,11 @@ Bool_t HKalMatrixTools::makeSymmetric(TMatrixD &M) {
 
 
 Bool_t HKalMatrixTools::resolveUD(TMatrixD &U, TMatrixD &D, const TMatrixD &UD) {
-    // Input is a matrix where the U and D factors are stored in a single matrix.
+    // Input is a matrix where the U and D factors are stored in a single
+    // matrix.
     //
-    // Extracts the U and D matrices as two separate objects from the input matrix.
+    // Extracts the U and D matrices as two separate objects from the input
+    // matrix.
     // output:
     // U: upper triangular matrix.
     // D: diagonal matrix.
@@ -206,11 +202,13 @@ Bool_t HKalMatrixTools::resolveUD(TMatrixD &U, TMatrixD &D, const TMatrixD &UD) 
     }
     Int_t dim = UD.GetNrows();
     if(U.GetNrows() != dim || U.GetNcols() != dim) {
-        ::Warning("resolveUD()", "Output parameter for upper triangular matrix has wrong dimensions and has been resized.");
+	::Warning("resolveUD()",
+		  "Output parameter for upper triangular matrix has wrong dimensions and has been resized.");
         U.ResizeTo(dim, dim);
     }
     if(D.GetNrows() != dim || D.GetNcols() != dim) {
-        ::Warning("resolveUD()", "Output parameter for diagonal matrix has wrong dimensions and has been resized.");
+	::Warning("resolveUD()",
+		  "Output parameter for diagonal matrix has wrong dimensions and has been resized.");
         D.ResizeTo(dim, dim);
     }
 
@@ -229,7 +227,8 @@ Bool_t HKalMatrixTools::resolveUD(TMatrixD &U, TMatrixD &D, const TMatrixD &UD) 
             } else {
                 if(i != j && U(i,j) != 0.) {
                     if(!bWarnU) {
-                        ::Warning("resolveUD()", "Input matrix U is not an upper triangular matrix.");
+			::Warning("resolveUD()",
+				  "Input matrix U is not an upper triangular matrix.");
                     }
                     bWarnU = kTRUE;
                     U.Print();
@@ -237,7 +236,8 @@ Bool_t HKalMatrixTools::resolveUD(TMatrixD &U, TMatrixD &D, const TMatrixD &UD) 
             }
             if(i != j && D(i,j) != 0.) {
                 if(!bWarnD) {
-                    ::Warning("resolveUD()", "Input matrix D is not diagonal.");
+		    ::Warning("resolveUD()",
+			      "Input matrix D is not diagonal.");
                 }
                 bWarnD = kTRUE;
                 D.Print();

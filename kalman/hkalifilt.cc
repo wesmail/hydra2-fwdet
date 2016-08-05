@@ -31,14 +31,16 @@ using namespace std;
 // This class is responsible for the Kalman filter.
 //
 // The Kalman filter is started via the 
-// Bool_t fitTrack(const TObjArray &hits,  const TVectorD &iniStateVec, const TMatrixD &iniCovMat)
-// function. It needs a series of measurement points (an array of class HKalMdcHit)
-// and initial estimations for the track state and covariance matrix as input.
+// Bool_t fitTrack(const TObjArray &hits,  const TVectorD &iniStateVec,
+//                 const TMatrixD &iniCovMat)
+// function. It needs a series of measurement points (an array of class
+// HKalMdcHit) and initial estimations for the track state and covariance
+// matrix as input.
 //
 // It will then make an estimation for the initial track state based on the
 // measurement hits and fill the covariance matrix with large values.
-// The function will return a boolean to indicate whether problems (high chi^2 or
-// unrealistic track parameters) were encountered during track fitting.
+// The function will return a boolean to indicate whether problems (high chi^2
+// or unrealistic track parameters) were encountered during track fitting.
 //
 // Track propagation will be done with the Runge-Kutta method.
 //
@@ -65,9 +67,11 @@ using namespace std;
 // Default is on.
 //
 // setRotation(Kalman::kalRotateOptions rotate)
-// kNoRot: No coordinate transformation. Not recommended for high track angles (> 30°).
-// kVarRot (default): Tilt the coordinate system along the initial track direction
-// to avoid large values for the track state parameters tx or ty.
+// kNoRot: No coordinate transformation. Not recommended for high track angles
+//         (> 30°).
+// kVarRot (default): Tilt the coordinate system along the initial track
+//                    direction to avoid large values for the track state
+//                    parameters tx or ty.
 //
 // setDoEnerLoss(Bool_t dedx)
 // setDoMultScat(Bool_t ms)
@@ -76,14 +80,15 @@ using namespace std;
 //
 // setConstField(Bool_t constField)
 // setFieldVector(const TVector3 &B)
-// Tells the Kalman filter to use a constant magnetic field instead of the fiel map.
+// Tells the Kalman filter to use a constant magnetic field instead of the
+// field map.
 // Field vector must be in Tesla.
 // Default is off.
 //
 // setFilterMethod(Kalman::filtMethod type)
-// Changes which formulation of the Kalman equations to use. The formulations differ
-// in speed and numerical stability. See the description of the functions named filter...
-// for details.
+// Changes which formulation of the Kalman equations to use. The formulations
+// differ in speed and numerical stability. See the description of the
+// functions named filter... for details.
 //
 // Notation:
 // a: track state vector
@@ -115,8 +120,10 @@ HKalIFilt::HKalIFilt(Int_t n, Int_t measDim, Int_t stateDim,
     //
     // Input:
     // n:        the maximum number of measurement sites in a track.
-    // measDim:  the dimension of a measurement vector (must be the same for all tracks)
-    // stateDim: the dimension of the track state vector (must be the same for all tracks)
+    // measDim:  the dimension of a measurement vector (must be the same for
+    //           all tracks)
+    // stateDim: the dimension of the track state vector (must be the same for all
+    //           tracks)
     // fMap:     pointer to field map.
     // fpol:     field scaling factor * polarity.
     // chiMax:   the maximum chi^2 where a track is still accepted.
@@ -134,8 +141,8 @@ HKalIFilt::HKalIFilt(Int_t n, Int_t measDim, Int_t stateDim,
     trackNum         = 0;
     pid              = -1;
 
-    bPrintWarn       = kTRUE;
-    bPrintErr        = kTRUE;
+    setPrintWarnings(kFALSE);
+    setPrintErrors(kFALSE);
     bFillPointArrays = kFALSE;
 
     nCondErrs        = 0;
@@ -194,14 +201,18 @@ Bool_t HKalIFilt::checkSitePreFilter(Int_t iSite) const {
     const TVectorD &predState = site->getStateVec(Kalman::kPredicted);
     nRows = predState.GetNrows();
     if(nRows != sdim) {
-        Error(Form("Filter site %i.", iSite), Form("State vector from prediction must have dimension %i, but has dimension %i", nRows, sdim));
+	Error(Form("Filter site %i.", iSite),
+	      Form("State vector from prediction must have dimension %i, but has dimension %i",
+		   nRows, sdim));
         exit(1);
     }
 
     const TVectorD &measVec = getHitVec(site);
     nRows = measVec.GetNrows();
     if(nRows != mdim) {
-        Error(Form("Filter site %i.", iSite), Form("Measurement vector must have dimension %i, but has dimension %i", nRows, mdim));
+	Error(Form("Filter site %i.", iSite),
+	      Form("Measurement vector must have dimension %i, but has dimension %i",
+		   nRows, mdim));
         exit(1);
     }
 
@@ -209,20 +220,26 @@ Bool_t HKalIFilt::checkSitePreFilter(Int_t iSite) const {
     nRows = errMat.GetNrows();
     nCols = errMat.GetNcols();
     if(nRows != mdim || nCols != mdim) {
-        Error(Form("Filter site %i.", iSite), Form("Measurement error matrix is %ix%i, but must be %ix%i matrix.", nRows, nCols, mdim, mdim ));
+	Error(Form("Filter site %i.", iSite),
+	      Form("Measurement error matrix is %ix%i, but must be %ix%i matrix.",
+		   nRows, nCols, mdim, mdim ));
         exit(1);
     }
 
     // Check covariance matrix.
     if(!checkCovMat(predCov)) {
-        Warning("filter()", Form("Errors found in predicted covariance matrix for site %i.", iSite));
+	Warning("filter()",
+		Form("Errors found in predicted covariance matrix for site %i.",
+		     iSite));
     }
 
 #endif
 
     if(!HKalMatrixTools::checkValidElems(predCov)) {
         if(bPrintErr) {
-            Error("filter()", Form("Predicted covariance matrix for site %i contains INFs or NaNs.", iSite));
+	    Error("filter()",
+		  Form("Predicted covariance matrix for site %i contains INFs or NaNs.",
+		       iSite));
         }
         return kFALSE;
     }
@@ -237,24 +254,27 @@ Bool_t HKalIFilt::checkSitePreFilter(Int_t iSite) const {
 }
 
 void HKalIFilt::filterConventional(Int_t iSite) {
-    // Filter a site using the conventional formulation of the Kalman filter equations.
+    // Filter a site using the conventional formulation of the Kalman filter
+    // equations.
     //
     // C_k = (I - K_k * H_k) * C^{k-1}_k
     // K_k = C^{k-1}_k * H^T_k * (V_k + H_k * C^{k-1}_k * H^T_k)^-1
     //
-    // These are simpler equations compared to the Joseph or Swerling forumations.
-    // Only one inversion of a matrix with the dimension of the measurement vector is neccessary.
-    // However, the updated covariance matrix may not be positive definite due to numerical
-    // computing problems.
+    // These are simpler equations compared to the Joseph or Swerling
+    // forumations. Only one inversion of a matrix with the dimension of the
+    // measurement vector is neccessary. However, the updated covariance
+    // matrix may not be positive definite due to numerical computing problems.
 
-    Kalman::coordSys sys = getFilterInCoordSys(); // sector or virtual layer coordinates
+    // sector or virtual layer coordinates
+    Kalman::coordSys sys = getFilterInCoordSys();
     HKalTrackSite *site = getSite(iSite);
 
     // Predicted state vector for this site.
     const TVectorD &predState = site->getStateVec(Kalman::kPredicted, sys);    // a^k-1_k
     TVectorD projMeasVec(getMeasDim());
     // Expected measurement vector.
-    calcMeasVecFromState(projMeasVec, site, Kalman::kPredicted, sys);  // h_k(a^k-1_k)
+    // h_k(a^k-1_k)
+    calcMeasVecFromState(projMeasVec, site, Kalman::kPredicted, sys);
 
     // Residual of measurement vector and expected measurement vector.
     TVectorD residual = getHitVec(site) - projMeasVec;
@@ -271,7 +291,8 @@ void HKalIFilt::filterConventional(Int_t iSite) {
     if(!HKalMatrixTools::checkCond(R)) {
         nCondErrs++;
         if(bPrintWarn) {
-            Warning("filterConventional()", "Matrix is ill-conditioned for inversion.");
+	    Warning("filterConventional()",
+		    "Matrix is ill-conditioned for inversion.");
         }
     }
 #endif
@@ -281,7 +302,9 @@ void HKalIFilt::filterConventional(Int_t iSite) {
     TMatrixD kalmanGain = predCov   * fProjTrans * R.Invert();
 
     //                 (I - K_k * H_k)
-    TMatrixD covUpdate(TMatrixD(TMatrixD::kUnit,TMatrixD(getStateDim(sys),getStateDim(sys))) - kalmanGain * fProj);
+    TMatrixD covUpdate(TMatrixD(TMatrixD::kUnit,
+				TMatrixD(getStateDim(sys),getStateDim(sys))) -
+		       kalmanGain * fProj);
     //       C_k     = (I - K_k * H_k) * C^{k-1}_k
     TMatrixD filtCov = covUpdate       * predCov;
 
@@ -290,13 +313,15 @@ void HKalIFilt::filterConventional(Int_t iSite) {
     if(asymCells > 0) {
         nCovSymErrs += asymCells;
         if(bPrintWarn) {
-            Warning("filterConventional()", "Covariance matrix for filter step is not symmetric.");
+	    Warning("filterConventional()",
+		    "Covariance matrix for filter step is not symmetric.");
         }
     }
     if(!HKalMatrixTools::isPosDef(filtCov)) {
         nCovPosDefErrs++;
         if(bPrintWarn) {
-            Warning("filterConventional()", "Covariance for the filtered state is not positive definite.");
+	    Warning("filterConventional()",
+		    "Covariance for the filtered state is not positive definite.");
         }
     }
 #endif
@@ -304,7 +329,8 @@ void HKalIFilt::filterConventional(Int_t iSite) {
     if(!filtCov.IsSymmetric()) {
         if(!HKalMatrixTools::makeSymmetric(filtCov)) {
             if(bPrintWarn) {
-                Warning("filterConventional()", "Covariance matrix for filter step is not close to being symmetric.");
+		Warning("filterConventional()",
+			"Covariance matrix for filter step is not close to being symmetric.");
             }
         }
     }
@@ -348,25 +374,28 @@ void HKalIFilt::filterConventional(Int_t iSite) {
 }
 
 void HKalIFilt::filterJoseph(Int_t iSite) {
-    // This filter method uses the Joseph stabilized update of the covariance matrix.
+    // This filter method uses the Joseph stabilized update of the covariance
+    // matrix.
     //
     // K_k = C^k-1_k * H^T * (V_k + H_k * C^k-1_k * H_k^T)^-1
     // C^k = (I - K_k * H) * C^k-1_k * (I - K_k * H)^T + K_k * V_k * K_k^T
     //
-    // This method is numerically more stable than the conventional or Swerling
-    // formulations of the Kalman equations.
-    // It guarantees that the updated covariance matrix is positive definite if
-    // the covariance from the prediction step and the measurement noise covariance
-    // are also positive definite.
+    // This method is numerically more stable than the conventional or
+    // Swerling formulations of the Kalman equations.
+    // It guarantees that the updated covariance matrix is positive definite
+    // if the covariance from the prediction step and the measurement noise
+    // covariance are also positive definite.
 
     Kalman::coordSys sys = getFilterInCoordSys();
     HKalTrackSite *site  = getSite(iSite);
 
     // Predicted state vector for this site.
-    const TVectorD &predState  = site->getStateVec(kPredicted, sys); // a^k-1_k
+    // a^k-1_k
+    const TVectorD &predState  = site->getStateVec(kPredicted, sys);
     TVectorD projMeasVec(getMeasDim());
     // Expected measurement vector.
-    calcMeasVecFromState(projMeasVec, site, Kalman::kPredicted, sys);  // h_k(a^k-1_k)
+    // h_k(a^k-1_k)
+    calcMeasVecFromState(projMeasVec, site, Kalman::kPredicted, sys);
 
     // Residual of measurement vector and expected measurement vector.
     TVectorD residual = getHitVec(site) - projMeasVec;
@@ -382,7 +411,8 @@ void HKalIFilt::filterJoseph(Int_t iSite) {
     if(!HKalMatrixTools::checkCond(R)) {
         nCondErrs++;
         if(bPrintWarn) {
-            Warning("filterJospeh()", "Matrix is ill-conditioned for inversion.");
+	    Warning("filterJospeh()",
+		    "Matrix is ill-conditioned for inversion.");
         }
     }
 #endif
@@ -391,23 +421,29 @@ void HKalIFilt::filterJoseph(Int_t iSite) {
     TMatrixD kalmanGain = predCov * fProjTrans * R.Invert();
 
     //                (I - K_k * H_k)
-    TMatrixD covUpdate(TMatrixD(TMatrixD::kUnit,TMatrixD(getStateDim(sys),getStateDim(sys))) - kalmanGain * fProj);
+    TMatrixD covUpdate(TMatrixD(TMatrixD::kUnit,
+				TMatrixD(getStateDim(sys),getStateDim(sys))) -
+		       kalmanGain * fProj);
     TMatrixD covUpdateT(TMatrixD::kTransposed, covUpdate);
-    //       C^k     = (I - K_k * H) * C^k-1_k * (I - K_k * H)^T + K_k        * V_k    * K_k^T
-    TMatrixD filtCov = covUpdate     * predCov * covUpdateT      + kalmanGain * errMat * TMatrixD(TMatrixD::kTransposed, kalmanGain);
+    //       C^k     = (I - K_k * H) * C^k-1_k * (I - K_k * H)^T + 
+    TMatrixD filtCov = covUpdate     * predCov * covUpdateT      +
+        // K_k     * V_k    * K_k^T
+	kalmanGain * errMat * TMatrixD(TMatrixD::kTransposed, kalmanGain);
 
 #if kalDebug > 0
     Int_t asymCells = HKalMatrixTools::checkSymmetry(filtCov, 1.e-9);
     if(asymCells > 0) {
         nCovSymErrs += asymCells;
         if(bPrintWarn) {
-            Warning("filterJoseph()", "Covariance matrix for filter step is not symmetric.");
+	    Warning("filterJoseph()",
+		    "Covariance matrix for filter step is not symmetric.");
         }
     }
     if(!HKalMatrixTools::isPosDef(filtCov)) {
         nCovPosDefErrs++;
         if(bPrintWarn) {
-            Warning("filterJoseph()", "Covariance for the filtered state is not positive definite.");
+	    Warning("filterJoseph()",
+		    "Covariance for the filtered state is not positive definite.");
         }
     }
 #endif
@@ -415,7 +451,8 @@ void HKalIFilt::filterJoseph(Int_t iSite) {
     if(!filtCov.IsSymmetric()) {
         if(!HKalMatrixTools::makeSymmetric(filtCov)) {
             if(bPrintWarn) {
-                Warning("filterJoseph()", "Covariance matrix for filter step is not close to being symmetric.");
+		Warning("filterJoseph()",
+			"Covariance matrix for filter step is not close to being symmetric.");
             }
         }
     }
@@ -423,7 +460,7 @@ void HKalIFilt::filterJoseph(Int_t iSite) {
     site->setStateCovMat(kFiltered, filtCov, sys);
 
     // Calculate filtered state vector.
-    //       a_k       = a^k-1_k   + K_k        * (m_k     - h_k(a^k-1_k) )
+    //       a_k       = a^k-1_k   + K_k        * (m_k - h_k(a^k-1_k) )
     TVectorD filtState = predState + kalmanGain * residual;
     site->setStateVec(kFiltered, filtState, sys);
 
@@ -535,7 +572,8 @@ void HKalIFilt::filterSequential(Int_t iSite) {
     if(!filtCov.IsSymmetric()) {
         if(!HKalMatrixTools::makeSymmetric(filtCov)) {
             if(bPrintWarn) {
-                Warning("filterJoseph()", "Covariance matrix for filter step is not close to being symmetric.");
+		Warning("filterJoseph()",
+			"Covariance matrix for filter step is not close to being symmetric.");
             }
         }
     }
@@ -553,59 +591,71 @@ void HKalIFilt::filterSequential(Int_t iSite) {
 }
 
 void HKalIFilt::filterSwerling(Int_t iSite) {
-    // Swerling calculation of covariance matrix for filtered state and the Kalman gain matrix.
+    // Swerling calculation of covariance matrix for filtered state and the
+    // Kalman gain matrix.
     //
     // C_k = [ (C^k-1_k)^-1 + H^T_k * (V_k)^-1 * H_k ]^-1
     // K_k = C_k * H^T_k * (V_k)^-1
     //
-    // This form requires two inversions of matrices with the dimension of the state vector
-    // and one inversion of a matrix with the dimension of the measurement vector. It can
-    // be more efficient if the dimension of the state vector is small.
+    // This form requires two inversions of matrices with the dimension of the
+    // state vector and one inversion of a matrix with the dimension of the
+    // measurement vector. It can be more efficient if the dimension of the
+    // state vector is small.
 
     Kalman::coordSys sys = getFilterInCoordSys();
     HKalTrackSite *site  = getSite(iSite);
 
     // Predicted state vector for this site.
-    const TVectorD &predState  = site->getStateVec(kPredicted, sys);         // a^k-1_k
+    // a^k-1_k
+    const TVectorD &predState  = site->getStateVec(kPredicted, sys);
 
     TVectorD projMeasVec(getMeasDim());
     // Expected measurement vector.
-    calcMeasVecFromState(projMeasVec, site, Kalman::kPredicted, sys);        // h_k(a^k-1_k)
+    // h_k(a^k-1_k)
+    calcMeasVecFromState(projMeasVec, site, Kalman::kPredicted, sys);
 
     // Residual of measurement vector and expected measurement vector.
     TVectorD residual = getHitVec(site) - projMeasVec;
 
-    const TMatrixD &predCov = site->getStateCovMat(Kalman::kPredicted, sys); // C^k-1_k
+    // C^k-1_k
+    const TMatrixD &predCov = site->getStateCovMat(Kalman::kPredicted, sys);
 #if kalDebug > 0
     if(!HKalMatrixTools::checkCond(predCov)) {
         nCondErrs++;
         if(bPrintWarn) {
-            Warning("filterSwerling()", "Matrix is ill-conditioned for inversion.");
+	    Warning("filterSwerling()",
+		    "Matrix is ill-conditioned for inversion.");
         }
     }
 #endif
     const TMatrixD  predCovInv(TMatrixD::kInverted, predCov);
 
-    const TMatrixD errInv(TMatrixD::kInverted, getHitErrMat(site));           // (V_k)^-1
+     // (V_k)^-1
+    const TMatrixD errInv(TMatrixD::kInverted, getHitErrMat(site));
 
-    const TMatrixD &fProj   = site->getStateProjMat(Kalman::kFiltered, sys); // H_k
+    // H_k
+    const TMatrixD &fProj   = site->getStateProjMat(Kalman::kFiltered, sys);
     const TMatrixD fProjTrans = TMatrixD(TMatrixD::kTransposed, fProj);
 
-    //       C_k        = [                           (C^k-1_k)^-1 + H^T_k      * (V_k)^-1 * H_k  ]^-1
-    TMatrixD filtCov    = TMatrixD(TMatrixD::kInverted, predCovInv + fProjTrans * errInv   * fProj);
+    //       C_k        = [                          
+    TMatrixD filtCov    = TMatrixD(TMatrixD::kInverted,
+                              // (C^k-1_k)^-1 + H^T_k      * (V_k)^-1 * H_k]^-1
+				   predCovInv + fProjTrans * errInv   * fProj);
 
 #if kalDebug > 0
     Int_t asymCells = HKalMatrixTools::checkSymmetry(filtCov, 1.e-9);
     if(asymCells > 0) {
         nCovSymErrs += asymCells;
         if(bPrintWarn) {
-            Warning("filterSwerling()", "Covariance matrix for filter step is not symmetric.");
+	    Warning("filterSwerling()",
+		    "Covariance matrix for filter step is not symmetric.");
         }
     }
     if(!HKalMatrixTools::isPosDef(filtCov)) {
         nCovPosDefErrs++;
         if(bPrintWarn) {
-            Warning("filterSwerling()", "Covariance for the filtered state is not positive definite.");
+	    Warning("filterSwerling()",
+		    "Covariance for the filtered state is not positive definite.");
         }
     }
 #endif
@@ -613,7 +663,8 @@ void HKalIFilt::filterSwerling(Int_t iSite) {
     if(!filtCov.IsSymmetric()) {
         if(!HKalMatrixTools::makeSymmetric(filtCov)) {
             if(bPrintWarn) {
-                Warning("filterSwerling()", "Covariance matrix for filter step is not close to being symmetric.");
+		Warning("filterSwerling()",
+			"Covariance matrix for filter step is not close to being symmetric.");
             }
         }
     }
@@ -692,7 +743,8 @@ void HKalIFilt::filterUD(Int_t iSite) {
     TVectorD projMeasVec(getMeasDim());
     const TVectorD &predState = site->getStateVec(Kalman::kPredicted, sys);
     // Expected measurement vector.
-    calcMeasVecFromState(projMeasVec, site, Kalman::kPredicted, sys);  // h_k(a^k-1_k)
+    // h_k(a^k-1_k)
+    calcMeasVecFromState(projMeasVec, site, Kalman::kPredicted, sys);
 
     // Residual.
     TVectorD resVec = measVec - projMeasVec;
@@ -703,7 +755,8 @@ void HKalIFilt::filterUD(Int_t iSite) {
     TMatrixD D(sdim, sdim);
     HKalMatrixTools::resolveUD(U, D, predCov);
 
-    const TMatrixD &fProj   = site->getStateProjMat(Kalman::kFiltered, sys); // H_k
+    // H_k
+    const TMatrixD &fProj   = site->getStateProjMat(Kalman::kFiltered, sys);
 
     TVectorD filtState = predState;
 
@@ -750,14 +803,15 @@ void HKalIFilt::filterUD(Int_t iSite) {
     if(!HKalMatrixTools::isPosDef(D)) {
         nCovPosDefErrs++;
         if(bPrintWarn) {
-            Warning("filterUD()", "D-matrix for the filtered state is not positive definite.");
+	    Warning("filterUD()",
+		    "D-matrix for the filtered state is not positive definite.");
         }
     }
 #endif
 
     // Store the U and D factors of the covariance matrix in a single matrix.
-    // The diagonal elements of U are always 1. Replace them with the elements
-    // of D.
+    // The diagonal elements of U are always 1. Replace them with the
+    // elements of D.
     for(Int_t i = 0; i < D.GetNrows(); i++) {
         U(i,i) = D(i,i);
     }
@@ -811,7 +865,9 @@ void HKalIFilt::propagateCovConv(Int_t iFromSite, Int_t iToSite) {
     Int_t nRows = covMatFromSite.GetNrows();
     Int_t nCols = covMatFromSite.GetNcols();
     if(nRows != getStateDim() || nCols != getStateDim()) {
-        Error(Form("Prediction to site %i.", iToSite), Form("Covariance matrix is %ix%i, but must be %ix%i matrix.", nRows, nCols, getStateDim(), getStateDim() ));
+	Error(Form("Prediction to site %i.", iToSite),
+	      Form("Covariance matrix is %ix%i, but must be %ix%i matrix.",
+		   nRows, nCols, getStateDim(), getStateDim()));
         exit(1);
     }
 #endif
@@ -820,12 +876,15 @@ void HKalIFilt::propagateCovConv(Int_t iFromSite, Int_t iToSite) {
 
     TMatrixD propMatFromSiteTrans = TMatrixD(TMatrixD::kTransposed, propMatFromSite); // F_k-1
 
-    //       C^k-1_k      = F_k-1           * C_k-1          * F^T_k-1              + Q_k-1
-    TMatrixD covMatToSite = propMatFromSite * covMatFromSite * propMatFromSiteTrans + procMatFromSite;
+    //       C^k-1_k      = F_k-1           * C_k-1          *
+    TMatrixD covMatToSite = propMatFromSite * covMatFromSite *
+        // F^T_k-1           + Q_k-1
+	propMatFromSiteTrans + procMatFromSite;
     if(!covMatToSite.IsSymmetric()) {
         if(!HKalMatrixTools::makeSymmetric(covMatToSite)) {
             if(bPrintWarn) {
-                Warning("predictAndFilter2DHits()", "Covariance matrix for prediction is not close to being symmetric.");
+		Warning("predictAndFilter2DHits()",
+			"Covariance matrix for prediction is not close to being symmetric.");
             }
         }
     }
@@ -833,13 +892,14 @@ void HKalIFilt::propagateCovConv(Int_t iFromSite, Int_t iToSite) {
 }
 
 void HKalIFilt::propagateCovUD(Int_t iFromSite, Int_t iToSite) {
-    // Update of the covariance matrix' U and D factors after the prediction step.
+    // Update of the covariance matrix' U and D factors after the prediction
+    // step.
     //
     // iFromSite:  index of measurement site to start propagation from.
     // iToSite:    index of measurement site to propagate to (will be modified).
     //
-    // Only the matrix upper triangular U with the elements of D on its diagonal
-    // are stored in the site.
+    // Only the matrix upper triangular U with the elements of D on its
+    // diagonal are stored in the site.
     //
     // Literature:
     // Kalman Filtering: Theory and Practice using MATLAB, 3rd edition
@@ -870,15 +930,18 @@ void HKalIFilt::propagateCovUD(Int_t iFromSite, Int_t iToSite) {
     HKalMatrixTools::resolveUD(UQ, DQ, fProc);
 
 #if kalDebug > 0
-    if(fProp.GetNrows() != covPrev.GetNrows() || fProp.GetNcols() != covPrev.GetNcols()) {
+    if(fProp.GetNrows() != covPrev.GetNrows() ||
+       fProp.GetNcols() != covPrev.GetNcols()) {
         Error("covUpdateUD()",
               Form("Dimensions of covariance and propagator matrix do not match. Covariance is a %ix%i matrix while propagator is %ix%i.",
-                   covPrev.GetNrows(), covPrev.GetNcols(), fProp.GetNrows(), fProp.GetNcols()));
+		   covPrev.GetNrows(), covPrev.GetNcols(),
+		   fProp.GetNrows(), fProp.GetNcols()));
     }
     if(fProc.GetNrows() != covPrev.GetNrows() || fProc.GetNcols() != covPrev.GetNcols()) {
         Error("covUpdateUD()",
               Form("Dimensions of covariance and process noise matrix do not match. Covariance is a %ix%i matrix while process noise is %ix%i.",
-                   covPrev.GetNrows(), covPrev.GetNcols(), fProc.GetNrows(), fProc.GetNcols()));
+		   covPrev.GetNrows(), covPrev.GetNcols(),
+		   fProc.GetNrows(), fProc.GetNcols()));
     }
 #endif
 
@@ -919,9 +982,12 @@ Bool_t HKalIFilt::propagateTrack(Int_t iFromSite, Int_t iToSite) {
 
     Bool_t propagationOk = kTRUE;
 
-    const TVectorD   &filtStateFromSite   = fromSite->getStateVec(kFiltered); // a_(k-1): filtered state vector of current site
-    const HKalMdcMeasLayer &planeFromSite = fromSite->getHitMeasLayer();      // Plane to propagate from.
-    const HKalMdcMeasLayer &planeToSite   = toSite  ->getHitMeasLayer();      // Plane to propagate to.
+    // a_(k-1): filtered state vector of current site
+    const TVectorD   &filtStateFromSite   = fromSite->getStateVec(kFiltered);
+    // Plane to propagate from.
+    const HKalMdcMeasLayer &planeFromSite = fromSite->getHitMeasLayer();
+    // Plane to propagate to.
+    const HKalMdcMeasLayer &planeToSite   = toSite  ->getHitMeasLayer();
 
     Int_t sdim = getStateDim();
 
@@ -930,27 +996,36 @@ Bool_t HKalIFilt::propagateTrack(Int_t iFromSite, Int_t iToSite) {
     nRows = filtStateFromSite.GetNrows();
     if(nRows != sdim) {
         if(bPrintErr) {
-            Error("propagateTrack()", Form("Filtered state vector of site %i must have dimension %i, but has dimension %i", iFromSite, nRows, sdim));
+	    Error("propagateTrack()",
+		  Form("Filtered state vector of site %i must have dimension %i, but has dimension %i",
+		       iFromSite, nRows, sdim));
         }
         return kFALSE;
     }
 #endif
 
-    TVectorD predStateToSite(sdim);       // a^(k-1)_k: predicted state for next site, to be calculated
-    TMatrixD propMatFromSite(sdim, sdim); // F_k-1: propagation matrix, to be calculated
-    TMatrixD procMatFromSite(sdim, sdim); // Q_k-1: process noise matrix, to be calculated
+    // a^(k-1)_k: predicted state for next site, to be calculated
+    TVectorD predStateToSite(sdim);
+    // F_k-1: propagation matrix, to be calculated
+    TMatrixD propMatFromSite(sdim, sdim);
+    // Q_k-1: process noise matrix, to be calculated
+    TMatrixD procMatFromSite(sdim, sdim);
 
-    // Propagate track to next measurement site. Calculate the expected state vector
-    // a^(k-1)_k = f(a_k-1), the Jacobian F_k-1 and process noise covariance Q_k-1.
+    // Propagate track to next measurement site. Calculate the expected state
+    // vector a^(k-1)_k = f(a_k-1), the Jacobian F_k-1 and process noise
+    // covariance Q_k-1.
     if(!trackPropagator.propagateToPlane(propMatFromSite, procMatFromSite,
                                          predStateToSite, filtStateFromSite,
                                          planeFromSite, planeToSite,
                                          planeFromSite, planeToSite,
                                          pid, getDirection())) {
         if(bPrintErr) {
-            Error("propagateTrack()", Form("Propagation from measurement site %i in sec %i/mod %i/lay %i to site %i in sec %i/mod %i/lay %i failed. Skipping this site.",
-                                           iFromSite, planeFromSite.getSector(), planeFromSite.getModule(), planeFromSite.getLayer(),
-                                           iToSite,   planeToSite.getSector(),   planeToSite.getModule(),   planeToSite.getLayer()));
+	    Error("propagateTrack()",
+		  Form("Propagation from measurement site %i in sec %i/mod %i/lay %i to site %i in sec %i/mod %i/lay %i failed. Skipping this site.",
+		       iFromSite, planeFromSite.getSector(),
+		       planeFromSite.getModule(), planeFromSite.getLayer(),
+		       iToSite,   planeToSite.getSector(),
+		       planeToSite.getModule(),   planeToSite.getLayer()));
         }
         toSite->setActive(kFALSE);
         return kFALSE;
@@ -972,17 +1047,22 @@ Bool_t HKalIFilt::propagateTrack(Int_t iFromSite, Int_t iToSite) {
 
     // Store propagation results.
     // -----------
-    toSite  ->setStateVec(kPredicted, predStateToSite);  // a^(k-1)_k = f(a_k-1), store prediction for next site
-    fromSite->setStatePropMat(kFiltered, propMatFromSite);  // F_k-1, store propagator matrix
+    // a^(k-1)_k = f(a_k-1), store prediction for next site
+    toSite  ->setStateVec(kPredicted, predStateToSite);
+    // F_k-1, store propagator matrix
+    fromSite->setStatePropMat(kFiltered, propMatFromSite);
 
     if(filtType == Kalman::kKalUD) {
         if(!HKalMatrixTools::decomposeUD(procMatFromSite)) {
-            Warning("predictAndFilter2DHits()","Could not decompose process noise into UD factors.");
+	    Warning("predictAndFilter2DHits()",
+		    "Could not decompose process noise into UD factors.");
         }
     }
-    fromSite->setStateProcMat(kFiltered, procMatFromSite);  // Q_k-1, store process noise covariance
+    // Q_k-1, store process noise covariance
+    fromSite->setStateProcMat(kFiltered, procMatFromSite);
 
-    toSite->setEnergyLoss(fromSite->getEnergyLoss() + trackPropagator.getEnergyLoss());
+    toSite->setEnergyLoss(fromSite->getEnergyLoss() +
+			  trackPropagator.getEnergyLoss());
     // -----------
 
     return propagationOk;
@@ -1001,9 +1081,12 @@ void HKalIFilt::updateChi2Filter(Int_t iSite) {
     const TVectorD &filtState = site->getStateVec(Kalman::kFiltered, sys);
     TVectorD diffPredFilt = filtState - predState;
     // Need a TMatrixD object later.
-    TMatrixD diffPredFiltTrans(1, getStateDim(sys), diffPredFilt.GetMatrixArray()); // (a_k - a^k-1_k )^T
+    // (a_k - a^k-1_k )^T
+    TMatrixD diffPredFiltTrans(1, getStateDim(sys),
+			       diffPredFilt.GetMatrixArray());
 
-    TMatrixD predCov   = site->getStateCovMat(Kalman::kPredicted, sys); // C^k-1_k
+    // C^k-1_k
+    TMatrixD predCov   = site->getStateCovMat(Kalman::kPredicted, sys);
     if(filtType == Kalman::kKalUD) {
         Int_t sdim = getStateDim(sys);
         TMatrixD U(sdim, sdim);
@@ -1014,6 +1097,7 @@ void HKalIFilt::updateChi2Filter(Int_t iSite) {
     TMatrixD predCovInv(TMatrixD::kInverted, predCov);
 
     const TMatrixD &errMat    = getHitErrMat(site); // V_k
+
     const TMatrixD  errInv(TMatrixD::kInverted, errMat);
 
     TVectorD projFiltMeasVec(mdim);
@@ -1023,13 +1107,14 @@ void HKalIFilt::updateChi2Filter(Int_t iSite) {
     TVectorD diffMeasFilt = getHitVec(site) - projFiltMeasVec;
 
     // Transform TVectorD objects into matrices for later matrix multiplications.
-    TMatrixD diffMeasFiltTrans(1, mdim , diffMeasFilt.GetMatrixArray()); // (m_k - a_k )^T.
+    // (m_k - a_k )^T.
+    TMatrixD diffMeasFiltTrans(1, mdim , diffMeasFilt.GetMatrixArray());
 
     // Update chi2.
-    //                   (a_k - a^k-1_k  )^T * (C^k-1_k)^-1 * (a_k - a^k-1_k)
-    Double_t chi2Inc =   (diffPredFiltTrans  * predCovInv   * diffPredFilt  )(0)
-                   //    (m_k - h_k(a_k))^T  * (V_k)^-1     * (m_k - h_k(a_k)   )
-                       + (diffMeasFiltTrans  * errInv       * diffMeasFilt      )(0);
+    //                 (a_k - a^k-1_k  )^T * (C^k-1_k)^-1 * (a_k - a^k-1_k)
+    Double_t chi2Inc = (diffPredFiltTrans  * predCovInv   * diffPredFilt  )(0)+
+                   //  (m_k - h_k(a_k))^T  * (V_k)^-1     * (m_k - h_k(a_k)   )
+                       (diffMeasFiltTrans  * errInv       * diffMeasFilt  )(0);
 
     site->setChi2(chi2Inc);
 
@@ -1044,17 +1129,18 @@ void HKalIFilt::updateChi2Filter(Int_t iSite) {
 #endif
 }
 
-void HKalIFilt::newTrack(const TObjArray &hits, const TVectorD &iniSv, const TMatrixD &iniCovMat,
-                           Int_t pId) {
+void HKalIFilt::newTrack(const TObjArray &hits, const TVectorD &iniSv,
+			 const TMatrixD &iniCovMat, Int_t pId) {
     // Reset data members to fit a new track.
     //
     // Input:
-    // hits:        the array with the measurement hits. Elements must be of class
-    //              HKalMdcHit.
+    // hits:        the array with the measurement hits. Elements must be of
+    //              class HKalMdcHit.
     // iniStateVec: initial track state that the filter will use.
     // iniCovMat:   initial covariance matrix that the filter will use.
     // pId:         Geant particle id.
-    // momGeant:    Geant momentum that will be written in the output tree. Ignore if this is not simulation data.
+    // momGeant:    Geant momentum that will be written in the output tree.
+    //              Ignore if this is not simulation data.
     bTrackAccepted = kTRUE;
     chi2 = 0.;
     fieldTrack.Clear();
@@ -1077,9 +1163,10 @@ void HKalIFilt::newTrack(const TObjArray &hits, const TVectorD &iniSv, const TMa
     trackNum++;
     pid = pId;
 
-    // Depending on the direction for propagation, set the index of the first site (istart)
-    // and last site (igoal).
-    // idir: increment (forward propagation) or decrement (backward propagation) sites indices.
+    // Depending on the direction for propagation, set the index of the first
+    // site (istart) and last site (igoal).
+    // idir: increment (forward propagation) or decrement (backward
+    // propagation) sites indices.
     Int_t fromSite; //, toSite; //unused
     if(getDirection() == kIterForward) {
         fromSite = 0;
@@ -1138,23 +1225,25 @@ void HKalIFilt::newTrack(const TObjArray &hits, const TVectorD &iniSv, const TMa
 //  Implementation of public methods
 //  -----------------------------------
 
-Bool_t HKalIFilt::calcMeasVecFromState(TVectorD &projMeasVec, HKalTrackSite const * const site,
-				       Kalman::kalFilterTypes stateType, Kalman::coordSys sys,
-				       Int_t iHit) const {
-    // Implements the projection function h(a) that calculates a measurement vector
-    // from a track state.
+Bool_t HKalIFilt::calcMeasVecFromState(TVectorD &projMeasVec,
+				       HKalTrackSite const * const site,
+				       Kalman::kalFilterTypes stateType,
+				       Kalman::coordSys sys, Int_t iHit) const {
+    // Implements the projection function h(a) that calculates a measurement
+    // vector from a track state.
     //
     // Output:
     // projMeasVec: The calculated measurement vector.
     // Input:
     // site:      Pointer to current site of the track.
-    // stateType: Which state (predicted, filtered, smoothed) to project on a measurement vector.
+    // stateType: Which state (predicted, filtered, smoothed) to project on a
+    //            measurement vector.
     // sys:       Coordinate system to use (sector or virtual layer coordinates)
 
 #if kalDebug > 0
     Int_t mdim = getMeasDim();
     if(projMeasVec.GetNrows() != mdim) {
-        Warning("calcMeasVec", Form("Needed to resize TVectorD. Dimension of measurement vector (%i) does not match that of function parameter (%i).", mdim, projMeasVec.GetNrows()));
+	Warning("calcMeasVec", Form("Needed to resize TVectorD. Dimension of measurement vector (%i) does not match that of function parameter (%i).", mdim, projMeasVec.GetNrows()));
         projMeasVec.ResizeTo(mdim);
     }
 #endif
@@ -1177,7 +1266,8 @@ Bool_t HKalIFilt::checkCovMat(const TMatrixD &fCov) const {
     for(Int_t i = 0; i < fCov.GetNrows(); i++) {
         if(fCov(i, i) == 0.) {
             if(bPrintWarn) {
-                Warning("checkCovMat()", "A diagonal elment of the covariance matrix is 0.");
+		Warning("checkCovMat()",
+			"A diagonal elment of the covariance matrix is 0.");
             }
             bCovOk = kFALSE;
         }
@@ -1196,7 +1286,8 @@ Bool_t HKalIFilt::checkCovMat(const TMatrixD &fCov) const {
     if(filtType != Kalman::kKalUD) {
         if(!HKalMatrixTools::isPosDef(fCov)) {
             if(bPrintWarn) {
-                Warning("checkCovMat()", "Covariance matrix is not positive definite.");
+		Warning("checkCovMat()",
+			"Covariance matrix is not positive definite.");
             }
             bCovOk = kFALSE;
         }
@@ -1207,7 +1298,8 @@ Bool_t HKalIFilt::checkCovMat(const TMatrixD &fCov) const {
         TMatrixD UD = U * D * TMatrixD(TMatrixD::kTransposed, U);
         if(!HKalMatrixTools::isPosDef(UD)) {
             if(bPrintWarn) {
-                Warning("checkCovMat()", "Covariance matrix is not positive definite.");
+		Warning("checkCovMat()",
+			"Covariance matrix is not positive definite.");
             }
             bCovOk = kFALSE;
         }
@@ -1237,7 +1329,8 @@ Bool_t HKalIFilt::excludeSite(Int_t iSite) {
     if(!bDoSmooth) {
         if(!smooth()) {
             if(bPrintErr) {
-                Error("excludeSite()", Form("Cannot exclude site %i. Smoothing of track failed.", iSite));
+		Error("excludeSite()",
+		      Form("Cannot exclude site %i. Smoothing of track failed.", iSite));
             }
             return kFALSE;
         }
@@ -1247,7 +1340,8 @@ Bool_t HKalIFilt::excludeSite(Int_t iSite) {
 
     if(!exSite->getIsActive()) {
         if(bPrintErr) {
-            Error("excludeSite()", Form("Attempted to exclude inactive site number %i.", iSite));
+	    Error("excludeSite()",
+		  Form("Attempted to exclude inactive site number %i.", iSite));
         }
         return kFALSE;
     }
@@ -1266,35 +1360,46 @@ Bool_t HKalIFilt::excludeSite(Int_t iSite) {
     // Measurement vector.
     TVectorD exMeasVec    = getHitVec(exSite);                         // m_k
 
-    const TMatrixD &fProj = exSite->getStateProjMat(Kalman::kFiltered, sys); // H_k
+    const TMatrixD &fProj = exSite->getStateProjMat(Kalman::kFiltered, sys); // H_k47
     const TMatrixD fProjTrans = TMatrixD(TMatrixD::kTransposed, fProj);
 
     // Calculate a measurement vector from smoothed state vector.
     TVectorD exSmooProjMeasVec(getMeasDim());
-    calcMeasVecFromState(exSmooProjMeasVec, exSite, Kalman::kSmoothed, Kalman::kSecCoord); //? daf?
+    calcMeasVecFromState(exSmooProjMeasVec, exSite, Kalman::kSmoothed,
+			 Kalman::kSecCoord); //? daf?
 
     //                             - V_k   + H_k   * C^n_k     * H_k
     TMatrixD kalmanGainHelper = -1.* exErr + fProj * exSmooCov * fProj;
-    //       K^n*_k     = C^n_k     * H^T_k      * (- V_k   + H_k   * C^n_k     * H_k  )^-1
-    TMatrixD kalmanGain = exSmooCov * fProjTrans * TMatrixD(TMatrixD::kInverted, kalmanGainHelper);
+    //       K^n*_k     = C^n_k     * H^T_k      *
+    TMatrixD kalmanGain = exSmooCov * fProjTrans *
+        //      (- V_k   + H_k   * C^n_k     * H_k    )^-1
+	TMatrixD(TMatrixD::kInverted, kalmanGainHelper);
 
-    // Inverse filter: calculate new state vector at site k excluding measurement at this site.
+    // Inverse filter: calculate new state vector at site k excluding
+    // measurement at this site.
     //       a^n*_k         = a^n_k       + K^n*_k     * (m_k       - h_k(a^n_k)   )
     TVectorD exInvFiltState = exSmooState + kalmanGain * (exMeasVec - exSmooProjMeasVec);
     exSite->setStateVec(kInvFiltered, exInvFiltState, sys);
 
     // Calculate new covariance at site k.
-    //       C^n*_k       =         (                     (C^n_k)^-1   - H^T_k      * G_k      * H_k  )^-1
-    TMatrixD exInvFiltCov = TMatrixD(TMatrixD::kInverted, exSmooCovInv - fProjTrans * exErrInv * fProj);
+    //       C^n*_k       =         (
+    TMatrixD exInvFiltCov = TMatrixD(TMatrixD::kInverted,
+    //                               (C^n_k)^-1   - H^T_k      * G_k      * H_k  )^-1
+				     exSmooCovInv - fProjTrans * exErrInv * fProj);
     exSite->setStateCovMat(kInvFiltered, exInvFiltCov, sys);
 
     // Update chi^2.
     TVectorD projMeasVecInvFilt(getMeasDim());
-    calcMeasVecFromState(projMeasVecInvFilt, exSite, Kalman::kInvFiltered, Kalman::kSecCoord); //? daf?
+    calcMeasVecFromState(projMeasVecInvFilt, exSite,
+			 Kalman::kInvFiltered, Kalman::kSecCoord); //? daf?
 
     // Transform TVectorD objects into column vectors for matrix multiplication.
-    TMatrixD diffStateTrans(1, getStateDim(), (exInvFiltState - exSmooState).GetMatrixArray()); // (a^n*_k - a^n_k)^T
-    TMatrixD resTrans(1, getMeasDim(), (exMeasVec - projMeasVecInvFilt).GetMatrixArray());      // (m_k - h_k(a^n*_k). Transposed residual.
+    // (a^n*_k - a^n_k)^T
+    TMatrixD diffStateTrans(1, getStateDim(),
+			    (exInvFiltState - exSmooState).GetMatrixArray());
+    // (m_k - h_k(a^n*_k). Transposed residual.
+    TMatrixD resTrans(1, getMeasDim(),
+		      (exMeasVec - projMeasVecInvFilt).GetMatrixArray());
 
     //        (a^n*_k - a^n_k)^T    * (C^n_k)^-1 * (a^n*_k         - a^n_k      )
     chi2 -=   (diffStateTrans       * exSmooCov  * (exInvFiltState - exSmooState)  )(0)
@@ -1341,19 +1446,20 @@ Bool_t HKalIFilt::filter(Int_t iSite) {
     return kTRUE;
 }
 
-Bool_t HKalIFilt::fitTrack(const TObjArray &hits, const TVectorD &iniSv, const TMatrixD &iniCovMat,
-                            Int_t pId) {
+Bool_t HKalIFilt::fitTrack(const TObjArray &hits, const TVectorD &iniSv,
+			   const TMatrixD &iniCovMat, Int_t pId) {
     // Runs the Kalman filter over a set of measurement hits.
     // Returns false if the Kalman filter encountered problems during
     // track fitting or the chi^2 is too high.
     //
     // Input:
-    // hits:        the array with the measurement hits. Elements must be of class
-    //              HKalMdcHit.
+    // hits:        the array with the measurement hits. Elements must be of
+    //              class HKalMdcHit.
     // iniStateVec: initial track state that the filter will use.
     // iniCovMat:   initial covariance matrix that the filter will use.
     // pId:         Geant particle id.
-    // momGeant:    Geant momentum that will be written in the output tree. Ignore if this is not simulation data.
+    // momGeant:    Geant momentum that will be written in the output tree.
+    //              Ignore if this is not simulation data.
 
 #if kalDebug > 1
     cout<<"******************************"<<endl;
@@ -1395,8 +1501,8 @@ Bool_t HKalIFilt::fitTrack(const TObjArray &hits, const TVectorD &iniSv, const T
         bTrackAccepted &= runFilter(fromSite, toSite);
 
         if(i < nKalRuns-1) { // At least one more iteration to do.
-            // Set the filtered state of the last site from the previous iteration as the
-            // prediction for the next iteration.
+	    // Set the filtered state of the last site from the previous
+	    // iteration as the prediction for the next iteration.
             getSite(toSite)->setStateVec(kPredicted, getSite(toSite)->getStateVec(kFiltered));
             //getSite(toSite)->setStateCovMat(kPredicted , getSite(toSite)->getStateCovMat(kFiltered));
 
@@ -1462,7 +1568,8 @@ Bool_t HKalIFilt::propagate(Int_t iFromSite, Int_t iToSite) {
 }
 
 Bool_t HKalIFilt::propagateToPlane(TVectorD& svTo, const TVectorD &svFrom,
-                                   const HKalMdcMeasLayer &measLayFrom, const HKalMdcMeasLayer &measLayTo,
+				   const HKalMdcMeasLayer &measLayFrom,
+				   const HKalMdcMeasLayer &measLayTo,
                                    Int_t pid, Bool_t dir) {
     Int_t sdim = svTo.GetNrows();
     TMatrixD F(sdim, sdim);
@@ -1490,7 +1597,8 @@ Bool_t HKalIFilt::runFilter(Int_t iFromSite, Int_t toSite) {
 
     if(!calcProjector(iFromSite)) {
 	if(getPrintErr()) {
-	    Error("runFilter()", Form("Bad projector matrix for site %i.", iFromSite));
+	    Error("runFilter()",
+		  Form("Bad projector matrix for site %i.", iFromSite));
 	}
         return kFALSE;
     }
@@ -1510,7 +1618,8 @@ Bool_t HKalIFilt::runFilter(Int_t iFromSite, Int_t toSite) {
         iCurSite += iDir;
         if((iDir < 0 && iCurSite < toSite) || (iDir > 0 && iCurSite > toSite)) {
             if(bPrintErr) {
-                Error("predictAndFilter2DHits()", Form("No two valid sites between %i and %i.", iFromSite, toSite));
+		Error("predictAndFilter2DHits()",
+		      Form("No two valid sites between %i and %i.", iFromSite, toSite));
             }
             return kFALSE;
         }
@@ -1518,16 +1627,19 @@ Bool_t HKalIFilt::runFilter(Int_t iFromSite, Int_t toSite) {
 
     Int_t iNextSite = iCurSite + iDir; // Index of next site k.
 
-    while((iDir > 0 && iNextSite <= toSite) || (iDir < 0 && iNextSite >= toSite)) {
+    while((iDir > 0 && iNextSite <= toSite) ||
+	  (iDir < 0 && iNextSite >= toSite)) {
 
         HKalTrackSite *nextSite  = getSite(iNextSite);
 
 #if kalDebug > 1
         HKalTrackSite *curSite  = getSite(iCurSite);
 	cout<<"##### Prediction from site "<<iCurSite<<" at "
-	    <<curSite->getSector()<<" / "<<curSite->getModule()<<" / "<<curSite->getLayer()
+	    <<curSite->getSector()<<" / "<<curSite->getModule()<<" / "
+	    <<curSite->getLayer()
 	    <<" to site "<<iNextSite<<" at "
-	    <<nextSite->getSector()<<" / "<<nextSite->getModule()<<" / "<<nextSite->getLayer()
+	    <<nextSite->getSector()<<" / "<<nextSite->getModule()<<" / "
+	    <<nextSite->getLayer()
             <<" #####"<<endl;
 #endif
 
@@ -1545,7 +1657,9 @@ Bool_t HKalIFilt::runFilter(Int_t iFromSite, Int_t toSite) {
 
         if(!calcProjector(iNextSite)) {
             if(getPrintErr()) {
-                Error("runFilter()", Form("Errors calculating projector matrix for site %i.", iNextSite));
+		Error("runFilter()",
+		      Form("Errors calculating projector matrix for site %i.",
+			   iNextSite));
             }
             nextSite->setActive(kFALSE);
             return kFALSE;
@@ -1553,7 +1667,8 @@ Bool_t HKalIFilt::runFilter(Int_t iFromSite, Int_t toSite) {
 
         if(!checkSitePreFilter(iNextSite)) {
             if(getPrintErr()) {
-                Error("runFilter()", Form("Unable to filter site %i.", iNextSite));
+		Error("runFilter()",
+		      Form("Unable to filter site %i.", iNextSite));
             }
             nextSite->setActive(kFALSE);
             return kFALSE;
@@ -1562,7 +1677,8 @@ Bool_t HKalIFilt::runFilter(Int_t iFromSite, Int_t toSite) {
         // Filter next site and calculate new chi2.
         if(!filter(iNextSite)) {
             if(bPrintErr) {
-                Error("runFilter()", Form("Failed to filter site %i. Skipping this site.", iNextSite));
+		Error("runFilter()",
+		      Form("Failed to filter site %i. Skipping this site.", iNextSite));
             }
             trackOk = kFALSE;
             nextSite->setActive(kFALSE);
@@ -1601,8 +1717,8 @@ Bool_t HKalIFilt::smooth() {
     }
 
     Int_t iStartSite, iGoalSite, iDir;
-    // For smoothing, iterate through the sites in opposite direction as in the
-    // prediction/filter steps.
+    // For smoothing, iterate through the sites in opposite direction as in
+    // the prediction/filter steps.
     Bool_t dir = getDirection();
     if(dir == kIterForward) {
         iStartSite = getNsites() - 1;
@@ -1614,7 +1730,8 @@ Bool_t HKalIFilt::smooth() {
         iDir       = +1;
     }
 
-    // The result of filtering for the last site coincides with that of smoothing.
+    // The result of filtering for the last site coincides with that of
+    // smoothing.
     HKalTrackSite *cur = getSite(iStartSite);
     cur->setStateVec   (kSmoothed,    cur->getStateVec(kFiltered));
     cur->setStateCovMat(kSmoothed,    cur->getStateCovMat(kFiltered));
@@ -1622,8 +1739,10 @@ Bool_t HKalIFilt::smooth() {
     iStartSite += iDir;
 
     Int_t iSite = iStartSite;
-    while((dir == kIterBackward && iSite <= iGoalSite) || (dir == kIterForward && iSite >= iGoalSite)) {
-        HKalTrackSite* cur     = getSite(iSite); // Site k to be smoothed in this step.
+    while((dir == kIterBackward && iSite <= iGoalSite) ||
+	  (dir == kIterForward && iSite >= iGoalSite)) {
+        // Site k to be smoothed in this step.
+	HKalTrackSite* cur     = getSite(iSite);
         if(!cur->getIsActive()) { // Skip inactive sites.
             iSite += iDir;
             continue;
@@ -1632,8 +1751,8 @@ Bool_t HKalIFilt::smooth() {
 #if kalDebug > 1
         cout<<"**** Smoothing site "<<iSite<<" **** "<<endl;
 #endif
-
-        Int_t iPreSite = iSite - iDir; // Site k+1 that has been smoothed in the previous step.
+        // Site k+1 that has been smoothed in the previous step.
+	Int_t iPreSite = iSite - iDir;
         HKalTrackSite* pre = getSite(iPreSite);
         while(!pre->getIsActive()) { // Skip inactive sites.
             iPreSite -= iDir;
@@ -1676,7 +1795,9 @@ Bool_t HKalIFilt::smooth() {
         // Calculate residual of smoothed and prediction.
         TVectorD residual = preSmooState - prePredState;
 
-        if(residual.GetNrows() > 5) { // z-coordinate is no degree of freedom since track must always be on a layer.
+	// z-coordinate is not a degree of freedom since track must always be
+	// on a layer.
+        if(residual.GetNrows() > 5) {
             residual(kIdxZ0) = 0.;
         }
 
@@ -1694,16 +1815,23 @@ Bool_t HKalIFilt::smooth() {
         curSmooState.Print();
 #endif
 
-        cur->setStateVec(kSmoothed,    curSmooState);
-        cur->setStateVec(kInvFiltered, curSmooState); // Inverse filtering works with smoothed states.
+	cur->setStateVec(kSmoothed,    curSmooState);
+        // Inverse filtering works with smoothed states.
+	cur->setStateVec(kInvFiltered, curSmooState);
 
-        // Calculate covariance for smoothed state. Needed for possible inverse filtering.
-        //       C^n_k      = C_k        + A_k          * (C^n_k-1    - C^k_k+1   ) * A^T_k
-        TMatrixD curSmooCov = curFiltCov + smootherGain * (preSmooCov - prePredCov) * TMatrixD(TMatrixD::kTransposed, smootherGain);
+	// Calculate covariance for smoothed state. Needed for possible
+	// inverse filtering.
+        //       C^n_k      = C_k        + 
+	TMatrixD curSmooCov = curFiltCov +
+            // A_k       * (C^n_k-1    - C^k_k+1   ) *
+	    smootherGain * (preSmooCov - prePredCov) *
+            //  A^T_k
+	    TMatrixD(TMatrixD::kTransposed, smootherGain);
         cur->setStateCovMat(kSmoothed,    curSmooCov);
         cur->setStateCovMat(kInvFiltered, curSmooCov);
 
-        // Need the smoothing results in virt. layer coordinates for inverse filtering.
+	// Need the smoothing results in virt. layer coordinates for
+	// inverse filtering.
         if(getFilterInCoordSys() == Kalman::kLayCoord) {
             cur->transSecToVirtLay(kSmoothed);
         }
@@ -1766,14 +1894,16 @@ Bool_t HKalIFilt::traceToVertex() {
     Int_t nRows = svFrom.GetNrows();
     if(nRows != sdim) {
         if(bPrintErr) {
-            Error("traceToVertex()", Form("Smoothed state vector of site %i must have dimension %i, but has dimension %i", 0, nRows, sdim));
+	    Error("traceToVertex()",
+		  Form("Smoothed state vector of site %i must have dimension %i, but has dimension %i", 0, nRows, sdim));
         }
         return kFALSE;
     }
 
     if(!bDoSmooth) {
         if(getPrintErr()) {
-            Error("traceToVertex()", "Cannot trace to vertex without doing smoothing.");
+	    Error("traceToVertex()",
+		  "Cannot trace to vertex without doing smoothing.");
         }
         return kFALSE;
     }
@@ -1790,7 +1920,8 @@ Bool_t HKalIFilt::traceToVertex() {
                                          planeFrom, planeVertex,
                                          pid, kIterBackward)) {
         if(getPrintErr()) {
-            Error("traceToVertex()", "Failed propagation of smoothed track to vertex.");
+	    Error("traceToVertex()",
+		  "Failed propagation of smoothed track to vertex.");
         }
         return kFALSE;
     }
@@ -1806,8 +1937,8 @@ Bool_t HKalIFilt::traceToVertex() {
                                 TMath::Power(target.getY() - posVertex.Y(), 2.) +
                                 TMath::Power(target.getZ() - posVertex.Z(), 2.));
 #if metaDebug > 2
-    cout<<"Tracklength from target to first MDC: "<<trackPropagator.getTrackLength()
-        <<", dist correction :"<<dist<<endl;
+    cout<<"Tracklength from target to first MDC: "
+	<<trackPropagator.getTrackLength()<<", dist correction :"<<dist<<endl;
 #endif
 #if metaDebug > 3
     cout<<"Position at target: "<<endl;
@@ -1840,8 +1971,10 @@ Bool_t HKalIFilt::traceToMeta(const TVector3& metaHit, const TVector3& metaNormV
     const HKalMdcMeasLayer &planeFrom = fromSite->getHitMeasLayer();
 
     HKalMdcMeasLayer planeMeta(metaHit, metaNormVec,
-                               planeFrom.getMaterialPtr(kFALSE), planeFrom.getMaterialPtr(kFALSE),
-                               fromSite->getModule(), fromSite->getSector(), 0, 1, 0);
+			       planeFrom.getMaterialPtr(kFALSE),
+			       planeFrom.getMaterialPtr(kFALSE),
+			       fromSite->getModule(), fromSite->getSector(),
+			       0, 1, 0);
 
     if(!trackPropagator.propagateToPlane(F, Q,
                                          svMeta, svFrom,
@@ -1849,7 +1982,8 @@ Bool_t HKalIFilt::traceToMeta(const TVector3& metaHit, const TVector3& metaNormV
                                          planeFrom, planeMeta,
                                          pid, kIterForward)) {
         if(getPrintErr()) {
-            Error("traceToMeta()", "Failed propagation of smoothed track to Meta.");
+	    Error("traceToMeta()",
+		  "Failed propagation of smoothed track to Meta.");
         }
         return kFALSE;
     }
@@ -1859,8 +1993,10 @@ Bool_t HKalIFilt::traceToMeta(const TVector3& metaHit, const TVector3& metaNormV
     trackLength += trackPropagator.getTrackLength();
 
 #if metaDebug > 1
-    cout<<"Kalman filter: trace to Meta hit ("<<metaHit.X()<<"/"<<metaHit.Y()<<"/"<<metaHit.Z()<<")"
-        <<" with normal vector ("<<metaNormVec.X()<<"/"<<metaNormVec.Y()<<"/"<<metaNormVec.Z()<<")."<<endl;
+    cout<<"Kalman filter: trace to Meta hit ("<<metaHit.X()<<"/"<<metaHit.Y()
+	<<"/"<<metaHit.Z()<<")"
+	<<" with normal vector ("<<metaNormVec.X()<<"/"<<metaNormVec.Y()
+	<<"/"<<metaNormVec.Z()<<")."<<endl;
 #endif
 #if metaDebug > 2
     cout<<"Distance last MDC to Meta: "<<trackPropagator.getTrackLength()<<endl;
@@ -1868,7 +2004,8 @@ Bool_t HKalIFilt::traceToMeta(const TVector3& metaHit, const TVector3& metaNormV
 #if metaDebug > 3
     cout<<"State at Meta: "<<endl;
     svMeta.Print();
-    cout<<"Reconstructed pos at Meta: ("<<posMeta.X()<<"/"<<posMeta.Y()<<"/"<<posMeta.Z()<<")"<<endl;
+    cout<<"Reconstructed pos at Meta: ("<<posMeta.X()<<"/"<<posMeta.Y()
+	<<"/"<<posMeta.Z()<<")"<<endl;
 #endif
 
     return kTRUE;
@@ -1880,7 +2017,8 @@ void HKalIFilt::transformFromSectorToTrack() {
 
 #if kalDebug > 0
     if(pRotMat->IsIdentity()) {
-        Warning("transformFromSectorToTrack()", "Transformation matrix has not been set.");
+	Warning("transformFromSectorToTrack()",
+		"Transformation matrix has not been set.");
     }
 #endif
     for(Int_t i = 0; i < getNsites(); i++) {
@@ -1889,10 +2027,10 @@ void HKalIFilt::transformFromSectorToTrack() {
 }
 
 void HKalIFilt::transformFromTrackToSector() {
-    // Transform all sites using the inverse rotation matrix stored in the Kalman system.
-    // This will transform the sites back to sector coordinates after a call of
-    // transformFromSectorToTrack() and if the rotation matrix has not been modified
-    // in the meantime.
+    // Transform all sites using the inverse rotation matrix stored in the
+    // Kalman system. This will transform the sites back to sector coordinates
+    // after a call of transformFromSectorToTrack() and if the rotation matrix
+    // has not been modified in the meantime.
 
     TRotation rotInv = pRotMat->Inverse();
     // Rotate back sites.
@@ -1906,7 +2044,9 @@ void HKalIFilt::transformFromTrackToSector() {
 
 #if kalDebug > 0
         if(!pointsTrack.At(i)->InheritsFrom("TVector3")) {
-            Error("transformFromTrackToSector()", Form("Object at index %i in trackPoints array is of class %s. Expected class is TVector3.", i, pointsTrack.At(i)->ClassName()));
+	    Error("transformFromTrackToSector()",
+		  Form("Object at index %i in trackPoints array is of class %s. Expected class is TVector3.",
+		       i, pointsTrack.At(i)->ClassName()));
             return;
         }
 #endif
@@ -1930,7 +2070,9 @@ void HKalIFilt::updateSites(const TObjArray &hits) {
     while(iHit < hits.GetEntries() - 1) {
 #if kalDebug > 0
         if(!hits.At(iHit)->InheritsFrom("HKalMdcHit")) {
-            Error("updateSites()", Form("Object at index %i in hits array is of class %s. Expected class is HKalMdcHit.", iHit, hits.At(iHit)->ClassName()));
+	    Error("updateSites()",
+		  Form("Object at index %i in hits array is of class %s. Expected class is HKalMdcHit.",
+		       iHit, hits.At(iHit)->ClassName()));
             exit(1);
         }
 #endif
@@ -2019,7 +2161,7 @@ void HKalIFilt::setPrintWarnings(Bool_t print) {
 void HKalIFilt::setRotation(Kalman::kalRotateOptions rotate) {
     // Set options for the Kalman filter.
     // kalRotateOptions: Tilt coordinate system.
-    // There are three options:
+    // There are (approximately) three options:
     // 1. kNoRot:
     //    Don't tilt the coordinate system.
     // 2. kVarRot:
@@ -2046,4 +2188,3 @@ void HKalIFilt::setRotationAngles(Double_t rotXangle, Double_t rotYangle) {
     pRotMat->RotateX(rotXangle);
     pRotMat->RotateY(rotYangle);
 }
-

@@ -37,7 +37,7 @@ public:
   HRootSource(Bool_t fPersistent=kTRUE, Bool_t fMerge=kFALSE);
   ~HRootSource(void);
   void setEventList(TEventList *el) { fEventList = el; }
-  EDsState getNextEvent(Bool_t doUnpack=kTRUE);
+  virtual EDsState getNextEvent(Bool_t doUnpack=kTRUE);
   void setCursorToPreviousEvent();
   virtual EDsState skipEvents(Int_t nEv);
   Bool_t rewind() {fCursor=0; return kTRUE;}
@@ -57,7 +57,7 @@ public:
      if(fCurrentRefId==-1) fCurrentRefId = fGlobalRefId; 
   }
   Text_t const *getCurrentFileName(void);
-  Bool_t getEvent(Int_t eventN);
+  virtual Bool_t getEvent(Int_t eventN);
   void setDirectory(const Text_t dirName[]);
   Bool_t addFile(const Text_t file[]);
   Bool_t setInput(const Text_t *fileName,const Text_t *treeName);
@@ -67,7 +67,7 @@ public:
   TTree *getTree(void);
   TChain* getChain(){return fInput;}
   Int_t getSplitLevel(void);
-  void Clear(void);
+  virtual void Clear(void);
   void Print() {
     HDataSource::Print();
     if(fInput) {fInput->GetEntries(); fInput->ls();}

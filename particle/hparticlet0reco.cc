@@ -415,6 +415,23 @@ Float_t HParticleT0Reco::getOnlineStripCorrection(Int_t mod, Int_t strip)
     return tcorr;
 }
 
+Bool_t  HParticleT0Reco::isEmbedded(HParticleCand* pCand){
+
+    HParticleCandSim* csim = dynamic_cast<HParticleCandSim*> (pCand);
+    Bool_t isGeant  =kFALSE;
+    if(csim){ // is simulation object
+	// now find out if it was embedding real hit or pure sim
+        // Since we modify beta we check tracks in META
+	for(Int_t i=0;i<4;i++){
+	    Int_t tr = csim->getGeantTrackMeta(i);
+	    if(tr==-1) continue;
+	    if(tr > 0) isGeant = kTRUE;
+	}
+    }
+    if(isGeant) return kTRUE; // we do not use embedded tracks for calculation
+    return kFALSE;
+}
+
 void HParticleT0Reco::fill()
 {
     // This function fills the particle buffers for TOF and RPC.
@@ -472,6 +489,7 @@ void HParticleT0Reco::fill()
 	    Float_t dist = HParticleTool::calculateMinimumDistanceStraightToPoint(base,dir,vertex);
 	    if(dist>(1./mom)*1200.+ 10.) continue;
 
+	    if(isEmbedded( pCand))  continue;
 
             //--------------------------------------------------------------
 	    // All the possible hypothesis!
@@ -669,7 +687,6 @@ void HParticleT0Reco::calculateStartT0Cont()
 
 	    if(catStartcal && flag>=0)
 	    {
-		Bool_t found = kFALSE;
 		HStart2Cal* sHc=0;
 		for(Int_t i=0;i< catStartcal->getEntries();i++) {
 		    if((sHc = (HStart2Cal *) catStartcal->getObject(i)) != NULL){
@@ -680,7 +697,6 @@ void HParticleT0Reco::calculateStartT0Cont()
                         startvalues& startval = start[m][st];
 			for(Int_t j=1;j<=sHc->getMultiplicity()&&j<=sHc->getMaxMultiplicity();j++) {
 			    if( fabs(sHc->getTime(j)-startHitTime)<0.3) {
-				found = kTRUE;
 				// This start cal was used!
 				Float_t errtmp = startval.he->Interpolate(sHc->getWidth(j)- startval.meanq)*1.2;
 				if(errtmp)
@@ -721,7 +737,7 @@ Float_t HParticleT0Reco::getBeta(HParticleCand* pCand)
 
 
 
-    if(eventTOF.size()+eventRPC.size() <1 || pCand->getBeta() == -1) return pCand->getBeta();
+    if(eventTOF.size()+eventRPC.size() <1 || pCand->getBeta() == -1 || isEmbedded( pCand)) return pCand->getBeta();
 
 
     t0  += t0startcont;

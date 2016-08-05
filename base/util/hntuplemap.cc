@@ -94,7 +94,7 @@ Float_t& HNtupleMap::operator[](const std::string& val) {
     if(!a) { Error("operator[]","map not initialized!"); exit(1);}
 
     map<string,int>::iterator iter = c.find(val);
-    if( iter == c.end() ) { Error("operator[]","key not found!"); exit(1);}
+    if( iter == c.end() ) { Error("operator[]","key : %s not found!",val.data()); exit(1);}
     else    return a[iter->second];
 }
 

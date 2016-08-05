@@ -239,25 +239,11 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
 
     Int_t kineLastTr  = 0;
     Int_t firstRich   = -1;
-    Int_t firstMdc    = -1;
-    Int_t firstTof    = -1;
-    Int_t firstRpc    = -1;
-    Int_t firstShr    = -1;
-    Int_t firstWall   = -1;
-    Int_t firstEmc    = -1;
-    Int_t firstStart  = -1;
 
     if(kineCat && kineCat->getEntries()>0){
 	kine       = (HGeantKine* )kineCat->getObject(kineCat->getEntries()-1);
 	kineLastTr  = kine->getTrack();
 	firstRich   = kine->getFirstRichHit();
-	firstMdc    = kine->getFirstMdcHit();
-	firstTof    = kine->getFirstTofHit();
-	firstRpc    = kine->getFirstRpcHit();
-	firstShr    = kine->getFirstShowerHit();
-	firstWall   = kine->getFirstWallHit();
-	firstEmc    = kine->getFirstEmcHit();
-	firstStart  = kine->getFirstStartHit();
     }
 
     if(kineCatLoc && kineCatLoc->getEntries()>0){

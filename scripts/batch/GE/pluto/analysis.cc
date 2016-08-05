@@ -54,7 +54,7 @@ int main(int argc, char **argv)
         else  { cerr<<"ERROR: analysis() wrong source switch "<<sSwitch<<endl; return 1;}
 	break;
     default:
-	cerr<<"ERROR: analysis() : WRONG NUMBER OF ARGUMENTS! TString outdir="",TString outfile="",TString type="", nevents=1000  sourceSwitch [vertexntuple for embedding]"<<endl;
+	cerr<<"ERROR: analysis() : WRONG NUMBER OF ARGUMENTS! TString outdir="",TString outfile="",TString type="", nevents=1000  sourceSwitch(0=thermal,1=white) [vertexntuple for embedding]"<<endl;
 
 	return 1; // fail
     }

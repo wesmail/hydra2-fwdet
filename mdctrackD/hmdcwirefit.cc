@@ -94,3 +94,60 @@ void HMdcWireFit::print() {
   printf("%c drTm=%5.1f fTm=%5.1f",(isInCell) ? ' ':'O',driftTime,fullTime);
   printf(" TDC=%5.1f dev=%6.1f WT=%g\n",getTdcTime(),dev,weight);
 }
+
+void HMdcWireFit::Streamer(TBuffer &R__b)
+{
+   // Stream an object of class HMdcWireFit.
+
+   UInt_t R__s, R__c;
+   if (R__b.IsReading()) {
+      Version_t R__v = R__b.ReadVersion(&R__s, &R__c); if (R__v) { }
+      TObject::Streamer(R__b);
+      R__b >> sec;
+      R__b >> mod;
+      R__b >> layer;
+      R__b >> cell;
+      R__b >> timeNum;
+      R__b >> tdcTimeCal1;
+      R__b >> tdcTime;
+      R__b >> dev;
+      R__b >> weight;
+      R__b >> driftTime;
+      R__b >> fullTime;
+      R__b >> minDist;
+      R__b >> alpha;
+      R__b >> isInCell;
+      R__b >> tdcTimeErr;
+      R__b >> isUsedInFit;
+      if(R__v > 1) {
+        R__b >> tot;
+        R__b >> cellPath;
+      } else {
+        tot      = 0.;
+        cellPath = -1.;
+      }
+      R__b.CheckByteCount(R__s, R__c, HMdcWireFit::IsA());
+   } else {
+      R__c = R__b.WriteVersion(HMdcWireFit::IsA(), kTRUE);
+      TObject::Streamer(R__b);
+      R__b << sec;
+      R__b << mod;
+      R__b << layer;
+      R__b << cell;
+      R__b << timeNum;
+      R__b << tdcTimeCal1;
+      R__b << tdcTime;
+      R__b << dev;
+      R__b << weight;
+      R__b << driftTime;
+      R__b << fullTime;
+      R__b << minDist;
+      R__b << alpha;
+      R__b << isInCell;
+      R__b << tdcTimeErr;
+      R__b << isUsedInFit;
+      R__b << tot;
+      R__b << cellPath;
+      R__b.SetByteCount(R__c, kTRUE);
+   }
+}

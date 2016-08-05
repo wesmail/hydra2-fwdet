@@ -1955,9 +1955,7 @@ Bool_t HParticleTool::isParticledEdx(Int_t PID, HParticleCand* pCand, Float_t& d
 
 
 
-    Float_t momQscale = 1.;
-    if( HPhysicsConstants::charge(PID) == 2 ) momQscale = 2.;
-
+  
     Float_t theta    = pCand->getTheta();
     Float_t distMeta = pCand->getDistanceToMetaHit();
     Float_t beta     = pCand->getBeta();
@@ -2199,7 +2197,6 @@ Bool_t HParticleTool::checkCropedLayer(HGeantKine* kine,HMdcLayer* mdcLayer, Boo
     Int_t s,m,l;
     Bool_t isCroped  [4] = {kFALSE,kFALSE,kFALSE,kFALSE};  // is croped
     Bool_t isChecked [4] = {kFALSE,kFALSE,kFALSE,kFALSE};  // is in module
-    Bool_t isCheckedL[4] = {kFALSE,kFALSE,kFALSE,kFALSE};  // is in layer to check
     TVector2 p;
     for(UInt_t i=0;i<v.size();i++){    // first on incomming particle
 	HGeantMdc* mdc = v[i];
@@ -2208,7 +2205,6 @@ Bool_t HParticleTool::checkCropedLayer(HGeantKine* kine,HMdcLayer* mdcLayer, Boo
 	l = mdc->getLayer();
 	isChecked[m] = kTRUE;
 	if(l==mLay[m]){
-	    isCheckedL[m] = kTRUE;
 	    mdc->getHit(ax,ay,atof,ptof);
 	    p.Set(ax,ay);
 	    if(mdcLayer->isCroped(p,s,m,l)) {
@@ -2227,7 +2223,6 @@ Bool_t HParticleTool::checkCropedLayer(HGeantKine* kine,HMdcLayer* mdcLayer, Boo
 	    l = mdc->getLayer();
 	    isChecked[m] = kTRUE;
 	    if(l==mLay[m]){
-		isCheckedL[m] = kTRUE;
 		mdc->getHit(ax,ay,atof,ptof);
 		p.Set(ax,ay);
 		if(mdcLayer->isCroped(p,s,m,l)) {
@@ -2809,7 +2804,7 @@ vector<TF1*> HParticleTool::ptyGrid(Int_t id,TString setup,
     Bool_t   lab_theta      = kTRUE;
     TString  format_theta   = "%5.1f#circ";
     Double_t textsize_theta = 0.023;
-    Double_t angle_theta    = 0;
+    // Double_t angle_theta    = 0;
     Int_t    align_theta    =-1;
     Double_t yoffset_theta  =-0.02;
     Double_t xoffset_theta  =-0.01;
@@ -2858,7 +2853,7 @@ vector<TF1*> HParticleTool::ptyGrid(Int_t id,TString setup,
 			textsize_theta=token1.Atof();
 		    } else if(token1.Contains("angle=")){
 			token1.ReplaceAll("angle=","");
-			angle_theta=token1.Atof();
+			//angle_theta=token1.Atof();
 		    } else if(token1.Contains("align=")){
 			token1.ReplaceAll("align=","");
 			align_theta=token1.Atoi();

@@ -31,30 +31,34 @@ user=$(whoami)
 currentDir=$(pwd | xargs -i basename {})
 currentDir=../$currentDir
 
+
+# Au+Au
        urqmdout=bmax10
          energy=1230
+
          events=1000
 part=all
 
-submmissionbase=/hera/hades/user/${user}/sub/test
+submmissionbase=/hera/hades/user/${user}/sub
 submissiondir=${submmissionbase}/urqmd
  nFilesPerJob=1                                 # number of files to be analyzed by 1 job (default==1)
     jobscript=${submissiondir}/jobScript.sh     # exec script (full path, call without dot, set it executable!)
-    outputdir=/hera/hades/dstsim/apr12/urqmd/${urqmdout}/${part}  # outputdir for files AND logFiles
+    outputdir=/hera/hades/dstsim/apr12/urqmd/${urqmdout}/new/${part}  # outputdir for files AND logFiles
 pathoutputlog=${outputdir}/out                  # protocol from batch farm for each file
      filename=testrun                           # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
 
-par1=/cvmfs/hades.gsi.de/install/urqmd-3.3p1/urqmd                       # urqmd exe
-par2=/cvmfs/hades.gsi.de/install/convert-urqmd_1.3.6/convert-urqmd_1.3.6 # converter
+#par1=/cvmfs/hades.gsi.de/install/urqmd-3.3p1/urqmd                       # urqmd exe
+par1=/cvmfs/hades.gsi.de/install/urqmd-3.4/urqmd                       # urqmd exe
+par2=/cvmfs/hades.gsi.de/install/convert-urqmd_1.3.7/convert-urqmd_1.3.7 # converter
 par3=""                                                          # optional par3 : input file list
 par4=${outputdir}                                                # optional par4 : outputfile (part number will be appended (_num.root))
 par5=$events                                                     # optional par5 : number of events
 par6=""                                                          # optional random seed
 par7=${submissiondir}/input/Au_Au_${energy}MeV_${urqmdout}.input # optional input file
-resources="-P hades -l h_rt=4:0:0,h_vmem=2G"                           # runtime < 10h, mem < 2GB
+resources="-P hadeshighprio -l h_rt=4:0:0,h_vmem=3G"             # runtime < 10h, mem < 2GB
 jobarrayFile="urqmd_jobarray_${urqmdout}_${part}.dat"
 
-#filelist=${currentDir}/all_files_${part}.list  # file list in local dir! not in submissiondir!!!
+filelist=${currentDir}/all_files_${part}.list  # file list in local dir! not in submissiondir!!!
 
 filepattern=Au_Au_${energy}MeV_${events}evts_
 
@@ -189,10 +193,7 @@ do
      #((seed=ctF * 1000 + 1))
      
      par6=$seed
-     #echo $seed
-     
-     
-     #echo qsub ${command}
+           #urqmd  #convert  filename outputdir nevents seed input
      echo "${par1} ${par2} ${par3} ${par4} ${par5} ${par6} ${par7}" >>  $jobarrayFile
 
 
@@ -217,7 +218,6 @@ else
 
   echo "-------------------------------------------------"
 
-#  qsub -t 1-${nFiles}  -j y -wd ${submissiondir} ${resources}  -o ${pathoutputlog} ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog}
   ctsend=0
   block=500
   while ((${ctsend} * ${block} < ${nFiles}))

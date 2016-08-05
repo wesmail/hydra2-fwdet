@@ -644,7 +644,7 @@ Int_t HRpcHitF::execute(void)
       // Let check wether there is already a hit at this location, otherwise create alocate new memory
 
       pHitSim = (HRpcHitSim*) pHitCat-> getObject(loc);
-      if(pHitSim) {
+      if(pHitSim && gHades->getEmbeddingMode()!=2 ) {  // embedding mode == 2 -> keep geanthits
 
 	// an rpc hit was already stored!
 	// We have to merge
@@ -755,7 +755,7 @@ Int_t HRpcHitF::execute(void)
 	  ySec = rRpcInSec.getY();
 	  zSec = rRpcInSec.getZ();
 
-	  theta = (zSec>0.) ? (rad2deg * TMath::ATan(ySec/zSec)) : 0.;
+	  theta = rad2deg * TMath::ATan2(sqrt(ySec*ySec+xSec*xSec),zSec);
 	  phi = rad2deg * TMath::ATan2(yLab,xLab);
 	  if (phi < 0.) phi += 360.;
 	  pHitSim->setHit(0.5*(rightT+pCal->getLeftTime())-HDT,charge+pHitSim->getCharge(),xMod,yMod,zMod);

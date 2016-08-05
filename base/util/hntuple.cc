@@ -96,7 +96,7 @@ Float_t& HNtuple::operator[](const std::string& key)
       {
          return mIter->second;
       }
-      throw std::invalid_argument("An unknown variable name in HNtuple tried to be assigned");
+      throw std::invalid_argument(Form("An unknown variable : %s name in HNtuple tried to be assigned",key.data()));
    }
 
 return vKeyValue[key]; 
@@ -110,7 +110,7 @@ const Float_t& HNtuple::operator[](const std::string& key) const
    {
       return (mcIter->second); 
    }
-   throw std::invalid_argument("An unknown variable name in HNtuple tried to be assigned");
+   throw std::invalid_argument(Form("An unknown variable : %s name in HNtuple tried to be assigned",key.data()));
 }
 
 // ---------------------------------------------------------------------------------

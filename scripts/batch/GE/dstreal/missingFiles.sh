@@ -1,8 +1,8 @@
 
 
 
-dstdir=/hera/hades/dst/apr12/gen6
-hlddir=/hera/hades/apr12
+dstdir=/hera/hades/dst/apr12/gen8
+hlddir=/hera/hades/raw/apr12
 
 
 

@@ -121,7 +121,7 @@ public:
 
     virtual Double_t          getWeight         () const { return weight; }
 
-    virtual Double_t          getWeightHist     (Int_t iDaf) const { return weightsHist[iDaf]; }
+    virtual Double_t          getWeightHist     (Int_t iDaf) const { if(iDaf >= 0 && iDaf < weightsHist.GetSize()) weightsHist[iDaf]; return 0.; }
 
     virtual void              getWirePts        (TVector3 &wire1, TVector3 &wire2) const;
 
@@ -155,7 +155,7 @@ public:
 
     virtual void              setWeight         (Double_t w)                { weight = w; }
 
-    virtual void              setWeightHist     (Double_t w, Int_t i)       { weightsHist[i] = w; }
+    virtual void              setWeightHist     (Double_t w, Int_t i)       { if(i >= 0 && i<weightsHist.GetSize()) weightsHist[i] = w; }
 
     ClassDef(HKalMdcHit, 0)
 };

@@ -2148,6 +2148,13 @@ void HMdcLookUpTbSec::removeGhosts(void) {
   Int_t sizeLv09p4 = 4; Int_t fakeUnVsRl_Lv09p4[5] ={2,3,5,6};    //
   Int_t sizeLv09p5 = 1; Int_t realUnVsBn_Lv09p5[1] ={6};          // element [i+1] must be <= [i]
   Int_t sizeLv09p6 = 5; Int_t fakeUnVsRl_Lv09p6[5] ={3,3,5,5,13}; //
+// Lev8 ver1 (Lev9 is previous)
+//  Int_t sizeLv08p1 = 1; Int_t realUnVsBn_Lv08p1[1] ={3};          // element [i+1] must be <= [i]
+//  Int_t sizeLv08p2 = 4; Int_t fakeUnVsRl_Lv08p2[4] ={2,4,4,6};    //
+//  Int_t sizeLv08p3 = 1; Int_t realUnVsBn_Lv08p3[1] ={3};          // element [i+1] must be <= [i]
+//  Int_t sizeLv08p4 = 4; Int_t fakeUnVsRl_Lv08p4[4] ={1,2,4,5};    //
+//  Int_t sizeLv08p5 = 1; Int_t realUnVsBn_Lv08p5[1] ={4};          // element [i+1] must be <= [i]
+//  Int_t sizeLv08p6 = 6; Int_t fakeUnVsRl_Lv08p6[6] ={0,0,0,1,2,5}; //
   
   // Level 12:  ------------------------------------------------------------------------
   addToClusCounter(12); 
@@ -2181,6 +2188,15 @@ void HMdcLookUpTbSec::removeGhosts(void) {
   markFakes(9,sizeLv09p4,fakeUnVsRl_Lv09p4);
   markReals(9,sizeLv09p5,realUnVsBn_Lv09p5);
   markFakes(9,sizeLv09p6,fakeUnVsRl_Lv09p6);
+
+  // Level 08: ------------------------------------------------------------------------
+//  addToClusCounter(8);
+//  markReals(8,sizeLv08p1,realUnVsBn_Lv08p1);
+//  markFakes(8,sizeLv08p2,fakeUnVsRl_Lv08p2);
+//  markReals(8,sizeLv08p3,realUnVsBn_Lv08p3);
+//  markFakes(8,sizeLv08p4,fakeUnVsRl_Lv08p4);
+//  markReals(8,sizeLv08p5,realUnVsBn_Lv08p5);
+//  markFakes(8,sizeLv08p6,fakeUnVsRl_Lv08p6);
 }
 
 void HMdcLookUpTbSec::addToClusCounter(Int_t clusAmp) {

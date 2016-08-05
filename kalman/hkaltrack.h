@@ -18,6 +18,10 @@ private:
     Int_t   nIter;          // Number of Kalman filtering iterations.
     Float_t trackLength;    // Track length through all MDCs
     Int_t   pid;            // Geant particle id.
+    Float_t txInput;        // Starting estimate of direction (tan(px/pz))
+    Float_t tyInput;        // Starting estimate of direction (tan(px/pz))
+    Float_t xInput;         // Starting estimate of position in sector coords. (mm)
+    Float_t yInput;         // Starting estimate of position in sector coords. (mm)
 
     Float_t dxMeta;         // KF propagation point on meta - x MetaHit
     Float_t dyMeta;         // KF propagation point on meta - y MetaHit
@@ -65,6 +69,14 @@ public:
 
     virtual Float_t getQualityTof    () const {return qualityTof;}
 
+    virtual Float_t getTxInput       () const { return txInput; }
+
+    virtual Float_t getTyInput       () const { return tyInput; }
+
+    virtual Float_t getXinput        () const { return xInput; }
+
+    virtual Float_t getYinput        () const { return yInput; }
+
     virtual void    setChi2          (Float_t c)   { chi2 = c;}
 
     virtual void    setIdxFirst      (Int_t i)     { idxFirst = i; }
@@ -92,6 +104,14 @@ public:
     virtual void    setQualityShower (Float_t qShower) {qualityShower = qShower;}
 
     virtual void    setQualityTof    (Float_t qTof) {qualityTof = qTof;}
+
+    virtual void    setTxInput       (Float_t tx)   { txInput = tx; }
+
+    virtual void    setTyInput       (Float_t ty)   { tyInput = ty; }
+
+    virtual void    setXinput        (Float_t x)    { xInput = x; }
+
+    virtual void    setYinput        (Float_t y)    { yInput = y; }
 
     Float_t getMetaRadius            ()             { return  (dxMeta == -10000)? -1: TMath::Sqrt(dxMeta*dxMeta+dyMeta*dyMeta);}
 

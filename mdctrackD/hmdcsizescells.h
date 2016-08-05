@@ -94,6 +94,7 @@ class HMdcSizesCellsLayer : public HMdcPlane {
                                                 // layer sys. rotated along WireOr.
     HGeomTransform       rotLaySysRSec;         // Transformation sector <->
     Double_t             tRLaySysRSec[12];      //  layer sys. rotated along WireOr.
+    Double_t             pntToCell[4];          // Calc. cell# by point in sector coor.system 
       
     // Parameters of layer second part shift:
     Int_t                firstCellPart2;        // First cell of the layer second part
@@ -138,7 +139,8 @@ class HMdcSizesCellsLayer : public HMdcPlane {
     Double_t getSinWireOr(Int_t c) const;
     Double_t getTanWireOr(Int_t c) const;
     Double_t getWireOffset(Int_t c) const;
-//    Double_t getCellOffset(void) const  {return cellOffset;}
+    Double_t getCellOffset(void) const                   {return cellOffset;}
+    Double_t getCellOffsetPart2(void) const              {return cellOffsetPart2;}
     Short_t  getNCells(void) const                       {return nCells;}
     const HGeomTransform* getSecTrans(void) const        {return &sysRSec;}
     const HGeomTransform* getModTrans(void) const        {return &sysRMod;}
@@ -223,7 +225,9 @@ class HMdcSizesCellsLayer : public HMdcPlane {
                                  Double_t& xo,Double_t& yo,Double_t& zo) const;
     Double_t        getXinRotLay(Int_t c, Double_t xi, Double_t yi) const;
     Double_t        getYinRotLay(Int_t c, Double_t xi, Double_t yi) const;
-    inline Int_t    calcInnerSegCell(Double_t y) const; //???
+    inline Int_t    calcInnerSegCell(Double_t y) const;
+    inline Int_t    calcInnerSegCell(HGeomVector &p) const;
+    inline void     getPntToCell(Double_t *arr) const;
     void            print(void) const;
     
     // Next method are intrested for geant data only, because plane of
@@ -499,6 +503,18 @@ inline Int_t HMdcSizesCellsLayer::calcInnerSegCell(Double_t y) const {
   // Use it for MDC plane I & II ONLY!
   // Now it is used in HMdcLookUpTb for vertex finder only.
   return (Int_t)(y*invPitch + cellOffset);
+}
+
+inline Int_t HMdcSizesCellsLayer::calcInnerSegCell(HGeomVector &p) const {
+  // return cell number for point p
+  // It assume that "p" belong the layer plane and in the sector coor.system !
+  // Don't take into account layer SecondPart !
+  // Use it for MDC plane I & II ONLY!
+  // Now it is used in HMdcLookUpTb for vertex finder and offVertex track finder only.
+  return (Int_t)(pntToCell[0]*p.X() + pntToCell[1]*p.Y() + pntToCell[2]*p.Z() + pntToCell[3]);
+}
+inline void HMdcSizesCellsLayer::getPntToCell(Double_t *arr) const {
+  for(Int_t i=0;i<4;i++) arr[i] = pntToCell[i];
 }
 
 inline Double_t HMdcSizesCellsLayer::getDist(Double_t x1, Double_t y1, Double_t z1,

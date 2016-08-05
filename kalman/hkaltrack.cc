@@ -22,4 +22,8 @@ HKalTrack::HKalTrack() {
     qualityRpc     = -1.F;
     qualityShower  = -1.F;
     qualityTof     = -1.F;
+    txInput        = -1.F;
+    tyInput        = -1.F;
+    xInput         = 0.F;
+    yInput         = 0.F;
 }

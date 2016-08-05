@@ -7,8 +7,6 @@ class HKalDafWire : public HKalDafSingleWire {
 
 protected:
 
-    virtual Bool_t   calcEffErrMat        (Int_t iSite) const;
-
     virtual Bool_t   calcEffMeasVec       (Int_t iSite) const;
 
     virtual Bool_t   calcProjector        (Int_t iSite) const;
@@ -16,8 +14,6 @@ protected:
     virtual Bool_t   calcVirtPlane        (Int_t iSite) const;
 
     virtual Kalman::coordSys    getFilterInCoordSys() const { return Kalman::kLayCoord; }
-
-    virtual Double_t getEffMeasVecSign    (const TVectorD &driftCentShift) const;
 
 public:
 
@@ -34,10 +30,6 @@ public:
     virtual Bool_t propagate           (Int_t iFromSite, Int_t iToSite);
 
     virtual void   updateSites         (const TObjArray &hits);
-
-    virtual TMatrixD const&     getHitErrMat    (HKalTrackSite* const site) const;
-
-    virtual TVectorD const&     getHitVec       (HKalTrackSite* const site) const;
 
     ClassDef(HKalDafWire,0)
 };

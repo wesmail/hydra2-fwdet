@@ -43,7 +43,9 @@ class HMdcLayListCells : public TObject {
     inline Int_t   next(Int_t prCell) const;
     inline Bool_t  nextCell(Int_t& cell) const;
     Bool_t         nextNonFittedCell(Int_t& cell) const;
+    Bool_t         previousNonFittedCell(Int_t& cell) const;
     inline Int_t   previous(Int_t prCell) const;
+    inline Bool_t  previousCell(Int_t &cell) const;
     inline UChar_t getTime(Int_t cell) const;
     inline Bool_t  isCell(Int_t cell) const;
     void           print(void) const;
@@ -124,6 +126,11 @@ inline Bool_t HMdcLayListCells::nextCell(Int_t& cell) const {
 
 inline Int_t HMdcLayListCells::previous(Int_t prCell) const {
   return HMdcTBArray::previous(arr,arrEnd,prCell);
+}
+
+inline Bool_t HMdcLayListCells::previousCell(Int_t &cell) const {
+  cell = HMdcTBArray::previous(arr,arrEnd,cell);
+  return cell >= 0;
 }
 
 

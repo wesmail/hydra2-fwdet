@@ -7,6 +7,7 @@
 #include "hcategory.h"
 #include "hdatasource.h"
 #include "hrootsource.h"
+#include "hgeantmergesource.h"
 #include "hdst.h"
 #include "htime.h"
 
@@ -35,6 +36,7 @@
 #include "hparticletrackcleaner.h"
 #include "hparticleevtinfofiller.h"
 #include "hparticlestart2hitf.h"
+#include "hparticlet0reco.h"
 #include "hparticlebt.h"
 #include "hstart2calibrater.h"
 #include "hstart2hitfsim.h"
@@ -104,10 +106,8 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     printf("Setting configuration...+++\n");
 
     TString asciiParFile     = "";
-    //TString rootParFile      = "/cvmfs/hades.gsi.de/param/embedding/allParam_APR12_gen6_embedding_18042014.root";
-    //TString rootParFile      = "allParam_APR12_gen7_embedding_gen2_09122014.root";
-    TString rootParFile      = "allParam_APR12_gen8_embedding_gen1_30092015.root";
-    TString paramSource      = "root"; // root, ascii, oracle
+    TString rootParFile      = "";
+    TString paramSource      = "oracle"; // root, ascii, oracle
 
     TString outFileSuffix    = "_embedding_dst_apr12.root";
 
@@ -120,11 +120,10 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     Bool_t useWireStat       = kTRUE;
     Float_t metaScale        = 1.5;
     Bool_t doTree            = kTRUE;
-    Bool_t doMDCDeltaElectron = kFALSE;
+    Bool_t doMDCDeltaElectron = kTRUE;
     Bool_t doRICHDeltaElectron= kFALSE; // kFALSE : suppress inserted delta electrons
 
     TString beamtime         = "apr12";
-    //TString paramRelease     ="APR12_dst_gen7a";
     TString paramRelease     ="now";
     //####################################################################
     //####################################################################
@@ -210,8 +209,6 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     };
     //--------------------------------------------------------------------
 
-    //--------------------------------------------------------------------
-
     //####################################################################
     //####################################################################
 
@@ -255,17 +252,15 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     // inputDir needed by dataosoure = 1,2
     // inputFile needed by dataosoure = 1,3
 
-    TObjArray* arfiles = inFileGeant.Tokenize(",");
-    if(arfiles){
-        TString first = ((TObjString*)(arfiles->At(0)))->GetString();
-	HDst::setSecondDataSource("",first, -1);
-	for(Int_t i=1;i<arfiles->GetEntries();i++){
-	    TString other = ((TObjString*)(arfiles->At(i)))->GetString();
-	    ((HRootSource*)gHades->getSecondDataSource())->addFile((Text_t*)other.Data());
-	}
-	arfiles->Delete();
-        delete arfiles;
-    }
+
+
+    //------------- Operations on the filenames --------------------------
+    HGeantMergeSource* source = new HGeantMergeSource(kTRUE,kTRUE);
+    source->addMultFiles(inFileGeant);
+    source->setGlobalRefId(refId);
+    gHades->setSecondDataSource(source);
+    //--------------------------------------------------------------------
+
     HDst::setupUnpackers(beamtime,"rich,mdc,tof,rpc,shower,tbox,wall,latch,start");
     // beamtime apr12
     // detectors (default)= rich,mdc,tof,rpc,shower,wall,tbox,latch,start
@@ -366,6 +361,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     //------------------------ Master task set ---------------------------
     HTaskSet *masterTaskSet = gHades->getTaskSet("all");
     masterTaskSet->add(new HSelectEmbedding("select_emb","select_emb"));
+
     masterTaskSet->add(startTasks);
     masterTaskSet->add(tofTasks);
     masterTaskSet->add(wallTasks);
@@ -380,6 +376,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     masterTaskSet->add(pParticleVertexFind); // run after track cleaning
     masterTaskSet->add(pParticleEvtInfo);
     masterTaskSet->add(pParticleBt);
+    masterTaskSet->add(new HParticleT0Reco("T0","T0",beamtime));
 
     //if (qaMaker) masterTaskSet->add(qaMaker);
 

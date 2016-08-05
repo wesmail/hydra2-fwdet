@@ -28,53 +28,62 @@
 #   CONFIGURATION
 
 
-nFiles=10000
+nFiles=20000
 
 user=$(whoami)
 currentDir=$(pwd | xargs -i basename {})
 currentDir=../$currentDir
 
-part=eta
-#part=minbias no_enhancement
-         # pi-,pi+,lambda,K-,K+,K0S,phiKK,Xi-,w,phi,rho0,pi0,D+,wdalitz
+part=p
+#part=minbias no_enhancement_gcalor
+         # p,d,pi-,pi+,lambda,K-,K+,K0S,phiKK,Xi-,w,phi,rho0,pi0,D+,wdalitz
          #                   PLUTO    offset  UrQMD
-         # w        1*10e6   1-10000  0        1-10000          o
-         # phi      1*10e6   1-10000  10000    10001-20000      o
-         # rho0     2*10e6   1-20000  20000    20001-40000      o
-         # wdalitz  3*10e6   1-30000  40000    40001-70000      0
-         # D+       3*10e6   1-30000  70000    70001-100000
+         # pi0      1*10e6   1-10000  0        1-10000          o      o
+         # eta      1*10e6   1-10000  0        1-10000          o      o
+         # w        1*10e6   1-10000  0        1-10000          o      o
+         # phi      1*10e6   1-10000  10000    10001-20000      o      o
+         # rho0     2*10e6   1-20000  20000    20001-40000      o      o
+         # wdalitz  3*10e6   1-30000  40000    40001-70000      o      o
+         # D+       3*10e6   1-30000  70000    70001-100000     o      o
 
 #     minbias        10*10^6
-#     no_enhancement 10*10^6 o
+#     no_enhancement_gcalor 100*10^6 o  o
+#     p       10*10^6 evts   o  o
+#     d      100*10^6 evts   o  o
 #     pi-     50*10^6 evts   o
 #     pi+     50*10^6 evts   o
-#     K-     100*10^6 evts   o
-#     K+      50*10^6 evts   o
-#     K0S     50*10^6 evts   o
-#     lambda 100*10^6 evts   o 
-#     Xi-     20*10^6 evts   o
-#     phiKK   10*10^6 evts   o
+#     K-      10*10^6 evts   o  o
+#     K+      10*10^6 evts   o  o
+#     K0S     50*10^6 evts   o  o
+#     lambda 100*10^6 evts   o  o
+#     Xi-     10*10^6 evts   o  o
+#     phiKK   10*10^6 evts   o  o
 
-submmissionbase=/hera/hades/user/${user}/sub/apr12/gen6
+# white
+#     pi-   10*10^6 evts  o
+#     e-   10*10^6 evts   o
+#     e+-   10*10^6 evts  o
+
+npart=2
+submmissionbase=/hera/hades/user/${user}/sub/apr12/gen8a/${part}
 submissiondir=${submmissionbase}/dst
- nFilesPerJob=1                                # number of files to be analyzed by 1 job (default==1)
+ nFilesPerJob=1                               # number of files to be analyzed by 1 job (default==1)
     jobscript=${submissiondir}/jobScript.sh     # exec script (full path, call without dot, set it executable!)
-    outputdir=/hera/hades/dstsim/apr12/gen6/new/big/${part}     # outputdir for files AND logFiles
+    outputdir=/hera/hades/dstsim/apr12/gen8a/${part}     # outputdir for files AND logFiles
 pathoutputlog=${outputdir}/out                    # protocol from batch farm for each file
      filename=testrun                           # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
-par1=/cvmfs/hades.gsi.de/install/5.34.01/hydra2-4.3/defall.sh  # optional par1 : environment script
+par1=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9i/defall.sh  # gen8a optional par1 : environment script
 par2=${submissiondir}/analysisDST                           # optional par2 : executable
 par3=""                                                        # optional par3 : input file list
 par4=${outputdir}                                              # optional par4 : outputfile (part number will be appended (_num.root))
 par5=100000                                                   # optional par5 : number of events
 par6="no"                                                      # optional par6
 par7="no"                                                      # optional par7
-resources="-P hades -l h_rt=4:0:0,h_vmem=2G"                           # runtime < 10h, mem < 2GB
+resources="-P hadeshighprio -l h_rt=20:0:0,h_vmem=2G"                           # runtime < 10h, mem < 2GB
 
-jobarrayFile="gen6_${part}_jobarray.dat"
+jobarrayFile="gen8_${part}_jobarray.dat"
 
-filelist=${currentDir}/all_files_${part}.list  # file list in local dir! not in submissiondir!!!
-
+filelist=${currentDir}/all_files_${part}_${npart}files.list  # file list in local dir! not in submissiondir!!!
 
 createList=no    # (yes/no) use this to create files list with generic names (for simulation, testing)
                  # use "no" if you have a filelist available
@@ -225,11 +234,7 @@ do
      
      par3=${infileList}
 
-     command="-j y -wd ${submissiondir} ${resources} -o ${logfile} \
-     ${jobscript}  ${par1}   ${par2} ${par3}  ${par4} ${par5} ${par6} ${par7}"
-     #jobscript.sh defall.sh prog    filelist outdir  nev
-     
-     #echo qsub ${command}
+     #     defall.sh prog  filelist outdir  nev
      echo "${par1} ${par2} ${par3} ${par4} ${par5} ${par6} ${par7}" >>  $jobarrayFile
      
 
@@ -255,8 +260,6 @@ then
 else
 
   echo "-------------------------------------------------"
-
-#  qsub -t 1-${nFiles}  -j y -wd ${submissiondir} ${resources}  -o ${pathoutputlog} ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog}
 
   nFiles=$( cat $jobarrayFile | wc -l)
 

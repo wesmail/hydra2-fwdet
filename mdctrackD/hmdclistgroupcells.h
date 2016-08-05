@@ -95,10 +95,16 @@ inline Int_t HMdcList12GroupCells::setTime(Int_t lay, Int_t cell, UChar_t time) 
   UChar_t *pEnd=iLayer+11;
   if(*iLayer == 0) firstCell[lay]=cell & 0xFFFFFFFC;  // =(cell/4)*4
   else if(cell < firstCell[lay]) {
-    Int_t sh=(firstCell[lay]>>2)-(cell>>2);
-    nCellsDel=HMdcTBArray::getNSet(pEnd-sh+1,pEnd);
-    HMdcTBArray::shiftRight(iLayer,pEnd,pEnd-sh);
-    firstCell[lay]=cell & 0xFFFFFFFC;
+    if(firstCell[lay]-cell >= 48) {
+      nCellsDel = getNCells(lay);
+      memset(iLayer,0,laySz);
+      firstCell[lay] = cell;
+    } else {
+      Int_t sh=(firstCell[lay]>>2)-(cell>>2);
+      nCellsDel=HMdcTBArray::getNSet(pEnd-sh+1,pEnd);
+      HMdcTBArray::shiftRight(iLayer,pEnd,pEnd-sh);
+      firstCell[lay] = cell & 0xFFFFFFFC;
+    }
   }
   else if( cell-firstCell[lay] >= 48 ) return 1; // out of data array
   HMdcTBArray::set(iLayer, cell-firstCell[lay], time);

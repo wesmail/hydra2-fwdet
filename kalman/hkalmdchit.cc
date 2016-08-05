@@ -224,6 +224,7 @@ void HKalMdcHit::print(const Option_t *opt) const {
 
     TString stropt(opt);
 
+    Int_t pre = cout.precision();
     // Print hit coordinates and errors.
     cout<<endl;
     cout<<"****Properties of hit object:****"<<endl;
@@ -244,8 +245,12 @@ void HKalMdcHit::print(const Option_t *opt) const {
     } else {
         cout<<"No measurement layer defined."<<endl;
     }
+    if(stropt.Contains("Lay", TString::kIgnoreCase) || stropt.IsNull()) {
+	cout<<"Properties of virtual plane:"<<endl;
+	virtLayer.print();
+    }
     cout<<"****End of hit print.****"<<endl;
-    cout<<endl;
+    cout<<setprecision(pre)<<endl;
 }
 
 void HKalMdcHit::setHitAndErr(const TVectorD &newhit, const TVectorD &newerr) {

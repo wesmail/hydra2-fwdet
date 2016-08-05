@@ -447,7 +447,7 @@ public:
 	    setMetaModule(0,clst->getColumn1());
 	    setMetaCell  (0,clst->getCell1()  );
 	    setMetaModule(1,clst->getColumn2());
-	    setMetaCell  (1,clst->getCell1()  );
+	    setMetaCell  (1,clst->getCell2()  );
 	}
     }
     ClassDef(rpc_clst,1)

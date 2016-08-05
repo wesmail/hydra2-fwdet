@@ -116,6 +116,7 @@ HGeantKine::HGeantKine(void) {
   active = kFALSE;
   suppressed = kFALSE;
   userVal = -1;
+  acceptance = 0;
 }
 
 HGeantKine::HGeantKine(HGeantKine &aKine) : TObject(aKine) {
@@ -1165,7 +1166,7 @@ void HGeantKine::fillAcceptanceBit() {
 	}
 	resetMdcIter();
     }
-    if(firstTofHit > -1)                      setSys(0);
+    if(firstTofHit > -1)                      setSys(1);
     if(firstRpcHit!=-1 || firstShowerHit!=-1) setSys(0);
     setAcceptanceFilled();
 }

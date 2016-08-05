@@ -32,14 +32,14 @@ currentDir=$(pwd | xargs -i basename {})
 currentDir=../$currentDir
 
 day=108
-submmissionbase=/hera/hades/user/${user}/sub/apr12/array2
+submmissionbase=/hera/hades/user/${user}/sub/apr12
 submissiondir=${submmissionbase}/dstreal
  nFilesPerJob=1                                 # number of files to be analyzed by 1 job (default==1)
     jobscript=${submissiondir}/jobScript.sh     # exec script (full path, call without dot, set it executable!)
-    outputdir=/hera/hades/user/${user}/dst/apr12/gen4/$day     # outputdir for files AND logFiles
+    outputdir=/hera/hades/user/${user}/dst/apr12/gen8/$day     # outputdir for files AND logFiles
 pathoutputlog=${outputdir}/out                    # protocol from batch farm for each file
      filename=testrun                           # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
-par1=/cvmfs/hades.gsi.de/install/5.34.01/hydra2-3.7/defall.sh  # optional par1 : environment script
+par1=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.m/defall.sh  # optional par1 : environment script
 par2=${submissiondir}/analysisDST                              # optional par2 : executable
 par3=""                                                        # optional par3 : input file list
 par4=${outputdir}                                              # optional par4 : outputfile (part number will be appended (_num.root))
@@ -48,9 +48,9 @@ par6="no"                                                      # optional par6
 par7="no"                                                      # optional par7
 resources="-l h_rt=10:0:0,h_vmem=2G"                           # runtime < 10h, mem < 2GB
 
-jobarrayFile="gen4_day_${day}_jobarray.dat"
+jobarrayFile="gen8_day_${day}_jobarray.dat"
 
-filelist=/hera/hades/dst/apr12/gen4/filelists/day_${day}.list  # file list in local dir! not in submissiondir!!!
+filelist=/hera/hades/dst/apr12/gen8/filelists/day_${day}.list  # file list in local dir! not in submissiondir!!!
 
 
 

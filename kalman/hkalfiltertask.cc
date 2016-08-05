@@ -1,17 +1,21 @@
 #include "hkalfiltertask.h"
 
 // from ROOT
+#include "TF1.h"
 #include "TMath.h"
 #include "TMatrixD.h"
 #include "TRandom.h"
 
 // from hydra
 #include "hades.h"
+#include "hcategory.h"
 #include "hmdccal2parsim.h"
 #include "hcategorymanager.h"
 #include "hgeantkine.h"
 #include "hgeantmdc.h"
 #include "hmagnetpar.h"
+#include "hmdcdef.h"
+#include "hmdchit.h"
 #include "hmdcseg.h"
 #include "hmdcsegsim.h"
 #include "hmdcsizescells.h"
@@ -95,7 +99,7 @@ Bool_t HKalFilterTask::createKalSystem() {
             Error("createKalSystem()", "Applying DAF on segment hits is not supported.");
         } else {
             // Filter reconstructed segment hits.
-            kalsys = new HKalFilt2d(nMaxHitsPerTrack, measDim, stateDim, fMap, fieldFactor);
+	    kalsys = new HKalFilt2d(nMaxHitsPerTrack, measDim, stateDim, fMap, fieldFactor);
         }
     }
 
@@ -208,7 +212,12 @@ HKalTrack* HKalFilterTask::fillDataTrack(Int_t &iKalTrack, HMetaMatch2* const pM
         Int_t pid = kalsys->getPid();
         pKalTrack->setPid        (pid);
 
-        Float_t iniqp = TMath::Abs((kalsys->getIniStateVec())(kIdxQP));
+	const TVectorD& inisv = kalsys->getIniStateVec();
+	pKalTrack->setXinput(inisv(Kalman::kIdxX0));
+	pKalTrack->setYinput(inisv(Kalman::kIdxY0));
+	pKalTrack->setTxInput(inisv(Kalman::kIdxTanPhi));
+	pKalTrack->setTyInput(inisv(Kalman::kIdxTanTheta));
+	Float_t iniqp = TMath::Abs(inisv(Kalman::kIdxQP));
         if(iniqp != 0.F) {
             pKalTrack->setMomInput(TMath::Abs(HPhysicsConstants::charge(pid) / iniqp));
         }
@@ -349,9 +358,24 @@ void HKalFilterTask::fillDataSites(Int_t &iFirstSite, Int_t &iLastSite,
             if(momSmoo != 0.F) {
                 momSmoo = HPhysicsConstants::charge(pid) / momSmoo;
             }
-            site->setMomSmoo       ((Float_t)momSmoo);
+	    site->setMomSmoo       ((Float_t)momSmoo);
 
-            if(jean) {
+	    Kalman::kalFilterTypes recoState = (kalsys->getDoSmooth()) ? Kalman::kSmoothed : Kalman::kFiltered;
+            site->setTxReco(trackSite->getStateParam(recoState, Kalman::kIdxTanPhi));
+	    site->setTyReco(trackSite->getStateParam(recoState, Kalman::kIdxTanTheta));
+
+            const TMatrixD& C = trackSite->getState(recoState).getCovMat();
+	    site->setCxxReco(C[Kalman::kIdxX0][Kalman::kIdxX0]);
+	    site->setCyyReco(C[Kalman::kIdxY0][Kalman::kIdxY0]);
+	    site->setCtxReco(C[Kalman::kIdxTanPhi][Kalman::kIdxTanPhi]);
+	    site->setCtyReco(C[Kalman::kIdxTanTheta][Kalman::kIdxTanTheta]);
+	    site->setCqpReco(C[Kalman::kIdxQP][Kalman::kIdxQP]);
+
+	    if(jean) {
+                TVector3 jeanPos, jeanDir;
+		input->getPosAndDir(jeanPos, jeanDir, jean, kTRUE);
+                site->setTxReal(jeanDir.X() / jeanDir.Z());
+                site->setTyReal(jeanDir.Y() / jeanDir.Z());
                 Float_t ax, ay, atof, ptof;
                 jean->getHit(ax,ay,atof,ptof);
                 site->setMomReal       (ptof);
@@ -363,50 +387,50 @@ void HKalFilterTask::fillDataSites(Int_t &iFirstSite, Int_t &iLastSite,
 
 
             if(kalsys->getHitType() == Kalman::kWireHit) {
-                HKalHitWire *hit;
-                if((hit = HCategoryManager::newObject(hit, fCatKalHitWire, index)) != 0 ) {
+                HKalHitWire *hit = NULL;
+                Int_t indexHit = -1;
 
-                    //---------------------------------------
-                    // Write data about the site's wire hits.
-                    //---------------------------------------
-                    for(Int_t iHit = 0; iHit < trackSite->getNcompetitors(); iHit++) {
-                        if((hit = HCategoryManager::newObject(hit, fCatKalHitWire, index)) != 0 ) {
+                //---------------------------------------
+                // Write data about the site's wire hits.
+                //---------------------------------------
+                for(Int_t iHit = 0; iHit < trackSite->getNcompetitors(); iHit++) {
+                    if((hit = HCategoryManager::newObject(hit, fCatKalHitWire, indexHit)) != 0 ) {
 
-                            if(iHit == 0) {
-                                site->setIdxFirst(index);
-                            }
-                            if(iHit == trackSite->getNcompetitors() - 1) {
-                                site->setIdxLast(index);
-                            }
+                        if(iHit == 0) {
+                            site->setIdxFirst(indexHit);
+                        }
+                        if(iHit == trackSite->getNcompetitors() - 1) {
+                            site->setIdxLast(indexHit);
+                        }
 
-                            hit->setCell          (trackSite->getCell(iHit));
-                            hit->setTime1         (trackSite->getHit(iHit).getTime1());
-                            hit->setTime2         (trackSite->getHit(iHit).getTime2());
-                            hit->setTime1Err      (trackSite->getHitDriftTimeErr(iHit));
-                            hit->setTimeMeas      (trackSite->getHitDriftTime(iHit));
+                        hit->setCell          (trackSite->getCell(iHit));
+                        hit->setTime1         (trackSite->getHit(iHit).getTime1());
+                        hit->setTime2         (trackSite->getHit(iHit).getTime2());
+                        hit->setTime1Err      (trackSite->getHitDriftTimeErr(iHit));
+                        hit->setTimeMeas      (trackSite->getHitDriftTime(iHit));
 
-                            Float_t alpha = trackSite->getHitImpactAngle(iHit);
-                            hit->setAlpha         (alpha);
-                            Float_t mindist = trackSite->getHitVec(iHit)(0);
-                            hit->setMinDist       (mindist);
-                            HMdcCal2ParSim *cal2  = (HMdcCal2ParSim*)gHades->getRuntimeDb()->getContainer("MdcCal2ParSim");
-                            Float_t timeReco = cal2->calcTime(trackSite->getSector(), trackSite->getModule(), alpha, mindist);
-                            hit->setTimeReco      (timeReco);
+                        Float_t alpha = trackSite->getHitImpactAngle(iHit);
+                        hit->setAlpha         (alpha);
+                        Float_t mindist = trackSite->getHitVec(iHit)(0);
+                        hit->setMinDist       (mindist);
+                        HMdcCal2ParSim *cal2  = (HMdcCal2ParSim*)gHades->getRuntimeDb()->getContainer("MdcCal2ParSim");
+                        Float_t timeReco = cal2->calcTime(trackSite->getSector(), trackSite->getModule(), alpha, mindist);
+                        hit->setTimeReco      (timeReco);
 
-                            hit->setTimeTof       (trackSite->getHitTimeTof(iHit));
-                            hit->setTimeTofCal1   (trackSite->getHit(iHit).getTimeTofCal1());
-                            hit->setTimeWireOffset(trackSite->getHit(iHit).getTimeWireOffset());
+                        hit->setTimeTof       (trackSite->getHitTimeTof(iHit));
+                        hit->setTimeTofCal1   (trackSite->getHit(iHit).getTimeTofCal1());
+                        hit->setTimeWireOffset(trackSite->getHit(iHit).getTimeWireOffset());
 
-                            if(kalsys->getDoDaf()) {
-                                Int_t nDafs = kalsys->getNdafs();
-                                hit->setChi2Daf(trackSite->getHitChi2(iHit));
-                                for(Int_t iDaf = 0; iDaf < nDafs; iDaf++) {
-                                    hit->setWeight(trackSite->getHitWeightHist(iDaf, iHit), iDaf);
-                                }
+                        if(kalsys->getDoDaf()) {
+                            Int_t nDafs = kalsys->getNdafs();
+                            hit->setChi2Daf(trackSite->getHitChi2(iHit));
+                            for(Int_t iDaf = 0; iDaf < nDafs; iDaf++) {
+                                hit->setWeight(trackSite->getHitWeightHist(iDaf, iHit), iDaf);
                             }
                         }
+                    } else {
+                        Error("fillDataSites()", "Failed to create hit object");
                     }
-                    // ---------
                 }
             } // filled wire hits
 
@@ -414,12 +438,13 @@ void HKalFilterTask::fillDataSites(Int_t &iFirstSite, Int_t &iLastSite,
             // Write data about the site's segment hits.
             // -----------------------------------------
             if(kalsys->getHitType() == Kalman::kSegHit) {
-                HKalHit2d *hit;
-                if((hit = HCategoryManager::newObject(hit, fCatKalHit2d, index)) != 0 ) {
+		HKalHit2d *hit = NULL;
+                Int_t indexHit = -1;
+                if((hit = HCategoryManager::newObject(hit, fCatKalHit2d, indexHit)) != 0 ) {
 
 
-                    site->setIdxFirst(index);
-                    site->setIdxLast(index);
+                    site->setIdxFirst(indexHit);
+                    site->setIdxLast(indexHit);
 
                     hit->setXmeas(trackSite->getHitVec()(0));
                     hit->setYmeas(trackSite->getHitVec()(1));
@@ -430,7 +455,15 @@ void HKalFilterTask::fillDataSites(Int_t &iFirstSite, Int_t &iLastSite,
                     } else {
                         hit->setXreco(trackSite->getStateParam(Kalman::kFiltered, Kalman::kIdxX0));
                         hit->setYreco(trackSite->getStateParam(Kalman::kFiltered, Kalman::kIdxY0));
-                    }
+		    }
+		    if(jean) {
+			TVector3 jeanPos, jeanDir;
+			input->getPosAndDir(jeanPos, jeanDir, jean, kTRUE);
+                        hit->setXreal(jeanPos.X());
+                        hit->setYreal(jeanPos.Y());
+		    }
+		} else {
+		    Error("fillDataSites()", "Failed to create hit object");
                 }
             } // filled segment hit
         } // filled one site
@@ -443,8 +476,9 @@ void HKalFilterTask::fillDataSites(Int_t &iFirstSite, Int_t &iLastSite,
 
 HKalFilterTask::HKalFilterTask(Int_t ref, Bool_t sim, Bool_t wire,
 			       Bool_t daf, Bool_t comp)
-: HReconstructor("KalmanFilterTask", "Kalman filter"), noKalman("Kalman filter not found."),
-dopid(0) {
+: HReconstructor("KalmanFilterTask", "Kalman filter"),
+noKalman("Kalman filter not found."), fMomErr(NULL), fTxErr(NULL),
+fTyErr(NULL), iniSvMethod(0), numTracks(0), numTracksErr(0), dopid(0) {
     // Task to run the Kalman filter.
     //
     // Input:
@@ -470,13 +504,13 @@ dopid(0) {
     stateDim = 5;
 
     counterstep  = -1;
-    bPrintWarn   = kTRUE;
-    bPrintErr    = kTRUE;
+    bPrintWarn   = kFALSE;
+    bPrintErr    = kFALSE;
 
     errX    = 0.2; // Segment fit resolution.
     errY    = 0.1;
-    errTx   = TMath::ATan(.5 * TMath::DegToRad());
-    errTy   = TMath::ATan(.5 * TMath::DegToRad());
+    errTx   = TMath::Tan(.5 * TMath::DegToRad());
+    errTy   = TMath::Tan(.5 * TMath::DegToRad());
     errMom  = 0.05; // ca. Spline resolution.
 
     // Created later on in init() or reinit().
@@ -490,6 +524,15 @@ dopid(0) {
 
     fCatMetaMatch   = NULL;
     fCatSplineTrack = NULL;
+
+    if(!createKalSystem()) {
+        Error("HKalFilterTask()", "Could not create KalSystem.");
+    }
+}
+
+
+HKalFilterTask::~HKalFilterTask(){
+    delete fMomErr;
 }
 
 //  -----------------------------------
@@ -501,11 +544,17 @@ Int_t HKalFilterTask::getIniPid(HMdcTrkCand const* const cand) const {
 
     Int_t pid = -1;
 
-    HGeantKine *kine = input->getGeantKine(cand);
-    if(!kine) return -1;
+    if(bSim) {
 
-    Int_t track = -1;
-    kine->getParticle(track, pid);
+	HGeantKine *kine = input->getGeantKine(cand);
+	if(!kine) return -1;
+
+	Int_t track = -1;
+	kine->getParticle(track, pid);
+    } else {
+        //? better PID?
+        pid = HPhysicsConstants::pid("p");
+    }
 
     return pid;
 }
@@ -586,13 +635,87 @@ Bool_t HKalFilterTask::getIniSv(TVectorD &inisv, TMatrixD &iniC,
     // Initialize covariance.
     iniC(kIdxX0, kIdxX0)             = TMath::Power(errX, 2);
     iniC(kIdxY0, kIdxY0)             = TMath::Power(errY, 2);
-    iniC(kIdxTanPhi,   kIdxTanPhi)   = TMath::Power(errTx, 2);
-    iniC(kIdxTanTheta, kIdxTanTheta) = TMath::Power(errTy, 2);
+
+    Double_t dTx = errTx;
+    Double_t dTy = errTy;
+
+    // Direction error from segment hits.
+    if(!fTxErr || !fTyErr) {
+	const HMdcSeg *mdcSeg = (kalsys->getDirection() == kIterForward) ? inSeg : outSeg;
+        HCategory* mdcHitCat = (HCategory*)gHades->getCurrentEvent()->getCategory(catMdcHit);
+	HMdcHit* locHit1 = (HMdcHit*)mdcHitCat->getObject(mdcSeg->getHitInd(0));
+	HMdcHit* locHit2 = (HMdcHit*)mdcHitCat->getObject(mdcSeg->getHitInd(1));
+	if(locHit1 && locHit2) {
+	    HMdcSizesCells* fSizesCells = HMdcSizesCells::getExObject();
+
+	    Double_t x1 = locHit1->getX();
+	    Double_t y1 = locHit1->getY();
+	    Double_t z1 = 0;
+	    Int_t sec1, mod1;
+	    locHit1->getSecMod(sec1, mod1);
+	    (*fSizesCells)[sec1][mod1].transFrom(x1, y1, z1);
+
+	    Double_t x2 = locHit2->getX();
+	    Double_t y2 = locHit2->getY();
+	    Double_t z2 = 0;
+	    Int_t sec2, mod2;
+	    locHit2->getSecMod(sec2, mod2);
+	    (*fSizesCells)[sec2][mod2].transFrom(x2, y2, z2);
+
+	    Double_t errx1 = locHit1->getErrX();
+	    Double_t erry1 = locHit1->getErrY();
+	    Double_t errz1 = 0.03;
+	    HGeomVector errLay1(errx1, erry1, errz1);
+	    HGeomVector errSec1 = (*fSizesCells)[sec1][mod1].getSecTrans()->getRotMatrix() * errLay1;
+	    errx1 = errSec1.getX();
+	    erry1 = errSec1.getY();
+	    errz1 = errSec1.getZ();
+
+	    Double_t errx2 = locHit2->getErrX();
+	    Double_t erry2 = locHit2->getErrY();
+	    Double_t errz2 = 0.03;
+	    HGeomVector errLay2(errx2, erry2, errz2);
+	    HGeomVector errSec2 = (*fSizesCells)[sec2][mod2].getSecTrans()->getRotMatrix() * errLay2;
+	    errx2 = errSec2.getX();
+	    erry2 = errSec2.getY();
+	    errz2 = errSec2.getZ();
+
+	    Double_t x21 = x2 - x1;
+	    Double_t y21 = y2 - y1;
+	    Double_t z21 = z2 - z1;
+
+	    dTx = TMath::Sqrt(TMath::Power(errz1*x21/(z21*z21), 2.)+
+			      TMath::Power(errz2*x21/(z21*z21), 2.)+
+			      TMath::Power(errx1/(z21), 2.) +
+                              TMath::Power(errx2/(z21), 2.));
+	    dTy = TMath::Sqrt(TMath::Power(errz1*y21/(z21*z21), 2.)+
+			      TMath::Power(errz2*y21/(z21*z21), 2.)+
+			      TMath::Power(errx1/(z21), 2.) +
+			      TMath::Power(errx2/(z21), 2.));
+	}
+    }
+
+    // Custom function to calculate errors.
+    if(fTxErr) {
+	dTx = fTxErr->Eval(inSeg->getTheta() * TMath::RadToDeg());
+    }
+    if(fTyErr) {
+	dTy = fTyErr->Eval(inSeg->getTheta() * TMath::RadToDeg());
+    }
+
+    iniC(kIdxTanPhi,   kIdxTanPhi)   = TMath::Power(dTx, 2);
+    iniC(kIdxTanTheta, kIdxTanTheta) = TMath::Power(dTy, 2);
+
     // The variance of the estimated momentum is
     // <(mom_real - mom_input)^2> = (mom_real - (1+errMom)*mom_real)^2 = (errMom * mom_real)^2.
     // The variance of the estimation error of the state parameter q/p
     // then is <(1/mom_geant - 1/mom_input)^2>.
-    iniC(kIdxQP, kIdxQP)             = TMath::Power(1./iniTrackMom * errMom / (errMom + 1.), 2);
+
+    Double_t dp = errMom;
+    if(fMomErr) {
+	dp = fMomErr->Eval(inSeg->getTheta() * TMath::RadToDeg());
+    }
+    iniC(kIdxQP, kIdxQP) = TMath::Power(dp/(iniTrackMom * (dp + 1.)), 2);
 
     if(iniC.GetNrows() == 6) {
         iniC(kIdxZ0, kIdxZ0) = TMath::Power(errY, 2);
@@ -602,57 +725,50 @@ Bool_t HKalFilterTask::getIniSv(TVectorD &inisv, TMatrixD &iniC,
 }
 
 Bool_t HKalFilterTask::getIniSvGeant(TVectorD &inisv, TMatrixD &iniC,
-                                Int_t pid, const TObjArray &allhitsGeantMdc) const {
+                                     const TObjArray &allhitsGeantMdc,
+				     Int_t pid, Bool_t bSmear) const {
     // Calculate starting position and direction of Geant hit.
+    TVector3 inipos, inidir;
 
-    TVector3 inipos, inipos2, inidir;
-
-    //? check if first measurement is in mod 0/3
     Int_t iStartHitGeant = 0;
     if(kalsys->getDirection() == kIterBackward) {
         iStartHitGeant = allhitsGeantMdc.GetEntries() - 1;
     }
 
-    Int_t iDir = 1;
-    if(kalsys->getDirection() == kIterBackward) iDir = -1;
-
     if(allhitsGeantMdc.GetEntries() == 0) {
         if(bPrintErr) {
-            Error("getIniSv()", "No Geant points found.");
+            Error("getIniSvGeant()", "No Geant points found.");
         }
         return kFALSE;
     }
 
-    if((HGeantMdc*)allhitsGeantMdc.At(iStartHitGeant) == NULL) {
+    HGeantMdc *firstGeant = (HGeantMdc*)allhitsGeantMdc.At(iStartHitGeant);
+    if(firstGeant == NULL) {
         if(bPrintErr) {
-            Error("getIniSv()", "Could not retrieve Geant point %i", iStartHitGeant);
+            Error("getIniSvGeant()", "Could not retrieve Geant point %i", iStartHitGeant);
         }
         return kFALSE;
     }
 
-    if((HGeantMdc*)allhitsGeantMdc.At(iStartHitGeant+iDir) == NULL) {
-        if(bPrintErr) {
-            Error("getIniSv()", "Could not retrieve Geant point %i", iStartHitGeant+iDir);
-        }
-        return kFALSE;
-    }
+    input->getPosAndDir(inipos, inidir, firstGeant, kTRUE);
 
-    // Smeared Geant points as input.
-    input->getPosAndDir(inipos, inidir, (HGeantMdc*)allhitsGeantMdc.At(iStartHitGeant), kTRUE);
-    inipos.SetX(inipos.X() * (1. + gRandom->Gaus(errX)));
-    inipos.SetY(inipos.Y() * (1. + gRandom->Gaus(errY)));
-    input->getPosAndDir(inipos2, inidir, (HGeantMdc*)allhitsGeantMdc.At(iStartHitGeant+iDir), kTRUE);
-    inipos2.SetX(inipos2.X() * (1. + gRandom->Gaus(errX)));
-    inipos2.SetY(inipos2.Y() * (1. + gRandom->Gaus(errY)));
-    inidir = (inipos2 - inipos).Unit();
+    if(bSmear) {
+	inipos.SetX(inipos.X() + gRandom->Gaus(0., errX));
+	inipos.SetY(inipos.Y() + gRandom->Gaus(0., errY));
+    }
 
     // Use smeared Geant momentum as input for KF.
     Float_t ax, ay, atof, momGeant;
-    ((HGeantMdc*)allhitsGeantMdc.At(iStartHitGeant))->getHit(ax, ay, atof, momGeant);
-    Double_t iniTrackMom = momGeant * (1. + gRandom->Gaus() * errMom);
+    firstGeant->getHit(ax, ay, atof, momGeant);
+    Double_t iniTrackMom = (bSmear) ? momGeant * (1. + gRandom->Gaus() * errMom) : momGeant;
 
     Int_t particleCharge = HPhysicsConstants::charge(pid);
     HKalTrackState::calcStateVec(inisv, particleCharge/iniTrackMom, inipos, inidir);
+
+    if(bSmear) {
+	inisv[kIdxTanPhi]   = inisv[kIdxTanPhi]   + gRandom->Gaus(0., errTx);
+	inisv[kIdxTanTheta] = inisv[kIdxTanTheta] + gRandom->Gaus(0., errTy);
+    }
 
     // Initialize covariance.
     iniC(kIdxX0, kIdxX0)             = TMath::Power(errX, 2);
@@ -769,8 +885,8 @@ Int_t HKalFilterTask::execute(void) {
     TObjArray allhits; // Array that stores the hits.
     TObjArray allhitsGeantMdc;
 
-    Int_t    numErrTracks = 0;
-    Int_t    numTracks    = 0;
+    Int_t    numTracksErrEvent = 0;
+    Int_t    numTracksEvent    = 0;
 
     UInt_t evtNbr = gHades->getCurrentEvent()->getHeader()->getEventSeqNumber();
 
@@ -792,12 +908,14 @@ Int_t HKalFilterTask::execute(void) {
     while((cand = nextTrack(allhits))) {
 #if kalDebug > 1
         cout<<"\n\n\n"<<endl;
+        cout<<"*****************************************************"<<endl;
         cout<<"**************** New track candidate ****************"<<endl;
+        cout<<"*****************************************************"<<endl;
 #endif
         if(allhits.GetEntries() < 3) continue;
 
-        HGeantKine *kine = input->getGeantKine(cand);
-        if(!kine) {
+	HGeantKine *kine = (bSim ? input->getGeantKine(cand) : NULL);
+        if(bSim && !kine) {
             Error("execute()", "No HGeantKine object found.");
             continue;
         }
@@ -805,7 +923,7 @@ Int_t HKalFilterTask::execute(void) {
         HMetaMatch2 *pMetaMatch = (HMetaMatch2*)fCatMetaMatch->getObject(cand->getMetaMatchInd());
         if(!pMetaMatch) {
             if(bPrintWarn) {
-                Error("execute()", Form("No META match in track %i of event %i.", numTracks, evtNbr));
+                Error("execute()", Form("No META match in track %i of event %i.", numTracksEvent, evtNbr));
             }
             continue;
         }
@@ -836,21 +954,78 @@ Int_t HKalFilterTask::execute(void) {
             continue;
         }
 
-        input->getGeantMdcRawpoints(allhitsGeantMdc, kine, !bWire);
+	if(bSim) {
+	    input->getGeantMdcRawpoints(allhitsGeantMdc, kine, !bWire);
+	}
+
+#if kalDebug > 3
+        cout<<endl;
+	cout<<"### Hits in track candidate ####"<<endl;
+	for(Int_t iEntry = 0; iEntry < allhits.GetEntries(); iEntry++) {
+	    HKalMdcHit *hit = dynamic_cast<HKalMdcHit*>(allhits.At(iEntry));
+	    if(hit) {
+		cout<<"## Hit number: "<<iEntry<<" ##"<<endl;
+                hit->print("Hit");
+	    }
+	}
+	if(bSim) {
+	    cout<<"### Geant hits belonging to track candidate ####"<<endl;
+	    for(Int_t iEntry = 0; iEntry < allhitsGeantMdc.GetEntries(); iEntry++) {
+		HGeantMdc *hit = dynamic_cast<HGeantMdc*>(allhitsGeantMdc.At(iEntry));
+		if(hit) {
+		    cout<<"## Geant hit number: "<<iEntry<<" ##"<<endl;
+		    cout<<"x = "<<hit->getX()<<", y = "<<hit->getY()<<endl;
+                    TVector3 iniPosGeantSec, iniDirGeantSec;
+		    input->getPosAndDir(iniPosGeantSec, iniDirGeantSec,
+					(HGeantMdc*)allhitsGeantMdc.At(iEntry),
+					kTRUE);
+		    cout<<"Position in sector coordinates: "<<endl;
+		    cout<<"x = "<<iniPosGeantSec.X()
+			<<", y = "<<iniPosGeantSec.Y()
+                        <<", z = "<<iniPosGeantSec.Z()<<endl<<endl;
+		}
+	    }
+	}
+#endif
 
         // Create a starting state vector for the Kalman Filter.
         TVectorD inisv(stateDim);
         // Initialize covariance.
         TMatrixD iniC(stateDim, stateDim);
 
-        if(!getIniSv(inisv, iniC, pid, allhits, pMetaMatch, segs[0], segs[1])) {
-            continue;
-        }
-        //if(!getIniSvGeant(inisv, iniC, pid, allhitsGeantMdc)) continue;
-        //if(!getIniSvRungeKutta(inisv, iniC, pid, allhits, pMetaMatch)) continue;
-
+	switch (iniSvMethod) {
+	case 1:
+	    if(!getIniSvGeant(inisv, iniC, allhitsGeantMdc, pid, kFALSE)) {
+		Error("execute()", "Could not calculate initial state vector.");
+		continue;
+	    }
+	    break;
+	case 2:
+	    if(!getIniSvGeant(inisv, iniC, allhitsGeantMdc, pid, kTRUE)) {
+		Error("execute()", "Could not calculate initial state vector.");
+		continue;
+	    }
+	    //inisv[kIdxQP] = HPhysicsConstants::charge(pid) / TMath::Max(((HSplineTrack*)fCatSplineTrack->getObject(pMetaMatch->getSplineInd()))->getP(), 100.F);
+	    break;
+	case 3:
+	    if(!getIniSvRungeKutta(inisv, iniC, pid, allhits, pMetaMatch)) {
+		Error("execute()", "Could not calculate initial state vector.");
+		continue;
+	    }
+	    break;
+	default:
+	    if(!getIniSv(inisv, iniC, pid, allhits, pMetaMatch, segs[0], segs[1])) {
+		Error("execute()", "Could not calculate initial state vector.");
+		continue;
+	    }
+	    //TVectorD inisvMomSmear(stateDim);
+	    //TMatrixD iniCMomSmear(stateDim, stateDim);
+	    //getIniSvGeant(inisvMomSmear, iniCMomSmear, allhitsGeantMdc, pid, kTRUE);
+            //inisv[kIdxQP] = inisvMomSmear[kIdxQP];// * 1./(0.994);
+	    break;
+	}
 #if kalDebug > 1
-        cout<<"Running Kalman filter on track number "<<numTracks<<" of event "<<evtNbr<<endl;
+        cout<<"Running Kalman filter on track number "<<numTracksEvent<<" of event "<<evtNbr<<endl;
 #endif
 
         // Run Kalman filter.
@@ -864,23 +1039,24 @@ Int_t HKalFilterTask::execute(void) {
             //?
         }
 
-        if(!bAccepted) {
-            numErrTracks++;
+	if(!bAccepted) {
+            numTracksErr++;
+            numTracksErrEvent++;
             if(bPrintWarn) {
-                Warning("Event loop", Form("Errors in track number %i of event %i", numTracks, evtNbr));
+                Warning("Event loop", Form("Errors in track number %i of event %i", numTracksEvent, evtNbr));
             }
         }
 
         fillData(pMetaMatch, allhitsGeantMdc, segs[0], segs[1]);
 
         numTracks++;
+	numTracksEvent++;
     } // while loop over candidates
 
     return 0;
 }
 
 Bool_t HKalFilterTask::init(void) {
-
     if(!gHades) {
         Error("init()", "HADES not found.");
         return kFALSE;
@@ -924,26 +1100,22 @@ Bool_t HKalFilterTask::init(void) {
 
     metaMatcher.init();
 
-    return createKalSystem();
+    return kTRUE;
+    //return createKalSystem();
 }
 
 HMdcTrkCand* HKalFilterTask::nextTrack(TObjArray& allhits) {
     // Fill the array allhits with the next track candidate.
 
     if(bWire) {
-        //if(bLeftRight) { //? remove
-        //    return input->nextWireTrackNoComp(allhits);
-        //} else {
-            return input->nextWireTrack(allhits);
-        //}
+	return input->nextWireTrack(allhits);
     }
     return input->nextMdcTrackCand(allhits);
 }
 
 Bool_t HKalFilterTask::reinit(void) {
-
     HMdcSizesCells* fSizesCells = HMdcSizesCells::getExObject();  // check if is already there
-        fSizesCells->initContainer();
+    fSizesCells->initContainer();
 
     if(!fSizesCells) {
         fSizesCells = HMdcSizesCells::getObject();
@@ -958,8 +1130,7 @@ Bool_t HKalFilterTask::reinit(void) {
 
     Bool_t bInit = kTRUE;
     if(!input) {
-        HKalDetCradle *pCradleHades = new HKalDetCradle(nLayersInMdc);
-
+        HKalDetCradle* pCradleHades = new HKalDetCradle(nLayersInMdc);
         input = new HKalInput(pCradleHades);
         bInit = input->init(refId);
         input ->setPrint(bPrintWarn);
@@ -984,6 +1155,16 @@ Bool_t HKalFilterTask::reinit(void) {
 
     return (bInit);
 }
+
+Bool_t HKalFilterTask::finalize(void) {
+    delete kalsys;
+    delete input;
+
+    Info("finalize", Form("%i tracks reconstructed, %i tracks with errors.",
+                          numTracks, numTracksErr));
+    return kTRUE;
+}
+
 
 void HKalFilterTask::setErrors(Double_t dx, Double_t dy, Double_t dtx, Double_t dty, Double_t dmom) {
     // Error estimates used to fill the initial covariance matrix.

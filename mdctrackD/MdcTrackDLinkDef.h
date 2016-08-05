@@ -18,7 +18,6 @@
 #pragma link C++ class HMdcSizesCellsCell;
 #pragma link C++ class HMdcLayer;
 
-
 #pragma link C++ class HMdcLookUpTb;
 #pragma link C++ class HMdcLookUpTbSec;
 #pragma link C++ class HMdcLookUpTbMod;
@@ -84,7 +83,7 @@
 #pragma link C++ class HMdcWiresArr;
 #pragma link C++ class HMdcClusFit-;
 #pragma link C++ class HMdcClusFitSim;
-#pragma link C++ class HMdcWireFit;
+#pragma link C++ class HMdcWireFit-;
 #pragma link C++ class HMdcWireFitSim;
 #pragma link C++ class HMdcClusInf;
 #pragma link C++ class HMdcClusInfSim;
@@ -113,6 +112,8 @@
 
 #pragma link C++ class HMdcDeDx2;
 #pragma link C++ class HMdcDeDx2Maker;
+
+#pragma link C++ class HMdcKickCor;
 
 #pragma link C++ global catMdcClus;
 #pragma link C++ global catMdcClusFit;

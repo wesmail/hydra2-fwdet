@@ -10,6 +10,11 @@ private:
     Int_t mod;        // Index of module.
     Int_t lay;        // Index of layer.
 
+    Float_t CxxReco;  // Covariance matrix elements.
+    Float_t CyyReco;  // Covariance matrix elements.
+    Float_t CtxReco;  // Covariance matrix elements.
+    Float_t CtyReco;  // Covariance matrix elements.
+    Float_t CqpReco;  // Covariance matrix elements.
     Float_t chi2;     // This site's contribution to the chi^2 of the fit.
     Float_t enerLoss; // Calculated energy loss up to this site.
     Int_t   idxFirst; // Index of site's first competing hit.
@@ -19,6 +24,10 @@ private:
     Float_t momSmoo;  // Smoothed momentum.
     Int_t   nComp;    // Number of competing hits.
     Int_t   trackNum; // Geant track number.
+    Float_t txReco;   // tan(px/pz) from smoothing.
+    Float_t txReal;   // tan(px/pz) from simulation
+    Float_t tyReco;   // tan(py/pz) from smoothing.
+    Float_t tyReal;   // tan(py/pz) from simulation
 
 public:
 
@@ -27,6 +36,16 @@ public:
     virtual ~HKalSite() { ; }
 
     virtual Float_t getChi2    () const { return chi2; }
+
+    virtual Float_t getCxxReco () const { return CxxReco; }
+
+    virtual Float_t getCyyReco () const { return CyyReco; }
+
+    virtual Float_t getCtxReco () const { return CtxReco; }
+
+    virtual Float_t getCtyReco () const { return CtyReco; }
+
+    virtual Float_t getCqpReco () const { return CqpReco; }
 
     virtual Int_t   getSec     () const { return sec; }
 
@@ -50,11 +69,29 @@ public:
 
     virtual Int_t   getTrackNum() const { return trackNum; }
 
+    virtual Float_t getTxReal  () const { return txReal; }
+
+    virtual Float_t getTxReco  () const { return txReco; }
+
+    virtual Float_t getTyReal  () const { return tyReal; }
+
+    virtual Float_t getTyReco  () const { return tyReco; }
+
     virtual void    setSec     (Int_t s)      { sec = s; }
 
     virtual void    setMod     (Int_t m)      { mod = m; }
 
     virtual void    setLay     (Int_t l)      { lay = l; }
+
+    virtual void    setCxxReco (Float_t c)    { CxxReco = c; }
+
+    virtual void    setCyyReco (Float_t c)    { CyyReco = c; }
+
+    virtual void    setCtxReco (Float_t c)    { CtxReco = c; }
+
+    virtual void    setCtyReco (Float_t c)    { CtyReco = c; }
+
+    virtual void    setCqpReco (Float_t c)    { CqpReco = c; }
 
     virtual void    setChi2    (Double_t c)   { chi2 = c; }
 
@@ -74,6 +111,14 @@ public:
 
     virtual void    setTrackNum(Int_t n)      { trackNum = n; }
 
+    virtual void    setTxReal  (Float_t tx)   { txReal = tx; }
+
+    virtual void    setTxReco  (Float_t tx)   { txReco = tx; }
+
+    virtual void    setTyReal  (Float_t ty)   { tyReal = ty; }
+
+    virtual void    setTyReco  (Float_t ty)   { tyReco = ty; }
+
     ClassDef (HKalSite,1)
 };
 
@@ -85,6 +130,8 @@ private:
 
     Float_t xMeas; // Measured position in sector coordinates in mm.
     Float_t yMeas; // Measured position in sector coordinates in mm.
+    Float_t xReal; // Geant position in sector coordinates in mm.
+    Float_t yReal; // Geant position in sector coordinates in mm.
     Float_t xReco; // Reconstructed position in sector coordinates in mm.
     Float_t yReco; // Reconstructed position in sector coordinates in mm.
 
@@ -98,6 +145,10 @@ public:
 
     virtual Float_t getYmeas() const { return yMeas; }
 
+    virtual Float_t getXreal() const { return xReal; }
+
+    virtual Float_t getYreal() const { return yReal; }
+
     virtual Float_t getXreco() const { return xReco; }
 
     virtual Float_t getYreco() const { return yReco; }
@@ -105,6 +156,10 @@ public:
     virtual void    setXmeas   (Float_t x) { xMeas = x; }
 
     virtual void    setYmeas   (Float_t y) { yMeas = y; }
+
+    virtual void    setXreal   (Float_t x) { xReal = x; }
+
+    virtual void    setYreal   (Float_t y) { yReal = y; }
 
     virtual void    setXreco   (Float_t x) { xReco = x; }
 

@@ -26,30 +26,31 @@
 #
 ######################################################################
 #   CONFIGURATION
-# rotate rich : 097,103,109,115,121.
+# rotate rich : 097,103,109,115,121. 
+# embedding e+,e- 105, 110, 115, 120, 125 
 user=$(whoami)
 currentDir=$(pwd | xargs -i basename {})
 currentDir=../$currentDir
 
 day=108
 
-particle="e+" # e+,e- PLUTO names!
+particle="e-" # pi-,e+,e- PLUTO names!
 
-submmissionbase=/hera/hades/user/${user}/sub/apr12/embedding
+submmissionbase=/hera/hades/user/${user}/sub/apr12/gen8a_embdst
 submissiondir=${submmissionbase}/embedding
  nFilesPerJob=1                                 # number of files to be analyzed by 1 job (default==1)
     jobscript=${submissiondir}/jobScript.sh     # exec script (full path, call without dot, set it executable!)
-    outputdir=/hera/hades/user/${user}/apr12/gen8/embedding/${particle}/${day}     # outputdir for files AND logFiles
+    outputdir=/hera/hades/dst/apr12/gen8a/embedding/${particle}/${day}     # outputdir for files AND logFiles
 pathoutputlog=${outputdir}/out                    # protocol from batch farm for each file
      filename=embedded_dst_${type}               # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
  
-envscript=/cvmfs/hades.gsi.de/install/5.34.01/hydra2-4.9h/defall.sh
+envscript=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9k/defall.sh
 template=au123au.dat
 geompath=${submissiondir}/geom
-hgeant=/cvmfs/hades.gsi.de/install/5.34.01/hgeant2-4.9h/hgeant
-nevents=100
+hgeant=/cvmfs/hades.gsi.de/install/5.34.34/hgeant2-4.9k/hgeant
+nevents=100000
 dstsuffix=_dst_apr12.root
-hldpath=/hera/hades/apr12/$day
+hldpath=/hera/hades/raw/apr12/$day
 par1="no"                                                      # optional par1 : environment script
 par2="no"                                                      # optional par2 : executable
 par3=""                                                        # optional par3 : input file hld
@@ -59,11 +60,13 @@ par6="no"                                                      # optional par5 :
 par7="no"                                                      # optional par7
 
 
-resources="-l h_rt=10:0:0,h_vmem=2G"                           # runtime < 10h, mem < 2GB
-jobarrayFile="gen8_day_${day}_jobarray.dat"
+resources="-P hadeshighprio -l h_rt=22:0:0,h_vmem=2G"                           # runtime < 10h, mem < 2GB
+jobarrayFile="gen8_day_${day}_${particle}_jobarray.dat"
+
+deltaelectronlist=delta_long_1500.list     # contains 1500 files , 100000 evts each delta electrons
 
 
-filelist=${currentDir}/lists/day_${day}_test_10.list  # file list in local dir! not in submissiondir!!!
+filelist=${currentDir}/lists/day_${day}.list  # file list in local dir! not in submissiondir!!!
 
 
 nFiles=$( cat $filelist | wc -l)
@@ -170,6 +173,17 @@ do
 done
 #---------------------------------------------------------------------
 
+#---------------------------------------------------------------------
+# read the delta files list into an array
+declare -a deltaarray
+nDelta=0
+for file in $(cat $deltaelectronlist)
+do
+   deltaarray[$nDelta]=$file
+   ((nDelta+=1))
+done
+#---------------------------------------------------------------------
+
 
 #---------------------------------------------------------------------
 # loop over the job array and submit parts with
@@ -217,10 +231,12 @@ do
      #  SEND NEW JOB (USER SPECIFIC)
      
      par3=${infileList}
-
-         #defall.sh outdir particle dstfile dstsuffix template geompath hgeant nev hldpath
+     ctdelta=0;
+     ((ctdelta=${ctF}%${nDelta}))
+     deltafile=${deltaarray[${ctdelta}]}
+         #defall.sh outdir particle dstfile dstsuffix template geompath hgeant nev hldpath deltaelectronfile
      
-     echo "${envscript} ${outputdir} ${particle} ${par3} ${dstsuffix} ${template} ${geompath} ${hgeant} ${nevents} ${hldpath}" >>  $jobarrayFile
+     echo "${envscript} ${outputdir} ${particle} ${par3} ${dstsuffix} ${template} ${geompath} ${hgeant} ${nevents} ${hldpath} ${deltafile}" >>  $jobarrayFile
      
 
      ######################################################################
@@ -255,7 +271,7 @@ else
         ((stop=$start+$rest))
      fi
 
-      qsub -t ${start}-${stop}  -j y -wd ${submissiondir} ${resources}  -o ${pathoutputlog} ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog}
+      qsub  -t ${start}-${stop}  -j y -wd ${submissiondir} ${resources}  -o ${pathoutputlog} ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog}
 
      ((ctsend+=1))
   done

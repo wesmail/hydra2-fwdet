@@ -238,9 +238,11 @@ Bool_t Hades::init(Bool_t externInit)
 {
     // This function initializes Hades. This includes initialization of the
     // reconstructors, the data source and the detectors.
+
     rtdb->initContainers(fDataSource->getCurrentRunId(),
 			 fDataSource->getCurrentRefId());
     if(!setup->init()) return kFALSE;
+
 
     if(!externInit){
 	fDataSource->setEventAddress(&fCurrentEvent);
@@ -449,9 +451,12 @@ void Hades::setSecondDataSource(HDataSource *dataS)
     // Set second data source (needed e.g. for event merging).
     // Must be a Root source!
     if (dataS != NULL) {
-	if (strcmp(dataS->IsA()->GetName(),"HRootSource") == 0) {
+	if (dataS->InheritsFrom("HRootSource") ) {
 	    fSecondDataSource=dataS;
-	} else { fSecondDataSource = NULL; }
+	} else {
+	    Error("setSecondDataSource()","Second Datasource does not inherit from HRootSource! Ignored!");
+	    fSecondDataSource = NULL;
+	}
     } else { fSecondDataSource = NULL; }
 }
 

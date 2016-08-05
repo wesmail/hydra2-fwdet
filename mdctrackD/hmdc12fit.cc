@@ -88,9 +88,9 @@ void HMdcFittersArray::expand(void) {
 }
 
 HMdcTrackFitter* HMdcFittersArray::getNewFitter(void) {
-  if(nObj==size) expand();
+  if(nObj == size) expand();
   HMdcTrackFitter* fitter = fitterArr[nObj];
-  if(fitter==0) {
+  if(fitter == NULL) {
     if(fitAuthor == 2) fitter = (HMdcTrackFitter*) new HMdcTrackFitterB(fitpar);
     else               fitter = (HMdcTrackFitter*) new HMdcTrackFitterA(fitpar);
     fitterArr[nObj]=fitter;
@@ -147,9 +147,9 @@ void HMdc12Fit::setParContainers(void) {
   useFitted          = kFALSE;
   useFittedTrPar     = kFALSE;
   findOffVertTrk     = kFALSE;
-  nLayersCutOVT      = 7;
-  nWiresCutOVT       = 25;
-  
+  nLayersCutOVT      = 0;
+  nWiresCutOVT       = 0;
+
   // Fake suppression parameters:
   setFakeSupprStep1Par(0, 4,3,4, 8);
   setFakeSupprStep1Par(1, 4,3,5,10);
@@ -238,6 +238,11 @@ Bool_t HMdc12Fit::init(void) {
   fittersArr[1].init(HMdcTrackDSet::getFitAuthor(),&fitpar);
   f34ClFinder  = HMdc34ClFinder::getExObject();
   if(isGeant) pTrackInfSim = HMdcGeantEvent::getMdcTrackInfSim();
+  
+  findOffVertTrk = HMdcTrackDSet::getFindOffVertTrkFlag();
+  nLayersCutOVT  = HMdcTrackDSet::getNLayersCutOVT();
+  nWiresCutOVT   = HMdcTrackDSet::getNWiresCutOVT();
+  
   return kTRUE;
 }
 
@@ -297,7 +302,9 @@ Bool_t HMdc12Fit::testRestOfWires(Int_t sec) {
   Int_t nLay1 = (*pSecListCells)[0].genNumNotFittedLayers(nNFCellsM1);
   Int_t nLay2 = (*pSecListCells)[1].genNumNotFittedLayers(nNFCellsM2);
   if(nLay1 + nLay2 < nLayersCutOVT) return kFALSE;  // 7 ???
-  if(nNFCellsM1 > nWiresCutOVT || nNFCellsM2 > nWiresCutOVT) return kFALSE;
+  //  if(nNFCellsM1 > nWiresCutOVT || nNFCellsM2 > nWiresCutOVT) return kFALSE;
+  if(nNFCellsM1*nNFCellsM2 > nWiresCutOVT*nWiresCutOVT) return kFALSE;
+  fitter = fittersArr[0].getFitter(0);
   if(fitter == NULL) fitter = fittersArr[0].getNewFitter();
 
   HMdcLineParam lineParam;
@@ -335,7 +342,6 @@ Bool_t HMdc12Fit::testRestOfWires(Int_t sec) {
 
   if(!flag) return kFALSE;
   // HMdcTrkCand filling:
-  fitter = fittersArr[0].getFitter(0); // ???
   if(fitter->getSegIndex()<0) return kFALSE;
   HMdcTrkCand* fTrkCand = fillTrkCandISeg();
   if(fTrkCand == NULL) return kFALSE;
@@ -672,7 +678,7 @@ Bool_t HMdc12Fit::fitSeg(HMdcClus* fClst, Int_t arrInd) {
   // fit of one mdc in segment
   fitter = fittersArr[arrInd].getNewFitter();
   if(pTrackInfSim) pTrackInfSim->setWiresArr(&(fitter->getWiresArr()));
-  if(!fitter->setClustAndFill(fClst)) return kFALSE;
+  if(fClst==NULL || !fitter->setClustAndFill(fClst)) return kFALSE;
   fitter->setRegionOfWires();
   isFitted = fitter->fitCluster();
   if(!fillHitSeg) return kTRUE;
@@ -698,7 +704,7 @@ Bool_t HMdc12Fit::fitSeg(HMdcClus* fClst, Int_t arrInd) {
         pSeg->ResetBit(kRealKeep);
         pSecListCells->addToNFittedCounters(0,pSeg);
         pSeg->SetBit(kInFittedList);
-      } else if(pSeg->getNLayers() <= nLayersCutOVT) setFake(pSeg);  // Normal cluster
+      } else if(pSeg->getNLayers() < 7) setFake(pSeg);  // Normal cluster    <= nLayersCutOVT
     }
 
 

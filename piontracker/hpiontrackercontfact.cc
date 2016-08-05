@@ -15,6 +15,8 @@
 #include "hpiontrackertrackfpar.h"
 #include "hpiontrackerbeampar.h"
 #include "hpiontrackercalrunpar.h"
+#include "hpiontrackermomrunpar.h"
+#include "hpiontrackermompar.h"
 #include "hpiontrackergeompar.h"
 
 ClassImp(HPionTrackerContFact)
@@ -60,6 +62,15 @@ void HPionTrackerContFact::setAllContainers() {
     new HContainer("PionTrackerCalRunPar",
                    "Run by Run cal parameters of the PionTracker",
                    "PionTrackerCalRunParProduction"));
+  containers->Add(
+    new HContainer("PionTrackerMomPar",
+                   "Mom calibration parameters of the PionTracker",
+                   "PionTrackerMomParProduction"));
+
+  containers->Add(
+    new HContainer("PionTrackerMomRunPar",
+                   "Run by Run mom parameters of the PionTracker",
+                   "PionTrackerMomRunParProduction"));
 }
 
 HParSet* HPionTrackerContFact::createContainer(HContainer* c) {
@@ -79,6 +90,10 @@ HParSet* HPionTrackerContFact::createContainer(HContainer* c) {
       return new HPionTrackerBeamPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
    if (0 == strncmp(name, "PionTrackerCalRunPar", strlen("PionTrackerCalRunPar")))
       return new HPionTrackerCalRunPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
+   if (0 == strncmp(name, "PionTrackerMomRunPar", strlen("PionTrackerMomRunPar")))
+      return new HPionTrackerMomRunPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
+   if (0 == strncmp(name, "PionTrackerMomPar", strlen("PionTrackerMomPar")))
+      return new HPionTrackerMomPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
    if (0 == strncmp(name, "PionTrackerGeomPar", strlen("PionTrackerGeomPar")))
       return new HPionTrackerGeomPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
    return 0;

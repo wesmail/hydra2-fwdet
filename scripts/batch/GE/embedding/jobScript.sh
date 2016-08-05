@@ -82,6 +82,7 @@ esac
     par8=$(echo $input | cut -d " " -f8)
     par9=$(echo $input | cut -d " " -f9)
     par10=$(echo $input | cut -d " " -f10)
+    par11=$(echo $input | cut -d " " -f11)
 
     format='+%Y/%m/%d-%H:%M:%S'
 
@@ -111,6 +112,7 @@ esac
     echo "par8 = ${par8}"
     echo "par9 = ${par9}"
     echo "par10 = ${par10}"
+    echo "par11 = ${par11}"
     echo "--------------------------------"
     echo ""
 
@@ -152,6 +154,7 @@ geompath=${par7}
 hgeant=${par8}
 nevents=${par9}
 hldpath=${par10}
+deltaelectronfile=${par11}
 #----------------------
 # evironment 
   echo "==> running enironment script ${envscript}"
@@ -222,23 +225,24 @@ fi
 
 #---------------------------------------------
 # we have to collect all split files
-geantlist=${outdir}/geant/${geantfile}1.root
-splitname=$(echo $geantlist | sed 's/.root$//')
-files=$(ls -1 ${splitname}_*.root)
-
-for item in $files
-do
-    geantlist="${geantlist},${item}"
-done
+#geantlist=${outdir}/geant/${geantfile}1.root
+#splitname=$(echo $geantlist | sed 's/.root$//')
+#files=$(ls -1 ${splitname}_*.root)
+#
+#for item in $files
+#do
+#    geantlist="${geantlist},${item}"
+#done
 #---------------------------------------------
 
+geantlist=${outdir}/geant/${geantfile}1.root
 
 if [ $doDST -eq 1 ]
 then
 
   echo "==> execute embedding dst "
-  echo ./analysisDST_embedding ${hldpath}/${hldfile} ${geantlist} ${outdir}/dst 1000000 0
-./analysisDST_embedding ${hldpath}/${hldfile} ${geantlist} ${outdir}/dst 1000000 0
+  echo ./analysisDST_embedding ${hldpath}/${hldfile} ${geantlist},${deltaelectronfile} ${outdir}/dst ${nevents} 0
+./analysisDST_embedding ${hldpath}/${hldfile} ${geantlist},${deltaelectronfile} ${outdir}/dst ${nevents} 0
 
   status=$?
 

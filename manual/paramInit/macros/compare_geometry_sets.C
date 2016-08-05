@@ -1,6 +1,6 @@
 {
   TString configFile1="apr12sim_from_oracle.dat";
-  TString configFile2="apr12sim_from_files.dat.dat";        
+  TString configFile2="apr12sim_from_files.dat";        
 
   HGeomInterface* interface1=new HGeomInterface;
   HGeomOra2Io* oraInput=new HGeomOra2Io;

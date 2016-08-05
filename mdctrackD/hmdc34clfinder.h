@@ -24,11 +24,10 @@ class HMdcClFnStacksArr;
 class HMdcClustersArrs;
 class HMdcCluster;
 class HMdcDriftTimeParSec;
-class HMdcSizesCellsSec;
 class HMdcSizesCellsLayer;
 class HMdcClusMetaMatch;
 class HMdcTrackParam;
-
+class HMdcKickCor;
 
 //-------Project Plot------------------------------
 class HMdcProjPlot : public HMdcPlane {
@@ -96,6 +95,7 @@ class HMdc34ClFinderLayer: public TObject {
   public:
     UChar_t  module;             // For diagnostic print is used only
     UChar_t  layer;              // For diagnostic print is used only
+    HMdcSizesCellsLayer *pSCLay;
 
     // Projection of wire (one for all wires in layer):
     HMdcLayListCells* cells;     // list of fired wires
@@ -110,9 +110,10 @@ class HMdc34ClFinderLayer: public TObject {
     Double_t tgY;                // (y1-y2)/(x1-x2) one for all cells
     Double_t tgZ;                // (z1-z2)/(x1-x2) one for all cells
     Double_t y0[2];              // If x,y,z - point on the kick plane, then:
-    Double_t z0[2];              // y'=tgY*x+nCell*yStep+y0[n] n=0 left rib
-    Double_t yStep;              //          (nearest to tag)
-    Double_t zStep;              // z'=tgZ*x+nCell*zStep+z0[n] n=1 right rib
+    Double_t z0[2];              // y'=tgY*x+nCell*yStep+y0[n] n=0 left rib (nearest to tag)
+                                 // z'=tgZ*x+nCell*zStep+z0[n] n=1 right rib
+    Double_t yStep;              //
+    Double_t zStep;              //
     Int_t    nPSegOnKick[2][2];  // first index [0]-up rib; [1]-down rib;
                                  // second index [0]-left rib; [1]-right rib;
     Double_t maxDrDist;          // max. drift distance
@@ -121,6 +122,9 @@ class HMdc34ClFinderLayer: public TObject {
     Double_t xWirDir;            // Wire vector (not nomalized)
     Double_t yWirDir;            //
     Double_t zWirDir;            //
+    
+    // For MdcKickCor:
+    Double_t yCross;             // For MDCIV is filled and used only!
     
     // Parameters of layer second part:
     UChar_t              layerPart;     // layer part numer (0,1,...)
@@ -283,6 +287,8 @@ class HMdc34ClFinderSec : public TObject {
     Int_t                 wBin;             // weight of bins number in cluster
     Int_t                 wLay;             // weight of cluster amplitude
     Int_t                 dWtCut;           // cut
+    
+    HMdcKickCor          *pKickCor;
 
   protected:
     HMdc34ClFinderSec(void) : cFLayArr(NULL) {}
@@ -310,6 +316,7 @@ class HMdc34ClFinderSec : public TObject {
     void     calcYbinDrTm(Double_t dDCutYCellCorr);
     void     setArrays(Int_t lay);
     void     calcDriftDist(void);
+    Double_t calcKickCor(void);
     void     removeGhosts(void);
     void     checkMetaMatch(void);
     void     setFirstLayerPart(Int_t c);
@@ -325,7 +332,7 @@ class HMdc34ClFinderSec : public TObject {
     void     clear(void);
     void     setMinBin(Int_t *mBin);
     Bool_t   notEnoughWires(void) const            {return notEnoughWrs;}
-    Int_t    findClustersSeg2(HMdcSeg* fSeg,HMdcClus* pClus,Int_t *mBin=0);
+//    Int_t    findClustersSeg2(HMdcSeg* fSeg,HMdcClus* pClus,Int_t *mBin=0);
     Int_t    findClustersSeg2(HMdcClus* pClus,Int_t *mBin=0);
     Int_t    findClustersSeg2(HMdcTrackParam *tSeg1, HMdcClus* pClus,Int_t *mBin=0);
     TH2C*    getPlot(Char_t* name,Char_t* title,Int_t ver=0);
@@ -351,11 +358,13 @@ class HMdc34ClFinderSec : public TObject {
     void     setClFnStack(HMdcClFnStack* pst)      {stack       = pst;}
     void     setClFnStArr(HMdcClFnStacksArr* psa)  {stacksArr   = psa;}
     Int_t    mdcFlag(Int_t m)                      {return lMods[m];}
-    void     doMetaMatch(HMdcClusMetaMatch* pMM)   {pMetaMatch = pMM;}
+    void     doMetaMatch(HMdcClusMetaMatch* pMM)   {pMetaMatch  = pMM;}
     Bool_t   setDxDyCut(TCutG* cutR);
     void     setFakeSupprFlag(Char_t fl)           {fakeSuppFlag = fl;}
     void     resetCounter(void)                    {} //nClsArr = 0;}
-       
+
+     void    setKickCorr(HMdcKickCor *p)           {pKickCor     = p;}
+           
     ClassDef(HMdc34ClFinderSec,0)
 };
 
@@ -379,6 +388,9 @@ class HMdc34ClFinder : public HParSet {
     
     TCutG                  cutDxDyArr[36];  // 36 regions of cut
     Bool_t                 useDxDyCut;      //
+    
+    Bool_t                 useKickCor;      // kTRUE - use correction from HMdcKickCor class
+    HMdcKickCor           *pKickCor;
     
   public:
     static HMdc34ClFinder* getExObject(void);

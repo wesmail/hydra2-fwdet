@@ -452,6 +452,7 @@ void HMdcWireData::fillWireFitCont(HMdcWireFit* fWireFit) const {
   fWireFit->setTdcTimeErr(errTdcTime);
   fWireFit->setWeight((hitStatus==1) ? weight:0.);
   fWireFit->setIsUsedFlag(useInFit);
+  fWireFit->setToT(fMdcCal1->getNHits()==2 ? fMdcCal1->getTime2()-fMdcCal1->getTime1() : 0.);
 }
 
 void HMdcWireData::fillWireFitSimCont(HMdcWireFit* fWireFit,
@@ -1156,13 +1157,32 @@ void HMdcWiresArr::fillClusFitAndWireFit(HMdcClusFit* fClusFit) {
   Int_t nLayers=0;
   for(Int_t m=firstMod;m<=lastMod;m++) nLayers += lOutputCells.getNLayersMod(m);
   fClusFit->setNumOfLayers(nLayers);
-  Int_t indFirstWireFit=-1;
-  Int_t indLastWireFit=-1;
+  Int_t   indFirstWireFit = -1;
+  Int_t   indLastWireFit  = -1;
   
+  Int_t   indLayer = -1;
+  Int_t   firstCell,lastCell;
+  Float_t firstCellPath,midCellPath,lastCellPath;
   for(HMdcWireData* w=firstWire;w<=lastWire;w++) {
     if(w->getHitStatus() == 0) continue;
     HMdcWireFit *fWireFit=fitInOut->getNewWireFitSlot(&indLastWireFit);
-    if(!fWireFit) break;
+    if(fWireFit == NULL) break;
+    Int_t indl = w->getSector()*100 + w->getModule()*10 + w->getLayer();
+    if(indl != indLayer) {
+      indLayer = indl;
+      HMdcSizesCellsLayer *fSCLay = w->getSCLayer();
+      if( !fSCLay->calcCrossedCells(fClusFit->getX1(),fClusFit->getY1(),fClusFit->getZ1(),
+                                    fClusFit->getX2(),fClusFit->getY2(),fClusFit->getZ2(),
+          firstCell,lastCell,firstCellPath,midCellPath,lastCellPath) ) firstCell = lastCell = -1;
+    }
+    Int_t c = w->getCell();
+    Float_t path = -1.;
+    if(c >= firstCell && c <= lastCell) {
+      if     (c == firstCell) path = firstCellPath;
+      else if(c == lastCell)  path = lastCellPath;
+      else                    path = midCellPath;
+    }
+    fWireFit->setCellPath(path);
     if(indFirstWireFit<0) indFirstWireFit=indLastWireFit;
     w->fillWireFitCont(fWireFit);
     if(fClusFit->isGeant()) w->fillWireFitSimCont(fWireFit,
@@ -2205,23 +2225,27 @@ Int_t HMdcWiresArr::testRestForTrack(Int_t sec,HMdcLineParam &lineParam,
   
   listCells.clear();
   Int_t nLaysBest  = 0; 
-  Int_t nCellsBest = 0; 
+  Int_t nCellsBest = 0;
   
-  HMdcSizesCellsSec &pSCSec = (*HMdcSizesCells::getExObject())[sec];
+  HMdcSizesCellsSec &pSCSec   = (*HMdcSizesCells::getExObject())[sec];
+//  const HGeomVector &targMPnt = pSCSec.getTargetMiddlePoint();
   HMdcSecListCells &pSListCells = (*event)[sec];
 //  HMdcSizesCellsMod **fSCModAr = fitInOut->getSCellsModArr(sec);
+  Double_t zTarget = pSCSec.getTargetMiddlePoint().getZ();
    
-Int_t mod1 = 0;
-Int_t mod2 = 0;
-Int_t mod3 = 1;
-Int_t mod4 = 1;
+  Int_t mod1 = 0;
+  Int_t mod2 = 0;
+  Int_t mod3 = 1;
+  Int_t mod4 = 1;
   
+  Int_t wind = HMdcTrackDSet::getNCellsCutOVT();
+        
   HMdcLineParam tmpLineParam;
-  tmpLineParam.setFirstPlane (&(pSCSec[mod1][0]));                                                                              
-  tmpLineParam.setSecondPlane(&(pSCSec[mod4][5])); 
-//   tmpLineParam.setFirstPlane (&((*(fSCModAr[0]))[0]));                                                                              
-//   tmpLineParam.setSecondPlane(&((*(fSCModAr[1]))[5]));                                                                   
-  tmpLineParam.setCoorSys(sec); 
+  tmpLineParam.setFirstPlane (&(pSCSec[mod1][0]));
+  tmpLineParam.setSecondPlane(&(pSCSec[mod4][5]));
+//   tmpLineParam.setFirstPlane (&((*(fSCModAr[0]))[0]));
+//   tmpLineParam.setSecondPlane(&((*(fSCModAr[1]))[5]));
+  tmpLineParam.setCoorSys(sec);
   HMdcList12GroupCells tmpListCells;
     
   Int_t lay1,lay2,lay3,lay4;
@@ -2232,32 +2256,68 @@ Int_t mod4 = 1;
     HMdcLayListCells &pLay2list   = pSListCells[mod2][lay2]; 
     HMdcLayListCells &pLay3list   = pSListCells[mod3][lay3]; 
     HMdcLayListCells &pLay4list   = pSListCells[mod4][lay4];
+
     if(pLay1list.getNumNotFitted() == 0) continue;
     if(pLay2list.getNumNotFitted() == 0) continue;
     if(pLay3list.getNumNotFitted() == 0) continue;
     if(pLay4list.getNumNotFitted() == 0) continue;
 
-    Int_t cell1 = -1;
-    while( pLay1list.nextNonFittedCell(cell1) ) {
+    Double_t tY2[4],tY3[4],tY4[4];
+    pSCSec[mod2][lay2].getPntToCell(tY2);
+    pSCSec[mod3][lay3].getPntToCell(tY3);
+    pSCSec[mod4][lay4].getPntToCell(tY4);
+    
+    Double_t parA = pSCSec[mod3][lay3].A();  // Parmeters of a layer plane in MDCII
+    Double_t parB = pSCSec[mod3][lay3].B();
+    Double_t parD = pSCSec[mod3][lay3].D();
+    
+    Int_t cell1 = 1000;
+    while( pLay1list.previousNonFittedCell(cell1) ) {
       HMdcSizesCellsCell &scell1 = pSCSec[mod1][lay1][cell1];
-      HGeomVector &p1 = scell1.getWirePnt1();
-      HGeomVector &pe = scell1.getWirePnt2();
-      HGeomVector  v1 = pe - p1;
+      HGeomVector &p1  = scell1.getWirePnt1();
+      HGeomVector &pe1 = scell1.getWirePnt2();
+      HGeomVector  v1  = pe1 - p1;
 
-      Int_t cell2 = -1;
-      while( pLay2list.nextNonFittedCell(cell2) ) {
+      // Calculate cells region in [mod2][lay2]:
+      Int_t c1 = tY2[0]*p1.X()  + tY2[1]*p1.Y()  + tY2[2]*p1.Z()  + tY2[3];
+      Int_t c2 = tY2[0]*pe1.X() + tY2[1]*pe1.Y() + tY2[2]*pe1.Z() + tY2[3];
+      if(c1 > c2) std::swap(c1,c2);
+      
+      Int_t cell2 = c2+1;
+      while( pLay2list.previousNonFittedCell(cell2) && cell2>=c1 ) {
         HMdcSizesCellsCell &scell2 = pSCSec[mod2][lay2][cell2];
-        HGeomVector &p2 = scell2.getWirePnt1();
-        HGeomVector &pe = scell2.getWirePnt2();
-        HGeomVector  v2 = pe - p2;
-        HGeomVector P21(p2 - p1);
+        HGeomVector &p2  = scell2.getWirePnt1();
+        HGeomVector &pe2 = scell2.getWirePnt2();
+        HGeomVector  v2 = pe2 - p2;
 
-        Int_t cell3 = -1;
-        while( pLay3list.nextNonFittedCell(cell3) ) {
+        HGeomVector P21(p2 - p1);
+        
+        // Calc. of 2 wires cross on X-Y plane
+        Double_t a1  = (p1.Y() - pe1.Y())/(p1.X() - pe1.X());
+        Double_t b1  =  p1.Y() - a1*p1.X();
+        Double_t a2  = (p2.Y() - pe2.Y())/(p2.X() - pe2.X());
+        Double_t b2  =  p2.Y() - a2*p2.X();
+        
+        
+        Double_t x   = -(b1-b2)/(a1-a2);
+        Double_t y   = a1*x+b1;  //= -a1*(b1-b2)/(a1-a2)+b1 = (a1*b2 - b1*a2)/(a1-a2);
+        Double_t z   = pSCSec[mod2][lay2].getZOnPlane(x,y);
+        
+        Double_t del = 1/(parA*x+parB*y+z-zTarget);
+        Double_t xc  = x*(parD-zTarget)*del;
+        Double_t yc  = y*(parD-zTarget)*del;
+        Double_t zc  = parD-parA*xc-parB*yc;
+
+        Int_t crC3   = tY3[0]*xc  + tY3[1]*yc  + tY3[2]*zc  + tY3[3];
+        Int_t cell3e = crC3+wind;
+        Int_t cell3m = crC3-wind;
+        
+        Int_t cell3  = cell3e+1;
+        while( pLay3list.previousNonFittedCell(cell3) && cell3>=cell3m ) {
           HMdcSizesCellsCell &scell3 = pSCSec[mod3][lay3][cell3];
-          HGeomVector &p3 = scell3.getWirePnt1();
-          HGeomVector &pe = scell3.getWirePnt2();
-          HGeomVector v3 = pe - p3;
+          HGeomVector &p3  = scell3.getWirePnt1();
+          HGeomVector &pe3 = scell3.getWirePnt2();
+          HGeomVector v3 = pe3 - p3;
           HGeomVector P31(p3 - p1);
           HGeomVector V13(v1.vectorProduct(v3));
           HGeomVector V23(v2.vectorProduct(v3));
@@ -2265,13 +2325,18 @@ Int_t mod4 = 1;
           Double_t D1 = (p2 - p3).scalarProduct(V13);
           Double_t F1 = v3.scalarProduct(P31.vectorProduct(P21));
           Double_t E1 = P31.scalarProduct(V23);
+          
+          // Calculate cells region in [mod4][lay4]:
+          Int_t c3 = tY4[0]*p3.X()  + tY4[1]*p3.Y()  + tY4[2]*p3.Z()  + tY4[3];
+          Int_t c4 = tY4[0]*pe3.X() + tY4[1]*pe3.Y() + tY4[2]*pe3.Z() + tY4[3];
+          if(c3 > c4) std::swap(c3,c4);
 
-          Int_t cell4 = -1;
-          while( pLay4list.nextNonFittedCell(cell4) ) {
+          Int_t cell4 = c4+1;
+          while( pLay4list.previousNonFittedCell(cell4) && cell4>=c3 ) {
             HMdcSizesCellsCell &scell4 = pSCSec[mod4][lay4][cell4];
-            HGeomVector &p4 = scell4.getWirePnt1();
-            HGeomVector &pe = scell4.getWirePnt2();
-            HGeomVector v4 = pe - p4;
+            HGeomVector &p4  = scell4.getWirePnt1();
+            HGeomVector &pe4 = scell4.getWirePnt2();
+            HGeomVector v4 = pe4 - p4;
             HGeomVector P41(p4 - p1);
             HGeomVector V14(v1.vectorProduct(v4));
             HGeomVector V24(v2.vectorProduct(v4));
@@ -2334,7 +2399,8 @@ Int_t mod4 = 1;
             nLaysBest  = nLays; 
             nCellsBest = listCells.getNCells();
             lineParam  = tmpLineParam;
-            if(nLayersMax==nLaysBest && nCellsBest+1 >= nWiresMax) return nLaysBest; // ????????????
+            //  if(nLayersMax==nLaysBest && nCellsBest+1 >= nWiresMax) return nLaysBest; // Old version.
+            if(nLayersMax==nLaysBest) return nLaysBest; // ????????????
           }
         }
       }

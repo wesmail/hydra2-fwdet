@@ -4,6 +4,7 @@
 #include "PParticle.h"
 #include "PChannel.h"
 #include "PReaction.h"
+#include "PHGeantOutput.h"
 #include "TRandom.h"
 #include "TROOT.h"
 #include "TString.h"
@@ -128,6 +129,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
     if(type.CompareTo("phiKK") == 0)
     {
         T1 = 0.080;
+        //T1 = 0.100; // for comparison
 	PFireball *source = new PFireball("phi",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
 	source->setTrueThermal(kTRUE);
 	source->Print();
@@ -154,6 +156,24 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->Print();
 
 	PParticle *K0S=new PParticle("p");
+	PParticle *K0Ss[]={source,K0S};
+	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
+	PChannel  *cc[]  = {K0Sc};
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // 1 particle in the final state
+    }
+
+    if(type.CompareTo("d")   == 0){
+	T1 = 0.070;
+	T2 = 0.0;
+	fractionT1 = 1.;
+	anisoA2    = 0.;
+	anisoA4    = 0.;
+	blast      = 0.36;
+	PFireball *source = new PFireball("d",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
+	source->setTrueThermal(kTRUE);
+	source->Print();
+
+	PParticle *K0S=new PParticle("d");
 	PParticle *K0Ss[]={source,K0S};
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
 	PChannel  *cc[]  = {K0Sc};
@@ -317,7 +337,13 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  *cc[] = {c1,c2,c3};
 	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,0,0,0,1);
     }
-
+    /*
+    PHGeantOutput* output;
+    output = new PHGeantOutput();
+    output->SetWriteSeqNumber(1);
+    output->OpenFile(Form("%s/%s.evt",outdir.Data(),outfile.Data()));
+    r->AddFileOutput(output);
+    */
     if(doFilter){
 	if(type.CompareTo("lambda")   != 0 &&
 	   type.CompareTo("Xi-")      != 0 &&
@@ -326,6 +352,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
            type.CompareTo("K0S")      != 0 &&
 	   type.CompareTo("phiKK")    != 0 &&
 	   type.CompareTo("p")        != 0 &&
+	   type.CompareTo("d")        != 0 &&
 	   type.CompareTo("pi-")      != 0 &&
 	   type.CompareTo("pi+")      != 0
 	  )
@@ -346,7 +373,8 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
     }
 
     r->setHGeant(0);   // set to 1, if PLUTO run from HGeant prompt
+    //r->Preheating(10000);
     r->loop(nEvents);
-
+//    output->CloseFile();
     return 0;
 }

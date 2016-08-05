@@ -30,36 +30,6 @@ HKalDafWire::HKalDafWire(Int_t n, Int_t measDim, Int_t stateDim,
 //  Implementation of protected methods
 //  -----------------------------------
 
-Bool_t HKalDafWire::calcEffErrMat(Int_t iSite) const {
-    // Calculates an effective measurement error matrix from the measurement
-    // errors of all hits in this site.
-    // Used for the annealing filter.
-    // Effective measurement error covariance:
-    // V = [ sum(p_i * G_i) ]^-1
-    // p_i: weight of hit i
-    // G_i: inverse measurement error matrix of hit i
-
-    HKalTrackSite *site = getSite(iSite);
-    if(!site) {
-	return kFALSE;
-    }
-
-    TMatrixD effErrMat(getMeasDim(), getMeasDim());
-    Double_t lmt = 100. * numeric_limits<Double_t>::epsilon();
-    // Calculate the weighted mean of the inverse measurement error covariances.
-    for(Int_t i = 0; i < site->getNcompetitors(); i++) {
-        Double_t w = site->getHitWeight(i);
-        if(w < lmt) w = 1.e-10; // avoid numerical problems due to inversion.
-        effErrMat += w * TMatrixD(TMatrixD::kInverted, site->getErrMat(i));
-    }
-    Double_t det = 0.;
-    effErrMat.Invert(&det);
-
-    site->setEffErrMat(effErrMat);
-
-    return kTRUE;
-}
-
 Bool_t HKalDafWire::calcEffMeasVec(Int_t iSite) const {
     // Calculates an effective measurement vector from the measurement
     // of all hits in this site and the effective measurement error matrix.
@@ -89,8 +59,8 @@ Bool_t HKalDafWire::calcEffMeasVec(Int_t iSite) const {
     const TVector3 &c = site->getHitVirtPlane().getCenter();
 
     TVector3 trkDir;
-    // Need to use the predicted track values. The effective measurement is calculated
-    // before the filter step.
+    // Need to use the predicted track values. The effective measurement is
+    // calculated before the filter step.
     site->getState(Kalman::kPredicted).calcDir(trkDir);
 
     const TVector3 &projVec = site->getHitVirtPlane().getAxisV();
@@ -105,12 +75,16 @@ Bool_t HKalDafWire::calcEffMeasVec(Int_t iSite) const {
 
     for(Int_t i = 0; i < n; i++) {
         site->getHitWirePts(w1, w2, i);
-        driftCentShift(0) = projVec.Dot(w1 - c);
-        effMeasVec += site->getHitWeight(i) * TMatrixD(TMatrixD::kInverted, site->getErrMat(i)) *
-            (driftCentShift + getEffMeasVecSign(driftCentShift) * site->getHitVec(i));
+	driftCentShift(0) = projVec.Dot(w1 - c);
+        //cout<<driftCentShift(0)<<", "<<site->getHitVec(i)[0]<<endl;
+	effMeasVec += site->getHitWeight(i) *
+	    TMatrixD(TMatrixD::kInverted, site->getErrMat(i)) *
+            (driftCentShift - site->getHitVec(i));
 
 #if dafDebug > 2
-        cout<<"Weight of hit "<<i<<": "<<site->getHitWeight(i)<<", drift centre shift "<<driftCentShift(0)<<", drift radius "<<(getHitVec(i))(0)<<endl;
+	cout<<"Weight of hit "<<i<<": "<<site->getHitWeight(i)
+	    <<", drift centre shift "<<driftCentShift(0)
+	    <<", drift radius "<<(site->getHitVec(i))(0)<<endl;
 #endif
     }
     effMeasVec = effErrMat * effMeasVec;
@@ -201,14 +175,20 @@ Bool_t HKalDafWire::calcVirtPlane(Int_t iSite) const {
     // Ensure v axis of virtual layer points in direction of positive y-axis
     // in the layer coordinate system.
     const TVector3 &n = site->getHitMeasLayer().getNormal();
-    TVector3 y = u.Cross(n);
 
-    if(wire1.Dot(y) < 0.) {
-	y *= -1.;
-    }
+    HMdcSizesCells *fSizesCells = HMdcSizesCells::getExObject();
+    HMdcSizesCellsLayer &fSizesCellsLayer =
+	(*fSizesCells)[site->getSector()][site->getModule()][site->getLayer()];
+    const HGeomTransform &transRotLaySysRSec =
+	fSizesCellsLayer.getRotLaySysRSec(site->getCell());
 
-    if((pcaTrack - pcaWire).Dot(y) < 0.) {
-        v = -1. * v;
+    HGeomVector ygeom(0., 1., 0.);
+    transRotLaySysRSec.transFrom(ygeom);
+
+    TVector3 y(ygeom.getX(), ygeom.getY(), ygeom.getZ());
+
+    if(y.Dot(v) < 0.) {
+//        v = -1. * v;
     }
 
     // Repeating the above for all competitors of a site would result in
@@ -259,24 +239,21 @@ Bool_t HKalDafWire::calcVirtPlane(Int_t iSite) const {
     return kTRUE;
 }
 
-Double_t HKalDafWire::getEffMeasVecSign(const TVectorD &driftCentShift) const {
-    // Overrides the method of mother class.
-    // The drift distance vector and the PCA no longer have
-    // have to be on the same side of the sense wire.
-    return 1.;
-}
-
 //  --------------------------------
 //  Implementation of public methods
 //  --------------------------------
 
-Bool_t HKalDafWire::calcMeasVecFromState(TVectorD &projMeasVec, HKalTrackSite const* const site,
-					 Kalman::kalFilterTypes stateType, Kalman::coordSys sys,
+Bool_t HKalDafWire::calcMeasVecFromState(TVectorD &projMeasVec,
+					 HKalTrackSite const* const site,
+					 Kalman::kalFilterTypes stateType,
+					 Kalman::coordSys sys,
 					 Int_t iHit) const {
 #if kalDebug > 0
     Int_t mdim = getMeasDim();
     if(projMeasVec.GetNrows() != mdim) {
-        Warning("calcMeasVecFromState()", Form("Dimension of measurement vector (%i) does not match that of function parameter (%i).", mdim, projMeasVec.GetNrows()));
+	Warning("calcMeasVecFromState()",
+		Form("Dimension of measurement vector (%i) does not match that of function parameter (%i).",
+		     mdim, projMeasVec.GetNrows()));
         projMeasVec.ResizeTo(mdim);
     }
 #endif
@@ -292,34 +269,18 @@ Bool_t HKalDafWire::calcMeasVecFromState(TVectorD &projMeasVec, HKalTrackSite co
 	TVector3 posAt;
 	if(!HKalTrackState::calcPosAtPlane(posAt, site->getHitVirtPlane(), sv)) {
 	    if(getPrintErr()) {
-		Error("calcMeasVecFromState()", "Could not extract position vector from track state.");
+		Error("calcMeasVecFromState()",
+		      "Could not extract position vector from track state.");
 	    }
 	    return kFALSE;
 	}
 	TVector3 dir;
         HKalTrackState::calcDir(dir, sv);
 
-        // Get Minimum distance.
-	Double_t mindist, alpha;
-	Int_t s = site->getSector();
-	Int_t m = site->getModule();
-	Int_t l = site->getLayer();
-	Int_t c = site->getCell(iHit);
-        getImpact(alpha, mindist, posAt, dir, s, m, l, c);
-        if(mindist < 0.) {
-            if(getPrintErr()) {
-                Error("calcMeasVecFromState()", "Track2ToLine() returned negative minimum distance.");
-            }
-            mindist = 0.;
-            return kFALSE;
-        }
-
-        // --------------------
-
         // Determine sign of minimum distance.
-        // The minimum distance is negative if the PCA of the track to the sense wire
-        // and the origin of the coordinate system are on the same side of the MDC
-        // layer.
+        // The minimum distance is negative if the PCA of the track to the
+        // sense wire and the origin of the coordinate system are on the same
+        // side of the MDC layer.
 
         // Assume straight line for PCA calculation.
         TVector3 pos2 = posAt + 0.5 * dir;
@@ -344,21 +305,8 @@ Bool_t HKalDafWire::calcMeasVecFromState(TVectorD &projMeasVec, HKalTrackSite co
 
         // --------------------
 
-        projMeasVec(0) = dist;
-/*
-        if(Iflag == 1) {
-            if(getPrintErr()) {
-                Error("calcMeasVecFromState()", "Track is outside of MDC.");
-            }
-            return kFALSE;
-        }
-        if(Iflag == 2) {
-            if(getPrintErr()) {
-                Error("calcMeasVecFromState()", "Track is parallel to wire.");
-            }
-            return kFALSE;
-            }
-            */
+	Double_t driftCentShift = site->getHitVirtPlane().getAxisV().Dot(wire1 - site->getHitVirtPlane().getCenter());
+        projMeasVec(0) = driftCentShift - dist;
     } else {
 	// State vector is in virtual layer coordinates.
 	// The second component corresponds to a drift radius.
@@ -378,30 +326,11 @@ Bool_t HKalDafWire::filter(Int_t iSite) {
 	return kFALSE;
     }
 
-    Double_t dist    = 0.;
-    Double_t distErr = 0.;
-    Double_t alpha   = 0.;
-    for(Int_t iHit = 0; iHit < site->getNcompetitors(); iHit++) {
-	if(calcDriftDist(dist, distErr, alpha, iSite, iHit)) {
-	    // Store drift radius as the "measurement" vector that is used for filtering.
-            TVectorD driftDist(1);
-            // Left/right ambiguity.
-            if(site->getHitDriftTime(iHit) < 0.) {
-                dist *= -1.;
-            }
-	    driftDist[0] = dist;
-	    TVectorD driftDistErr(1);
-	    driftDistErr[0] = distErr;
-	    site->setHitAndErr(driftDist, driftDistErr, iHit);
-	    site->setHitImpactAngle(alpha, iHit);
-	} else {
-	    return kFALSE;
-	}
-    }
-
     if(!calcEffMeasVec(iSite)) {
         if(getPrintErr()) {
-            Error("filter()", Form("Could not calculate effective measurement for site %i.", iSite));
+	    Error("filter()",
+		  Form("Could not calculate effective measurement for site %i.",
+		       iSite));
         }
         return kFALSE;
     }
@@ -427,9 +356,10 @@ Bool_t HKalDafWire::filter(Int_t iSite) {
         break;
     }
 
-    // Filtering wire hits is done in the coordinate system of the virtual layer.
-    // Convert the results to sector system.
-    site->transVirtLayToSec(Kalman::kFiltered, (getFilterMethod() == Kalman::kKalUD));
+    // Filtering wire hits is done in the coordinate system of the virtual
+    // layer. Convert the results to sector system.
+    site->transVirtLayToSec(Kalman::kFiltered,
+			    (getFilterMethod() == Kalman::kKalUD));
 
     return kTRUE;
 }
@@ -455,27 +385,10 @@ Bool_t HKalDafWire::propagate(Int_t iFromSite, Int_t iToSite) {
         propagateCovConv(iFromSite, iToSite);
     }
 
-    getSite(iToSite)->transSecToVirtLay(Kalman::kPredicted, (getFilterMethod() == Kalman::kKalUD));
+    getSite(iToSite)->transSecToVirtLay(Kalman::kPredicted,
+					(getFilterMethod() == Kalman::kKalUD));
 
     return kTRUE;
-}
-
-TMatrixD const& HKalDafWire::getHitErrMat(HKalTrackSite* const site) const {
-    // Returns the effective measurement error of site.
-    //
-    // Input:
-    // site: measurement site.
-
-    return site->getEffErrMat();
-}
-
-TVectorD const& HKalDafWire::getHitVec(HKalTrackSite* const site) const {
-    // Returns the effective measurement vector of measurement site.
-    //
-    // Input:
-    // site: measurement site.
-
-    return site->getEffMeasVec();
 }
 
 void HKalDafWire::updateSites(const TObjArray &hits) {
@@ -493,7 +406,9 @@ void HKalDafWire::updateSites(const TObjArray &hits) {
     while(iHit < hits.GetEntries() - 1) {
 #if kalDebug > 0
         if(!hits.At(iHit)->InheritsFrom("HKalMdcHit")) {
-            Error("updateSites()", Form("Object at index %i in hits array is of class %s. Expected class is HKalMdcHit.", iHit, hits.At(iHit)->ClassName()));
+	    Error("updateSites()",
+		  Form("Object at index %i in hits array is of class %s. Expected class is HKalMdcHit.",
+		       iHit, hits.At(iHit)->ClassName()));
             exit(1);
         }
 #endif
@@ -525,7 +440,8 @@ void HKalDafWire::updateSites(const TObjArray &hits) {
     getSite(iSite)->addHit(lastHit);
 
     HKalMdcHit *hit2    = new HKalMdcHit(*lastHit);
-    hit2->setDriftTime(lastHit->getDriftTime() * (-1.), lastHit->getDriftTimeErr());
+    hit2->setDriftTime(lastHit->getDriftTime() * (-1.),
+		       lastHit->getDriftTimeErr());
     Double_t w = lastHit->getWeight();
     lastHit->setWeight(w / 2.);
     hit2   ->setWeight(w / 2.);

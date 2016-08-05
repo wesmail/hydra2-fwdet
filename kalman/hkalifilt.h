@@ -187,13 +187,18 @@ public:
 
     virtual Int_t               getNiter        () const           { return nKalRuns; }
 
+    virtual Int_t               getNmaxSites    () const           { return nMaxSites; }
+
     virtual Int_t               getNsites       () const           { return nSites; }
 
     virtual Int_t               getPid          () const           { return pid; }
 
     virtual TObjArray const&    getPointsTrack  () const           { return pointsTrack; }
 
+    virtual const HKalRungeKutta* getTrackPropagator()  const      { return &trackPropagator; }
+
     virtual inline HKalTrackSite* getSite       (UInt_t site) const {
+
 #if kalDebug > 0
         if(site < (UInt_t)nMaxSites) {
             return sites[site];

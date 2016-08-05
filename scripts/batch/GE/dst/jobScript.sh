@@ -173,13 +173,20 @@ esac
      echo "------------------------------------"
      echo "MOVING OUTPUTFILES:"
      
-     filename=$(basename ${file} | sed 's/.root$//')
-
-     #mv -v ${outdir}/${filename}*_Tree.root ${outdir}/qA
-     #mv -v ${outdir}/${filename}*_hist.root ${outdir}/qA
-     #mv -v ${outdir}/${filename}*.txt ${outdir}/qA
-     #mv -v ${outdir}/${filename}*.pdf ${outdir}/qA
-     mv -v ${outdir}/${filename}_dst_apr12.root ${outdir}/root
+     isList=$(echo $file | grep ",")
+     
+     if [ "${isList}" == "" ]
+     then
+        filename=$(basename ${file} | sed 's/.root$//')
+        mv -v ${outdir}/${filename}_dst_apr12.root ${outdir}/root/
+     else
+     
+        for f in $(echo $file | sed 's/,/ /g')
+        do
+          filename=$(basename ${f} | sed 's/.root$//')
+          mv -v ${outdir}/${filename}_dst_apr12.root ${outdir}/root/
+        done
+     fi
   done
 #---------------------------------------------------------------------
 

@@ -365,6 +365,12 @@ Bool_t HMdcLayListCells::nextNonFittedCell(Int_t& cell) const {
   return kFALSE;
 }
 
+Bool_t HMdcLayListCells::previousNonFittedCell(Int_t& cell) const {
+  if(nFitted == NULL) return previousCell(cell);
+  while(previousCell(cell)) if(nFitted[cell] == 0) return kTRUE;
+  return kFALSE;
+}
+
 Int_t HMdcLayListCells::getNumNotFitted(void) const {
   return getNCells()-nFittedTot;
 }
@@ -917,8 +923,8 @@ Int_t HMdcEvntListCells::collectWires(Int_t sec) {
       Int_t s,m,l,c;
       pMdcCal1->getAddress(s,m,l,c);
       if(sec>=0 && sec!=s) continue;
-      Float_t t1=pMdcCal1->getTime1();
-      Float_t t2=pMdcCal1->getTime2();
+      Float_t t1 = pMdcCal1->getTime1();
+      Float_t t2 = pMdcCal1->getTime2();
       addCell(s,m,l,c,times,t1,t2);
       nwires++;
     }

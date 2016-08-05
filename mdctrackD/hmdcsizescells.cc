@@ -186,6 +186,11 @@ Bool_t HMdcSizesCellsLayer::setSecTrans(Double_t corZ) {
   rotLaySysRSec.setRotMatrix(rotLay);
   rotLaySysRSec.transFrom(sysRSec);
   HMdcSizesCells::copyTransfToArr(rotLaySysRSec,tRLaySysRSec);
+  pntToCell[0] = tRLaySysRSec[1]*invPitch;
+  pntToCell[1] = tRLaySysRSec[4]*invPitch;
+  pntToCell[2] = tRLaySysRSec[7]*invPitch;
+  pntToCell[3] = cellOffset - invPitch*(tRLaySysRSec[1]*tRLaySysRSec[9]+tRLaySysRSec[4]*tRLaySysRSec[10]
+                                       +tRLaySysRSec[7]*tRLaySysRSec[11]);
   
   if(firstCellPart2<nCells) {
     rotLay.setUnitMatrix();

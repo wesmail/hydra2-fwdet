@@ -29,8 +29,15 @@
 #include "hades.h"
 #include "hrecevent.h"
 #include "heventheader.h"
+#include "hgeantheader.h"
 #include "hpartialevent.h"
 #include "hcategory.h"
+#include "hlinearcategory.h"
+#include "hmatrixcategory.h"
+
+#include "hgeantmaxtrk.h"
+#include "hgeantdef.h"
+
 #include <iostream>
 #include <iomanip>
 #include <limits.h>
@@ -59,6 +66,8 @@ ClassImp(HGeantMergeSource)
     fLastRunId       = -1;
     overwriteVersion = kFALSE;
     replaceVersion   = 0;
+
+
 }
 
 HGeantMergeSource::~HGeantMergeSource(void)
@@ -67,17 +76,50 @@ HGeantMergeSource::~HGeantMergeSource(void)
     Clear();
 }
 
-Text_t const *HGeantMergeSource::getCurrentFileName(void)
-{
-    if(fInput){
-	TFile* file = fInput->GetCurrentFile();
-	if(file){
-	    return file->GetName();
-	} else {
-	    return "";
-	}
+
+Bool_t HGeantMergeSource::createGeantEvent(HRecEvent* fCurrentEvent){
+
+
+
+    HPartialEvent* geantEvt = fCurrentEvent->getPartialEvent(catSimul);
+    if(!geantEvt){
+
+	fCurrentEvent->addPartialEvent(catSimul,"Simul","Simulated event");
+
+	HPartialEvent* pKine = fCurrentEvent->getPartialEvent(catSimul);
+	pKine->setSubHeader(new HGeantHeader);
+	pKine->addCategory(catGeantKine,new HLinearCategory("HGeantKine",MAXTRKKINE) );
+
+	Int_t iniMdc[4]={6,4,7,MAXTRKMDC};
+	pKine->addCategory(catMdcGeantRaw,new HMatrixCategory("HGeantMdc",4,iniMdc,0.1) );
+
+	Int_t iniRich[2]={6,MAXCKOVRICH};
+	pKine->addCategory(catRichGeantRaw,new HMatrixCategory("HGeantRichPhoton",2,iniRich,0.1) );
+	Int_t ini1Rich[2]={6,MAXPARTRICH};
+	pKine->addCategory(catRichGeantRaw+1,new HMatrixCategory("HGeantRichDirect",2,ini1Rich,0.1) );
+	Int_t ini2Rich[2]={6,MAXMIRRRICH};
+	pKine->addCategory(catRichGeantRaw+2,new HMatrixCategory("HGeantRichMirror",2,ini2Rich,0.1) );
+
+	Int_t iniRpc[2]={6,MAXTRKRPC};
+	pKine->addCategory(catRpcGeantRaw,new HMatrixCategory("HGeantRpc",2,iniRpc,0.5) );
+
+	Int_t iniTof[2]={6,MAXTRKTOF};
+	pKine->addCategory(catTofGeantRaw,new HMatrixCategory("HGeantTof",2,iniTof,0.1) );
+
+	Int_t iniShower[2]={6,MAXTRKSHOW};
+	pKine->addCategory(catShowerGeantRaw,new HMatrixCategory("HGeantShower",2,iniShower,0.1) );
+
+	pKine->addCategory(catWallGeantRaw,new HLinearCategory("HGeantWall",MAXTRKWALL) );
+
+	Int_t iniStart=MAXTRKSTART*0.1;
+	pKine->addCategory(catStartGeantRaw,new HLinearCategory("HGeantStart",iniStart) );
+
+	Int_t iniEmc[2]={6,MAXTRKEMC};
+	pKine->addCategory(catEmcGeantRaw,new HMatrixCategory("HGeantEmc",2,iniEmc,0.1) );
+
+        return kTRUE;
     }
-    return "";
+    return kFALSE;
 }
 
 Bool_t HGeantMergeSource::init(void)
@@ -221,17 +263,6 @@ EDsState HGeantMergeSource::getNextEvent(Bool_t doUnpack)
     } else { return kDsError; }
     return kDsOk;
 }
-void HGeantMergeSource::setCursorToPreviousEvent()
-{
-    // Rewinds the file cursour read by 1 event
-    // The cursor does not point to next event as usual
-    // but to the current event. This feature is needed
-    // for the event embedding if a event is skipped
-    // by the first data source or any task. The same
-    // event (from second data source) will be read for
-    // the next event from first data source.
-    if(fCursor > 0) { fCursor --; }
-}
 
 Bool_t HGeantMergeSource::getEvent(Int_t eventN) {
     //Retrieves event in position eventN in the input file, copying the
@@ -276,29 +307,6 @@ void HGeantMergeSource::Clear(void)
     }
 }
 
-void HGeantMergeSource::setDirectory(const Text_t dirName[])
-{
-    //Sets the directory where to read files from.
-    fDirectory = dirName;
-    if (fDirectory[fDirectory.Length()-1] != '/') { fDirectory += "/"; }
-}
-
-Bool_t HGeantMergeSource::fileExists(const TString &name) {
-    //Checks for the existence on one file.
-    return (access(name.Data(),F_OK) == 0) ? kTRUE : kFALSE;
-}
-
-TString HGeantMergeSource::getFileName(const Text_t *file)
-{
-    TString fname;
-    if (file[0] == '/') { //Absolute or relative path??
-	fname = file;
-    } else {
-	fname = fDirectory;
-	fname += file;
-    }
-    return fname;
-}
 
 Bool_t HGeantMergeSource::addFile(const Text_t *file,Bool_t print)
 {
@@ -377,73 +385,6 @@ Bool_t   HGeantMergeSource::addMultFiles(TString commaSeparatedList)
 
     return kFALSE;
 
-}
-
-Bool_t HGeantMergeSource::setInput(const Text_t *fileName,const Text_t *treeName)
-{
-    //Sets the input file and tree. Opening the corresponding files, it also
-    //loads in memory the input event description so the disableCategory()
-    //method can be used.
-    if (strcmp(treeName,"T") != 0) { return kFALSE; }
-    else                           { return addFile(fileName); }
-}
-
-Bool_t HGeantMergeSource::disableCategory(Cat_t aCat)
-{
-    //Disables the category aCat so it is not read even if it is stored in
-    //the input file. This method shouldn't be called after init()
-    //Returns kTRUE if the aCat was stored in the input file and has succesfully
-    //been disabled, otherwise the return value is kFALSE.
-    if (!fEventInFile) { return kFALSE; }
-    else               { return fEventInFile->removeCategory(aCat); }
-}
-
-Bool_t HGeantMergeSource::disablePartialEvent(Cat_t aCat)
-{
-    if (!fEventInFile) { return kFALSE; }
-    else               { return ((HRecEvent*)fEventInFile)->removePartialEvent(aCat); }
-}
-
-Int_t HGeantMergeSource::getSplitLevel(void)
-{
-    //Returns the split level of the input tree.
-    return fSplitLevel;
-}
-
-void HGeantMergeSource::deactivateBranch(const Text_t *branchName)
-{
-    //Deactivates a branch so it is not read.
-    //This method is deprecated, use disableCategory() instead.
-    if (fInput) {
-	fInput->SetBranchStatus(branchName,kFALSE);
-    }
-}
-
-TTree *HGeantMergeSource::getTree(void)
-{
-    //Returns the input tree.
-    return fInput;
-}
-
-EDsState HGeantMergeSource::skipEvents(Int_t nEv)
-{
-    enum EDsState state = kDsOk;
-
-    if (nEv > 0) {
-	Int_t newCursor = fCursor + nEv;
-
-	if (newCursor < fEntries) {
-	    fCursor = newCursor - 1;
-	    state = getNextEvent();
-	} else { state = kDsEndData; }
-    }
-
-    return state;
-}
-
-TFile * HGeantMergeSource::getFile(TString name)
-{
-    return TFile::Open(name.Data(),"READ");
 }
 
 

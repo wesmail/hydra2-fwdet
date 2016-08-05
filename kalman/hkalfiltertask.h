@@ -3,6 +3,7 @@
 
 // from ROOT
 class TArrayI;
+class TF1;
 #include "TString.h"
 class TObjArray;
 
@@ -18,21 +19,28 @@ class    HMdcTrkCand;
 #include "hkalmetamatcher.h"
 #include "hkaltrack.h"
 
+class  HKalDetCradle;
+
+
 class HKalFilterTask : public HReconstructor {
 
 private:
 
-    HKalIFilt*  kalsys;            // Kalman filter object.
-    HKalInput*  input;             // Retrieves measurements of the next track.
+    HKalIFilt*  kalsys;            //! Kalman filter object.
+    HKalInput*  input;             //! Retrieves measurements of the next track.
     HKalMetaMatcher metaMatcher;   // Matches track with Meta detector.
     const TString noKalman;
 
-    HCategory*  fCatKalTrack;      // Output category.
-    HCategory*  fCatKalSite;       // Output category.
-    HCategory*  fCatKalHit2d;      // Output category. Filled when fitting segments.
-    HCategory*  fCatKalHitWire;    // Output category. Filled when fitting wire hits.
-    HCategory*  fCatMetaMatch;     // Meta match category.
-    HCategory*  fCatSplineTrack;   // Retrieve momentum estimate from spline.
+    HCategory*  fCatKalTrack;      //! Output category.
+    HCategory*  fCatKalSite;       //! Output category.
+    HCategory*  fCatKalHit2d;      //! Output category. Filled when fitting segments.
+    HCategory*  fCatKalHitWire;    //! Output category. Filled when fitting wire hits.
+    HCategory*  fCatMetaMatch;     //! Meta match category.
+    HCategory*  fCatSplineTrack;   //1 Retrieve momentum estimate from spline.
+
+    TF1*        fMomErr;           //! Function to calculate the initial momentum error. Depends on theta in degrees.
+    TF1*        fTxErr;            //! Function to calculate the initial parameter tan(p_x/p_z). Depends on theta in degrees.
+    TF1*        fTyErr;            //! Function to calculate the initial parameter tan(p_x/p_z). Depends on theta in degrees.
 
     Bool_t      bCompHits;         // Consider competing hits for the DAF.
     Bool_t      bDaf;              // Apply the Deterministic Annealing Filter (DAF).
@@ -42,19 +50,22 @@ private:
 
     Bool_t      bFillSites;        // Fill Kalman categories for measurement sites and hits. Turned off by default.
 
+    Int_t       iniSvMethod;       // Input for initial state vector. default = Spline, 1 = Geant, 2 = smeared Geant, 2 = Runge-Kutta
+    Int_t       numTracks;         // Number of reconstructed tracks
+    Int_t       numTracksErr;      // Number of tracks where reconstruction failed
     Int_t       measDim;           // Dimension of measurement vector.
     Int_t       stateDim;          // Dimension of track state vector.
 
     TArrayI     dopid;             // Fit only tracks with certain pids.
-    Double_t    errMom;            // Error of initial momentum estimate as a fraction: 0.05 <=> 5% uncertainty.
+    Double_t    errMom;            // Error of initial momentum estimate as a fraction: 0.05 <=> 5% uncertainty.  Will only be used if fMomErr is not defined or if the initial state estimate is from Geant.
     Double_t    errX;              // Error of track state x-position in sector coordinates and mm.
     Double_t    errY;              // Error of track state y-position in sector coordinates and mm.
-    Double_t    errTx;             // Error of track state Tan(p_x/p_z) in sector coordinates and radians.
-    Double_t    errTy;             // Error of track state Tan(p_y/p_z) in sector coordinates and radians.
+    Double_t    errTx;             // Error of track state Tan(p_x/p_z) in sector coordinates and radians. Will only be used if fTxErr is not defined or if the initial state estimate is from Geant.
+    Double_t    errTy;             // Error of track state Tan(p_y/p_z) in sector coordinates and radians. Will only be used if fTyErr is not defined or if the initial state estimate is from Geant.
 
     Int_t       counterstep;       // Print out after fitting this amount of events.
-    Bool_t      bPrintWarn;        // Print/suppress warnings.
-    Bool_t      bPrintErr;         // Print/suppress error messages.
+    Bool_t      bPrintWarn;        // Print/suppress warnings during tracking.
+    Bool_t      bPrintErr;         // Print/suppress error messages during tracking.
 
     Int_t       refId;             // Runtime reference ID.
 
@@ -78,7 +89,7 @@ public:
     HKalFilterTask(Int_t refid, Bool_t sim=kFALSE, Bool_t wire=kFALSE,
 		   Bool_t daf=kFALSE, Bool_t comp=kFALSE);
 
-    ~HKalFilterTask() { ; }
+    ~HKalFilterTask();
 
     virtual Int_t        getIniPid   (HMdcTrkCand const* const cand) const;
 
@@ -89,7 +100,8 @@ public:
 				      HMdcSeg const* const outSeg) const;
 
     virtual Bool_t       getIniSvGeant(TVectorD &inisv, TMatrixD &iniC,
-				      Int_t pid, const TObjArray &allhitsGeantMdc) const;
+				       const TObjArray &allhitsGeantMdc,
+				       Int_t pid, Bool_t bSmear) const;
 
     virtual Bool_t       getIniSvRungeKutta(TVectorD &inisv, TMatrixD &iniC, Int_t pid,
 				      const TObjArray& allhits,
@@ -103,7 +115,7 @@ public:
 
     virtual Bool_t       reinit      (void);
 
-    virtual Bool_t       finalize    (void) { delete kalsys; delete input; return kTRUE; }
+    virtual Bool_t       finalize    (void);
 
     virtual HMdcTrkCand* nextTrack   (TObjArray& allhits);
 
@@ -127,7 +139,9 @@ public:
 
     virtual TObjArray const&     getFieldTrack   () const            { return kalsys->getFieldTrack(); }
 
-    //virtual const HKalSystem*    getKalSys       () const            { return kalsys; }
+    virtual const HKalIFilt*       getKalSys         () const            { return kalsys; }
+    virtual const HKalInput*       getKalInput       () const            { return input; }
+    virtual const HKalMetaMatcher* getKalMetaMatcher () const            { return &metaMatcher; }
 
     virtual Int_t                getStateDim     (Kalman::coordSys coord=kSecCoord) const { return kalsys->getStateDim(coord); }
 
@@ -163,6 +177,14 @@ public:
 
     virtual Bool_t setFilterPars      (Bool_t wire, Bool_t daf, Bool_t comp);
 
+    virtual void   setFuncMomErr      (TF1* f)                                  { fMomErr = f; }
+
+    virtual void   setFuncTxErr       (TF1* f)                                  { fTxErr = f; }
+
+    virtual void   setFunKyErr        (TF1* f)                                  { fTyErr = f; }
+
+    virtual void   setIniStateMethod  (Int_t value) { iniSvMethod = value; }
+
     virtual void   setNumIterations   (Int_t kalRuns)                           { (kalsys) ? kalsys->setNumIterations(kalRuns)  : Warning("setConstField()",  noKalman.Data()); }
 
     virtual void   setRotation        (Kalman::kalRotateOptions rotate)         { (kalsys) ? kalsys->setRotation(rotate)        : Warning("setConstField()",  noKalman.Data()); }
@@ -171,6 +193,6 @@ public:
 
     virtual void   setVerbose         (Int_t v);
 
-    ClassDef(HKalFilterTask, 1);
+    ClassDef(HKalFilterTask, 0);
 };
 #endif

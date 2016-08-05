@@ -2,7 +2,7 @@
 APP_NAME     := run_pluto
 SOURCE_FILES := analysis.cc
 
-PLUTO_DIR=/cvmfs/hades.gsi.de/install/5.34.01/pluto/v5_42
+PLUTO_DIR=/cvmfs/hades.gsi.de/install/5.34.34/pluto/v5_44
 
 
 USES_ORACLE=yes
@@ -16,5 +16,8 @@ SO_LOADER_DIRS  += $(PLUTO_DIR)
 APP_LOADER_DIRS += $(PLUTO_DIR)
 LIBS            += -lPluto
 #HYDRA_LIBS +=
+
+.PHONY:  default
+default: clean build install
 
 include $(HADDIR)/hades.app.mk
