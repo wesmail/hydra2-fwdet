@@ -203,15 +203,19 @@ void HEmcParOra2Io::addGeomRefComponents(HDetGeomPar* pPar,TList* geomObjects) {
 }
 
 Bool_t HEmcParOra2Io::transformGeomCompositeComponents(HDetGeomPar* pPar) {
+  // Replaces the name and the points of the components GTOWx by the name and points of the
+  // sensitive volume GLEA
+  // IMPORTANT: The actual interface expects that the coordinate systems of the "towers" GTOWx
+  // and GLEA including all intermediate volumes (GTOF, GTOI, GREF) are identical. Otherwise the
+  // chain of mother volumes of GLEA must be read from Oracle to find the transformation 
+  // relative to the reference "tower" volume.  
   HGeomCompositeVolume* refMod=pPar->getRefVolume(0);
   Bool_t rc=kTRUE;
   if (refMod && sensVolume) {
     TString sensVoluName=sensVolume->GetName();
     Int_t nPoints=sensVolume->getNumPoints();
-    HGeomVolume* refComp=refMod->getComponent(0);  
+    HGeomVolume* refComp=refMod->getComponent(0);
     if (sensVoluName.Length()==4 && nPoints>0 && refComp) {
-      HGeomTransform tsRef(sensVolume->getTransform());
-      tsRef.transTo(refComp->getTransform());
       for(Int_t l=0;l<refMod->getNumComponents();l++) {
         HGeomVolume* comp=refMod->getComponent(l);
         TString compName=comp->GetName();
@@ -219,10 +223,6 @@ Bool_t HEmcParOra2Io::transformGeomCompositeComponents(HDetGeomPar* pPar) {
           comp->SetName(compName.Replace(0,4,sensVoluName));
           comp->createPoints(nPoints);
           for (Int_t i=0;i<nPoints;i++) comp->setPoint(i,*(sensVolume->getPoint(i)));
-          HGeomTransform ts(tsRef);
-          HGeomTransform& tm=comp->getTransform();
-          ts.transFrom(tm);
-          tm=ts;
         }
       }
     } else rc=kFALSE;
