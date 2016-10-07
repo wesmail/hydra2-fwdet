@@ -37,7 +37,7 @@ public:
 
     HKalDetCradle();
 
-    HKalDetCradle(Int_t nLayInMdc);
+    HKalDetCradle(Int_t nLayInMdc, const TObjArray *customMats=NULL);
 
     virtual ~HKalDetCradle();
 

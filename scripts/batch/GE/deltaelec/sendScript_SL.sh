@@ -28,29 +28,34 @@
 #   CONFIGURATION
 
 user=$(whoami)
-currentDir=$(pwd)
+currentDir=$(pwd | xargs -i basename {})
+currentDir=../$currentDir
 
-submmissionbase=/hera/hades/${user}/submit/apr12/test
-submissiondir=${submmissionbase}/GE
- nFilesPerJob=1                                 # number of files to be analyzed by 1 job (default==1)
-    jobscript=${submissiondir}/jobScript.sh     # exec script (full path, call without dot, set it executable!)
-    outputdir=/hera/hades/dstsim/apr12/test     # outputdir for files AND logFiles
-pathoutputlog=${outputdir}/out                  # protocol from batch farm for each file
-     filename=testrun                           # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
-par1=/cvmfs/hades.gsi.de/install/5.34.01/hydra2-2.4/defall.sh  # optional par1 : environment script
-par2=${submissiondir}/analysisDST                              # optional par2 : executable
-par3=""                                                        # optional par3 : input file list
-par4=${outputdir}/test                                         # optional par4 : outputfile (part number will be appended (_num.root))
-par5=1000                                                      # optional par5 : number of events
-par6="no"                                                      # optional par6
-par7="no"                                                      # optional par7
-resources="-l h_rt=10:0:0,h_vmem=2G"                           # runtime < 10h, mem < 2GB
+type=deltaelectron
+nFiles=10000
 
-filelist=${currentDir}/all_files.list  # file list in local dir! not in submissiondir!!!
+submmissionbase=/hera/hades/user/${user}/sub/apr12/gen8
+submissiondir=${submmissionbase}/deltaelec
+ nFilesPerJob=10                                  # number of files to be analyzed by 1 job (default==1)
+    jobscript=${submissiondir}/jobScript.sh       # exec script (full path, call without dot, set it executable!)
+    outputdir=/hera/hades/dstsim/apr12/pluto/${type}/filter_1.5 # outputdir for files AND logFiles
+pathoutputlog=${outputdir}/out                    # protocol from batch farm for each file
+     filename=$type                               # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
+par1=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9i/defall.sh  # optional par1 : environment script
+par2=${submissiondir}/run_delta                                # optional par2 : executable
+par3=1000                                                      # optional par3 : 1000
+par4="K"                                                       # optional par4 : SHELL (K or L)
+par5=${submissiondir}/input                                    # optional par5 : inputdir for theta/prob/mom
+par6=${outputdir}                                              # optional par6 : outputdir
+par7="delta_electrons"                                         # optional par7 : filename
+resources="--mem=2000 --time=0-8:00:00"                  # runtime < 10h, mem < 2GB
+jobarrayFile="pluto_jobarray_${type}.dat"
+
+filelist=${currentDir}/all_files_${type}.list  # file list in local dir! not in submissiondir!!!
 
 
-createList=no    # (yes/no) use this to create files list with generic names (for simulation, testing)
-                 # use "no" if you have a filelist available
+createList=no   # (yes/no) use this to create files list with generic names (for simulation, testing)
+                # use "no" if you have a filelist available
 
 
 ######################################################################
@@ -68,9 +73,9 @@ then
    fi
 
    echo "===> CREATE FILELIST : $filelist"
-   for ((ct=1;ct<=100;ct++))
+   for ((ct=1;ct<=$nFiles;ct++))
    do
-      echo /hera/hades/dst/run_dst_${ct}.root >> $filelist
+      echo ${filename}_${ct} >> $filelist
    done
 fi
 #---------------------------------------------------------------------
@@ -98,27 +103,16 @@ else
 fi
 #---------------------------------------------------------------------
 
-#---------------------------------------------------------------------
-# sync the local modified stuff 
-# to the submission dir
-echo "===> SYNC CURENTDIR TO SUBMISSIONDIR : rsync  -vHaz $currentDir ${submmissionbase}"
-rsync  -vHaz $currentDir ${submmissionbase}/
-
-syncStat=$?
-
-if [ ! $syncStat -eq 0 ]
-then
-     echo "===> ERROR : SYNCHRONIZATION ENCOUNTERED PROBLEMS"
-fi
-
-echo "-------------------------------------------------"
-#---------------------------------------------------------------------
-
-
 
 ctF=0          # counter for file number
 ctJ=0          # counter for job number
 partNumber=0   # counter for part number
+
+if [ -f $jobarrayFile ]
+then
+  rm -f $jobarrayFile
+fi
+echo "===> CREATING JOB ARRAY FILE"
 
 
 #---------------------------------------------------------------------
@@ -170,47 +164,65 @@ do
         logfile="${pathoutputlog}/${file}.log"
      fi
      
-     if [ -e $logfile ]
-     the
-        rm -f $logfile
-     fi 
+     if [ -f ${logfile} ]
+     then
+        rm -f ${logfile}
+     fi
            
      
-     echo "-----------------------------------------------------------------------------"
-     echo "add part ${partNumber}  last file ${ctF} of $nFiles ====> add new job ${infileList}"
+#     echo "-----------------------------------------------------------------------------"
+#     echo "add part ${partNumber}  last file ${ctF} of $nFiles ====> add new job ${infileList}"
 
      ######################################################################
      #  SEND NEW JOB (USER SPECIFIC)
      
-     par3=${infileList}
+     filenum=${infileList}
 
-     outputprog=${par4}_${partNumber}.root
- 
-     if [ $nFilesPerJob -eq 1 ]
-     then
-        file=$(basename ${infileList})
-        dir=$(dirname ${par4})
-        outputprog="${dir}/${file}.root"
-     fi
+          #defall.sh prog nevents shell inputdir outdir filen filenum
      
-     
-     
-     command="-j y -wd ${submissiondir} ${resources} -o ${logfile} \
-     ${jobscript}  ${par1}   ${par2} ${par3}  ${outputprog} ${par5} ${par6} ${par7}"
-     #jobscript.sh defall.sh prog    filelist outfile       nev
-     
-     echo qsub ${command}
-
-     if [ ! $syncStat -eq 0 ]
-     then
-        echo "===> ERROR : SYNCHRONIZATION ENCOUNTERED PROBLEMS"
-     else
-         qsub ${command}
-     fi
-     ######################################################################
+     echo "${par1} ${par2} ${par3} ${par4} ${par5} ${par6} ${par7} ${filenum}" >>  $jobarrayFile
      
 done
 #---------------------------------------------------------------------
 
+#---------------------------------------------------------------------
+# sync the local modified stuff 
+# to the submission dir
+echo "===> SYNC CURENTDIR TO SUBMISSIONDIR : rsync  -vHaz $currentDir ${submmissionbase}"
+rsync  -vHaz $currentDir ${submmissionbase}/
+
+syncStat=$?
+
+if [ ! $syncStat -eq 0 ]
+then
+     echo "===> ERROR : SYNCHRONIZATION ENCOUNTERED PROBLEMS"
+else
+
+  echo "-------------------------------------------------"
+
+  nFiles=$( cat $jobarrayFile | wc -l)
+  arrayoffset=0;
+  ctsend=0
+  block=1000
+  while ((${ctsend} * ${block} < ${nFiles}))
+  do
+     ((start=${ctsend}*${block}))
+     ((rest=${nFiles}-${start}))
+     if [ $rest -le $block ]
+     then
+        ((stop=$rest))
+     else
+        ((stop=$block))
+     fi
+     ((arrayoffset=${ctsend} * ${block}))
+     command="--array=1-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog} ${arrayoffset}"
+     #echo $command
+     echo sbatch $command
+
+     ((ctsend+=1))
+  done
+
+  echo "${nFiles} jobs for type ${type} submitted"
+fi
 
 

@@ -7,8 +7,6 @@ class HKalDafWire : public HKalDafSingleWire {
 
 protected:
 
-    virtual Bool_t   calcEffMeasVec       (Int_t iSite) const;
-
     virtual Bool_t   calcProjector        (Int_t iSite) const;
 
     virtual Bool_t   calcVirtPlane        (Int_t iSite) const;
@@ -22,8 +20,7 @@ public:
     virtual ~HKalDafWire() {}
 
     virtual Bool_t calcMeasVecFromState(TVectorD &projMeasVec, HKalTrackSite const* const site,
-					Kalman::kalFilterTypes stateType, Kalman::coordSys sys,
-					Int_t iHit=0) const;
+					Kalman::kalFilterTypes stateType, Kalman::coordSys sys) const;
 
     virtual Bool_t filter              (Int_t iSite);
 

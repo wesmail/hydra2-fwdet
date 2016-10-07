@@ -156,8 +156,8 @@ fi
   echo "==> execute program "        2>&1 | tee -a ${par1}
 
 
-  echo "==> $par3 $par4 $par5"       2>&1 | tee -a ${par1}
-  time  $par3 $par4 $par5            2>&1 | tee -a ${par1}
+  echo "==> $par3 $par4 $par5 $par6"      2>&1 | tee -a ${par1}
+  time  $par3 $par4 $par5 $par6           2>&1 | tee -a ${par1}
 
 #---------------------------------------------------------------------
 

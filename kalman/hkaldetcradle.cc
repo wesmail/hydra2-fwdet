@@ -38,18 +38,47 @@ HKalDetCradle::HKalDetCradle() {
     nLayersInMdc = 1;
 }
 
-HKalDetCradle::HKalDetCradle(Int_t nLayInMdc) : TObjArray(kNumSecs*kNumMdcs*nLayInMdc) {
+HKalDetCradle::HKalDetCradle(Int_t nLayInMdc, const TObjArray *customMats) :
+TObjArray(kNumSecs*kNumMdcs*nLayInMdc) {
     // Default contructor that adds Mdc layers to the cradle.
     // The Mdc layers will be added to the cradle in the following order:
     // 1. Sort by sector number (0..5)
     // 2. Sort by module number (0..3) in a sector
     // 3. Sort by layer number of module in sector
     // nLayInMdc: the number of mdc layers that should be added to each sector in a module.
+    // customMats: Materials for MDCs and materials between MDCs. If empty
+    //             standard materials will be used
 
-    matsMdc    = NULL;
+    matsMdc    = new HKalMixture*[kNumMdcs];
     matAir     = NULL;
     nLayersInMdc = nLayInMdc;
-    initMdcMaterials();
+    if(customMats) {
+	if(customMats->GetEntries() == kNumMdcs+1) {
+	    for(Int_t iMod = 0; iMod < kNumMdcs; iMod++) {
+		HKalMixture *mat = dynamic_cast<HKalMixture*>(customMats->At(iMod));
+		if(mat) {
+		    matsMdc[iMod] = mat;
+		} else {
+		    Error("HKalDetCradle()",
+			  Form("No material found for MDC %i", iMod));
+		}
+	    }
+	    HKalMixture *mat = dynamic_cast<HKalMixture*>(customMats->At(kNumMdcs));
+	    if(mat) {
+		matAir = mat;
+	    } else {
+		Error("HKalDetCradle()",
+		      Form("No object found at index %i", kNumMdcs));
+	    }
+	} else {
+	    Error("HKalDetCradle()",
+		  Form("Size of materials array is %i. Expected %i.",
+		       customMats->GetEntries(), kNumMdcs));
+	}
+    } else {
+	initMdcMaterials();
+    }
+
     for(Int_t iSec = 0; iSec < kNumSecs; iSec++) {
         for(Int_t iMod = 0; iMod < kNumMdcs; iMod++) {
 #if kalDebug > 0
@@ -274,28 +303,6 @@ HKalMixture* HKalDetCradle::getMdcMaterial(mdcComponent comp, Int_t module) cons
             getProperties(mat, "butane");
             mdcMix->defineElement(1, mat, w[1]);
 	    mdcMix->calcMixture();
-
-/*
-	// According to Oracle, the gas mixture in the MDCs in 50% helium and
-	// 50% Isobutane. Though incorrect, the Geant simulations with that
-	// mixture. In order to compare the Kalman filter results with Geant,
-        // use the wrong mixture here as well.
-
-	Float_t vol[2], rho[2], w[2];
-	rho[0] = HMaterials::getDensity("helium");
-	rho[1] = HMaterials::getDensity("ethane");
-	// Mdc layers contain a 60:40 volume percent mixture of Helium-Isobutane.
-	vol[0] = .50;
-	vol[1] = .50;
-	// Get mass fractions.
-	mdcMix = new HKalMixture("Pseudo Helium-Isobutane 60:40 a la Oracle", "hebutane", 2);
-	mdcMix->calcMassFracFromVolFrac(w, 2, rho, vol);
-	getProperties(mat, "helium");
-	mdcMix->defineElement(0, mat, w[0]);
-	getProperties(mat, "ethane");
-	mdcMix->defineElement(1, mat, w[1]);
-	mdcMix->calcMixture();
-*/
         }
         break;
 
@@ -401,7 +408,6 @@ void HKalDetCradle::initMdcMaterials() {
     matAir->calcMixture();
 
     // Materials of mdc planes.
-    matsMdc    = new HKalMixture*[kNumMdcs];
 
     // Materials of the different components (gas, wires, window foils) of an mdc plane.
     HKalMixture const *matsMdcComp     [kNumMdcMats];

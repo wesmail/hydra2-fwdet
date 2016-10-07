@@ -22,7 +22,7 @@ using namespace std;
 
 
 
-
+/*
 Bool_t eventSelection(TObjArray*)
 {
     // example
@@ -78,6 +78,30 @@ Bool_t eventSelection(TObjArray*)
 	return kTRUE;
     }
 
+    return kFALSE;
+}
+*/
+Bool_t eventSelection(TObjArray*)
+{
+
+    //-------------------------------------------------
+    // summary event info object
+    HCategory* evtInfoCat = (HCategory*)HCategoryManager::getCategory(catParticleEvtInfo);
+    if(evtInfoCat){
+	HParticleEvtInfo* evtInfo=0;
+	evtInfo = HCategoryManager::getObject(evtInfo,evtInfoCat,0 );
+
+	if(evtInfo&&evtInfo->isGoodEvent(Particle::kGoodTRIGGER|          // standard event selection apr12
+					 Particle::kGoodVertexClust|
+					 Particle::kGoodVertexCand|
+					 Particle::kGoodSTART|
+					 Particle::kNoPileUpSTART|
+					 Particle::kNoVETO|
+					 Particle::kGoodSTARTVETO|
+					 Particle::kGoodSTARTMETA
+					 )) return kTRUE;
+	//-------------------------------------------------
+    }
     return kFALSE;
 }
 

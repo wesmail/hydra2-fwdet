@@ -60,7 +60,7 @@ sourceSwitch=0   # 0 = thermal, 1 white embedding
 
 submmissionbase=/lustre/nyx/hades/user/${user}/sub/apr12/gen8
 submissiondir=${submmissionbase}/pluto
- nFilesPerJob=1                                 # number of files to be analyzed by 1 job (default==1)
+ nFilesPerJob=100                                 # number of files to be analyzed by 1 job (default==1)
     jobscript=${submissiondir}/jobScript_SL.sh       # exec script (full path, call without dot, set it executable!)
     outputdir=/lustre/nyx/hades/dstsim/apr12/pluto/${type} # outputdir for files AND logFiles
 pathoutputlog=${outputdir}/out                    # protocol from batch farm for each file
@@ -227,20 +227,23 @@ else
   echo "-------------------------------------------------"
 
   nFiles=$( cat $jobarrayFile | wc -l)
+  arrayoffset=0;
   ctsend=0
-  block=1000
-  while ((${ctsend} * ${block} < ${partNumber}))
+  block=500
+  while ((${ctsend} * ${block} < ${nFiles}))
   do
-     ((start=${ctsend}*${block}+1))
-     ((stop= ${start}+${block}-1))
-     ((rest=${partNumber}-${start}))
+     ((start=${ctsend}*${block}))
+     ((rest=${nFiles}-${start}))
      if [ $rest -le $block ]
      then
-        ((stop=$start+$rest))
+        ((stop=$rest))
+     else
+        ((stop=$block))
      fi
-   command="--array=${start}-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog}"
-   #echo $command
-   sbatch $command
+     ((arrayoffset=${ctsend} * ${block}))
+     command="--array=1-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog} ${arrayoffset}"
+     #echo $command
+     sbatch $command
 
      ((ctsend+=1))
   done

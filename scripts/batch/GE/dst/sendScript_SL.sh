@@ -67,7 +67,7 @@ part=no_enhancement_gcalor
 npart=2
 submmissionbase=/lustre/nyx/hades/user/${user}/sub/apr12/gen8a/${part}
 submissiondir=${submmissionbase}/dst
- nFilesPerJob=1                               # number of files to be analyzed by 1 job (default==1)
+ nFilesPerJob=50                                  # number of files to be analyzed by 1 job (default==1)
     jobscript=${submissiondir}/jobScript_SL.sh     # exec script (full path, call without dot, set it executable!)
     outputdir=/lustre/nyx/hades/dstsim/apr12/gen8a/test/${part}     # outputdir for files AND logFiles
 pathoutputlog=${outputdir}/out                    # protocol from batch farm for each file
@@ -79,7 +79,7 @@ par4=${outputdir}                                              # optional par4 :
 par5=100000                                                   # optional par5 : number of events
 par6="no"                                                      # optional par6
 par7="no"                                                      # optional par7
-resources="--mem=2000 --time=0-2:00:00"                        # runtime < 10h, mem < 2GB
+resources="--mem=2000 --time=0-5:00:00"                        # runtime < 10h, mem < 2GB
 
 jobarrayFile="gen8_${part}_jobarray.dat"
 
@@ -262,20 +262,21 @@ else
   echo "-------------------------------------------------"
 
   nFiles=$( cat $jobarrayFile | wc -l)
-
+  arrayoffset=0;
   ctsend=0
   block=500
   while ((${ctsend} * ${block} < ${nFiles}))
   do
-     ((start=${ctsend}*${block}+1))
-     ((stop= ${start}+${block}-1))
+     ((start=${ctsend}*${block}))
      ((rest=${nFiles}-${start}))
      if [ $rest -le $block ]
      then
-        ((stop=$start+$rest))
+        ((stop=$rest))
+     else
+        ((stop=$block))
      fi
-
-     command="--array=${start}-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog}"
+     ((arrayoffset=${ctsend} * ${block}))
+     command="--array=1-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog} ${arrayoffset}"
      #echo $command
      sbatch $command
 

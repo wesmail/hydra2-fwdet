@@ -24,9 +24,14 @@
 #include "hmdctrackgfieldpar.h"
 #include "hmetamatch2.h"
 #include "hphysicsconstants.h"
+#include "hrpccluster.h"
 #include "hrktrackB.h"
 #include "hruntimedb.h"
 #include "hsplinetrack.h"
+#include "htofhit.h"
+
+#include "rpcdef.h"
+#include "tofdef.h"
 
 //#include "hkaldaflrwire.h"
 #include "hkaldafwire.h"
@@ -111,7 +116,7 @@ Bool_t HKalFilterTask::createKalSystem() {
 }
 
 void HKalFilterTask::fillData(HMetaMatch2* const pMetaMatch, const TObjArray &allhitsGeantMdc,
-                              HMdcSeg* const inSeg, HMdcSeg* const outSeg) {
+			      HMdcSeg* const inSeg, HMdcSeg* const outSeg) {
     // Fills categories with reconstruction results.
     // pMetaMatch: Meta match candidate. Index to Kalman filter is set.
     // allhitsGeantMdc:
@@ -177,7 +182,7 @@ void HKalFilterTask::fillData(HMetaMatch2* const pMetaMatch, const TObjArray &al
 HKalTrack* HKalFilterTask::fillDataTrack(Int_t &iKalTrack, HMetaMatch2* const pMetaMatch,
                                          Int_t iCatSiteFirst, Int_t iCatSiteLast,
                                          HMdcSeg* const inSeg, HMdcSeg* const outSeg,
-                                         const HKalMetaMatch &kalMatch) const {
+					 const HKalMetaMatch &kalMatch) const {
 
     Kalman::kalFilterTypes filtType = Kalman::kFiltered;
     if(kalsys->getDoSmooth()) {
@@ -203,14 +208,15 @@ HKalTrack* HKalFilterTask::fillDataTrack(Int_t &iKalTrack, HMetaMatch2* const pM
 
         //-------------------------
         // Fill HKalTrack.
-        //-------------------------
+	//-------------------------
+        pKalTrack->setBetaInput  (kalsys->getBetaInput());
         pKalTrack->setChi2       (kalsys->getChi2());
         pKalTrack->setIsWireHit  (kalsys->getHitType() == Kalman::kWireHit);
         pKalTrack->setNdf        (kalsys->getNdf());
         pKalTrack->setTrackLength(kalsys->getTrackLength());
 
         Int_t pid = kalsys->getPid();
-        pKalTrack->setPid        (pid);
+	pKalTrack->setPid(pid);
 
 	const TVectorD& inisv = kalsys->getIniStateVec();
 	pKalTrack->setXinput(inisv(Kalman::kIdxX0));
@@ -478,7 +484,8 @@ HKalFilterTask::HKalFilterTask(Int_t ref, Bool_t sim, Bool_t wire,
 			       Bool_t daf, Bool_t comp)
 : HReconstructor("KalmanFilterTask", "Kalman filter"),
 noKalman("Kalman filter not found."), fMomErr(NULL), fTxErr(NULL),
-fTyErr(NULL), iniSvMethod(0), numTracks(0), numTracksErr(0), dopid(0) {
+fTyErr(NULL), materials(NULL), iniSvMethod(0), numTracks(0), numTracksErr(0),
+dopid(0), fGetPid(NULL) {
     // Task to run the Kalman filter.
     //
     // Input:
@@ -489,6 +496,7 @@ fTyErr(NULL), iniSvMethod(0), numTracks(0), numTracksErr(0), dopid(0) {
 
     bCompHits  = comp;
     bDaf       = daf;
+    bGeantPid  = kFALSE;
     bSim       = sim;
     bWire      = wire;
 
@@ -521,7 +529,6 @@ fTyErr(NULL), iniSvMethod(0), numTracks(0), numTracksErr(0), dopid(0) {
     fCatKalSite    = NULL;
     fCatKalHitWire = NULL;
     fCatKalHit2d   = NULL;
-
     fCatMetaMatch   = NULL;
     fCatSplineTrack = NULL;
 
@@ -530,9 +537,9 @@ fTyErr(NULL), iniSvMethod(0), numTracks(0), numTracksErr(0), dopid(0) {
     }
 }
 
-
 HKalFilterTask::~HKalFilterTask(){
     delete fMomErr;
+    delete materials;
 }
 
 //  -----------------------------------
@@ -540,22 +547,94 @@ HKalFilterTask::~HKalFilterTask(){
 //  -----------------------------------
 
 Int_t HKalFilterTask::getIniPid(HMdcTrkCand const* const cand) const {
-    // Retrieve particle id from GEANT data.
+    // Get particle hypothesis.
 
-    Int_t pid = -1;
+    Int_t pid = HPhysicsConstants::pid("p");
 
-    if(bSim) {
-
+    if(bGeantPid && bSim) {
 	HGeantKine *kine = input->getGeantKine(cand);
 	if(!kine) return -1;
 
 	Int_t track = -1;
 	kine->getParticle(track, pid);
+	return pid;
     } else {
-        //? better PID?
-        pid = HPhysicsConstants::pid("p");
-    }
+	HMetaMatch2 *pMetaMatch =
+	    (HMetaMatch2*)fCatMetaMatch->getObject(cand->getMetaMatchInd());
 
+	if(!pMetaMatch) return pid;
+
+	Short_t splineTrackIndex = pMetaMatch->getSplineInd();
+	HSplineTrack *pSplineTrack =
+	    (HSplineTrack*)fCatSplineTrack->getObject(splineTrackIndex);
+
+	Int_t charge = (Int_t)pSplineTrack->getPolarity();
+
+	Double_t mom = TMath::Max(pSplineTrack->getP(), 100.F);
+
+	UChar_t n = 0;
+	Int_t idTof = -1;
+	Int_t idRpc = -1;
+	while(n < 3 && idTof < 0) {
+	    idTof = pMetaMatch->getTofHit1Ind(n);
+	    n++;
+	}
+	n = 0;
+	while(n < 3 && idTof < 0) {
+	    idTof = pMetaMatch->getTofHit2Ind(n);
+	    n++;
+	    }
+	n = 0;
+	while(n < 3 && idRpc < 0) {
+	    idRpc = pMetaMatch->getRpcClstInd(n);
+	    n++;
+	}
+
+	Float_t dist = 0.;
+	Float_t tof  = -1.;
+
+	if(idTof >= 0) {
+	    HTofHit *tofHit = (HTofHit*)fCatTofHit->getObject(idTof);
+	    tofHit->getDistance(dist);
+	    dist = dist / 1.e3;
+	    tof  = tofHit->getTof() / 1.e9;
+	}
+
+	if(idRpc >= 0) {
+	    HRpcCluster *rpcHit = (HRpcCluster*)fCatRpcClst->getObject(idRpc);
+	    Float_t x, y, z = 0.;
+	    rpcHit->getXYZLab(x, y, z);
+	    dist = TMath::Sqrt(x*x + y*y + z*z) / 1.e3;
+	    tof  = rpcHit->getTof() / 1.e9;
+	}
+
+	if(idTof >= 0 || idRpc >= 0) {
+	    Double_t beta = (dist / tof) / TMath::C();
+	    kalsys->setBetaInput(beta);
+
+	    if(mom < 500. && beta > 0.95) {
+		pid = (charge > 0) ? HPhysicsConstants::pid("e+") :
+		    HPhysicsConstants::pid("e-");
+	    } else {
+		Double_t betaPi = mom /
+		    (TMath::Sqrt(mom*mom + HPhysicsConstants::mass(HPhysicsConstants::pid("pi+"))));
+
+		Double_t betaP = mom /
+		    (TMath::Sqrt(mom*mom + HPhysicsConstants::mass(HPhysicsConstants::pid("p"))));
+
+		if(charge > 0 &&
+		   (TMath::Abs(beta - betaP) < TMath::Abs(beta - betaPi))) {
+		    pid = HPhysicsConstants::pid("p");
+		} else {
+		    pid = (charge > 0) ? HPhysicsConstants::pid("pi+") :
+			HPhysicsConstants::pid("pi-");
+		}
+	    }
+	} else {
+	    pid = (charge > 0) ? HPhysicsConstants::pid("p") :
+		HPhysicsConstants::pid("pi-");
+	}
+    }
     return pid;
 }
 
@@ -945,7 +1024,7 @@ Int_t HKalFilterTask::execute(void) {
             continue;
         }
 
-        Int_t pid = getIniPid(cand);
+        Int_t pid = (fGetPid) ? (*fGetPid)(cand) : getIniPid(cand);
 
         if(!doPid(pid)) {
 #if kalDebug > 2
@@ -1097,6 +1176,9 @@ Bool_t HKalFilterTask::init(void) {
 
     fCatMetaMatch   = HCategoryManager::getCategory(catMetaMatch);
     fCatSplineTrack = HCategoryManager::getCategory(catSplineTrack);
+    fCatTofHit  = HCategoryManager::getCategory(catTofHit);
+    fCatRpcClst = HCategoryManager::getCategory(catRpcCluster);
+
 
     metaMatcher.init();
 
@@ -1130,8 +1212,8 @@ Bool_t HKalFilterTask::reinit(void) {
 
     Bool_t bInit = kTRUE;
     if(!input) {
-        HKalDetCradle* pCradleHades = new HKalDetCradle(nLayersInMdc);
-        input = new HKalInput(pCradleHades);
+	HKalDetCradle* pCradleHades = new HKalDetCradle(nLayersInMdc, materials);
+	input = new HKalInput(pCradleHades);
         bInit = input->init(refId);
         input ->setPrint(bPrintWarn);
 

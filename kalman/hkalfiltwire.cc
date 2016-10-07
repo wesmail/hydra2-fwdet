@@ -181,7 +181,7 @@ Bool_t HKalFiltWire::calcProjector(Int_t iSite) const {
 
 Bool_t HKalFiltWire::calcMeasVecFromState(TVectorD &projMeasVec, HKalTrackSite const* const site,
 					  Kalman::kalFilterTypes stateType,
-					  Kalman::coordSys sys, Int_t iHit) const {
+					  Kalman::coordSys sys) const {
     // Extracts measurement vector from state vector for segment hits.
     //
     // Output:
@@ -215,7 +215,7 @@ Bool_t HKalFiltWire::calcMeasVecFromState(TVectorD &projMeasVec, HKalTrackSite c
     Int_t m = site->getModule();
     Int_t l = site->getLayer();
     Int_t c = site->getCell(0);
-    Double_t driftTime = TMath::Abs(site->getHitDriftTime(iHit));
+    Double_t driftTime = TMath::Abs(site->getHitDriftTime(0));
     Bool_t bOk = getImpact(alpha, mindist, driftTime, posAt, dir, s, m, l, c);
 
     projMeasVec(0) = mindist;

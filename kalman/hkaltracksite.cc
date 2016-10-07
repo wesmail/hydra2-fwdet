@@ -349,7 +349,9 @@ void HKalTrackSite::transform(const TRotation &transMat) {
     transformHit(transMat);
 }
 
-void HKalTrackSite::transVirtLayToSec(Kalman::kalFilterTypes stateType, Bool_t bCovUD) {
+void HKalTrackSite::transVirtLayToSec(Kalman::kalFilterTypes stateType,
+                                      Int_t iHit,
+				      Bool_t bCovUD) {
     // Track states can be stored in two coordinate systems:
     // the sector coordinate system common for all sites and a local
     // coordinate system for this site defined by a virtual plane.
@@ -358,11 +360,12 @@ void HKalTrackSite::transVirtLayToSec(Kalman::kalFilterTypes stateType, Bool_t b
     //
     // Input:
     // stateType: state to transform (kPredicted, kFiltered, kSmoothed, kInvFiltered)
+    // iHit:      index of hit stored in site
     // bCovUD:    set to true if using the UD filter.
 
     Int_t secDim = getStateDim();
     Int_t layDim = getStateDim(kLayCoord);
-    const HKalPlane &virtPlane = getHitVirtPlane();
+    const HKalPlane &virtPlane = getHitVirtPlane(iHit);
     const TVectorD  &svLay     = getStateVec(stateType, kLayCoord);
 
     TVectorD svSec(secDim);
@@ -394,7 +397,9 @@ void HKalTrackSite::transVirtLayToSec(Kalman::kalFilterTypes stateType, Bool_t b
     }
 }
 
-void HKalTrackSite::transSecToVirtLay(Kalman::kalFilterTypes stateType, Bool_t bCovUD) {
+void HKalTrackSite::transSecToVirtLay(Kalman::kalFilterTypes stateType,
+                                      Int_t iHit,
+				      Bool_t bCovUD) {
     // Track states can be stored in two coordinate systems:
     // the sector coordinate system common for all sites and a local
     // coordinate system for this site defined by a virtual plane.
@@ -403,11 +408,12 @@ void HKalTrackSite::transSecToVirtLay(Kalman::kalFilterTypes stateType, Bool_t b
     //
     // Input:
     // stateType: state to transform (predicted, filtered, etc.)
+    // iHit:      index of hit stored in site
     // bCovUD:    set to true if using the UD filter.
 
     Int_t secDim = getStateDim();
     Int_t layDim = getStateDim(kLayCoord);
-    const HKalPlane &virtPlane = getHitVirtPlane();
+    const HKalPlane &virtPlane = getHitVirtPlane(iHit);
     const TVectorD  &svSec     = getStateVec(stateType, kSecCoord);
 
     TVectorD svLay(layDim);

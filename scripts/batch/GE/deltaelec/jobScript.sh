@@ -66,11 +66,13 @@ case "$#" in
    ;;
 esac
 
+    arrayoffset=$par3 
     pathoutputlog=$par2 
     jobarrayFile=$par1
 
+    ((myline=${SLURM_ARRAY_TASK_ID}+${arrayoffset}))
     # map back params for the job
-    input=$(awk "NR==$SGE_TASK_ID" $jobarrayFile)   # get all params for this job
+    input=$(awk "NR==${myline}" $jobarrayFile)   # get all params for this job
     
     
     par1=$(echo $input | cut -d " " -f1)
@@ -105,7 +107,6 @@ esac
     echo "RUNNING ON HOST : " $(hostname)
     echo "WORKING DIR     : " $(pwd)
     echo "USER is         : " $USER
-    echo "JOBID           : $JOB_ID"
     echo "DISK USAGE /tmp :"
     df -h /tmp
     echo "--------------------------------"
@@ -184,21 +185,18 @@ esac
     echo "--------------------------------"
     echo ""
     
-    host=$(hostname)
     
     echo ""               
     echo "--------------------------------"
     echo "MONITOR ENVIRONMENT:"
-    echo "JOB EXE   :---------------------"
-    qstat -j $JOB_ID
-    #echo "HOST LOAD :---------------------"
-    #qhost -h $host
-    #echo "OTHER JOBS ON HOST:-------------"
-    #qhost -h $host -j
-    echo "DISK USAGE /tmp :---------------"
+    echo "SLURM_JOBID        : " $SLURM_JOBID
+    echo "SLURM_ARRAY_JOB_ID : " $SLURM_ARRAY_JOB_ID
+    echo "SLURM_ARRAY_TASK_ID: " $SLURM_ARRAY_TASK_ID
+    echo "RUNNING ON HOST    : " $(hostname)
+    echo "WORKING DIR        : " $(pwd)
+    echo "USER is            : " $USER
+    echo "DISK USAGE /tmp    :------------"
     df -h /tmp 
-    #echo "MEM/CPU USAGE :-----------------"
-    #qstat -j $JOB_ID | grep usage
     echo "--------------------------------"
    
     
@@ -212,5 +210,5 @@ esac
     then  
        echo "MOVING LOG FILE"
        outfile=$(basename $par4)
-       mv ${pathoutputlog}/${JOB_NAME}.o${JOB_ID}.${SGE_TASK_ID} ${pathoutputlog}/${outfile}.log
+       mv ${pathoutputlog}/slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out ${pathoutputlog}/${outfile}.log
     fi

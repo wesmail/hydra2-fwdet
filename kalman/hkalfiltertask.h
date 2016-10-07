@@ -36,17 +36,21 @@ private:
     HCategory*  fCatKalHit2d;      //! Output category. Filled when fitting segments.
     HCategory*  fCatKalHitWire;    //! Output category. Filled when fitting wire hits.
     HCategory*  fCatMetaMatch;     //! Meta match category.
+    HCategory*  fCatTofHit;        //! TofHit categeory.
+    HCategory*  fCatRpcClst;       //! RpcCluster category.
     HCategory*  fCatSplineTrack;   //1 Retrieve momentum estimate from spline.
 
     TF1*        fMomErr;           //! Function to calculate the initial momentum error. Depends on theta in degrees.
     TF1*        fTxErr;            //! Function to calculate the initial parameter tan(p_x/p_z). Depends on theta in degrees.
     TF1*        fTyErr;            //! Function to calculate the initial parameter tan(p_x/p_z). Depends on theta in degrees.
 
+    TObjArray*  materials;         //! Optional pointer to array with materials for the MDCs.
+
     Bool_t      bCompHits;         // Consider competing hits for the DAF.
     Bool_t      bDaf;              // Apply the Deterministic Annealing Filter (DAF).
+    Bool_t      bGeantPid;         // Run with Geant PID.
     Bool_t      bSim;              // Simulation/real data.
     Bool_t      bWire;             // Fit wire or segment hits.
-    //Bool_t      bLeftRight;        // Resolve left/right ambiguity for wire hits.
 
     Bool_t      bFillSites;        // Fill Kalman categories for measurement sites and hits. Turned off by default.
 
@@ -69,12 +73,14 @@ private:
 
     Int_t       refId;             // Runtime reference ID.
 
+    Int_t       (*fGetPid)(HMdcTrkCand*); //! Function for initial PID hypothesis.
+
 protected:
 
     virtual Bool_t       createKalSystem();
 
     virtual void         fillData       (HMetaMatch2* const pMetaMatch, const TObjArray &allhitsGeantMdc,
-                                         HMdcSeg* const inSeg, HMdcSeg* const outSeg);
+					 HMdcSeg* const inSeg, HMdcSeg* const outSeg);
 
     virtual void         fillDataSites  (Int_t &iFirstSite, Int_t &iLastSite,
                                          const TObjArray &allhitsGeantMdc);
@@ -82,7 +88,7 @@ protected:
     virtual HKalTrack*   fillDataTrack(Int_t &iKalTrack, HMetaMatch2* const pMetaMatch,
                                        Int_t iCatSiteFist, Int_t iCatSiteLast,
                                        HMdcSeg* const inSeg, HMdcSeg* const outSeg,
-                                       const HKalMetaMatch &kalMatch) const;
+				       const HKalMetaMatch &kalMatch) const;
 
 public:
 
@@ -185,11 +191,25 @@ public:
 
     virtual void   setIniStateMethod  (Int_t value) { iniSvMethod = value; }
 
+    virtual void   setMdcMaterials    (TObjArray *mats) { materials = mats; }
+
     virtual void   setNumIterations   (Int_t kalRuns)                           { (kalsys) ? kalsys->setNumIterations(kalRuns)  : Warning("setConstField()",  noKalman.Data()); }
+
+    virtual void   setPid             (Int_t (*fPid)(HMdcTrkCand*)) { fGetPid = fPid; }
 
     virtual void   setRotation        (Kalman::kalRotateOptions rotate)         { (kalsys) ? kalsys->setRotation(rotate)        : Warning("setConstField()",  noKalman.Data()); }
 
+    virtual void   setRungeKuttaParams(Float_t initialStpSize,
+				       Float_t stpSizeDec, Float_t stpSizeInc,
+				       Float_t maxStpSize, Float_t minStpSize,
+				       Float_t minPrec, Float_t maxPrec,
+				       Int_t maxNumStps, Int_t maxNumStpsPCA,
+				       Float_t maxDst, Double_t minLngthCalcQ) {
+	(kalsys) ? kalsys->setRungeKuttaParams(initialStpSize, stpSizeDec, stpSizeInc, maxStpSize, minStpSize, minPrec, maxPrec, maxNumStps, maxNumStpsPCA, maxDst, minLngthCalcQ)       : Warning("setRungeKuttaParams()",  noKalman.Data()); }
+
     virtual void   setSmoothing       (Bool_t smooth)                           { (kalsys) ? kalsys->setSmoothing(smooth)       : Warning("setConstField()",  noKalman.Data()); }
+
+    virtual void   setUseGeantPid     (Bool_t geant)                            { bGeantPid = geant; }
 
     virtual void   setVerbose         (Int_t v);
 

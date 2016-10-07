@@ -74,12 +74,12 @@ esac
     echo "--------------------------------"
     echo ""
 
-
     arrayoffset=$par3 
     pathoutputlog=$par2 
     jobarrayFile=$par1
 
     ((myline=${SLURM_ARRAY_TASK_ID}+${arrayoffset}))
+
     # map back params for the job
     input=$(awk "NR==${myline}" $jobarrayFile)   # get all params for this job
     
@@ -91,16 +91,11 @@ esac
     par5=$(echo $input | cut -d " " -f5)
     par6=$(echo $input | cut -d " " -f6)
     par7=$(echo $input | cut -d " " -f7)
-
-    echo "input: $input"
-    echo "par1 = ${par1}"
-    echo "par2 = ${par2}"
-    echo "par3 = ${par3}"
-    echo "par4 = ${par4}"
-    echo "par5 = ${par5}"
-    echo "par6 = ${par6}"
-    echo "par7 = ${par7}"
-
+    par8=$(echo $input | cut -d " " -f8)
+    par9=$(echo $input | cut -d " " -f9)
+    par10=$(echo $input | cut -d " " -f10)
+    par11=$(echo $input | cut -d " " -f11)
+    par12=$(echo $input | cut -d " " -f12)
 
     format='+%Y/%m/%d-%H:%M:%S'
 
@@ -126,6 +121,11 @@ esac
     echo "par5 = ${par5}"
     echo "par6 = ${par6}"
     echo "par7 = ${par7}"
+    echo "par8 = ${par8}"
+    echo "par9 = ${par9}"
+    echo "par10 = ${par10}"
+    echo "par11 = ${par11}"
+    echo "par12 = ${par12}"
     echo "--------------------------------"
     echo ""
 
@@ -157,51 +157,135 @@ esac
 #   EDIT THIS PART TO EXECUTE YOUR JOB!
 
 
-
+envscript=${par1}
+outdir=${par2}
+particle=${par3}
+dstfile=${par4}
+dstsuffix=${par5}
+template=${par6}
+geompath=${par7}
+hgeant=${par8}
+nevents=${par9}
+hldpath=${par10}
+deltaelectronfile=${par11}
+sourceType=${par12}
 #----------------------
 # evironment 
-  echo "==> running enironment script ${par1}"
-. ${par1}
+  echo "==> running enironment script ${envscript}"
+. ${envscript}
 #----------------------
 
-  echo "==> ldd ${par2}"
-  ldd $par2
-
-  echo "==> execute program "
-
-  outdir=$par4
-  
-  files=$(echo $par3 | sed 's/,/ /g')
-  for file in $files
-  do
-     file=$(echo $file | sed 's/#/,/g')
-     echo "==> $par2 $file $outdir $par5"
-     time  $par2 $file $outdir $par5
-
-     status=$?
+filename=$(basename ${dstfile})
 
 
-     echo "------------------------------------"
-     echo "MOVING OUTPUTFILES:"
+vertexfile=$(echo ${filename} | sed 's/.root$/_vertex.root/')
+plutofile=$(echo ${filename} | sed 's/.root$//')
+geantfile=$(echo ${filename} | sed "s/.root$/_geant_${particle}_/")
+
+hldfile=$(echo ${filename} | sed 's/_[1-9].root/.root/') # take care of split files
+hldfile=$(echo ${hldfile}  | sed "s/${dstsuffix}//")
+
+
+#---------------------------------------------
+# we have to collect all split files
+splitname=$(echo $dstfile | sed 's/.root$//')
+files=$(ls -1 ${splitname}_*.root)
+
+dstlist="${dstfile}"
+for item in $files
+do
+    dstlist="${dstlist},${item}"
+done
+#---------------------------------------------
+
+doVertex=1
+doPluto=1
+doGeant=1
+doDST=1
+status=0
+
+
+if [ $doVertex -eq 1 ]
+then
+  echo "==> execute vertex program "
+  echo ./extract_vertex ${dstlist} ${outdir}/vertex/${vertexfile} ${nevents}
+
+./extract_vertex ${dstlist} ${outdir}/vertex/${vertexfile} ${nevents}
+
+fi
+
+if [ $doPluto -eq 1 ]
+then
+
+  echo "==> execute pluto program "
+  echo ./pluto_embedded  ${outdir}/pluto ${plutofile} ${particle} ${nevents} ${sourceType} ${outdir}/vertex/${vertexfile}
+./pluto_embedded  ${outdir}/pluto ${plutofile} ${particle} ${nevents} ${sourceType} ${outdir}/vertex/${vertexfile}
+   status=$?
+fi
+
+if [ $doGeant -eq 1 ]
+then
+
+  echo "==> create ini.dat"
+  echo ./replaceIniDat.pl -t ${template} -d ${outdir}/input/${geantfile}.dat -n ${nevents} -i ${outdir}/pluto/${plutofile}_pluto_${particle}.evt -p ${geompath} -o ${outdir}/geant/${geantfile}.root
+
+./replaceIniDat.pl -t ${template} -d ${outdir}/input/${geantfile}.dat -n ${nevents} -i ${outdir}/pluto/${plutofile}_pluto_${particle}.evt -p ${geompath} -o ${outdir}/geant/${geantfile}.root
+
+  echo "==> execute hgeant "
+  echo ${hgeant} -b -c -f ${outdir}/input/${geantfile}.dat
+ ${hgeant} -b -c -f ${outdir}/input/${geantfile}.dat
+  status=$?
+fi
+
+#---------------------------------------------
+# we have to collect all split files
+#geantlist=${outdir}/geant/${geantfile}1.root
+#splitname=$(echo $geantlist | sed 's/.root$//')
+#files=$(ls -1 ${splitname}_*.root)
+#
+#for item in $files
+#do
+#    geantlist="${geantlist},${item}"
+#done
+#---------------------------------------------
+
+geantlist=${outdir}/geant/${geantfile}1.root
+
+if [ $doDST -eq 1 ]
+then
+
+  echo "==> execute embedding dst "
+if [ "${deltaelectronfile}" == "no" ]
+then
+   echo ./analysisDST_embedding ${hldpath}/${hldfile} ${geantlist} ${outdir}/dst ${nevents} 0
+  ./analysisDST_embedding ${hldpath}/${hldfile} ${geantlist} ${outdir}/dst ${nevents} 0
+else
+  echo ./analysisDST_embedding ${hldpath}/${hldfile} ${geantlist},${deltaelectronfile} ${outdir}/dst ${nevents} 0
+  ./analysisDST_embedding ${hldpath}/${hldfile} ${geantlist},${deltaelectronfile} ${outdir}/dst ${nevents} 0
+fi
+  status=$?
+
+
+echo "------------------------------------"
+echo "MOVING OUTPUTFILES:"
+
+   if [ $status -eq 0 ]
+   then
      
-     isList=$(echo $file | grep ",")
-     
-     if [ "${isList}" == "" ]
-     then
-        filename=$(basename ${file} | sed 's/.root$//')
-        mv -v ${outdir}/${filename}_dst_apr12.root ${outdir}/root/
-     else
-     
-        for f in $(echo $file | sed 's/,/ /g')
-        do
-          filename=$(basename ${f} | sed 's/.root$//')
-          mv -v ${outdir}/${filename}_dst_apr12.root ${outdir}/root/
-        done
+     echo "EXIT OF PROGRAM OK"
+     result=$(ls -1 ${outdir}/dst/${hldfile}*_dst*.root 2>/dev/null | wc -l)
+     echo "FOUND $result OUTPUTFILES"
+     if [ $result -gt 0 ]
+     then 
+        mv -v ${outdir}/dst/${hldfile}*_dst*.root  ${outdir}/dst/root
      fi
-  done
+   else  
+     echo "EXIT OF PROGRAM NOT OK"
+   
+   fi
 #---------------------------------------------------------------------
 
-
+fi
 
 #   END EDIT YOUR EXECUT JOB!
 ###################################################################
@@ -223,6 +307,11 @@ esac
     echo "par5 = ${par5}"  
     echo "par6 = ${par6}"  
     echo "par7 = ${par7}"  
+    echo "par8 = ${par8}"  
+    echo "par9 = ${par9}"
+    echo "par10 = ${par10}"
+    echo "par11 = ${par11}"
+    echo "par12 = ${par12}"
     echo "finsished!"      
     echo "--------------------------------"
     echo ""
@@ -241,19 +330,13 @@ esac
     df -h /tmp 
     echo "--------------------------------"
     
+    
     date $format
 
 
     sleep 2
- 
-    # when running single file move log file name
-    # to output filename
-    if [ "$par3" == "$files" ]
-    then  
-       echo "MOVING LOG FILE"
-       outfile=$(basename $par3)
-       mv ${pathoutputlog}/slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out ${pathoutputlog}/${outfile}.log
-    fi
 
     
+    mv ${pathoutputlog}/slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out ${pathoutputlog}/${hldfile}.log
+ 
     

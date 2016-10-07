@@ -1,16 +1,14 @@
 
 // base
 #include "hades.h"
-#include "hsrckeeper.h"
 #include "hruntimedb.h"
 #include "htask.h"
 #include "hevent.h"
 #include "hcategory.h"
 #include "hdatasource.h"
-#include "hrootsource.h"
-#include "hgeantmergesource.h"
 #include "hdst.h"
 #include "htime.h"
+#include "hsrckeeper.h"
 
 // tasksets
 #include "hstarttaskset.h"
@@ -25,25 +23,21 @@
 
 //tasks
 #include "hmdcdedx2maker.h"
-#include "hmdccalibrater1.h"
-#include "hmdcdigitizer.h"
-#include "hrichdigitizer.h"
 #include "hmdctrackdset.h"
-#include "hmdcvertexfind.h"
 #include "hmdc12fit.h"
+#include "hmdccalibrater1.h"
 #include "hmetamatchF2.h"
 #include "hparticlevertexfind.h"
 #include "hparticlecandfiller.h"
 #include "hparticletrackcleaner.h"
 #include "hparticleevtinfofiller.h"
 #include "hparticlestart2hitf.h"
-#include "hparticlet0reco.h"
 #include "hparticlebt.h"
+#include "hparticlet0reco.h"
 #include "hstart2calibrater.h"
-#include "hstart2hitfsim.h"
 #include "hqamaker.h"
-#include "htofhitf2.h"
 
+#include "hkalfiltertask.h"
 
 // defs
 #include "haddef.h"
@@ -55,62 +49,55 @@
 #include "rpcdef.h"
 #include "tofdef.h"
 #include "walldef.h"
-#include "hstartdef.h"
+
+#include "hkaldef.h"
 
 // containers
 #include "hmdcsetup.h"
 #include "hmdclayercorrpar.h"
 #include "htrbnetaddressmapping.h"
+#include "hmdctimecut.h"
 
 
 // ROOT
 #include "TSystem.h"
 #include "TROOT.h"
 #include "TString.h"
-#include "TObjString.h"
-#include "TObjArray.h"
 #include "TStopwatch.h"
+#include "TDatime.h"
 
 // standard
 #include <iostream>
 #include <cstdio>
 
-
-
-#include "HSelectEmbedding.h"
-
 using namespace std;
 
 
+// macros
+#include "treeFilter.h"
+#include "HMoveRichSector.h"
 
-Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEvents=1, Int_t startEvt=0)
+// Possible to make your own PID function for the Kalman filter.
+static Int_t customPid(HMdcTrkCand* cand) {
+    return 14;
+}
+
+//void dataKal(TString inFile="/hera/hades/dst/apr12/gen8/108/root/be1210819405908.hld_dst_apr12.root",
+void dataKal(TString inFile="/lustre/nyx/hades/raw/apr12/108/be1210819405908.hld",
+	     TString outDir="./data",
+	     Int_t nEvents=400,
+	     Int_t startEvt=0)
 {
     new Hades;
     TStopwatch timer;
-    gHades->setEmbeddingMode(1);    // 1 : do embedding , 0 no embedding (default) , 2 keep geant
-    //gHades->setEmbeddingDebug(1);   // 1 : do embedding with empty real data , 0  (default) normal embedding
     gHades->setTreeBufferSize(8000);
     gHades->makeCounter(100);
     HRuntimeDb *rtdb = gHades -> getRuntimeDb();
-
-    gHades->getSrcKeeper()->addSourceFile("analysis_embedding.cc");
-    gHades->getSrcKeeper()->addSourceFile("analysis_pluto.cc");
-    gHades->getSrcKeeper()->addSourceFile("analysis_vertex.cc");
-    gHades->getSrcKeeper()->addSourceFile("HSelectEmbedding.h");
-    gHades->getSrcKeeper()->addSourceFile("pluto_embedded.C");
-    gHades->getSrcKeeper()->addSourceFile("writeVertex.C");
-    gHades->getSrcKeeper()->addSourceFile("Makefile_dst");
-    gHades->getSrcKeeper()->addSourceFile("Makefile_vertex");
-    gHades->getSrcKeeper()->addSourceFile("Makefile_pluto");
-    gHades->getSrcKeeper()->addSourceFile("sendScript.sh");
-
-    //HTofHitF2::setForceKeepGeant(kTRUE) ;   // do not make realistic embedding
-
-    cout<<"infile hld   :"<<inFile<<endl;
-    cout<<"infile geant :"<<inFileGeant<<endl;
-    cout<<"outdir       :"<<outdir<<endl;
-    cout<<"n events     :"<<nEvents<<endl;
-
+    gHades->setBeamTimeID(Particle::kApr12);
+    //gHades->getSrcKeeper()->addSourceFile("analysisDST.cc");
+    //gHades->getSrcKeeper()->addSourceFile("treeFilter.h");
+    //gHades->getSrcKeeper()->addSourceFile("HMoveRichSector.h");
+    //gHades->getSrcKeeper()->addSourceFile("sendScript.sh");
 
 
     //####################################################################
@@ -118,26 +105,26 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     printf("Setting configuration...+++\n");
 
     TString asciiParFile     = "";
-    //TString rootParFile      = "./param_gen8/allParam_APR12_gen8_embedding_gen1_08022016.root";
-    TString rootParFile      = "/cvmfs/hades.gsi.de/param/embedding/apr12/allParam_APR12_gen8_embedding_gen1_08022016.root";
-    TString paramSource      = "root"; // root, ascii, oracle
+    //TString asciiParFile     = "./param/HMdc_calparraw_layergeompar_layercorrpar_05092015.txt";
+    TString rootParFile      = "/cvmfs/hades.gsi.de/param/real/apr12/allParam_APR12_gen8_10072015.root";
+    TString paramSource      = "oracle"; // root, ascii, oracle
 
-    TString outFileSuffix    = "_embedding_dst_apr12.root";
+    TString outFileSuffix    = "_dst_apr12.root";
+
+    TString beamtime         = "apr12";
+    //TString paramrelease     = "APR12_dst_gen8";  // now, APR12_gen2_dst APR12_gen5_dst
+    TString paramrelease     = "now";  // now, APR12_gen2_dst
 
     Int_t  refId             = -1; //
     Bool_t kParamFile        = kFALSE;
     Bool_t doExtendedFit     = kTRUE; // switch on/off fit for initial params of segment fitter (10 x slower!)
     Bool_t doStartCorrection = kTRUE;  // kTRUE (default)=  use run by run start corrections
+    Bool_t doRotateRich      = kFALSE;
     Bool_t doMetaMatch       = kFALSE;  // default : kTRUE, kFALSE switch off metamatch in clusterfinder
     Bool_t doMetaMatchScale  = kTRUE;
     Bool_t useWireStat       = kTRUE;
     Float_t metaScale        = 1.5;
-    Bool_t doTree            = kTRUE;
-    Bool_t doMDCDeltaElectron = kTRUE;
-    Bool_t doRICHDeltaElectron= kFALSE; // kFALSE : suppress inserted delta electrons
 
-    TString beamtime         = "apr12";
-    TString paramRelease     = "APR12SIM_dst_gen8a";// "07-FEB-2016 00:00:00";  // 07-FEB-2016 00:00:00  (before OLGA added new LayerCorrPar!)
     //####################################################################
     //####################################################################
 
@@ -145,8 +132,8 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
 
 
     //-------------- Default Settings for the File names -----------------
-    TString baseDir = outdir;
-    if(!baseDir.EndsWith("/")) baseDir+="/";
+    if(!outDir.EndsWith("/")) outDir+="/";
+    TString outDirQA = outDir+"/qa/";
 
     TString fileWoPath = gSystem->BaseName(inFile.Data());
     fileWoPath.ReplaceAll(".hld","");
@@ -154,8 +141,8 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     Int_t evtBuild = HTime::getEvtBuilderFileName(fileWoPath,kFALSE);
 
     //TString outDir   = Form("%s%i/",baseDir.Data(),day);
-    TString outDir   = Form("%s",baseDir.Data());
-    TString outDirQA = outDir+"qa/";
+    //TString outDir   = Form("%s",baseDir.Data());
+    //TString outDirQA = outDir+"qa/";
 
     if(gSystem->AccessPathName(outDir.Data()) != 0){
 	cout<<"Creating output dir :"<<outDir.Data()<<endl;
@@ -174,31 +161,26 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     TString outFile  = outDir+hld+outFileSuffix;
     outFile.ReplaceAll("//", "/");
     //--------------------------------------------------------------------
-    /*
 
     //------ extended output for eventbuilder 1------------------------------------//
     //----------------------------------------------------------------------------//
     Cat_t notPersistentCatAll[] =
     {
 	//catRich, catMdc, catShower, catTof, catTracks,
-	catRichRaw,
-	//catRichDirClus, catRichHitHdr, //catRichHit,
-	catRichCal,
-	catMdcRaw,
-	//catMdcCal1,
-	catMdcCal2,catMdcClusInf,catMdcHit,
-	//catMdcSeg,
+	catRichRaw, //catRichDirClus,
+	catRichHitHdr, //catRichHit, catRichCal,
+	catMdcRaw, catMdcCal1,catMdcCal2,catMdcClusInf,catMdcHit,
+	catMdcSeg,
 	catMdcTrkCand,catMdcRawEventHeader,
-	catShowerCal, catShowerPID, catShowerHitHdr, catShowerRaw, catShowerGeantWire,catShowerRawMatr,catShowerTrack,
+	catShowerCal, catShowerPID, catShowerHitHdr, catShowerRaw,
 	//catShowerHit,
 	catTofRaw,
 	//catTofHit, catTofCluster,
 	catRpcRaw,
-	//catRpcCal,
-	//catRpcHit, catRpcCluster,
-	catRKTrackB, catSplineTrack,
+	//catRpcCal,catRpcHit, catRpcCluster,
+	/*catRKTrackB,*/ catSplineTrack,
 	//catMetaMatch,
-	//catParticleCandidate, catParticleEvtInfo,
+	//catParticleCandidate, catParticleEvtInfo, catParticleMdc,
 	catWallRaw, catWallOneHit, catWallCal,
 	catStart2Raw //catStart2Cal, catStart2Hit,
 	// catTBoxChan
@@ -210,87 +192,20 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     Cat_t notPersistentCat[] =
     {
 	//catRich, catMdc, catShower, catTof, catTracks,
-	catRichRaw,
-	//catRichDirClus, catRichHitHdr, catRichHit,
-	catRichCal,
+	catRichRaw, //catRichDirClus,
+	catRichHitHdr,
+	//catRichHit, catRichCal,
 	catMdcRaw,
-	//catMdcCal1,
-	catMdcCal2,catMdcClusInf, catMdcHit,
-	//catMdcSeg,
-	catMdcTrkCand, catMdcRawEventHeader,
-	catShowerCal, catShowerPID, catShowerHitHdr, catShowerRaw, catShowerGeantWire,catShowerRawMatr,catShowerTrack,
-	//catShowerHit,
+	catMdcCal1,
+	catMdcCal2,catMdcClusInf, catMdcHit, /*catMdcSeg,*/ catMdcTrkCand, catMdcRawEventHeader,
+	catShowerCal, catShowerPID, catShowerHitHdr, catShowerRaw, catShowerHit,
 	catTofRaw,
-	//catTofHit, catTofCluster,
+	catTofHit, catTofCluster,
 	catRpcRaw,
-	//catRpcCal,
-	//catRpcHit, catRpcCluster,
-	catRKTrackB, catSplineTrack,
+	catRpcCal, catRpcHit, catRpcCluster,
+	/*catRKTrackB,*/ catSplineTrack,
 	//catMetaMatch,
-	//catParticleCandidate, catParticleEvtInfo,
-	catWallRaw, catWallOneHit, catWallCal,
-	catStart2Raw //catStart2Cal, catStart2Hit,
-	// catTBoxChan
-    };
-    //--------------------------------------------------------------------
-    */
-
-    //------ extended output for eventbuilder 1------------------------------------//
-    //----------------------------------------------------------------------------//
-    Cat_t notPersistentCatAll[] =
-    {
-	//catRich, catMdc, catShower, catTof, catTracks,
-	catRichRaw,
-	//catRichDirClus, catRichHitHdr, //catRichHit,
-	catRichCal,
-	catMdcRaw,
-	catMdcCal1,
-	catMdcCal2,catMdcClusInf,catMdcHit,
-	catMdcSeg, catMdcTrkCand,
-	catMdcRawEventHeader,
-	catShowerCal, catShowerPID, catShowerHitHdr, catShowerRaw, catShowerGeantWire,
-	catShowerRawMatr,
-	catShowerTrack,
-	catShowerHit,
-	catTofRaw,
-	catTofHit, catTofCluster,
-	catRpcRaw, catRpcCal,
-	catRpcHit,
-	catRpcCluster,
-	catRKTrackB, catSplineTrack,
-	catMetaMatch,
-	//catParticleCandidate, catParticleEvtInfo,
-	catWallRaw, catWallOneHit, catWallCal,
-	catStart2Raw //catStart2Cal, catStart2Hit,
-	// catTBoxChan
-    };
-    //--------------------------------------------------------------------
-
-    //------standard output for dst production------------------------------------//
-    //----------------------------------------------------------------------------//
-    Cat_t notPersistentCat[] =
-    {
-	//catRich, catMdc, catShower, catTof, catTracks,
-	catRichRaw,
-	//catRichDirClus, catRichHitHdr, catRichHit,
-	catRichCal,
-	catMdcRaw,
-	catMdcCal1,
-	catMdcCal2,catMdcClusInf, catMdcHit,
-	catMdcSeg, catMdcTrkCand,
-	catMdcRawEventHeader,
-	catShowerCal, catShowerPID, catShowerHitHdr, catShowerRaw, catShowerGeantWire,
-	catShowerRawMatr,
-	catShowerTrack,
-	catShowerHit,
-	catTofRaw,
-	catTofHit, catTofCluster,
-	catRpcRaw, catRpcCal,
-	catRpcHit,
-	catRpcCluster,
-	catRKTrackB, catSplineTrack,
-	catMetaMatch,
-	//catParticleCandidate, catParticleEvtInfo,
+	//catParticleCandidate, catParticleEvtInfo, catParticleMdc,
 	catWallRaw, catWallOneHit, catWallCal,
 	catStart2Raw //catStart2Cal, catStart2Hit,
 	// catTBoxChan
@@ -327,7 +242,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     // if not NULL it will overwrite settings given by beamtime
     // detectors (default)= rich,mdc,tof,rpc,shower,wall,tbox,start
 
-    HDst::setupParameterSources(paramSource,asciiParFile,rootParFile,paramRelease);
+    HDst::setupParameterSources(paramSource,asciiParFile,rootParFile,paramrelease);  // now, APR12_gen2_dst
     //HDst::setupParameterSources("oracle",asciiParFile,rootParFile,"now"); // use to create param file
     // parsource = oracle,ascii,root (order matters)
     // if source is "ascii" a ascii param file has to provided
@@ -341,23 +256,13 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     // inputFile needed by dataosoure = 1,3
 
 
-
-    //------------- Operations on the filenames --------------------------
-    HGeantMergeSource* source = new HGeantMergeSource(kTRUE,kTRUE);
-    source->addMultFiles(inFileGeant);
-    source->setGlobalRefId(refId);
-    gHades->setSecondDataSource(source);
-    //--------------------------------------------------------------------
-
     HDst::setupUnpackers(beamtime,"rich,mdc,tof,rpc,shower,tbox,wall,latch,start");
     // beamtime apr12
     // detectors (default)= rich,mdc,tof,rpc,shower,wall,tbox,latch,start
 
     if(kParamFile) {
-
-	TDatime time;
-        TString paramfilename= Form("allParam_APR12_gen8_embedding_gen1_%02i%02i%i",time.GetDay(),time.GetMonth(),time.GetYear());  // without .root
-
+        TDatime time;
+        TString paramfilename= Form("allParam_APR12_gen8_%02i%02i%i",time.GetDay(),time.GetMonth(),time.GetYear());  // without .root
 
 	if(gSystem->AccessPathName(Form("%s.root",paramfilename.Data())) == 0){
 	    gSystem->Exec(Form("rm -f %s.root",paramfilename.Data()));
@@ -366,8 +271,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
 	    gSystem->Exec(Form("rm -f %s.log" ,paramfilename.Data()));
 	}
 
-	//if (!rtdb->makeParamFile(Form("%s.root",paramfilename.Data()),"apr12","10-APR-2012","10-MAY-2012")) {
-	if (!rtdb->makeParamFile(Form("%s.root",paramfilename.Data()),"apr12","04-APR-2012","15-MAY-2012")) {
+	if (!rtdb->makeParamFile(Form("%s.root",paramfilename.Data()),beamtime.Data(),"04-APR-2012","15-MAY-2012")) {
 	    delete gHades;
 	    exit(1);
 	}
@@ -384,53 +288,172 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     HTofTaskSet          *tofTaskSet          = new HTofTaskSet();
     HWallTaskSet         *wallTaskSet         = new HWallTaskSet();
     HMdcTaskSet          *mdcTaskSet          = new HMdcTaskSet();
+    //    mdcTaskSet->setVersionDeDx(1); // 0 = no dEdx, 1 = HMdcDeDx2
 
 
-    HMdcSetup* mysetup = (HMdcSetup*)rtdb->getContainer("MdcSetup");
+    //HMdcSetup* mysetup = (HMdcSetup*)rtdb->getContainer("MdcSetup");
+    //HMdcTimeCut* mdctimecut = (HMdcTimeCut*)rtdb->getContainer("MdcTimeCut");
     HTrbnetAddressMapping* trbnetmap = (HTrbnetAddressMapping*)rtdb->getContainer("TrbnetAddressMapping");
     rtdb->initContainers(refId);
-    mysetup->setStatic();
+    //mysetup->setStatic();
     trbnetmap->setStatic();
+    //mdctimecut->setStatic();
+    //mdctimecut->setIsUsed(kFALSE);
 
-    mysetup->getMdcCommonSet()->setIsSimulation(0);                 // sim=1, real =0
-    mysetup->getMdcCommonSet()->setAnalysisLevel(4);                // fit=4
-    mysetup->getMdcCalibrater1Set()->setMdcCalibrater1Set(2, 0);    // 1 = NoStartandCal, 2 = StartandCal, 3 = NoStartandNoCal ::  0 = noTimeCut, 1 = TimeCut
-    mysetup->getMdcTrackFinderSet()->setIsCoilOff(kFALSE);          // field is on
-    mysetup->getMdcTrackFinderSet()->setNLayers(&nLayers[0][0]);
-    mysetup->getMdcTrackFinderSet()->setNLevel(nLevel);
-    mysetup->getMdc12FitSet()->setMdc12FitSet(2,1,0,kFALSE,kFALSE); // tuned fitter, seg
+    //mysetup->getMdcCommonSet()->setIsSimulation(0);                 // sim=1, real =0
+    //mysetup->getMdcCommonSet()->setAnalysisLevel(4);                // fit=4
+    //mysetup->getMdcCalibrater1Set()->setMdcCalibrater1Set(2, 1);    // 1 = NoStartandCal, 2 = StartandCal, 3 = NoStartandNoCal ::  0 = noTimeCut, 1 = TimeCut
+    //mysetup->getMdcCalibrater1Set()->setMdcCalibrater1Set(2, 0);    // 1 = NoStartandCal, 2 = StartandCal, 3 = NoStartandNoCal ::  0 = noTimeCut, 1 = TimeCut
+    //mysetup->getMdcTrackFinderSet()->setIsCoilOff(kFALSE);          // field is on
+    //mysetup->getMdcTrackFinderSet()->setNLayers(nLayers[0]);
+    //mysetup->getMdcTrackFinderSet()->setNLevel(nLevel);
+    //mysetup->getMdc12FitSet()->setMdc12FitSet(2,1,0,kFALSE,kFALSE); // tuned fitter, seg
+    //mysetup->getMdc12FitSet()->setMdc12FitSet(2,1,0,kTRUE,kFALSE); // tuned fitter, seg
 
 
     HTask *startTasks         = startTaskSet       ->make("real","");
     HTask *richTasks          = richTaskSet        ->make("real","");
-    HTask *tofTasks           = tofTaskSet         ->make("real");
+    HTask *tofTasks           = tofTaskSet         ->make("real","");
     HTask *wallTasks          = wallTaskSet        ->make("real");
-    HTask *rpcTasks           = rpcTaskSet         ->make("real");
+    HTask *rpcTasks           = rpcTaskSet         ->make("real","");
     HTask *showerTasks        = showerTaskSet      ->make("real","lowshowerefficiency");
     HTask *mdcTasks           = mdcTaskSet         ->make("rtdb","");
 
-    HMdcDigitizer* digi = mdcTaskSet->getDigitizer();
-
-    digi->setDeltaElectronUse(doMDCDeltaElectron,kFALSE,109,-750.,600.,20.);
-    digi->setDeltaElectronMinMomCut(2.,2.,4.5,2.,2.,4.5);  // take care of glass mirrors in sec 2+5
-    digi->setTimeCutUse(kTRUE);
-
-    HRichDigitizer* richdigi = HRichDigitizer::getDigitizer();
-    richdigi->setDeltaElectronUse(doRICHDeltaElectron,kFALSE,109,20.,2.);
-    richdigi->setDeltaElectronMinMomCut(0.,0.,0.,0.,0.,0.);
 
     //----------------SPLINE and RUNGE TACKING----------------------------------------
     HSplineTaskSet         *splineTaskSet       = new HSplineTaskSet("","");
     HTask *splineTasks     = splineTaskSet      ->make("","spline,runge");
 
-    HParticleStart2HitF    *pParticleStart2HitF = new HParticleStart2HitF   ("particlehitf"      ,"particlehitf","");
+    HParticleStart2HitF    *pParticleStart2HitF = new HParticleStart2HitF   ("particlehitf"      ,"particlehitf");
     HParticleCandFiller    *pParticleCandFiller = new HParticleCandFiller   ("particlecandfiller","particlecandfiller","");
     pParticleCandFiller->setFillMdc(kFALSE); // new : testing close pair
-
     HParticleTrackCleaner  *pParticleCleaner    = new HParticleTrackCleaner ("particlecleaner"   ,"particlecleaner");
-    HParticleVertexFind    *pParticleVertexFind = new HParticleVertexFind   ("particlevertexfind","particlevertexfind",kTRUE);
+    HParticleVertexFind    *pParticleVertexFind = new HParticleVertexFind   ("particlevertexfind","particlevertexfind");
     HParticleEvtInfoFiller *pParticleEvtInfo    = new HParticleEvtInfoFiller("particleevtinfo"   ,"particleevtinfo",beamtime);
-    HParticleBt            *pParticleBt         =  new HParticleBt("RichBackTracking","RichBackTracking",beamtime);
+    HParticleBt            *pParticleBt         = new HParticleBt("RichBackTracking","RichBackTracking",beamtime);
+
+
+    // Options for the Kalman filter and DAF.
+    // --------------------------------------
+
+    Bool_t      bSim             = kFALSE;
+
+    // Position error in x and y in mm
+    // default 0.2mm in x and 0.1 in y direction.
+    //Double_t    errX             = 0.2;
+    Double_t    errX             = 0.4;
+
+    //Double_t    errY             = 0.1;
+    Double_t    errY             = 0.14;
+
+    // Errors for phi = arctan(x/z) and theta = arctan(y/z) in degrees
+    //Double_t    errTx            = 0.5;
+    //Double_t    errTy            = 0.5;
+    Double_t    errTx            = 0.4;
+    Double_t    errTy            = 0.3;
+
+    // Momentum estimation error as fraction. For example, 0.05 means
+    // that the estimation is within 5% of the true value.
+    Double_t    errMom           = 0.07;
+
+    // kIterForward:  Propagate track from MDCI to MDCIV (default).
+    // kIterBackward: Propagate track backwards from MDCIV to MDCI.
+    Bool_t      dir              = kIterForward;
+
+    // Number of Kalman filter iterations. (default: 1)
+    // Raise this number if you wish to wait longer.
+    Int_t       nIter            = 1;
+
+    // kVarRot: Rotate coordinate system in the direction of initial
+    // track estimation (default).
+    // kNoRot:  Do not perform the above transformation.
+    Kalman::kalRotateOptions rot = kVarRot;
+
+    // kTRUE: run filter with smoothing (default).
+    // kFALSE: run filter without smoothing.
+    Bool_t      bSmooth          = kTRUE;
+
+    // kTRUE: work with wire hits.
+    // kFALSE: work with segment hits (default).
+    Bool_t      bFitWireHits     = kFALSE;
+
+    // Turn on the annealing filter. Only works with wire hits.
+    Bool_t      bDoDaf           = kFALSE;
+
+    // Allow for competing wire hits in an MDC layer.
+    Bool_t      bCompHits        = kFALSE;
+
+    // Turn on/off energy loss and multiple scattering.
+    Bool_t      bDoEnerLoss      = kTRUE;
+    Bool_t      bDoMultScat      = kTRUE;
+
+    // kTRUE: Get initial PID from Geant information.
+    Bool_t      bGeantPid        = kFALSE;
+
+    // Input for initial state vector.
+    // default = Spline, 1 = Geant without smearing,
+    // 2 = Geant with smearing, 3 = Runge-Kutta
+    Int_t       iniSvMethod      = 0;
+
+    // Reconstruct only particles with certain Geant pid's.
+    // Leave this array empty to reconstruct all particles.
+    const Int_t nPids            = 0;
+    Int_t       pid[nPids];// = {14};
+    filtMethod  filtType         = Kalman::kKalConv;
+
+    // Parameters for the annealing filter.
+    // Number of DAF iterations.
+    const Int_t nDafs            = 7;
+    // Annealing factors (temperatures).
+    //Double_t    dafT[nDafs]      = { 1. };
+    Double_t    dafT[nDafs]      = { 1000., 200., 81., 9., 4., 1., 1. };
+    // Cut-off parameter (default is 4).
+    Double_t    dafChi2Cut       = 4;
+
+    // Verbose level.
+    // 0: no messages, 1: print error messages, >1: print errors and warnings.
+    Int_t       verb             = 0;
+
+    TF1 *fTxErr = new TF1("fTxErr", "0.0077 - 0.00021 * x + 4.3e-6 * x^2",
+        		   0., 90.);
+    TF1 *fTyErr = new TF1("fTyErr", "0.0097 - 0.00048 * x + 8.1e-6 * x^2",
+        		   0., 90.);
+    TF1 *fMomErr = new TF1("fMomErr", "3.97 - 0.050 * x + 0.0041 * x^2",
+        		   0., 90.);
+
+    //----------------------------------------------------------
+    // Set up Kalman filter.
+
+    HKalFilterTask* kalFilterTask =
+	new HKalFilterTask(refId, bSim, bFitWireHits, bDoDaf, bCompHits);
+    // Change default parameters. This must be done after
+
+    kalFilterTask->setDafPars(dafChi2Cut, &dafT[0], nDafs);
+    kalFilterTask->setDirection(dir);
+    kalFilterTask->setDoPid(&pid[0], nPids);
+    kalFilterTask->setDoEnerLoss(bDoEnerLoss);
+    kalFilterTask->setDoMultScat(bDoMultScat);
+    kalFilterTask->setFilterMethod(filtType);
+    kalFilterTask->setNumIterations(nIter);
+    kalFilterTask->setRotation(rot);
+    kalFilterTask->setSmoothing(bSmooth);
+    kalFilterTask->setCounterStep(-1);
+    kalFilterTask->setIniStateMethod(iniSvMethod);
+    kalFilterTask->setErrors(errX, errY, TMath::Tan(errTx*TMath::DegToRad()),
+			     TMath::Tan(errTy*TMath::DegToRad()), errMom);
+    kalFilterTask->setFillSites(kTRUE);
+    kalFilterTask->setUseGeantPid(bGeantPid);
+    kalFilterTask->setVerbose(verb);
+
+    kalFilterTask->setFuncMomErr(fMomErr);
+    kalFilterTask->setFuncTxErr(fTxErr);
+    kalFilterTask->setFunKyErr(fTyErr);
+
+    //kalFilterTask->setPid(customPid);
+
+    //HMdcTrackGFieldPar *pField  = (HMdcTrackGFieldPar*)(rtdb->getContainer("MdcTrackGFieldPar"));
+    //kalFilter->setFieldMap(pField->getPointer(), scaleFactor);
+    //----------------------------------------------------------------------------//
 
 
     //----------------------- Quality Assessment -------------------------
@@ -440,6 +463,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
 	qaMaker = new HQAMaker("qamaker","qamaker");
 	qaMaker->setOutputDir((Text_t *)outDirQA.Data());
 	//qaMaker->setPSFileName((Text_t *)hldFile.Data());
+        qaMaker->setUseSlowPar(kFALSE);
 	qaMaker->setSamplingRate(1);
 	qaMaker->setIntervalSize(50);
     }
@@ -448,23 +472,26 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
 
     //------------------------ Master task set ---------------------------
     HTaskSet *masterTaskSet = gHades->getTaskSet("all");
-    masterTaskSet->add(new HSelectEmbedding("select_emb","select_emb"));
-
     masterTaskSet->add(startTasks);
+
     masterTaskSet->add(tofTasks);
     masterTaskSet->add(wallTasks);
     masterTaskSet->add(rpcTasks);
     masterTaskSet->add(pParticleStart2HitF); // run before wall,mdc,sline,candfiller
     masterTaskSet->add(richTasks);
+    if(doRotateRich)masterTaskSet->add(new HMoveRichSector("moveRichSector","moveRichSector"));
     masterTaskSet->add(showerTasks);
     masterTaskSet->add(mdcTasks);
     masterTaskSet->add(splineTasks);
+    masterTaskSet->add(kalFilterTask);
     masterTaskSet->add(pParticleCandFiller);
     masterTaskSet->add(pParticleCleaner);
     masterTaskSet->add(pParticleVertexFind); // run after track cleaning
     masterTaskSet->add(pParticleEvtInfo);
     masterTaskSet->add(pParticleBt);
     masterTaskSet->add(new HParticleT0Reco("T0","T0",beamtime));
+
+    //addFilter(masterTaskSet,inFile,outDir) ;  // treeFilter.h
 
     //if (qaMaker) masterTaskSet->add(qaMaker);
 
@@ -475,8 +502,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     if(doMetaMatchScale)HMetaMatchF2::setScaleCut(metaScale,metaScale,metaScale); // (tof,rpc,shower) increase matching window, but do not change normalization of MetaQA
     if(useWireStat) HMdcCalibrater1::setUseWireStat(kTRUE);
 
-    HStart2HitFSim* starthitf = HStart2HitFSim::getHitFinder() ;
-    if(starthitf) starthitf->setResolution(0.06);    // 60 ps start res
+
 
     //--------------------------------------------------------------------
     // find best initial params for segment fit (takes long!)
@@ -485,13 +511,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     }
     //--------------------------------------------------------------------
 
-    // setup the vertexfinder for embedding
-    // standard for using dsts vertex files:
-    HMdcVertexFind::setRejectEmbeddedTracks(kTRUE);   // (default: kTRUE)  reject embedded tracks from vertex calculation (needed if no event seq is used)
-    HMdcVertexFind::setUseEventSeqNumber   (kTRUE);   // (default: kTRUE)  use the event seq number stored in HGeantKine
-    HMdcVertexFind::setSkipNoVertex        (kFALSE);  // (default: kFALSE) kTRUE: skip events where no vertex could be calculated
-
-    HMdcDeDx2Maker::setFillCase(2);                      // 0 (default)=combined, 1=combined+seg, 2=combined+seg+mod
+    //HMdcDeDx2Maker::setFillCase(2);                      // 0 =combined, 1=combined+seg, 2=combined+seg+mod (default)
     HStart2Calibrater::setCorrection(doStartCorrection); // kTRUE (default)=  use
     //--------------------------------------------------------------------
 
@@ -520,11 +540,11 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
 	}
     }
     //--------------------------------------------------------------------
-    if(doTree){
-	// output file
-	gHades->setOutputFile((Text_t*)outFile.Data(),"RECREATE","Test",2);
-	gHades->makeTree();
-    }
+
+    // output file
+    gHades->setOutputFile((Text_t*)outFile.Data(),"RECREATE","Test",2);
+    gHades->makeTree();
+
     Int_t nProcessed = gHades->eventLoop(nEvents,startEvt);
     printf("Events processed: %i\n",nProcessed);
 
@@ -538,13 +558,11 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
 
     if(kParamFile) rtdb->saveOutput();
 
-    delete gHades; // comment for the moment
+    delete gHades;
     timer.Stop();
 
-    return 0;
-
 }
-
+/*
 #ifndef __CINT__
 int main(int argc, char **argv)
 {
@@ -554,23 +572,24 @@ int main(int argc, char **argv)
     TString nevents,startevent;
     switch (argc)
     {
-    case 4:
-	return analysisDST(TString(argv[1]),TString(argv[2]),TString(argv[3])); // inputfile + inputfile2 + outdir
+    case 3:
+	return analysisDST(TString(argv[1]),TString(argv[2])); // inputfile + outdir
 	break;
-    case 5:  // inputfile + inputfile2 + outdir + nevents
-	nevents=argv[4];
+    case 4:  // inputfile + outdir + nevents
+	nevents=argv[3];
 
-	return analysisDST(TString(argv[1]),TString(argv[2]),TString(argv[3]),nevents.Atoi());
+	return analysisDST(TString(argv[1]),TString(argv[2]),nevents.Atoi());
 	break;
-	// inputfile + inputfile2 + nevents + startevent
-    case 6: // inputfile + outdir + nevents + startevent
-	nevents   =argv[4];
-	startevent=argv[5];
-	return analysisDST(TString(argv[1]),TString(argv[2]),TString(argv[3]),nevents.Atoi(),startevent.Atoi());
+	// inputfile + nevents + startevent
+    case 5: // inputfile + outdir + nevents + startevent
+	nevents   =argv[3];
+	startevent=argv[4];
+	return analysisDST(TString(argv[1]),TString(argv[2]),nevents.Atoi(),startevent.Atoi());
 	break;
     default:
-	cout<<"usage : "<<argv[0]<<" inputfile inputfile2 outputdir [nevents] [startevent]"<<endl;
+	cout<<"usage : "<<argv[0]<<" inputfile outputdir [nevents] [startevent]"<<endl;
 	return 0;
     }
 }
 #endif
+*/

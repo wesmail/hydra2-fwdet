@@ -24,9 +24,7 @@
 #include "TRandom.h"
 #include "TNtuple.h"
 
-
-#include "hdstrealdata.h"
-#include "hdstutilities.h"
+#include "hseed.h"
 
 #include "PParticle.h"
 #include "PFireball.h"
@@ -41,17 +39,31 @@
 using namespace std;
 
 
-Int_t pluto_embedded(TString outdir="",TString outfile="",
-		     Int_t nEvents=1000,
-		     TString vertexntuple="", TString type="e+")
+Int_t pluto_embedded(TString outdir="",TString outfile="",TString type="pi-",
+		     Int_t nEvents=1000,Int_t source = 1,
+		     TString vertexntuple="")
 {
 
-   gRandom->SetSeed(0);
-   PUtils::SetSeed(gRandom->Rndm()*64000);
+    /*
+     method;        0 (default) : /dev/random,
+                    1 : TRandom3 (local) with systime ,
+                    2 : TRandom3 (local) with systime + processid + iplast,
+                    3 : like 1 but gRandom,
+                    4 : like 2 but gRandom,
+                    5 : fixed (needs seed to be set)
+    */
+    Int_t method = 0;
+    HSeed hseed(method);
+    Int_t seed = hseed.getSeed();
 
 
-   Bool_t useVertex = kFALSE;
-   if(vertexntuple.CompareTo("no")!=0&&vertexntuple.CompareTo("")!=0) useVertex = kTRUE;
+    PUtils::SetSeed(seed);
+
+    makeDistributionManager()->Print("decay_models");
+
+
+    Bool_t useVertex = kFALSE;
+    if(vertexntuple.CompareTo("no")!=0&&vertexntuple.CompareTo("")!=0) useVertex = kTRUE;
 
    //-------------------------------------------------
 
@@ -63,7 +75,7 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
    //---------------CONIGURATION----------------------
    //
 
-   Int_t  sourceType   = 0;    // 0 : white single tracks , 1 : thermal source
+   Int_t  sourceType   = source; // 0 : white single tracks , 1 : thermal source
    Int_t  asciiOut     = 0;    // write pluto ascci output for HGeant (==0 if we use HGeantOutput)
    Int_t  rootOut      = 0;    // write pluto root file
    PChannel** channel  = 0;    // no channel needed here
@@ -161,7 +173,7 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
        Float_t T2         = 0.;  // temperature in GeV
        Float_t fractionT1 = 1;
        Float_t blast      = 0.;   // radial expansion velocity  (0.3)
-       Float_t anisoA2    = 1.;
+       Float_t anisoA2    = 0.;   // 1 before
        Float_t anisoA4    = 0.;
        Float_t flowV1     = 0.;
        Float_t flowV2     = 0.;
@@ -175,9 +187,16 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->Print();
 
 	   PParticle *K0S=new PParticle("Lambda");
-	   PParticle *K0Ss[]={source,K0S};
+
+	   PParticle **K0Ss = new PParticle* [2];
+           K0Ss[0] = source;
+           K0Ss[1] = K0S;
+
 	   PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	   PChannel  *cc[]  = {K0Sc};
+
+	   PChannel  **cc = new PChannel* [1];
+           cc[0] = K0Sc ;
+
 	   r=new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
        }
 
@@ -190,9 +209,16 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->Print();
 
 	   PParticle *K0S=new PParticle("Xi-");
-	   PParticle *K0Ss[]={source,K0S};
+
+	   PParticle **K0Ss = new PParticle* [2];
+           K0Ss[0] = source;
+           K0Ss[1] = K0S;
+
 	   PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	   PChannel  *cc[]  = {K0Sc};
+
+	   PChannel  **cc = new PChannel* [1];
+           cc[0] = K0Sc ;
+
 	   r=new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
        }
 
@@ -206,9 +232,16 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->Print();
 
 	   PParticle *K0S=new PParticle("K0S");
-	   PParticle *K0Ss[]={source,K0S};
+
+	   PParticle **K0Ss = new PParticle* [2];
+           K0Ss[0] = source;
+           K0Ss[1] = K0S;
+
 	   PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	   PChannel  *cc[]  = {K0Sc};
+
+	   PChannel  **cc = new PChannel* [1];
+           cc[0] = K0Sc ;
+
 	   r=new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
        }
        //
@@ -221,9 +254,16 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->Print();
 
 	   PParticle *K0S=new PParticle("K-");
-	   PParticle *K0Ss[]={source,K0S};
+
+	   PParticle **K0Ss = new PParticle* [2];
+           K0Ss[0] = source;
+           K0Ss[1] = K0S;
+
 	   PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	   PChannel  *cc[]  = {K0Sc};
+
+	   PChannel  **cc = new PChannel* [1];
+           cc[0] = K0Sc ;
+
 	   r=new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
        }
 
@@ -236,9 +276,16 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->Print();
 
 	   PParticle *K0S=new PParticle("K+");
-	   PParticle *K0Ss[]={source,K0S};
+
+	   PParticle **K0Ss = new PParticle* [2];
+           K0Ss[0] = source;
+           K0Ss[1] = K0S;
+
 	   PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	   PChannel  *cc[]  = {K0Sc};
+
+	   PChannel  **cc = new PChannel* [1];
+           cc[0] = K0Sc ;
+
 	   r=new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
        }
 
@@ -251,14 +298,83 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->setTrueThermal(kTRUE);
 	   source->Print();
 	   PParticle *mother = new PParticle("phi");
-	   PParticle *s[]  = {source,mother};
+
+	   PParticle **s = new PParticle* [2];
+           s[0] = source;
+           s[1] = mother;
+
 	   PChannel *c1 = new PChannel(s, 1, 1);
 	   PParticle *kp   = new PParticle("K+");
 	   PParticle *km   = new PParticle("K-");
-	   PParticle *decay[] = {mother,kp,km};
+
+	   PParticle **decay = new PParticle* [3];
+           decay[0] = mother;
+           decay[1] = kp;
+           decay[2] = km;
+
 	   PChannel *c2    = new PChannel(decay,2,1);
-	   PChannel  *cc[] = {c1,c2};
+
+	   PChannel  **cc = new PChannel* [2];
+           cc[0]  = c1;
+           cc[1]  = c2;
+
 	   r = new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut);   // 2 particle in the final state
+       }
+
+       if(type.CompareTo("p")   == 0){
+
+	   nChannel = 1;
+
+	   T1 = 0.080;
+	   T2 = 0.0;
+	   fractionT1 = 1.;
+	   anisoA2    = 0.;
+	   anisoA4    = 0.;
+	   blast      = 0.3;
+	   PFireball *source = new PFireball("p",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
+	   source->setTrueThermal(kTRUE);
+	   source->Print();
+
+	   PParticle *K0S=new PParticle("p");
+
+	   PParticle **K0Ss = new PParticle* [2];
+           K0Ss[0] = source;
+           K0Ss[1] = K0S;
+
+	   PChannel  *K0Sc=new PChannel(K0Ss,1,1);
+
+	   PChannel  **cc = new PChannel* [1];
+           cc[0] = K0Sc ;
+
+	   r=new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
+       }
+
+       if(type.CompareTo("d")   == 0){
+
+	   nChannel = 1;
+
+	   T1 = 0.070;
+	   T2 = 0.0;
+	   fractionT1 = 1.;
+	   anisoA2    = 0.;
+	   anisoA4    = 0.;
+	   blast      = 0.36;
+	   PFireball *source = new PFireball("d",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
+	   source->setTrueThermal(kTRUE);
+	   source->Print();
+
+	   PParticle *K0S=new PParticle("d");
+
+	   PParticle **K0Ss = new PParticle* [2];
+	   K0Ss[0] = source;
+	   K0Ss[1] = K0S;
+
+	   PChannel  *K0Sc=new PChannel(K0Ss,1,1);
+
+	   PChannel  **cc = new PChannel* [1];
+	   cc[0] = K0Sc ;
+
+	   r=new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
        }
 
        if(type.CompareTo("pi-")   == 0){
@@ -274,9 +390,16 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->Print();
 
 	   PParticle *K0S=new PParticle("pi-");
-	   PParticle *K0Ss[]={source,K0S};
+
+	   PParticle **K0Ss = new PParticle* [2];
+           K0Ss[0] = source;
+           K0Ss[1] = K0S;
+
 	   PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	   PChannel  *cc[]  = {K0Sc};
+
+	   PChannel  **cc = new PChannel* [1];
+           cc[0] = K0Sc ;
+
 	   r=new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
        }
 
@@ -293,9 +416,16 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->Print();
 
 	   PParticle *K0S=new PParticle("pi+");
-	   PParticle *K0Ss[]={source,K0S};
+
+	   PParticle **K0Ss = new PParticle* [2];
+           K0Ss[0] = source;
+           K0Ss[1] = K0S;
+
 	   PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	   PChannel  *cc[]  = {K0Sc};
+
+	   PChannel  **cc = new PChannel* [1];
+           cc[0] = K0Sc ;
+
 	   r=new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
        }
 
@@ -309,13 +439,26 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->setTrueThermal(kTRUE);
 	   source->Print();
 	   PParticle *mother = new PParticle(type.Data());
-	   PParticle *s[]  = {source,mother};
+
+	   PParticle **s  = new PParticle* [2];
+	   s[0] = source;
+           s[1] = mother;
+
 	   PChannel *c1 = new PChannel(s, 1, 1);
 	   PParticle *ep   = new PParticle("e+");
 	   PParticle *em   = new PParticle("e-");
-	   PParticle *decay[] = {mother,ep,em};
+
+	   PParticle **decay  = new PParticle* [3];
+	   decay[0] = mother;
+	   decay[1] = ep;
+	   decay[2] = em;
+
 	   PChannel *c2    = new PChannel(decay,2,1);
-	   PChannel  *cc[] = {c1,c2};
+
+	   PChannel  **cc = new PChannel* [2];
+	   cc[0] = c1;
+	   cc[1] = c2;
+
 	   r = new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut);  // 2 particle in the final state
        }
 
@@ -332,8 +475,13 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->setTrueThermal(kTRUE);
 	   source->Print();
 	   PParticle *pi0 = new PParticle(type.Data());
-	   PParticle *s[]  = {source,pi0};
+
+	   PParticle **s  = new PParticle* [2];
+	   s[0] = source;
+           s[1] = pi0;
+
 	   PChannel *c1 = new PChannel(s, 1, 1);
+
 	   //----- pi0 Dalitz decay ------------
 	   PParticle *dielec = new PParticle("dilepton");
 	   PParticle *gamma  = new PParticle("g");
@@ -341,11 +489,25 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   PParticle *elec   = new PParticle("e-");
 	   PParticle *posi   = new PParticle("e+");
 
-	   PParticle *s2[]={pi0,dielec,gamma};
+	   PParticle **s2 = new PParticle* [3];
+	   s2[0] = pi0;
+	   s2[1] = dielec;
+           s2[2] = gamma;
+
 	   PChannel  *c2 = new PChannel(s2,2,1);
-	   PParticle *s3[]={dielec,elec,posi};
+
+	   PParticle **s3 = new PParticle* [3];
+	   s3[0] = dielec;
+	   s3[1] = elec;
+           s3[2] = posi;
+
 	   PChannel  *c3 = new PChannel(s3,2,1);
-	   PChannel  *cc[] = {c1,c2,c3};
+
+	   PChannel  **cc = new PChannel* [3];
+	   cc[0] = c1;
+	   cc[1] = c2;
+	   cc[2] = c3;
+
 	   r = new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut); // 3 particle in the final state
        }
 
@@ -361,7 +523,11 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->setTrueThermal(kTRUE);
 	   source->Print();
 	   PParticle *pi0 = new PParticle(type.Data());
-	   PParticle *s[]  = {source,pi0};
+
+	   PParticle **s     = new PParticle* [2];
+	   s[0] = source;
+           s[1] = pi0;
+
 	   PChannel *c1 = new PChannel(s, 1, 1);
 	   //----- pi0 Dalitz decay ------------
 	   PParticle *dielec = new PParticle("dilepton");
@@ -370,11 +536,25 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   PParticle *elec   = new PParticle("e-");
 	   PParticle *posi   = new PParticle("e+");
 
-	   PParticle *s2[]={pi0,dielec,gamma};
+	   PParticle **s2 = new PParticle* [3];
+	   s2[0] = pi0;
+	   s2[1] = dielec;
+           s2[2] = gamma;
+
 	   PChannel  *c2 = new PChannel(s2,2,1);
-	   PParticle *s3[]={dielec,elec,posi};
+
+	   PParticle **s3 = new PParticle* [3];
+	   s3[0] = dielec;
+	   s3[1] = elec;
+           s3[2] = posi;
+
 	   PChannel  *c3 = new PChannel(s3,2,1);
-	   PChannel  *cc[] = {c1,c2,c3};
+
+	   PChannel  **cc = new PChannel* [3];
+	   cc[0] = c1;
+	   cc[1] = c2;
+           cc[2] = c3;
+
 	   r = new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut);  // 3 particle in the final state
        }
 
@@ -385,7 +565,11 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->setTrueThermal(kTRUE);
 	   source->Print();
 	   PParticle *delta = new PParticle(type.Data());
-	   PParticle *s[]  = {source,delta};
+
+	   PParticle **s  = new PParticle* [2];
+	   s[0] = source;
+           s[1] = delta;
+
 	   PChannel *c1 = new PChannel(s, 1, 1);
 
 
@@ -395,14 +579,25 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 
 	   PParticle *dilep = new PParticle("dilepton");
 
-	   PParticle *deltadecay[] = {delta,p,dilep};
+	   PParticle **deltadecay = new PParticle* [3];
+           deltadecay[0] = delta;
+	   deltadecay[1] = p;
+	   deltadecay[2] = dilep;
 
 	   PChannel *c2 = new PChannel(deltadecay,2,1,1);
-	   PParticle *dildecay[] = {dilep,ep,em};
+
+	   PParticle **dildecay = new PParticle* [3];
+           dildecay[0] = dilep;
+           dildecay[1] = ep;
+           dildecay[2] = em;
 
 	   PChannel *c3 = new PChannel(dildecay,2,1,1);
 
-	   PChannel  *cc[]={c1,c2,c3};
+	   PChannel  **cc = new PChannel* [3];
+           cc[0] = c1;
+           cc[1] = c2;
+           cc[2] = c3;
+
 	   r = new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut);  // 3 particle in the final state
 
        }
@@ -413,7 +608,11 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   source->setTrueThermal(kTRUE);
 	   source->Print();
 	   PParticle *omeg = new PParticle("w");
-	   PParticle *s[]  = {source,omeg};
+
+	   PParticle **s  = new PParticle* [2];
+           s[0] = source;
+           s[1] = omeg;
+
 	   PChannel *c1 = new PChannel(s, 1, 1);
 	   //----- omega dalitz decay ------------
 	   PParticle *dielec = new PParticle("dilepton");
@@ -421,11 +620,25 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   PParticle *elec = new PParticle("e-");
 	   PParticle *posi = new PParticle("e+");
 
-	   PParticle *s2[]={omeg,dielec,pi0};
+	   PParticle **s2 = new PParticle* [3];
+           s2[0] = omeg;
+           s2[1] = dielec;
+           s2[2] = pi0;
+
 	   PChannel  *c2 = new PChannel(s2,2,1);
-	   PParticle *s3[]={dielec,elec,posi};
+
+	   PParticle **s3 = new PParticle* [3];
+           s3[0] = dielec;
+           s3[1] = elec;
+           s3[2] = posi;
+
 	   PChannel  *c3 = new PChannel(s3,2,1);
-	   PChannel  *cc[] = {c1,c2,c3};
+
+	   PChannel  **cc = new PChannel* [3];
+           cc[0] = c1;
+           cc[1] = c2;
+           cc[2] = c3;
+
 	   r = new PReaction(cc,(Char_t*)filename.Data(),nChannel,rootOut,0,calcVertex,asciiOut);    // 3 particle in the final state
        }
 
@@ -440,6 +653,9 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 
 	   //add to prologue action
 	   r->AddPrologueBulk(vertex);
+       } else {
+        cout<<"NO VERTEX SET "<<endl;
+
        }
 
 
@@ -449,6 +665,8 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
        r->AddFileOutput(output);
 
    }
+
+   r->setHGeant(0);
 
    if(useVertex){
        TFile *f = new TFile(vertexntuple.Data());
@@ -464,7 +682,6 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",
 	   cout << "NULL pointer to ntuple" << endl;
 	   exit(1);
        }
-
 
        // number of events
        r->Loop(vertexnt->GetEntries());

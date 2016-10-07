@@ -146,6 +146,8 @@ public:
 
     virtual void     setRotateBfieldVecs   (Bool_t rotB)             { bRotBfield = rotB; }
 
+    virtual void     setRungeKuttaParams   (Float_t initialStpSize, Float_t stpSizeDec, Float_t stpSizeInc, Float_t maxStpSize, Float_t minStpSize, Float_t minPrec, Float_t maxPrec, Int_t maxNumStps, Int_t maxNumStpsPCA, Float_t maxDst, Double_t minLngthCalcQ);
+
     virtual void     setUseConstField      (Bool_t constField)       { bConstField = constField; }
 
     ClassDef(HKalRungeKutta,0)

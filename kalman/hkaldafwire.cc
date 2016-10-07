@@ -29,78 +29,6 @@ HKalDafWire::HKalDafWire(Int_t n, Int_t measDim, Int_t stateDim,
 //  -----------------------------------
 //  Implementation of protected methods
 //  -----------------------------------
-
-Bool_t HKalDafWire::calcEffMeasVec(Int_t iSite) const {
-    // Calculates an effective measurement vector from the measurement
-    // of all hits in this site and the effective measurement error matrix.
-    // Used for the annealing filter.
-    //
-    // Effective measurement vector:
-    // m_eff = V * sum(p_i * G_i * m_i)
-    // V:   effective measurement covariance matrix
-    // p_i: weight of hit i
-    // G_i: inverse measurement error matrix of hit i
-    // m_i: measurement vector of hit i
-    //
-    // Effective measurement error covariance:
-    // V = [ sum(p_i * G_i) ]^-1
-
-    HKalTrackSite *site = getSite(iSite);
-    if(!site) {
-	return kFALSE;
-    }
-
-    if(!calcEffErrMat(iSite)) {
-        return kFALSE;
-    }
-
-    const Int_t n = site->getNcompetitors();
-
-    const TVector3 &c = site->getHitVirtPlane().getCenter();
-
-    TVector3 trkDir;
-    // Need to use the predicted track values. The effective measurement is
-    // calculated before the filter step.
-    site->getState(Kalman::kPredicted).calcDir(trkDir);
-
-    const TVector3 &projVec = site->getHitVirtPlane().getAxisV();
-    TVectorD driftCentShift(getMeasDim());
-    TVector3 w1, w2;
-    TVectorD effMeasVec(getMeasDim());
-    const TMatrixD &effErrMat = site->getEffErrMat();
-
-#if dafDebug > 2
-    cout<<"Calculating effective measurement"<<endl;
-#endif
-
-    for(Int_t i = 0; i < n; i++) {
-        site->getHitWirePts(w1, w2, i);
-	driftCentShift(0) = projVec.Dot(w1 - c);
-        //cout<<driftCentShift(0)<<", "<<site->getHitVec(i)[0]<<endl;
-	effMeasVec += site->getHitWeight(i) *
-	    TMatrixD(TMatrixD::kInverted, site->getErrMat(i)) *
-            (driftCentShift - site->getHitVec(i));
-
-#if dafDebug > 2
-	cout<<"Weight of hit "<<i<<": "<<site->getHitWeight(i)
-	    <<", drift centre shift "<<driftCentShift(0)
-	    <<", drift radius "<<(site->getHitVec(i))(0)<<endl;
-#endif
-    }
-    effMeasVec = effErrMat * effMeasVec;
-
-#if dafDebug > 2
-    cout<<"Effective measurement vector"<<endl;
-    effMeasVec.Print();
-    cout<<"Effective measurement error matrix"<<endl;
-    effErrMat.Print();
-#endif
-
-    site->setEffMeasVec(effMeasVec);
-
-    return kTRUE;
-}
-
 Bool_t HKalDafWire::calcProjector(Int_t iSite) const {
 
     HKalTrackSite *site = getSite(iSite);
@@ -139,96 +67,108 @@ Bool_t HKalDafWire::calcVirtPlane(Int_t iSite) const {
     TVector3 dir;
     HKalTrackState::calcDir(dir, predState);
 
-    TVector3 pos2 = posAt + .5 * dir;
+    TVector3 pos1 = posAt - dir;
+    TVector3 pos2 = posAt + dir;
 
-    // Find the PCA to a segment defined by the wire endpoints.
-    TVector3 wire1, wire2;
-    site->getHitWirePts(wire1, wire2, 0);
+    // Number of competing hits.
+    const Int_t nComp = site->getNcompetitors();
 
-    Int_t iflag;
-    Double_t length, mindist;
-    TVector3 pcaTrack, pcaWire;
+    // Left/right ambiguity.
+    const Int_t nWires = nComp/2;
 
-    // Find the PCA's on the wire and the track.
-    HKalGeomTools::Track2ToLine(pcaTrack, pcaWire, iflag, mindist, length,
-				posAt, pos2, wire1, wire2);
+    for(Int_t iWire = 0; iWire < nWires; iWire++) {
 
-    if(iflag == 1) {
-	if(getPrintWarn()) {
-	    Warning("calcVirtPlane()", "PCA is outside of wire");
+	Int_t iHit = iWire*2;
+
+	// Find the PCA to a segment defined by the wire endpoints.
+	TVector3 wire1, wire2;
+	site->getHitWirePts(wire1, wire2, iHit);
+
+	Int_t iflag;
+	Double_t length, mindist;
+	TVector3 pcaTrack, pcaWire;
+
+	// Find the PCA's on the wire and the track.
+	HKalGeomTools::Track2ToLine(pcaTrack, pcaWire, iflag, mindist, length,
+				    pos1, pos2, wire1, wire2);
+
+	if(iflag == 1) {
+	    if(getPrintWarn()) {
+		Warning("calcVirtPlane()", "PCA is outside of wire");
+	    }
 	}
-    }
-    if(iflag == 2) {
-	if(getPrintErr()) {
-	    Error("calcVirtPlane()", "Track parallel to wire.");
+	if(iflag == 2) {
+	    if(getPrintErr()) {
+		Error("calcVirtPlane()", "Track parallel to wire.");
+	    }
+	    return kFALSE;
 	}
-	return kFALSE;
-    }
 
-    // Make virtual plane.
-    // origin: current track position
-    // u axis: along wire
-    // v axis: from PCA on wire to PCA on track
-    TVector3 u = (wire2 - wire1).Unit();
-    TVector3 v = (pcaTrack - pcaWire).Unit();
+	// Make virtual plane.
+	// origin: current track position
+	// u axis: along wire
+	// v axis: from PCA on wire to PCA on track
+	TVector3 u = (wire2 - wire1).Unit();
+	TVector3 v = (pcaTrack - pcaWire).Unit();
 
-    // Ensure v axis of virtual layer points in direction of positive y-axis
-    // in the layer coordinate system.
-    const TVector3 &n = site->getHitMeasLayer().getNormal();
 
-    HMdcSizesCells *fSizesCells = HMdcSizesCells::getExObject();
-    HMdcSizesCellsLayer &fSizesCellsLayer =
-	(*fSizesCells)[site->getSector()][site->getModule()][site->getLayer()];
-    const HGeomTransform &transRotLaySysRSec =
-	fSizesCellsLayer.getRotLaySysRSec(site->getCell());
+	// Ensure v axis of virtual layer points in direction of positive y-axis
+	// in the layer coordinate system.
+	const TVector3 &n = site->getHitMeasLayer().getNormal();
 
-    HGeomVector ygeom(0., 1., 0.);
-    transRotLaySysRSec.transFrom(ygeom);
+	HMdcSizesCells *fSizesCells = HMdcSizesCells::getExObject();
+	HMdcSizesCellsLayer &fSizesCellsLayer =
+	    (*fSizesCells)[site->getSector()][site->getModule()][site->getLayer()];
+	const HGeomTransform &transRotLaySysRSec =
+	    fSizesCellsLayer.getRotLaySysRSec(site->getCell());
 
-    TVector3 y(ygeom.getX(), ygeom.getY(), ygeom.getZ());
+	HGeomVector ygeom(0., 1., 0.);
+	transRotLaySysRSec.transFrom(ygeom);
 
-    if(y.Dot(v) < 0.) {
-//        v = -1. * v;
-    }
+	TVector3 y(ygeom.getX(), ygeom.getY(), ygeom.getZ());
 
-    // Repeating the above for all competitors of a site would result in
-    // different virtual layers. Since the wires are parallel and the track
-    // is approximately a straight line these layers would be parallel, i.e.
-    // its axis u and v would be (anit-)parallel.
-    // One common virtual layer is used for all of the measurement site's
-    // competing hits. The centre point of this virtual plane will be the
-    // predicted track position. The predicted position will usually be
-    // located between the competing wires.
-    //
-    // When calculating the residual in the filter step the drift radii of
-    // both wires will be projected onto this virtual layer.
-    // Placing the virtual plane between the wires keeps the projection error
-    // small, allows that a common, simple projection function and projector
-    // matrix can be used for both competitors and avoids a bias towards one
-    // of the two competing wires.
-    //
-    //
-    //                              Axis v of common virtual plane is parallel to v1 and v2
-    //                                   /
-    //         |------------*----|------/----------|
-    //      PCA for hit 1 -> *   |     /    cell 2 |
-    //         |            / *  |    /            |
-    //         |           /90 * |   /             |
-    //Axis v for hit 1 -> /     *|  /              |
-    //         |         /       * /    Wire 2     |
-    //    -----|--------X--------|*-------X--------------> Measurement layer
-    //         |      Wire 1     / *     /         |
-    //         |                /|  *90 / <- Axis v for hit 2
-    //         |               / |   * /           |
-    //         |cell 1        /  |    * <- PCA for hit 2
-    //         |-------------/---|-----*-----------|
-    //                      /           * track
+	if(y.Dot(v) < 0.) {
+	    v = -1. * v;
+	}
 
-    for(Int_t i = 0; i < site->getNcompetitors(); i++) {
-	site->setHitVirtPlane(posAt, u, v, i);
-    }
+	// Repeating the above for all competitors of a site would result in
+	// different virtual layers. Since the wires are parallel and the track
+	// is approximately a straight line these layers would be parallel, i.e.
+	// its axis u and v would be (anit-)parallel.
+	// One common virtual layer is used for all of the measurement site's
+	// competing hits. The centre point of this virtual plane will be the
+	// predicted track position. The predicted position will usually be
+	// located between the competing wires.
+	//
+	// When calculating the residual in the filter step the drift radii of
+	// both wires will be projected onto this virtual layer.
+	// Placing the virtual plane between the wires keeps the projection error
+	// small, allows that a common, simple projection function and projector
+	// matrix can be used for both competitors and avoids a bias towards one
+	// of the two competing wires.
+	//
+	//
+	//                              Axis v of common virtual plane is parallel to v1 and v2
+	//                                   /
+	//         |------------*----|------/----------|
+	//      PCA for hit 1 -> *   |     /    cell 2 |
+	//         |            / *  |    /            |
+	//         |           /90 * |   /             |
+	//Axis v for hit 1 -> /     *|  /              |
+	//         |         /       * /    Wire 2     |
+	//    -----|--------X--------|*-------X--------------> Measurement layer
+	//         |      Wire 1     / *     /         |
+	//         |                /|  *90 / <- Axis v for hit 2
+	//         |               / |   * /           |
+	//         |cell 1        /  |    * <- PCA for hit 2
+	//         |-------------/---|-----*-----------|
+	//                      /           * track
+
+        // Left/right ambiguity of wire hits..
+	site->setHitVirtPlane(pcaWire, u, v, iHit);
+	site->setHitVirtPlane(pcaWire, u, v, iHit+1);
 #if dafDebug > 2
-    cout<<"Virtual plane for site "<<iSite<<endl;
+    cout<<"Virtual plane for wire hit "<<iWire<<" of site "<<iSite<<endl;
     cout<<"Centre: "<<endl;
     posAt.Print();
     cout<<"Axis U: "<<endl;
@@ -236,6 +176,7 @@ Bool_t HKalDafWire::calcVirtPlane(Int_t iSite) const {
     cout<<"Axis V: "<<endl;
     v.Print();
 #endif
+    }
     return kTRUE;
 }
 
@@ -246,8 +187,7 @@ Bool_t HKalDafWire::calcVirtPlane(Int_t iSite) const {
 Bool_t HKalDafWire::calcMeasVecFromState(TVectorD &projMeasVec,
 					 HKalTrackSite const* const site,
 					 Kalman::kalFilterTypes stateType,
-					 Kalman::coordSys sys,
-					 Int_t iHit) const {
+					 Kalman::coordSys sys) const {
 #if kalDebug > 0
     Int_t mdim = getMeasDim();
     if(projMeasVec.GetNrows() != mdim) {
@@ -267,7 +207,9 @@ Bool_t HKalDafWire::calcMeasVecFromState(TVectorD &projMeasVec,
 	// and direction with the drift chamber cell.
 
 	TVector3 posAt;
-	if(!HKalTrackState::calcPosAtPlane(posAt, site->getHitVirtPlane(), sv)) {
+	//if(!HKalTrackState::calcPosAtPlane(posAt, site->getHitVirtPlane(iHit), sv)) {
+        //?
+	if(!HKalTrackState::calcPosAtPlane(posAt, site->getHitMeasLayer(), sv)) {
 	    if(getPrintErr()) {
 		Error("calcMeasVecFromState()",
 		      "Could not extract position vector from track state.");
@@ -283,9 +225,11 @@ Bool_t HKalDafWire::calcMeasVecFromState(TVectorD &projMeasVec,
         // side of the MDC layer.
 
         // Assume straight line for PCA calculation.
-        TVector3 pos2 = posAt + 0.5 * dir;
+	TVector3 pos1 = posAt - dir;
+        TVector3 pos2 = posAt + dir;
         // Wire end points.
         TVector3 wire1, wire2;
+        Int_t iHit = getWireNr()*2;
         site->getHitWirePts(wire1, wire2, iHit);
 
         // PCAs on track and projected onto wire.
@@ -297,16 +241,13 @@ Bool_t HKalDafWire::calcMeasVecFromState(TVectorD &projMeasVec,
         // Arc length.
         Double_t length = 0.;
         HKalGeomTools::Track2ToLine(pcaTrack, pcaWire, Iflag, dist, length,
-                                    posAt, pos2, wire1, wire2);
+                                    pos1, pos2, wire1, wire2);
 
-        if(site->getHitVirtPlane().getAxisV().Dot(pcaTrack - pcaWire) < 0.) {
+        if(site->getHitVirtPlane(iHit).getAxisV().Dot(pcaTrack - pcaWire) < 0.) {
             dist *= -1.;
         }
 
-        // --------------------
-
-	Double_t driftCentShift = site->getHitVirtPlane().getAxisV().Dot(wire1 - site->getHitVirtPlane().getCenter());
-        projMeasVec(0) = driftCentShift - dist;
+        projMeasVec(0) = dist;
     } else {
 	// State vector is in virtual layer coordinates.
 	// The second component corresponds to a drift radius.
@@ -326,40 +267,82 @@ Bool_t HKalDafWire::filter(Int_t iSite) {
 	return kFALSE;
     }
 
-    if(!calcEffMeasVec(iSite)) {
-        if(getPrintErr()) {
-	    Error("filter()",
-		  Form("Could not calculate effective measurement for site %i.",
-		       iSite));
-        }
-        return kFALSE;
+    const Int_t nWires = site->getNcompetitors()/2;
+
+    vector<TVectorD> states(nWires, TVectorD(getStateDim()));
+    vector<TMatrixD> invCovs(nWires, TMatrixD(getStateDim(), getStateDim()));
+
+    for(Int_t iWire = 0; iWire < nWires; iWire++) {
+	// Each wire measurement has two hits assigned to it
+        // (left and right from the wire).
+        setWireNr(iWire);
+        Int_t iHit = iWire*2;
+	getSite(iSite)->transSecToVirtLay(Kalman::kPredicted, iHit,
+					  (getFilterMethod() == Kalman::kKalUD));
+
+	if(!calcEffMeasVec(iSite, iWire)) {
+	    if(getPrintErr()) {
+		Error("filter()",
+		      Form("Could not calculate effective measurement for site %i.",
+			   iSite));
+	    }
+	    return kFALSE;
+	}
+
+	switch(getFilterMethod()) {
+	case Kalman::kKalConv:
+	    filterConventional(iSite);
+	    break;
+	case Kalman::kKalJoseph:
+	    filterJoseph(iSite);
+	    break;
+	case Kalman::kKalUD:
+	    filterUD(iSite);
+	    break;
+	case Kalman::kKalSeq:
+	    filterSequential(iSite);
+	    break;
+	case Kalman::kKalSwer:
+	    filterSwerling(iSite);
+	    break;
+	default:
+	    filterConventional(iSite);
+	    break;
+	}
+
+	// Filtering wire hits is done in the coordinate system of the virtual
+	// layer. Convert the results to sector system.
+	site->transVirtLayToSec(Kalman::kFiltered, iHit,
+				(getFilterMethod() == Kalman::kKalUD));
+
+	states.at(iWire) = TVectorD(site->getStateVec(Kalman::kFiltered,
+						      Kalman::kSecCoord));
+
+	invCovs.at(iWire) = TMatrixD(TMatrixD::kInverted,
+				     site->getStateCovMat(Kalman::kFiltered,
+							  Kalman::kSecCoord));
     }
 
-    switch(getFilterMethod()) {
-    case Kalman::kKalConv:
-        filterConventional(iSite);
-        break;
-    case Kalman::kKalJoseph:
-        filterJoseph(iSite);
-        break;
-    case Kalman::kKalUD:
-        filterUD(iSite);
-        break;
-    case Kalman::kKalSeq:
-        filterSequential(iSite);
-        break;
-    case Kalman::kKalSwer:
-        filterSwerling(iSite);
-        break;
-    default:
-        filterConventional(iSite);
-        break;
+    // Calculate average state and covariance matrix.
+    // C = (C1^{-1} + C2^{-1})^{-1}
+    // sv = C * (C1^{-1} * sv1 + C2^{-1} * sv2)
+    TMatrixD cov(getStateDim(), getStateDim());
+    cov.Zero();
+    for(UInt_t i = 0; i < invCovs.size(); i++) {
+	cov += invCovs.at(i);
     }
+    cov.Invert();
+    site->setStateCovMat(Kalman::kFiltered, cov,
+			 Kalman::kSecCoord);
 
-    // Filtering wire hits is done in the coordinate system of the virtual
-    // layer. Convert the results to sector system.
-    site->transVirtLayToSec(Kalman::kFiltered,
-			    (getFilterMethod() == Kalman::kKalUD));
+    TVectorD state(getStateDim());
+    state.Zero();
+    for(UInt_t i = 0; i < states.size(); i++) {
+	state += invCovs.at(i)*states.at(i);
+    }
+    state = cov*state;
+    site->setStateVec(Kalman::kFiltered, state,
+		      Kalman::kSecCoord);
 
     return kTRUE;
 }
@@ -385,11 +368,9 @@ Bool_t HKalDafWire::propagate(Int_t iFromSite, Int_t iToSite) {
         propagateCovConv(iFromSite, iToSite);
     }
 
-    getSite(iToSite)->transSecToVirtLay(Kalman::kPredicted,
-					(getFilterMethod() == Kalman::kKalUD));
-
     return kTRUE;
 }
+
 
 void HKalDafWire::updateSites(const TObjArray &hits) {
     // Replace sites of the Kalman system with new hits.

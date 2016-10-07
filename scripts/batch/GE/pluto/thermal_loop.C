@@ -67,9 +67,16 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->Print();
 
 	PParticle *K0S=new PParticle("Lambda");
-	PParticle *K0Ss[]={source,K0S};
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	PChannel  *cc[]  = {K0Sc};
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
     }
 
@@ -80,9 +87,16 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->Print();
 
 	PParticle *K0S=new PParticle("Xi-");
-	PParticle *K0Ss[]={source,K0S};
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	PChannel  *cc[]  = {K0Sc};
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
     }
 
@@ -94,35 +108,58 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->Print();
 
 	PParticle *K0S=new PParticle("K0S");
-	PParticle *K0Ss[]={source,K0S};
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	PChannel  *cc[]  = {K0Sc};
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
     }
      //
     if(type.CompareTo("K-")   == 0){
 	T1 = 0.070;
+	//T1 = 0.080;  // test
 	PFireball *source = new PFireball("K-",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
 	source->setTrueThermal(kTRUE);
 	source->Print();
 
 	PParticle *K0S=new PParticle("K-");
-	PParticle *K0Ss[]={source,K0S};
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	PChannel  *cc[]  = {K0Sc};
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
     }
 
     if(type.CompareTo("K+")   == 0){
 	T1 = 0.080;
+	//T1 = 0.100; // test
 	PFireball *source = new PFireball("K+",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
 	source->setTrueThermal(kTRUE);
 	source->Print();
 
 	PParticle *K0S=new PParticle("K+");
-	PParticle *K0Ss[]={source,K0S};
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	PChannel  *cc[]  = {K0Sc};
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
     }
 
@@ -134,13 +171,26 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->setTrueThermal(kTRUE);
 	source->Print();
 	PParticle *mother = new PParticle("phi");
-	PParticle *s[]  = {source,mother};
+
+	PParticle **s = new PParticle* [2];
+	s[0] = source;
+	s[1] = mother;
+
 	PChannel *c1 = new PChannel(s, 1, 1);
 	PParticle *kp   = new PParticle("K+");
 	PParticle *km   = new PParticle("K-");
-	PParticle *decay[] = {mother,kp,km};
+
+	PParticle **decay = new PParticle* [3];
+	decay[0] = mother;
+	decay[1] = kp;
+	decay[2] = km;
+
 	PChannel *c2    = new PChannel(decay,2,1);
-	PChannel  *cc[] = {c1,c2};
+
+	PChannel  **cc = new PChannel* [2];
+	cc[0]  = c1;
+	cc[1]  = c2;
+
 	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),2,0,0,0,1);
     }
 
@@ -156,9 +206,16 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->Print();
 
 	PParticle *K0S=new PParticle("p");
-	PParticle *K0Ss[]={source,K0S};
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	PChannel  *cc[]  = {K0Sc};
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // 1 particle in the final state
     }
 
@@ -174,9 +231,16 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->Print();
 
 	PParticle *K0S=new PParticle("d");
-	PParticle *K0Ss[]={source,K0S};
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	PChannel  *cc[]  = {K0Sc};
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // 1 particle in the final state
     }
 
@@ -191,9 +255,16 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->Print();
 
 	PParticle *K0S=new PParticle("pi-");
-	PParticle *K0Ss[]={source,K0S};
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	PChannel  *cc[]  = {K0Sc};
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // 1 particle in the final state
     }
 
@@ -208,9 +279,16 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->Print();
 
 	PParticle *K0S=new PParticle("pi+");
-	PParticle *K0Ss[]={source,K0S};
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
 	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
-	PChannel  *cc[]  = {K0Sc};
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // 1 particle in the final state
     }
 
@@ -223,13 +301,26 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->setTrueThermal(kTRUE);
 	source->Print();
 	PParticle *mother = new PParticle(type.Data());
-	PParticle *s[]  = {source,mother};
+
+	PParticle **s  = new PParticle* [2];
+	s[0] = source;
+	s[1] = mother;
+
 	PChannel *c1 = new PChannel(s, 1, 1);
 	PParticle *ep   = new PParticle("e+");
 	PParticle *em   = new PParticle("e-");
-	PParticle *decay[] = {mother,ep,em};
+
+	PParticle **decay  = new PParticle* [3];
+	decay[0] = mother;
+	decay[1] = ep;
+	decay[2] = em;
+
 	PChannel *c2    = new PChannel(decay,2,1);
-	PChannel  *cc[] = {c1,c2};
+
+	PChannel  **cc = new PChannel* [2];
+	cc[0] = c1;
+	cc[1] = c2;
+
 	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),2,0,0,0,1);
     }
 
@@ -244,8 +335,13 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->setTrueThermal(kTRUE);
 	source->Print();
 	PParticle *pi0 = new PParticle(type.Data());
-	PParticle *s[]  = {source,pi0};
+
+	PParticle **s  = new PParticle* [2];
+	s[0] = source;
+	s[1] = pi0;
+
 	PChannel *c1 = new PChannel(s, 1, 1);
+
 	//----- pi0 Dalitz decay ------------
 	PParticle *dielec = new PParticle("dilepton");
 	PParticle *gamma  = new PParticle("g");
@@ -253,11 +349,25 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PParticle *elec   = new PParticle("e-");
 	PParticle *posi   = new PParticle("e+");
 
-	PParticle *s2[]={pi0,dielec,gamma};
+	PParticle **s2 = new PParticle* [3];
+	s2[0] = pi0;
+	s2[1] = dielec;
+	s2[2] = gamma;
+
 	PChannel  *c2 = new PChannel(s2,2,1);
-	PParticle *s3[]={dielec,elec,posi};
+
+	PParticle **s3 = new PParticle* [3];
+	s3[0] = dielec;
+	s3[1] = elec;
+	s3[2] = posi;
+
 	PChannel  *c3 = new PChannel(s3,2,1);
-	PChannel  *cc[] = {c1,c2,c3};
+
+	PChannel  **cc = new PChannel* [3];
+	cc[0] = c1;
+	cc[1] = c2;
+	cc[2] = c3;
+
 	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,0,0,0,1);
     }
 
@@ -272,7 +382,11 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->setTrueThermal(kTRUE);
 	source->Print();
 	PParticle *pi0 = new PParticle(type.Data());
-	PParticle *s[]  = {source,pi0};
+
+	PParticle **s     = new PParticle* [2];
+	s[0] = source;
+	s[1] = pi0;
+
 	PChannel *c1 = new PChannel(s, 1, 1);
 	//----- pi0 Dalitz decay ------------
 	PParticle *dielec = new PParticle("dilepton");
@@ -281,11 +395,25 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PParticle *elec   = new PParticle("e-");
 	PParticle *posi   = new PParticle("e+");
 
-	PParticle *s2[]={pi0,dielec,gamma};
+	PParticle **s2 = new PParticle* [3];
+	s2[0] = pi0;
+	s2[1] = dielec;
+	s2[2] = gamma;
+
 	PChannel  *c2 = new PChannel(s2,2,1);
-	PParticle *s3[]={dielec,elec,posi};
+
+	PParticle **s3 = new PParticle* [3];
+	s3[0] = dielec;
+	s3[1] = elec;
+	s3[2] = posi;
+
 	PChannel  *c3 = new PChannel(s3,2,1);
-	PChannel  *cc[] = {c1,c2,c3};
+
+	PChannel  **cc = new PChannel* [3];
+	cc[0] = c1;
+	cc[1] = c2;
+	cc[2] = c3;
+
 	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,0,0,0,1);
     }
 
@@ -295,7 +423,11 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->setTrueThermal(kTRUE);
 	source->Print();
 	PParticle *delta = new PParticle(type.Data());
-	PParticle *s[]  = {source,delta};
+
+	PParticle **s  = new PParticle* [2];
+	s[0] = source;
+	s[1] = delta;
+
 	PChannel *c1 = new PChannel(s, 1, 1);
 
 
@@ -305,14 +437,25 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 
 	PParticle *dilep = new PParticle("dilepton");
 
-	PParticle *deltadecay[] = {delta,p,dilep};
+	PParticle **deltadecay = new PParticle* [3];
+	deltadecay[0] = delta;
+	deltadecay[1] = p;
+	deltadecay[2] = dilep;
 
 	PChannel *c2 = new PChannel(deltadecay,2,1,1);
-	PParticle *dildecay[] = {dilep,ep,em};
+
+	PParticle **dildecay = new PParticle* [3];
+	dildecay[0] = dilep;
+	dildecay[1] = ep;
+	dildecay[2] = em;
 
 	PChannel *c3 = new PChannel(dildecay,2,1,1);
 
-	PChannel  *cc[]={c1,c2,c3};
+	PChannel  **cc = new PChannel* [3];
+	cc[0] = c1;
+	cc[1] = c2;
+	cc[2] = c3;
+
 	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,0,0,0,1);
 
     }
@@ -322,7 +465,11 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	source->setTrueThermal(kTRUE);
 	source->Print();
 	PParticle *omeg = new PParticle("w");
-	PParticle *s[]  = {source,omeg};
+
+	PParticle **s  = new PParticle* [2];
+	s[0] = source;
+	s[1] = omeg;
+
 	PChannel *c1 = new PChannel(s, 1, 1);
 	//----- omega dalitz decay ------------
 	PParticle *dielec = new PParticle("dilepton");
@@ -330,11 +477,25 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PParticle *elec = new PParticle("e-");
 	PParticle *posi = new PParticle("e+");
 
-	PParticle *s2[]={omeg,dielec,pi0};
+	PParticle **s2 = new PParticle* [3];
+	s2[0] = omeg;
+	s2[1] = dielec;
+	s2[2] = pi0;
+
 	PChannel  *c2 = new PChannel(s2,2,1);
-	PParticle *s3[]={dielec,elec,posi};
+
+	PParticle **s3 = new PParticle* [3];
+	s3[0] = dielec;
+	s3[1] = elec;
+	s3[2] = posi;
+
 	PChannel  *c3 = new PChannel(s3,2,1);
-	PChannel  *cc[] = {c1,c2,c3};
+
+	PChannel  **cc = new PChannel* [3];
+	cc[0] = c1;
+	cc[1] = c2;
+	cc[2] = c3;
+
 	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,0,0,0,1);
     }
     /*

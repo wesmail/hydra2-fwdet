@@ -21,8 +21,7 @@ public:
     virtual ~HKalFiltWire() {}
 
     virtual Bool_t calcMeasVecFromState(TVectorD &projMeasVec, HKalTrackSite const* const site,
-                                        Kalman::kalFilterTypes stateType, Kalman::coordSys sys,
-                                        Int_t iHit=0) const;
+                                        Kalman::kalFilterTypes stateType, Kalman::coordSys sys) const;
 
     virtual Bool_t getImpact           (Double_t& alpha, Double_t& mindist,
                                         Double_t driftTime,

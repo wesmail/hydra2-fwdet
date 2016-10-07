@@ -10,6 +10,7 @@
 ClassImp(HKalTrack)
 
 HKalTrack::HKalTrack() {
+    betaInput      = -1.F;
     ndf            = -1.F;
     trackLength    = -1.F;
     pid            = -1.F;

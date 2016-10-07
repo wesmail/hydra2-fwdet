@@ -281,19 +281,21 @@ else
 
 
   nFiles=$( cat $jobarrayFile | wc -l)
+  arrayoffset=0;
   ctsend=0
   block=500
   while ((${ctsend} * ${block} < ${nFiles}))
   do
-     ((start=${ctsend}*${block}+1))
-     ((stop= ${start}+${block}-1))
+     ((start=${ctsend}*${block}))
      ((rest=${nFiles}-${start}))
      if [ $rest -le $block ]
      then
-        ((stop=$start+$rest))
+        ((stop=$rest))
+     else
+        ((stop=$block))
      fi
-
-     command="--array=${start}-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog}"
+     ((arrayoffset=${ctsend} * ${block}))
+     command="--array=1-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog} ${arrayoffset}"
      #echo $command
      sbatch $command
 

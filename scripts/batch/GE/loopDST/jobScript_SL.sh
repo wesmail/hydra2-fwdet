@@ -74,11 +74,13 @@ esac
     echo "--------------------------------"
     echo ""
 
+    arrayoffset=$par3 
     pathoutputlog=$par2 
     jobarrayFile=$par1
 
+    ((myline=${SLURM_ARRAY_TASK_ID}+${arrayoffset}))
     # map back params for the job
-    input=$(awk "NR==$SLURM_ARRAY_TASK_ID" $jobarrayFile)   # get all params for this job
+    input=$(awk "NR==${myline}" $jobarrayFile)   # get all params for this job
     
     
     par1=$(echo $input | cut -d " " -f1)

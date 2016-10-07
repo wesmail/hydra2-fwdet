@@ -74,14 +74,11 @@ esac
     echo "--------------------------------"
     echo ""
 
-
-    arrayoffset=$par3 
     pathoutputlog=$par2 
     jobarrayFile=$par1
 
-    ((myline=${SLURM_ARRAY_TASK_ID}+${arrayoffset}))
     # map back params for the job
-    input=$(awk "NR==${myline}" $jobarrayFile)   # get all params for this job
+    input=$(awk "NR==$SGE_TASK_ID" $jobarrayFile)   # get all params for this job
     
     
     par1=$(echo $input | cut -d " " -f1)
@@ -91,7 +88,10 @@ esac
     par5=$(echo $input | cut -d " " -f5)
     par6=$(echo $input | cut -d " " -f6)
     par7=$(echo $input | cut -d " " -f7)
+    par8=$(echo $input | cut -d " " -f8)
 
+    echo ""               
+    echo "--------------------------------"
     echo "input: $input"
     echo "par1 = ${par1}"
     echo "par2 = ${par2}"
@@ -100,37 +100,25 @@ esac
     echo "par5 = ${par5}"
     echo "par6 = ${par6}"
     echo "par7 = ${par7}"
+    echo "par8 = ${par8}"
+    echo "--------------------------------"
+    echo ""
 
 
     format='+%Y/%m/%d-%H:%M:%S'
 
-    host=$(hostname)
-
     date $format
     echo ""               
     echo "--------------------------------"
-    echo "RUNNING ON HOST : " $host
+    echo "RUNNING ON HOST : " $(hostname)
     echo "WORKING DIR     : " $(pwd)
     echo "USER is         : " $USER
+    echo "JOBID           : $JOB_ID"
     echo "DISK USAGE /tmp :"
     df -h /tmp
     echo "--------------------------------"
     
     
-    echo ""               
-    echo "--------------------------------"
-    echo "par1 = ${par1}"
-    echo "par2 = ${par2}"
-    echo "par3 = ${par3}"
-    echo "par4 = ${par4}"
-    echo "par5 = ${par5}"
-    echo "par6 = ${par6}"
-    echo "par7 = ${par7}"
-    echo "--------------------------------"
-    echo ""
-
-
-
     echo ""
     echo "--------------------------------"
     echo " DEBUG INFO"                     
@@ -155,8 +143,8 @@ esac
 ###################################################################
 ###################################################################
 #   EDIT THIS PART TO EXECUTE YOUR JOB!
-
-
+#   prog    nevents indir   outdir  outfile filename filenum
+#  "${par1} ${par2} ${par3} ${par4} ${par5} ${par6} ${par7} "
 
 #----------------------
 # evironment 
@@ -169,35 +157,11 @@ esac
 
   echo "==> execute program "
 
-  outdir=$par4
-  
-  files=$(echo $par3 | sed 's/,/ /g')
+  files=$(echo $par8 | sed 's/,/ /g')
   for file in $files
-  do
-     file=$(echo $file | sed 's/#/,/g')
-     echo "==> $par2 $file $outdir $par5"
-     time  $par2 $file $outdir $par5
-
-     status=$?
-
-
-     echo "------------------------------------"
-     echo "MOVING OUTPUTFILES:"
-     
-     isList=$(echo $file | grep ",")
-     
-     if [ "${isList}" == "" ]
-     then
-        filename=$(basename ${file} | sed 's/.root$//')
-        mv -v ${outdir}/${filename}_dst_apr12.root ${outdir}/root/
-     else
-     
-        for f in $(echo $file | sed 's/,/ /g')
-        do
-          filename=$(basename ${f} | sed 's/.root$//')
-          mv -v ${outdir}/${filename}_dst_apr12.root ${outdir}/root/
-        done
-     fi
+  do        #  prog  nevents shell indir outdir outfile filename filenum
+     echo "==> $par2 $par3 $par4 $par5 $par6 $par7 $file"
+     time  $par2 $par3 $par4 $par5 $par6 $par7 $file
   done
 #---------------------------------------------------------------------
 
@@ -223,37 +187,38 @@ esac
     echo "par5 = ${par5}"  
     echo "par6 = ${par6}"  
     echo "par7 = ${par7}"  
+    echo "par8 = ${par8}"  
     echo "finsished!"      
     echo "--------------------------------"
     echo ""
     
+    host=$(hostname)
     
     echo ""               
     echo "--------------------------------"
     echo "MONITOR ENVIRONMENT:"
-    echo "SLURM_JOBID        : " $SLURM_JOBID
-    echo "SLURM_ARRAY_JOB_ID : " $SLURM_ARRAY_JOB_ID
-    echo "SLURM_ARRAY_TASK_ID: " $SLURM_ARRAY_TASK_ID
-    echo "RUNNING ON HOST    : " $(hostname)
-    echo "WORKING DIR        : " $(pwd)
-    echo "USER is            : " $USER
-    echo "DISK USAGE /tmp    :------------"
+    echo "JOB EXE   :---------------------"
+    qstat -j $JOB_ID
+    #echo "HOST LOAD :---------------------"
+    #qhost -h $host
+    #echo "OTHER JOBS ON HOST:-------------"
+    #qhost -h $host -j
+    echo "DISK USAGE /tmp :---------------"
     df -h /tmp 
+    #echo "MEM/CPU USAGE :-----------------"
+    #qstat -j $JOB_ID | grep usage
     echo "--------------------------------"
+   
+    
+    
     
     date $format
 
-
-    sleep 2
- 
     # when running single file move log file name
     # to output filename
-    if [ "$par3" == "$files" ]
+    if [ "$par4" == "$files" ]
     then  
        echo "MOVING LOG FILE"
-       outfile=$(basename $par3)
-       mv ${pathoutputlog}/slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out ${pathoutputlog}/${outfile}.log
+       outfile=$(basename $par4)
+       mv ${pathoutputlog}/${JOB_NAME}.o${JOB_ID}.${SGE_TASK_ID} ${pathoutputlog}/${outfile}.log
     fi
-
-    
-    

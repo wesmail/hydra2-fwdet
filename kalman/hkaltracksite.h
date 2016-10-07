@@ -57,9 +57,9 @@ public:
 
     virtual void transform            (const TRotation &transMat);
 
-    virtual void transVirtLayToSec    (Kalman::kalFilterTypes stateType, Bool_t bCovUD=kFALSE);
+    virtual void transVirtLayToSec    (Kalman::kalFilterTypes stateType, Int_t iHit, Bool_t bCovUD=kFALSE);
 
-    virtual void transSecToVirtLay    (Kalman::kalFilterTypes stateType, Bool_t bCovUD=kFALSE);
+    virtual void transSecToVirtLay    (Kalman::kalFilterTypes stateType, Int_t iHit, Bool_t bCovUD=kFALSE);
 
     virtual Int_t             getCell               (Int_t idx=0) const                 { return getHit(idx).getCell(); }
 

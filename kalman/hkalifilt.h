@@ -26,6 +26,7 @@ private:
     Bool_t   bPrintWarn;     //! Print warning messages.
     Bool_t   bPrintErr;      //! Print error messages.
     Bool_t   bTrackAccepted; // Track filtering done without errors.
+    Double_t betaInput;      // Beta value used for initial particle hypothesis.
     Double_t chi2;           // chi2 of track. Will be -1 if fit failed.
     Bool_t   direction;      // Propagation direction: kIterForward/kIterBackward
     Int_t    filtType;       // Switch between alternate formulations of the Kalman equations.
@@ -107,8 +108,7 @@ public:
     virtual ~HKalIFilt();
 
     virtual Bool_t calcMeasVecFromState      (TVectorD &projMeasVec, HKalTrackSite const* const site,
-                                              Kalman::kalFilterTypes stateType, Kalman::coordSys sys,
-                                              Int_t iHit=0) const;
+                                              Kalman::kalFilterTypes stateType, Kalman::coordSys sys) const;
 
     virtual Bool_t checkCovMat               (const TMatrixD &fCov) const;
 
@@ -140,6 +140,8 @@ public:
     virtual void   transformFromTrackToSector();
 
     virtual void   updateSites               (const TObjArray &hits);
+
+    virtual Double_t            getBetaInput    () const           { return betaInput; }
 
     virtual Double_t            getChi2         () const           { return chi2; }
 
@@ -225,7 +227,9 @@ public:
 
     virtual void                getVertexPos    (Double_t &x, Double_t &y, Double_t &z) const;
 
-    virtual void                setConstField   (Bool_t constField) { trackPropagator.setUseConstField(constField); }
+    virtual void setBetaInput       (Double_t b)                              { betaInput = b; }
+
+    virtual void setConstField      (Bool_t constField)                       { trackPropagator.setUseConstField(constField); }
 
     virtual void setDafPars         (Double_t chi2cut, const Double_t *T, Int_t n) { ; }
 
@@ -254,6 +258,13 @@ public:
     virtual void setRotationAngles  (Double_t rotXAngle, Double_t rotYAngle);
 
     virtual void setRotation        (Kalman::kalRotateOptions rotate);
+
+    virtual void setRungeKuttaParams(Float_t initialStpSize, Float_t stpSizeDec,
+				     Float_t stpSizeInc, Float_t maxStpSize,
+				     Float_t minStpSize, Float_t minPrec,
+				     Float_t maxPrec, Int_t maxNumStps,
+				     Int_t maxNumStpsPCA, Float_t maxDst,
+				     Double_t minLngthCalcQ) { trackPropagator.setRungeKuttaParams(initialStpSize, stpSizeDec, stpSizeInc, maxStpSize, minStpSize, minPrec, maxPrec, maxNumStps, maxNumStpsPCA, maxDst, minLngthCalcQ); }
 
     virtual void setSmoothing       (Bool_t smooth)                           { bDoSmooth = smooth; }
 

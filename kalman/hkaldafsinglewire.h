@@ -16,11 +16,17 @@ class HKalDafSingleWire : public HKalFiltWire {
 private:
     Double_t dafChi2Cut;     // Cut-off parameter for the annealing filter.
     TArrayD  dafT;           // Annealing factors ("temperatures") used in the DAF iterations.
+    Int_t    wireNr;         // Index of wire measurement currently filtered (0 or 1)
 
 protected:
-    virtual Bool_t   calcEffErrMat        (Int_t iSite) const;
 
-    virtual Bool_t   calcEffMeasVec       (Int_t iSite) const;
+    virtual Bool_t   calcEffErrMat        (Int_t iSite, Int_t iWire) const;
+
+    virtual Bool_t   calcEffMeasVec       (Int_t iSite, Int_t iWire) const;
+
+    virtual Int_t    getWireNr            ()            const { return wireNr; }
+
+    virtual void     setWireNr            (Int_t w)     { wireNr = w; }
 
 public:
 

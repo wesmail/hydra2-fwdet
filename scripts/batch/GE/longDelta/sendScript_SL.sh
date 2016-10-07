@@ -31,26 +31,30 @@ user=$(whoami)
 currentDir=$(pwd | xargs -i basename {})
 currentDir=../$currentDir
 
-day=095
-submmissionbase=/lustre/nyx/hades/user/${user}/sub/apr12/
-submissiondir=${submmissionbase}/loopDST
- nFilesPerJob=10                                # number of files to be analyzed by 1 job (default==1)
-    jobscript=${submissiondir}/jobScript_SL.sh     # exec script (full path, call without dot, set it executable!)
-    outputdir=/lustre/nyx/hades/user/${user}/apr12/loop # outputdir for files AND logFiles
-pathoutputlog=${outputdir}/out                  # protocol from batch farm for each file
-     filename=apr12ana_${day}                   # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
-par1=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9m/defall.sh  # optional par1 : environment script
-par2=${submissiondir}/analysis                                 # optional par2 : executable
-par3=""                                                        # optional par3 : input file list
-par4=${outputdir}                                              # optional par4 : outputfile (part number will be appended (_num.root))
-par5=-1                                                        # optional par5 : number of events
-par6="no"                                                      # optional par6
-par7="no"                                                      # optional par7   "single" to run comma separated list as single files in jobscript
-resources="--mem=2000 --time=0-2:00:00"                        # runtime < 10h, mem < 2GB
+type=longdeltaelectron
+nFiles=1500
 
-jobarrayFile="loop_day_${day}_jobarray.dat"
+submmissionbase=/hera/hades/user/${user}/sub/apr12/gen8
+submissiondir=${submmissionbase}/longDelta
+ nFilesPerJob=1                                  # number of files to be analyzed by 1 job (default==1) multiple jobs not supported!
+    jobscript=${submissiondir}/jobScript.sh       # exec script (full path, call without dot, set it executable!)
+    outputdir=/hera/hades/dstsim/apr12/hgeant/bmax10/new/${type} # outputdir for files AND logFiles
+pathoutputlog=${outputdir}/out                    # protocol from batch farm for each file
+     filename=$type                               # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
+par1=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9i/defall.sh  # optional par1 : environment script
+par2=${submissiondir}/add_delta                                # optional par2 : executable
+par3=1000000                                                   # optional par3 : 1000
+par4=""                                                       # optional par4 : inputlist
+par5="${outputdir}/Au_Au_1230MeV_1000evts"                                             # optional par5 : outputfile
+par6="no"                                              # optional par6 : outputdir
+par7="no"                                         # optional par7 : filename
+resources="--mem=2000 --time=0-2:00:00"                  # runtime < 10h, mem < 2GB
+jobarrayFile="pluto_jobarray_${type}.dat"
 
-filelist=${currentDir}/lists/day_${day}.list  # file list in local dir! not in submissiondir!!!
+filelist=${currentDir}/all_files_${type}.list  # file list in local dir! not in submissiondir!!!
+
+
+
 ######################################################################
 
 
@@ -68,29 +72,12 @@ else
     echo "===> USE SUBMISSIONBASEDIR : $submmissionbase"
 fi
 
-#---------------------------------------------------------------------
-# output dirs
-
 if [ ! -d $pathoutputlog ]
 then
-   echo "===> CREATE LOGDIR : $pathoutputlog"
-   mkdir -p $pathoutputlog
+    echo "===> CREATE LOGDIR : $pathoutputlog"
+    mkdir -p $pathoutputlog
 else
-   echo "===> USE LOGDIR : $pathoutputlog"
-fi
-
-if [ ! -d $outputdir ]
-then
-   echo "===> CREATE OUTPUTDIR : $outputdir"
-   mkdir -p $outputdir
-else
-   echo "===> USE OUTPUTDIR : $outputdir"
-fi
-
-if [ ! -d $outputdir/crash ]
-then
-   echo "===> CREATE CRASHDIR : $outputdir/crash"
-   mkdir -p $outputdir/crash
+    echo "===> USE LOGDIR : $pathoutputlog"
 fi
 #---------------------------------------------------------------------
 
@@ -99,13 +86,13 @@ ctF=0          # counter for file number
 ctJ=0          # counter for job number
 partNumber=0   # counter for part number
 
-
 if [ -f $jobarrayFile ]
 then
   rm -f $jobarrayFile
 fi
-
 echo "===> CREATING JOB ARRAY FILE"
+
+
 #---------------------------------------------------------------------
 # read the files list into an job array
 declare -a jobarray
@@ -153,26 +140,25 @@ do
      then
         file=$(basename ${infileList})
         logfile="${pathoutputlog}/${file}.log"
-        par4=${outputdir}/${filename}_${file}.root
-     else
-        par4=${outputdir}/${filename}_${partNumber}.root
      fi
      
      if [ -f ${logfile} ]
      then
         rm -f ${logfile}
      fi
+           
+     
+#     echo "-----------------------------------------------------------------------------"
+#     echo "add part ${partNumber}  last file ${ctF} of $nFiles ====> add new job ${infileList}"
 
      ######################################################################
      #  SEND NEW JOB (USER SPECIFIC)
      
-     par3=${infileList}
-
-     #     defall.sh prog  filelist outfile  nev
-     echo "${par1} ${par2} ${par3} ${par4} ${par5} ${par6} ${par7}" >>  $jobarrayFile
+     par4=${infileList}
+     outfile=${par5}_${ctF}_1.root
+          #defall.sh prog nevents inputfile outputfile
      
-
-     ######################################################################
+     echo "${par1} ${par2} ${par3} ${par4} ${outfile} ${par6} ${par7}" >>  $jobarrayFile
      
 done
 #---------------------------------------------------------------------
@@ -191,7 +177,7 @@ then
 else
 
   echo "-------------------------------------------------"
-  
+
   nFiles=$( cat $jobarrayFile | wc -l)
   arrayoffset=0;
   ctsend=0
@@ -214,6 +200,7 @@ else
      ((ctsend+=1))
   done
 
-  echo "${nFiles} jobs for day ${day} submitted"
+  echo "${nFiles} jobs for type ${type} submitted"
 fi
+
 

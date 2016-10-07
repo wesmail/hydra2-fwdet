@@ -26,34 +26,51 @@
 #
 ######################################################################
 #   CONFIGURATION
-
+# rotate rich : 097,103,109,115,121. 
+# embedding e+,e- 105, 110, 115, 120, 125 
 user=$(whoami)
 currentDir=$(pwd | xargs -i basename {})
 currentDir=../$currentDir
 
-day=095
-submmissionbase=/lustre/nyx/hades/user/${user}/sub/apr12/
-submissiondir=${submmissionbase}/loopDST
- nFilesPerJob=10                                # number of files to be analyzed by 1 job (default==1)
+day=108
+useDelta="no"  # no:do not use  yes: use $deltaelectronlist
+particle="pi0" # pi-,e+,e- PLUTO names!    source 1 lambda K0S K- K+ phiKK pi- pi+ p    source 0 : e+ e-
+sourceType=1   # 0 white 1 thermal
+
+
+submmissionbase=/lustre/nyx/hades/user/${user}/sub/apr12/gen8a_embdst_source1
+submissiondir=${submmissionbase}/embedding
+ nFilesPerJob=1                                 # number of files to be analyzed by 1 job (default==1)
     jobscript=${submissiondir}/jobScript_SL.sh     # exec script (full path, call without dot, set it executable!)
-    outputdir=/lustre/nyx/hades/user/${user}/apr12/loop # outputdir for files AND logFiles
-pathoutputlog=${outputdir}/out                  # protocol from batch farm for each file
-     filename=apr12ana_${day}                   # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
-par1=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9m/defall.sh  # optional par1 : environment script
-par2=${submissiondir}/analysis                                 # optional par2 : executable
-par3=""                                                        # optional par3 : input file list
-par4=${outputdir}                                              # optional par4 : outputfile (part number will be appended (_num.root))
-par5=-1                                                        # optional par5 : number of events
-par6="no"                                                      # optional par6
-par7="no"                                                      # optional par7   "single" to run comma separated list as single files in jobscript
-resources="--mem=2000 --time=0-2:00:00"                        # runtime < 10h, mem < 2GB
+    outputdir=/lustre/nyx/hades/dst/apr12/gen8a/embedding/test/${particle}/${day}     # outputdir for files AND logFiles
+pathoutputlog=${outputdir}/out                    # protocol from batch farm for each file
+     filename=embedded_dst_${type}               # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
+ 
+envscript=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9o/defall.sh
+template=au123au.dat
+geompath=${submissiondir}/geom_rich
+#geompath=${submissiondir}/geom
+hgeant=/cvmfs/hades.gsi.de/install/5.34.34/hgeant2-4.9o/hgeant
+nevents=1000
+dstsuffix=_dst_apr12.root
+hldpath=/lustre/nyx/hades/raw/apr12/$day
+par1="no"                                                      # optional par1 : environment script
+par2="no"                                                      # optional par2 : executable
+par3=""                                                        # optional par3 : input file hld
+par4="no"                                                      # optional par4 : input file geant
+par5="no"                                                      # optional par4 : outputdir 
+par6="no"                                                      # optional par5 : number of events
+par7="no"                                                      # optional par7
 
-jobarrayFile="loop_day_${day}_jobarray.dat"
 
-filelist=${currentDir}/lists/day_${day}.list  # file list in local dir! not in submissiondir!!!
-######################################################################
+resources="--mem=2000 --time=0-8:00:00"                            # runtime < 10h, mem < 2GB
+jobarrayFile="gen8_day_${day}_${particle}_jobarray.dat"
+
+deltaelectronlist=delta_long_1500.list     # contains 1500 files , 100000 evts each delta electrons
 
 
+#filelist=${currentDir}/lists/day_${day}.list  # file list in local dir! not in submissiondir!!!
+filelist=${currentDir}/lists/day_${day}_test.list  # file list in local dir! not in submissiondir!!!
 
 
 nFiles=$( cat $filelist | wc -l)
@@ -87,12 +104,55 @@ else
    echo "===> USE OUTPUTDIR : $outputdir"
 fi
 
-if [ ! -d $outputdir/crash ]
+
+
+
+if [ ! -d $outputdir/dst ]
 then
-   echo "===> CREATE CRASHDIR : $outputdir/crash"
-   mkdir -p $outputdir/crash
+   echo "===> CREATE DSTDIR : $outputdir/dst"
+   mkdir -p $outputdir/dst
 fi
+
+if [ ! -d $outputdir/dst/root ]
+then
+   echo "===> CREATE ROOTDIR : $outputdir/dst/root"
+   mkdir -p $outputdir/dst/root
+fi
+
+if [ ! -d $outputdir/dst/qa ]
+then
+   echo "===> CREATE QADIR : $outputdir/dst/qa"
+   mkdir -p $outputdir/dst/qa
+fi
+
+if [ ! -d $outputdir/geant ]
+then
+   echo "===> CREATE GEANTDIR : $outputdir/geant"
+   mkdir -p $outputdir/geant
+fi
+
+if [ ! -d $outputdir/input ]
+then
+   echo "===> CREATE INPUTDIR : $outputdir/input"
+   mkdir -p $outputdir/input
+fi
+
+if [ ! -d $outputdir/pluto ]
+then
+   echo "===> CREATE PLUTODIR : $outputdir/pluto"
+   mkdir -p $outputdir/pluto
+fi
+
+if [ ! -d $outputdir/vertex ]
+then
+   echo "===> CREATE VERTEXDIR : $outputdir/vertex"
+   mkdir -p $outputdir/vertex
+fi
+
+
 #---------------------------------------------------------------------
+
+
 
 
 ctF=0          # counter for file number
@@ -115,6 +175,21 @@ do
    jobarray[$ct1]=$file
    ((ct1+=1))
 done
+#---------------------------------------------------------------------
+
+#---------------------------------------------------------------------
+# read the delta files list into an array
+declare -a deltaarray
+nDelta=0
+if [ "${useDelta}" == "yes" ]
+then
+
+   for file in $(cat $deltaelectronlist)
+   do
+      deltaarray[$nDelta]=$file
+      ((nDelta+=1))
+   done
+fi   
 #---------------------------------------------------------------------
 
 
@@ -153,23 +228,30 @@ do
      then
         file=$(basename ${infileList})
         logfile="${pathoutputlog}/${file}.log"
-        par4=${outputdir}/${filename}_${file}.root
-     else
-        par4=${outputdir}/${filename}_${partNumber}.root
      fi
      
      if [ -f ${logfile} ]
      then
         rm -f ${logfile}
-     fi
-
+     fi      
+     
      ######################################################################
      #  SEND NEW JOB (USER SPECIFIC)
      
      par3=${infileList}
-
-     #     defall.sh prog  filelist outfile  nev
-     echo "${par1} ${par2} ${par3} ${par4} ${par5} ${par6} ${par7}" >>  $jobarrayFile
+        
+     if [ "${useDelta}" == "no" ]
+     then
+        deltafile="no"
+     else
+        ctdelta=0;
+        ((ctdelta=${ctF}%${nDelta}))
+        deltafile=${deltaarray[${ctdelta}]}
+     fi
+         
+         #defall.sh outdir particle dstfile dstsuffix template geompath hgeant nev hldpath deltaelectronfile
+     
+     echo "${envscript} ${outputdir} ${particle} ${par3} ${dstsuffix} ${template} ${geompath} ${hgeant} ${nevents} ${hldpath} ${deltafile} ${sourceType}" >>  $jobarrayFile
      
 
      ######################################################################
@@ -191,11 +273,11 @@ then
 else
 
   echo "-------------------------------------------------"
-  
+
   nFiles=$( cat $jobarrayFile | wc -l)
   arrayoffset=0;
   ctsend=0
-  block=1000
+  block=500
   while ((${ctsend} * ${block} < ${nFiles}))
   do
      ((start=${ctsend}*${block}))
@@ -209,11 +291,10 @@ else
      ((arrayoffset=${ctsend} * ${block}))
      command="--array=1-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog} ${arrayoffset}"
      #echo $command
-     echo sbatch $command
+     sbatch $command
 
      ((ctsend+=1))
   done
 
   echo "${nFiles} jobs for day ${day} submitted"
 fi
-

@@ -17,7 +17,7 @@ ClassImp (HKalDafSingleWire)
 //  Implementation of protected methods
 //  -----------------------------------
 
-Bool_t HKalDafSingleWire::calcEffErrMat(Int_t iSite) const {
+Bool_t HKalDafSingleWire::calcEffErrMat(Int_t iSite, Int_t iWire) const {
     // Calculates an effective measurement error matrix from the measurement
     // errors of all hits in this site.
     // Used for the annealing filter.
@@ -35,7 +35,7 @@ Bool_t HKalDafSingleWire::calcEffErrMat(Int_t iSite) const {
     Double_t lmt = 100. * numeric_limits<Double_t>::epsilon();
     // Calculate the weighted mean of the inverse measurement error
     // covariances.
-    for(Int_t i = 0; i < site->getNcompetitors(); i++) {
+    for(Int_t i = iWire*2; i <= iWire*2+1; i++) {
         Double_t w = site->getHitWeight(i);
         if(w < lmt) w = 1.e-10; // avoid numerical problems due to inversion.
         effErrMat += w * TMatrixD(TMatrixD::kInverted, site->getErrMat(i));
@@ -47,7 +47,7 @@ Bool_t HKalDafSingleWire::calcEffErrMat(Int_t iSite) const {
     return kTRUE;
 }
 
-Bool_t HKalDafSingleWire::calcEffMeasVec(Int_t iSite) const {
+Bool_t HKalDafSingleWire::calcEffMeasVec(Int_t iSite, Int_t iWire) const {
     // Calculates an effective measurement vector from the measurement
     // of all hits in this site and the effective measurement error matrix.
     // Used for the annealing filter.
@@ -67,11 +67,9 @@ Bool_t HKalDafSingleWire::calcEffMeasVec(Int_t iSite) const {
 	return kFALSE;
     }
 
-    if(!calcEffErrMat(iSite)) {
+    if(!calcEffErrMat(iSite, 0)) {
         return kFALSE;
     }
-
-    const Int_t n = site->getNcompetitors();
 
     TVectorD effMeasVec(getMeasDim());
     const TMatrixD &effErrMat = site->getEffErrMat();
@@ -80,7 +78,7 @@ Bool_t HKalDafSingleWire::calcEffMeasVec(Int_t iSite) const {
     cout<<"Calculating effective measurement"<<endl;
 #endif
 
-    for(Int_t i = 0; i < n; i++) {
+    for(Int_t i = iWire*2; i <= iWire*2+1; i++) {
 	effMeasVec += site->getHitWeight(i) *
 	    TMatrixD(TMatrixD::kInverted, site->getErrMat(i)) *
 	    site->getHitVec(i);
@@ -116,6 +114,7 @@ HKalDafSingleWire::HKalDafSingleWire(Int_t n, Int_t measDim, Int_t stateDim,
     const Int_t nDafs = 5;
     Double_t T[nDafs] = { 81., 9., 4., 1., 1. };
     setDafPars(9., &T[0], nDafs);
+    setWireNr(0); // This class only handles one wire measurement.
 }
 
 //  --------------------------------
@@ -169,7 +168,7 @@ Bool_t HKalDafSingleWire::fitTrack(const TObjArray &hits, const TVectorD &iniSv,
     const Int_t maxHitsPerSite = 4;
 
     for(Int_t iSite = 0; iSite < getNsites(); iSite++) {
-	if(!calcEffMeasVec(iSite)) {
+	if(!calcEffMeasVec(iSite, 0)) {
 	    if(getPrintErr()) {
 		Error("fitTrack()",
 		      Form("Could not calculate effective measurement for site %i",
@@ -212,11 +211,12 @@ Bool_t HKalDafSingleWire::fitTrack(const TObjArray &hits, const TVectorD &iniSv,
             cout<<"Running DAF for site "<<iSite<<endl;
 #endif
 
-            for(Int_t iHit = 0; iHit < site->getNcompetitors(); iHit++) {
+	    for(Int_t iHit = 0; iHit < site->getNcompetitors(); iHit++) {
+                setWireNr(iHit/2);
                 const TVectorD &measVec = site->getHitVec(iHit);
                 TVectorD smooMeasVec(getMeasDim());
 		calcMeasVecFromState(smooMeasVec, site, Kalman::kSmoothed,
-				     Kalman::kSecCoord, iHit);
+				     Kalman::kSecCoord);
 
 #if dafDebug > 2
 		cout<<"Updating measurement "<<iHit<<" of "
@@ -302,7 +302,7 @@ Bool_t HKalDafSingleWire::fitTrack(const TObjArray &hits, const TVectorD &iniSv,
                 site->setHitWeightHist(hitWeight, iDaf, iHit);
 	    }
 
-	    if(!calcEffMeasVec(iSite)) {
+	    if(!calcEffMeasVec(iSite, 0)) {
 		if(getPrintErr()) {
 		    Error("fitTrack()",
 			  Form("Could not calculate effective measurement for site %i", iSite));

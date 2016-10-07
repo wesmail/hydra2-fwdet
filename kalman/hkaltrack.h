@@ -12,6 +12,7 @@ class HKalTrack : public HBaseTrack {
 
 private:
 
+    Float_t betaInput;      // Beta value used for particle hyposthesis.
     Float_t chi2;           // Chi2.
     Float_t momInput;       // Starting estimation of momentum.
     Float_t ndf;            // Number degrees of freedom.
@@ -40,6 +41,8 @@ public:
     HKalTrack();
 
     virtual ~HKalTrack() { ; }
+
+    virtual Float_t getBetaInput     () const { return betaInput; }
 
     virtual Float_t getChi2          () const { return chi2; }
 
@@ -76,6 +79,8 @@ public:
     virtual Float_t getXinput        () const { return xInput; }
 
     virtual Float_t getYinput        () const { return yInput; }
+
+    virtual void    setBetaInput     (Float_t b)   { betaInput = b; }
 
     virtual void    setChi2          (Float_t c)   { chi2 = c;}
 

@@ -128,6 +128,7 @@ HKalIFilt::HKalIFilt(Int_t n, Int_t measDim, Int_t stateDim,
     // fpol:     field scaling factor * polarity.
     // chiMax:   the maximum chi^2 where a track is still accepted.
 
+    betaInput    = -1.;
     nMaxSites    = n;
     nHitsInTrack = n;
     nSites       = n;
@@ -1228,7 +1229,7 @@ void HKalIFilt::newTrack(const TObjArray &hits, const TVectorD &iniSv,
 Bool_t HKalIFilt::calcMeasVecFromState(TVectorD &projMeasVec,
 				       HKalTrackSite const * const site,
 				       Kalman::kalFilterTypes stateType,
-				       Kalman::coordSys sys, Int_t iHit) const {
+				       Kalman::coordSys sys) const {
     // Implements the projection function h(a) that calculates a measurement
     // vector from a track state.
     //
@@ -1346,6 +1347,14 @@ Bool_t HKalIFilt::excludeSite(Int_t iSite) {
         return kFALSE;
     }
 
+    if(getFilterInCoordSys() == Kalman::kLayCoord &&
+       exSite->getNcompetitors() > 2) {
+	Error("excludeSite()",
+	      "This function does not work with competing wire measurements.");
+	return kFALSE;
+    }
+
+
     // Smoothed state vector of site to exclude.
     TVectorD exSmooState  = exSite->getStateVec(kSmoothed, sys);       // a^n_k
 
@@ -1411,7 +1420,7 @@ Bool_t HKalIFilt::excludeSite(Int_t iSite) {
         transformFromTrackToSector();
     }
 
-    exSite->transVirtLayToSec(Kalman::kInvFiltered);
+    exSite->transVirtLayToSec(Kalman::kInvFiltered, 0);
 
     return kTRUE;
 }
@@ -1833,7 +1842,7 @@ Bool_t HKalIFilt::smooth() {
 	// Need the smoothing results in virt. layer coordinates for
 	// inverse filtering.
         if(getFilterInCoordSys() == Kalman::kLayCoord) {
-            cur->transSecToVirtLay(kSmoothed);
+            cur->transSecToVirtLay(kSmoothed, 0);
         }
 
         iSite += iDir;

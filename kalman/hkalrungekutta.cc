@@ -1677,3 +1677,24 @@ Double_t HKalRungeKutta::rkSingleStep(TVectorD &stateVec, TMatrixD &fPropStep, D
     return stepFac;
 
 }
+
+void HKalRungeKutta::setRungeKuttaParams(Float_t initialStpSize,
+					 Float_t stpSizeDec, Float_t stpSizeInc,
+					 Float_t maxStpSize, Float_t minStpSize,
+					 Float_t minPrec, Float_t maxPrec,
+					 Int_t maxNumStps, Int_t maxNumStpsPCA,
+					 Float_t maxDst, Double_t minLngthCalcQ) {
+
+    initialStepSize = initialStpSize;
+    stepSizeDec     = stpSizeDec;
+    stepSizeInc     = stpSizeInc;
+    maxStepSize     = maxStpSize;
+    minStepSize     = minStpSize;
+    minPrecision    = minPrec;
+    maxPrecision    = maxPrec;
+    maxNumSteps     = maxNumStps;
+    maxNumStepsPCA  = maxNumStpsPCA;
+    maxDist         = maxDst;
+    minLengthCalcQ  = minLngthCalcQ;
+}
+
