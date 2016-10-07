@@ -3,7 +3,8 @@
 
 #include "hparcond.h"
 
-class HFwDetRpcDigiPar : public HParCond {
+class HFwDetRpcDigiPar : public HParCond
+{
 protected:
     // Parameters needed for digitizations of rpcs
     // Geometry, layout ...
@@ -11,22 +12,22 @@ protected:
     Float_t rpcRadius;
 
 public:
-  HFwDetRpcDigiPar(const Char_t* name="FwDetRpcDigiPar",
-               const Char_t* title="Digitization parameters for Forward Rpc Detector",
-               const Char_t* context="FwDetRpcDigiProduction");
-  ~HFwDetRpcDigiPar() {;}
-  Float_t getRpcRadius() {return rpcRadius;}
-  Int_t   getNRpcCells() {return nRpcCells;}
+    HFwDetRpcDigiPar(const Char_t* name = "FwDetRpcDigiPar",
+            const Char_t* title = "Digitization parameters for Forward Rpc Detector",
+            const Char_t* context = "FwDetRpcDigiProduction");
+    virtual ~HFwDetRpcDigiPar();
 
-  void setRpcRadius(Float_t r) {rpcRadius = r;}
-  void setNRpcCells(Int_t c) {nRpcCells = c;}
+    Float_t getRpcRadius() const { return rpcRadius; }
+    Int_t   getNRpcCells() const { return nRpcCells; }
 
-  void   putParams(HParamList*);
-  Bool_t getParams(HParamList*);
-  void   clear();
+    inline void setRpcRadius(Float_t r) { rpcRadius = r; }
+    inline void setNRpcCells(Int_t c) { nRpcCells = c; }
 
-  ClassDef(HFwDetRpcDigiPar,1) // Container for the Forward Rpc Detector digitization
+    void   putParams(HParamList*);
+    Bool_t getParams(HParamList*);
+    void   clear();
 
+    ClassDef(HFwDetRpcDigiPar, 1); // Container for the Forward Rpc Detector digitization
 };
 
 #endif  /* !HFWDETRPCDIGIPAR_H */

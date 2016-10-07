@@ -13,10 +13,19 @@
 
 #include "hfwdetstrawcalsim.h"
 
-ClassImp(HFwDetStrawCalSim)
+ClassImp(HFwDetStrawCalSim);
 
-HFwDetStrawCalSim::HFwDetStrawCalSim(void) {
-  fTrack = -1;
-  fModule = fGeantCell = fStraw = -1;
-  fTime = fElos = -100000.F;
+HFwDetStrawCalSim::HFwDetStrawCalSim()
+{
+    fTrack = -1;
+    fModule = fGeantCell = fStraw = 0;
+    fTime = fEloss = -100000.;
+    fDriftRad = 0;
+    fX = 0;
+    fZ = 0;
+    fNStraw = -1000;
+}
+
+HFwDetStrawCalSim::~HFwDetStrawCalSim()
+{
 }

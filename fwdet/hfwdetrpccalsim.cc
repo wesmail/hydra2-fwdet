@@ -13,10 +13,15 @@
 
 #include "hfwdetrpccalsim.h"
 
-ClassImp(HFwDetRpcCalSim)
+ClassImp(HFwDetRpcCalSim);
 
-HFwDetRpcCalSim::HFwDetRpcCalSim(void) {
-  fTrack = -1;
-  fModule = fGeantCell = fRpc = -1;
-  fTime = fElos = -100000.F;
+HFwDetRpcCalSim::HFwDetRpcCalSim()
+{
+    fTrack = -1;
+    fModule = fGeantCell = fRpc = -1;
+    fTime = fElos = -100000.F;
+}
+
+HFwDetRpcCalSim::~HFwDetRpcCalSim()
+{
 }

@@ -3,22 +3,22 @@
 
 #include "hdetector.h"
 
-class HFwDetDetector : public HDetector {
-
+class HFwDetDetector : public HDetector
+{
 public:
-  HFwDetDetector(void);
-  ~HFwDetDetector(void);
+    HFwDetDetector();
+    virtual ~HFwDetDetector();
 
-  void   activateParIo(HParIo* io);
-  Bool_t write(HParIo* io);
+    void   activateParIo(HParIo* io);
+    Bool_t write(HParIo* io);
 
-  HCategory* buildCategory(Cat_t cat);
-  HCategory* buildMatrixCategory(const Text_t *, Int_t, Int_t, Float_t fillRate = 0.5);
-  HCategory* buildLinearCategory(const Text_t*, Int_t);
+    HCategory* buildCategory(Cat_t cat);
+    HCategory* buildMatrixCategory(const Text_t *, Int_t, Int_t, Float_t fillRate = 0.5);
+    HCategory* buildLinearCategory(const Text_t*, Int_t);
 
-  Int_t getMaxModInSetup(void);
+    Int_t getMaxModInSetup();
 
-  ClassDef(HFwDetDetector,0) // detector class for new forward detector
+    ClassDef(HFwDetDetector, 0); // detector class for new forward detector
 };
 
 #endif /* !HFWDETDETECTOR_H */

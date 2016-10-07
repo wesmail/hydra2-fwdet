@@ -6,14 +6,16 @@
 class HParSet;
 class HContainer;
 
-class HFwDetContFact : public HContFact {
+class HFwDetContFact : public HContFact
+{
 private:
-  void setAllContainers(void);
+    void setAllContainers();
+
 public:
-  HFwDetContFact(void);
-  ~HFwDetContFact(void) {}
-  HParSet* createContainer(HContainer*);
-  ClassDef(HFwDetContFact,0) // Factory for parameter containers in libFwdet
+    HFwDetContFact();
+    virtual ~HFwDetContFact();
+    HParSet* createContainer(HContainer*);
+    ClassDef(HFwDetContFact, 0); // Factory for parameter containers in libFwdet
 };
 
 #endif  /* !HFWDETCONTFACT_H */

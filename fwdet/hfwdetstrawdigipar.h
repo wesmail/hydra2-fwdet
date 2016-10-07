@@ -3,30 +3,31 @@
 
 #include "hparcond.h"
 
-class HFwDetStrawDigiPar : public HParCond {
+class HFwDetStrawDigiPar : public HParCond
+{
 protected:
     // Parameters needed for digitizations of straws
     // Geometry, layout ...
     Int_t   nStrawCells;
-    Float_t strawRadius;
+    Float_t fStrawRadius;
 
 public:
-  HFwDetStrawDigiPar(const Char_t* name="FwDetStrawDigiPar",
-               const Char_t* title="Digitization parameters for Forward Straw Detector",
-               const Char_t* context="FwDetStrawDigiProduction");
-  ~HFwDetStrawDigiPar() {;}
-  Float_t getStrawRadius() {return strawRadius;}
-  Int_t   getNStrawCells() {return nStrawCells;}
+    HFwDetStrawDigiPar(const Char_t* name = "FwDetStrawDigiPar",
+                       const Char_t* title = "Digitization parameters for Forward Straw Detector",
+                       const Char_t* context = "FwDetDigiProduction");
+    virtual ~HFwDetStrawDigiPar();
 
-  void setStrawRadius(Float_t r) {strawRadius = r;}
-  void setNStrawCells(Int_t c) {nStrawCells = c;}
+    inline Float_t getStrawRadius() const { return fStrawRadius; }
+    inline Int_t   getStrawCells() const { return nStrawCells; }
 
-  void   putParams(HParamList*);
-  Bool_t getParams(HParamList*);
-  void   clear();
+    inline void setStrawRadius(Float_t r) { fStrawRadius = r; }
+    inline void setStrawCells(Int_t c) { nStrawCells = c; }
 
-  ClassDef(HFwDetStrawDigiPar,1) // Container for the Forward Straw Detector digitization
+    void   putParams(HParamList*);
+    Bool_t getParams(HParamList*);
+    void   clear();
 
+    ClassDef(HFwDetStrawDigiPar, 1); // Container for the Forward Straw Detector digitization
 };
 
 #endif  /* !HFWDETSTRAWDIGIPAR_H */

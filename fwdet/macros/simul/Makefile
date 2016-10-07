@@ -6,6 +6,6 @@ include $(HADDIR)/hades.def.mk
 .PHONY:  default
 default: build install
 
-HYDRA_LIBS+=  -lOra
+USES_ORACLE=no
 
 include $(HADDIR)/hades.app.mk

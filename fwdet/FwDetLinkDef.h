@@ -28,5 +28,3 @@
 #pragma link C++ global catFwDetRpcCal;
 
 #endif
-
-

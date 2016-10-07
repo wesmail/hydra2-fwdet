@@ -4,19 +4,19 @@
 using namespace std;
 #include <fstream>
 #include "hdetparasciifileio.h"
-                                                                                              
+
 class HParSet;
-                                                                                              
-class HFwDetParAsciiFileIo : public HDetParAsciiFileIo {
+
+class HFwDetParAsciiFileIo : public HDetParAsciiFileIo
+{
 public:
-  HFwDetParAsciiFileIo(fstream*);
-  ~HFwDetParAsciiFileIo() {}
+    HFwDetParAsciiFileIo(fstream*);
+    virtual ~HFwDetParAsciiFileIo();
 
-  Bool_t init(HParSet*,Int_t*);
-  Int_t write(HParSet*);
+    Bool_t init(HParSet*, Int_t*);
+    Int_t write(HParSet*);
 
-  ClassDef(HFwDetParAsciiFileIo,0) // Class for parameter I/O from Ascii files for Forward Detector
+    ClassDef(HFwDetParAsciiFileIo, 0); // Class for parameter I/O from Ascii files for Forward Detector
 };
-                                                                                              
-#endif  /* !HFWDETPARASCIIFILEIO_H */
 
+#endif  /* !HFWDETPARASCIIFILEIO_H */

@@ -28,98 +28,118 @@ using namespace std;
 #include "hfwdetscindigipar.h"
 //#include "TRandom.h"
 
-ClassImp(HFwDetScinDigitizer)
+ClassImp(HFwDetScinDigitizer);
 
-HFwDetScinDigitizer::HFwDetScinDigitizer(void) {
+HFwDetScinDigitizer::HFwDetScinDigitizer()
+{
     // default constructor
     initVariables();
 }
 
-HFwDetScinDigitizer::HFwDetScinDigitizer(const Text_t *name, const Text_t *title)
-                    : HReconstructor(name, title) {
+HFwDetScinDigitizer::HFwDetScinDigitizer(const Text_t *name, const Text_t *title) :
+    HReconstructor(name, title)
+{
     // constructor
     initVariables();
 }
 
-void HFwDetScinDigitizer::initVariables(void) {
+HFwDetScinDigitizer::~HFwDetScinDigitizer()
+{
+}
+
+void HFwDetScinDigitizer::initVariables()
+{
     // initialize the variables in constructor 
-    fGeantFwDetCat    = 0;
+    fGeantFwDetCat   = 0;
     fFwDetScinCalCat = 0;
     fScinDigiPar     = 0;
     fLoc.setNIndex(2);
     fLoc.set(2,0,0);
 }
 
-Bool_t HFwDetScinDigitizer::init(void) {
+Bool_t HFwDetScinDigitizer::init()
+{
     // initializes the task
 
     // find the Forward detector in the HADES setup
     HFwDetDetector* pFwDet = (HFwDetDetector*)(gHades->getSetup()->getDetector("FwDet"));
-    if (!pFwDet){
-        Error("FwDetScinDigitizer::init","No Forward Detector found");
+    if (!pFwDet)
+    {
+        Error("FwDetScinDigitizer::init", "No Forward Detector found");
         return kFALSE;
     }
 
     // GEANT input data
     fGeantFwDetCat = gHades->getCurrentEvent()->getCategory(catFwDetGeantRaw);
-    if (!fGeantFwDetCat) {
-      Error("HFwDetScinDigitizer::init()","HGeant FwDet input missing");
-      return kFALSE;
+    if (!fGeantFwDetCat)
+    {
+        Error("HFwDetScinDigitizer::init()", "HGeant FwDet input missing");
+        return kFALSE;
     }
 
     // build the Calibration category
     fFwDetScinCalCat=pFwDet->buildCategory(catFwDetScinCal);
-    if (!fFwDetScinCalCat) {
-        Error("HFwDetScinDigitizer::init()","Cal category not created");
+    if (!fFwDetScinCalCat)
+    {
+        Error("HFwDetScinDigitizer::init()", "Cal category not created");
         return kFALSE;
     }
 
     // create the parameter container
     fScinDigiPar = (HFwDetScinDigiPar *)gHades->getRuntimeDb()->getContainer("FwDetScinDigiPar");
-    if (!fScinDigiPar) {
-         Error("HFwDetScinDigitizer::init()","Parameter container for digitizer not created");
-         return kFALSE;
+    if (!fScinDigiPar)
+    {
+        Error("HFwDetScinDigitizer::init()", "Parameter container for digitizer not created");
+        return kFALSE;
     }
-        
+
     return kTRUE;
 }
 
-Int_t HFwDetScinDigitizer::execute(void) {
+Int_t HFwDetScinDigitizer::execute()
+{
     // Digitization of GEANT hits and storage in HFwDetScinCalSim
 
     HGeantFwDet* ghit = 0;
     HFwDetScinCalSim* cal = 0;
 
     Int_t entries = fGeantFwDetCat->getEntries();
-    for(Int_t i=0;i<entries;i++) {
-	ghit = (HGeantFwDet*)fGeantFwDetCat->getObject(i);
-	if(ghit) {
-	    ghit->getAddress(geantModule,geantCell);
+    for(Int_t i = 0; i < entries; ++i)
+    {
+        ghit = (HGeantFwDet*)fGeantFwDetCat->getObject(i);
+        if (ghit)
+        {
+            ghit->getAddress(geantModule,geantCell);
             if(geantModule < 4 || geantModule > 5) continue; // skip the other detectors of the FwDet
-	    ghit->getHit(xHit, yHit,  zHit, pxHit, pyHit, pxHit, tofHit, trackLength, eHit);
-	    trackNumber = ghit->getTrackNumber();
+
+            ghit->getHit(xHit, yHit,  zHit, pxHit, pyHit, pxHit, tofHit, trackLength, eHit);
+            trackNumber = ghit->getTrackNumber();
+
             // calculate scintillator cell number and set location indexes
             module = geantModule - 4;
             scinNum = geantCell;  // preliminary!!!!!!!!!
-            if (module >= FWDET_SCIN_MAX_MODULES || scinNum >= FWDET_SCIN_MAX_CELLS) continue;
-       fLoc[0] = module;
-	    fLoc[1] = scinNum;
+
+            if (module >= FWDET_SCIN_MAX_MODULES || scinNum >= FWDET_SCIN_MAX_CELLS)
+                continue;
+
+            fLoc[0] = module;
+            fLoc[1] = scinNum;
+
             // do something with the Geant hit...
             //
             // fill the cal hit:
             // check if the object is already existing in the cal category
-	    cal = (HFwDetScinCalSim*)fFwDetScinCalCat->getSlot(fLoc);
-	    if(cal) {
-		cal = new(cal) HFwDetScinCalSim;
-		cal->setAddress(module,geantCell,scinNum);
-		cal->setHit(tofHit,eHit);
+
+            cal = (HFwDetScinCalSim*)fFwDetScinCalCat->getSlot(fLoc);
+            if (cal)
+            {
+                cal = new(cal) HFwDetScinCalSim;
+                cal->setAddress(module, geantCell, scinNum);
+                cal->setHit(tofHit, eHit);
                 cal->setTrack(trackNumber);
-	    }
-	}
+            }
+        }
     }
+
     return 0;
-
 }
-
-
-

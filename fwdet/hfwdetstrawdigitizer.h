@@ -3,47 +3,63 @@
 
 #include "hreconstructor.h"
 #include "hlocation.h"
+#include "TVector3.h"
+#include "TMatrixD.h"
 
 class HCategory;
 class HFwDetStrawDigiPar;
 
-
-class HFwDetStrawDigitizer : public HReconstructor {
-
+class HFwDetStrawDigitizer : public HReconstructor
+{
 private:
     HCategory* fGeantFwDetCat;
     HCategory* fFwDetStrawCalCat;
     HFwDetStrawDigiPar* fStrawDigiPar;
 
     Int_t   trackNumber;  // GEANT track number
-    Char_t  geantCell;    // GEANT cell number inside module (0...8)
-    Char_t  module;       // straw module number (0...1)
-    Char_t  strawNum;     // straw cell number
-    Float_t xHit;         // x of hit  (in mm) in cell coord. system
-    Float_t yHit;         // y of hit  (in mm) in cell coord. system
-    Float_t zHit;         // z of hit  (in mm) in cell coord. system
-    Float_t pxHit;        // x component of hit momentum (in MeV/c)
-    Float_t pyHit;        // y component of hit momentum (in MeV/c)
-    Float_t pzHit;        // z component of hit momentum (in MeV/c)
-    Float_t tofHit;       // time of flight of hit (in ns)
-    Float_t trackLength;  // track length (in mm)
-    Float_t eHit;         // energy deposited (in MeV)
+    Char_t  module;       // module number (0...8) - 2 modules- first station (module0), second station (module1)
+    Char_t  cell;         // cell number inside module (0...4) - 4 double layers
+    Int_t   strawNum;     // straw number in cell: even numbers 90 degree, odd numbers 0 degreee
+    Float_t xHit;         // geant x of hit  (in mm) in cell coord. system
+    Float_t yHit;         // geant y of hit  (in mm) in cell coord. system
+    Float_t zHit;         // geant z of hit  (in mm) in cell coord. system
+    Float_t pxHit;        // geant x component of hit momentum (in MeV/c)
+    Float_t pyHit;        // geant y component of hit momentum (in MeV/c)
+    Float_t pzHit;        // geant z component of hit momentum (in MeV/c)
+    Float_t tofHit;       // geant time of flight of hit (in ns)
+    Float_t trackLength;  // geant track length (in mm)
+    Float_t eHit;         // geant energy deposited (in MeV)
 
     HLocation fLoc;
 
-    //vector <HFwDetStrawCal> strawcal;
+    static const size_t nstations = 2; // number of straws
+    static const size_t nstraws_Tx[nstations];
+
+    static const Float_t radius_S = 5.05; //radius of the straw
+
+    static const size_t rad_len1 = 4;        // number of modules per layer
+    static const size_t rad_len2 = 113;//(nstraws_T1 > nstraws_T2 ? nstraws_T1 : nstraws_T2) / 2; // half of the bigger 
+
+    static const Float_t straw_diam = 10.1; // diameter of straw
+    static const Float_t straw_dist = 8.75; // distance between two layers
+
+    static const Float_t Tx_x_a[nstations];
+    static const Float_t Tx_x_b[nstations];
+
+    static const Float_t T12_z_a = -9.424;  // z-coord. of the begining of the 1st layer in module
+    static const Float_t T12_z_b = -0.674;  // z-coord. of the begining of the 1st layer in module
 
 public:
-    HFwDetStrawDigitizer(void);
+    HFwDetStrawDigitizer();
     HFwDetStrawDigitizer(const Text_t* name, const Text_t* title);
-    ~HFwDetStrawDigitizer(void) {}
+    virtual ~HFwDetStrawDigitizer();
     void   initVariables();
-    Bool_t init    (void);
-    Bool_t reinit(void)   {return kTRUE;}
-    Int_t  execute (void);
-    Bool_t finalize(void) {return kTRUE;}
-    ClassDef(HFwDetStrawDigitizer,0)
+    Bool_t init();
+    Bool_t reinit()   { return kTRUE; }
+    Int_t  execute();
+    Bool_t finalize() { return kTRUE; }
+
+    ClassDef(HFwDetStrawDigitizer, 0);
 };
 
 #endif  /*  !HFWDETSTRAWDIGITIZER_H    */
-

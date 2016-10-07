@@ -7,9 +7,8 @@
 class HCategory;
 class HFwDetScinDigiPar;
 
-
-class HFwDetScinDigitizer : public HReconstructor {
-
+class HFwDetScinDigitizer : public HReconstructor
+{
 private:
     HCategory* fGeantFwDetCat;
     HCategory* fFwDetScinCalCat;
@@ -33,16 +32,16 @@ private:
     HLocation fLoc;
 
 public:
-    HFwDetScinDigitizer(void);
+    HFwDetScinDigitizer();
     HFwDetScinDigitizer(const Text_t* name, const Text_t* title);
-    ~HFwDetScinDigitizer(void) {}
+    virtual ~HFwDetScinDigitizer();
+
     void   initVariables();
-    Bool_t init    (void);
-    Bool_t reinit(void)   {return kTRUE;}
-    Int_t  execute (void);
-    Bool_t finalize(void) {return kTRUE;}
-    ClassDef(HFwDetScinDigitizer,0)
+    Bool_t init();
+    Bool_t reinit() { return kTRUE; }
+    Int_t  execute();
+    Bool_t finalize() { return kTRUE; }
+    ClassDef(HFwDetScinDigitizer, 0);
 };
 
 #endif  /*  !HFWDETSCINDIGITIZER_H    */
-

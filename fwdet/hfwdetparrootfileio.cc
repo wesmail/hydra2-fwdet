@@ -21,36 +21,42 @@ using namespace std;
 #include <iostream> 
 #include <iomanip>
 
-ClassImp(HFwDetParRootFileIo)
+ClassImp(HFwDetParRootFileIo);
 
-HFwDetParRootFileIo::HFwDetParRootFileIo(HParRootFile* f) : HDetParRootFileIo(f) {
-  // constructor sets the name of the detector I/O "HFwDetParIo"
-  fName="HFwDetParIo";
-  HDetector* det=gHades->getSetup()->getDetector("FwDet");
-  Int_t n = det->getMaxSectors();
-  initModules=new TArrayI(n);
+HFwDetParRootFileIo::HFwDetParRootFileIo(HParRootFile* f) : HDetParRootFileIo(f)
+{
+    // constructor sets the name of the detector I/O "HFwDetParIo"
+    fName = "HFwDetParIo";
+    HDetector* det = gHades->getSetup()->getDetector("FwDet");
+    Int_t n = det->getMaxSectors();
+    initModules = new TArrayI(n);
 }
 
-HFwDetParRootFileIo::~HFwDetParRootFileIo(void) {
-  // destructor
-  if (initModules) {
-    delete initModules;
-    initModules=0;
-  }
-}
-
-Bool_t HFwDetParRootFileIo::init(HParSet* pPar,Int_t* set) {
-  // initializes a container called by name, but only the modules
-  // defined in the array 'set'
-  // calls the special read function for this container
-  // If it is called the first time it reads the setup found in the file
-  if (!isActiv) readModules("FwDet");
-  const Text_t* name=pPar->GetName();
-  if (pFile) {
-    if (0 == strncmp(name,"FwDetGeomPar", strlen("FwDetGeomPar"))) {
-      return HDetParRootFileIo::read((HFwDetGeomPar*)pPar,set);
+HFwDetParRootFileIo::~HFwDetParRootFileIo()
+{
+    // destructor
+    if (initModules)
+    {
+        delete initModules;
+        initModules = 0;
     }
-  }
-  Error("init(HParSet*,Int_t*)","Initialization of %s not possible from ASCII file",name);
-  return kFALSE;
+}
+
+Bool_t HFwDetParRootFileIo::init(HParSet* pPar, Int_t* set)
+{
+    // initializes a container called by name, but only the modules
+    // defined in the array 'set'
+    // calls the special read function for this container
+    // If it is called the first time it reads the setup found in the file
+    if (!isActiv) readModules("FwDet");
+    const Text_t* name=pPar->GetName();
+    if (pFile)
+    {
+        if (0 == strncmp(name,"FwDetGeomPar", strlen("FwDetGeomPar")))
+        {
+            return HDetParRootFileIo::read((HFwDetGeomPar*)pPar, set);
+        }
+    }
+    Error("init(HParSet*,Int_t*)", "Initialization of %s not possible from ASCII file",name);
+    return kFALSE;
 }

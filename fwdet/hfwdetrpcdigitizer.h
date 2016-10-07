@@ -7,9 +7,8 @@
 class HCategory;
 class HFwDetRpcDigiPar;
 
-
-class HFwDetRpcDigitizer : public HReconstructor {
-
+class HFwDetRpcDigitizer : public HReconstructor
+{
 private:
     HCategory* fGeantFwDetCat;
     HCategory* fFwDetRpcCalCat;
@@ -32,19 +31,16 @@ private:
 
     HLocation fLoc;
 
-    //vector <HFwDetRpcCal> rpccal;
-
 public:
-    HFwDetRpcDigitizer(void);
+    HFwDetRpcDigitizer();
     HFwDetRpcDigitizer(const Text_t* name, const Text_t* title);
-    ~HFwDetRpcDigitizer(void) {}
+    virtual ~HFwDetRpcDigitizer();
     void   initVariables();
-    Bool_t init    (void);
-    Bool_t reinit(void)   {return kTRUE;}
-    Int_t  execute (void);
-    Bool_t finalize(void) {return kTRUE;}
-    ClassDef(HFwDetRpcDigitizer,0)
+    Bool_t init();
+    Bool_t reinit() const { return kTRUE; }
+    Int_t  execute();
+    Bool_t finalize() { return kTRUE;}
+    ClassDef(HFwDetRpcDigitizer, 0);
 };
 
-#endif  /*  !HFWDETRPCDIGITIZER_H    */
-
+#endif  /*  !HFWDETRPCDIGITIZER_H */

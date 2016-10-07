@@ -13,7 +13,7 @@ Int_t analysisDST(TString inFile="tmp1", Int_t nEvents=1000, Int_t startEvt=0)
     TString inputFile = inFile + ".root";
     TString outFile   = inFile + "_dst.root";
 
-    TString asciiParFile = "./fwdetdigipar.txt";
+    TString asciiParFile = "fwdetdigipar.txt";
     TString rootParFile = "";
     Bool_t ora_input=kFALSE;
 
@@ -41,6 +41,7 @@ Int_t analysisDST(TString inFile="tmp1", Int_t nEvents=1000, Int_t startEvt=0)
 	rtdb->setSecondInput(input2);
     }
 
+#ifdef ORACLE_SUPPORT
     if(ora_input) {
 	HParOra2Io *ora=new HParOra2Io() ;
 	ora->open();
@@ -51,6 +52,7 @@ Int_t analysisDST(TString inFile="tmp1", Int_t nEvents=1000, Int_t startEvt=0)
 	}
 	rtdb->setSecondInput(ora);
     }
+#endif
 
     //Data source
     HRootSource *source=new HRootSource;

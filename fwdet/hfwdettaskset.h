@@ -4,7 +4,8 @@
 #include "htaskset.h"
 #include "TString.h"
 
-class HFwDetTaskSet : public HTaskSet {
+class HFwDetTaskSet : public HTaskSet
+{
 protected:
     Bool_t doStraw;
     Bool_t doScin;
@@ -12,12 +13,12 @@ protected:
     void parseArguments(TString s);
 
 public:
-    HFwDetTaskSet(void);
-    HFwDetTaskSet(const Text_t name[],const Text_t title[]);
-    ~HFwDetTaskSet(void) {}
-    HTask *make(const Char_t* select="",const Option_t* option="");
+    HFwDetTaskSet();
+    HFwDetTaskSet(const Text_t name[], const Text_t title[]);
+    virtual ~HFwDetTaskSet();
+    HTask *make(const Char_t* select = "", const Option_t* option = "");
 
-    ClassDef(HFwDetTaskSet,0) // Set of tasks
+    ClassDef(HFwDetTaskSet, 0); // Set of tasks
 };
 
 #endif /* !HFWDETTASKSET_H */

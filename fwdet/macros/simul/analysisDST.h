@@ -40,7 +40,9 @@
 #include "htaskset.h"
 #include "hspectrometer.h"
 #include "hruntimedb.h"
+#ifdef ORACLE_SUPPORT
 #include "hparora2io.h"
+#endif
 #include "hparrootfileio.h"
 #include "hparasciifileio.h"
 
