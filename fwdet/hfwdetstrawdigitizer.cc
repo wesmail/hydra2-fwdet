@@ -1,5 +1,6 @@
 //*-- Author  : Georgy Kornakov
 //*-- Created : 27.01.2016
+//*-- Modified : 29/07/2016 by V.Pechenov
 
 //_HADES_CLASS_DESCRIPTION
 /////////////////////////////////////////////////////////////
@@ -8,6 +9,12 @@
 //  This class digitizes the Forward Straw detector data
 //
 //  Produce calibrated Time and energy loss and the straw number
+//
+//
+//
+//  !!! There digitization is not implemented yet !!!
+//  Programm store to the output category catFwDetStrawCal tof from geant hit
+//  and minimal distance from geant track to the wire.
 //
 /////////////////////////////////////////////////////////////
 
@@ -31,58 +38,46 @@ using namespace std;
 #include "hfwdetstrawcalsim.h"
 #include "hfwdetstrawdigipar.h"
 #include "TError.h"
-
-
-const double rot_mat[2][2] = {
-    { cos(M_PI / 4.), -sin(M_PI / 4.) },
-    { sin(M_PI / 4.), cos(M_PI / 4.) }
-};
-
-// dx..dz - track direction vector
-// mod_xref -- reference coordinate in x/y
-// mod_yref -- reference coordinate in z
-// straw_diam -- diameter of the straw
-// straw_n -- number of fired straw
-// xh..xz -- geant hit coordinate
-// Mu -- unitary momentum vector
-// double DIGI(int dx, int dy, int dz, float mod_xref, float mod_zref, float straw_diam, double xh, double yh, double zh, int straw_n, TVector3 Mu);
-
-enum CELL_DIR { deg0, deg90, deg45m, deg45p };
-
-uint find_straw(double xh, double yh, double zh, float mod_xref, float straw_diam, CELL_DIR cd);
-double find_radius(int dx, int dy, int dz, float mod_xref, float mod_zref, float straw_diam, double xh, double yh, double zh, int straw_n, const TVector3 & Mu);
-
-int fill_straw_hit(HCategory* fFwDetStrawCalCat, HLocation & fLoc, float x_ref, float z_ref, float straw_diam, int straw, int straw_ref, float x, float y, float z, const TVector3 & mom, float tofHit, float eHit, int track);
+#include <TRandom.h> //AZ
 
 ClassImp(HFwDetStrawDigitizer);
 
-const size_t HFwDetStrawDigitizer::nstraws_Tx[HFwDetStrawDigitizer::nstations] =
-{
-    160, // number of straws in station 1
-    226  // number of straws in module 2
+const Float_t HFwDetStrawDigitizer::T12_z[2] =
+{ 
+   -9.424,  // z-coord. of the begining of the 1st layer in doubleLayer
+   -0.674   // z-coord. of the begining of the 2nd layer in doubleLayer
 };
-const Float_t HFwDetStrawDigitizer::Tx_x_a[HFwDetStrawDigitizer::nstations] =
+        
+const Int_t HFwDetStrawDigitizer::nstraws_Tx[HFwDetStrawDigitizer::nstations] =
 {
-    -396.15, // x coord. of the begining of the 1st cell in module 1 A1SV1)
-    -558.025 // the same like above, but for module 2 A2SV1
-};
-const Float_t HFwDetStrawDigitizer::Tx_x_b[HFwDetStrawDigitizer::nstations] =
-{
-    -401.19, // x-coord. of the begining of the 2nd cell in module 1 A1SV1)
-    -563.075
+   80,   //160, // number of straws per layer in module 1
+   113   //226  // number of straws per layer in module 2
 };
 
-HFwDetStrawDigitizer::HFwDetStrawDigitizer()
+const Float_t HFwDetStrawDigitizer::Tx_x[HFwDetStrawDigitizer::nstations][2] =
 {
-    // default constructor
-    initVariables();
+  {
+   -396.15, // x coord. of the 1st wire in 1st layer of doubleLayer in module 1 A1SV1)
+   -401.19  //  x coord. of the 1st wire in 2nd layer of doubleLayer in module 1 A1SV1)
+  },      
+  {
+   -558.025, // the same like above, but for module 2 A2SV1
+   -563.075
+  }
+};
+
+HFwDetStrawDigitizer::HFwDetStrawDigitizer() :
+   HReconstructor()
+{
+   // default constructor
+   initVariables();
 }
 
 HFwDetStrawDigitizer::HFwDetStrawDigitizer(const Text_t *name, const Text_t *title) :
-    HReconstructor(name, title)
+   HReconstructor(name, title)
 {
-    // constructor
-    initVariables();
+   // constructor
+   initVariables();
 }
 
 HFwDetStrawDigitizer::~HFwDetStrawDigitizer()
@@ -91,251 +86,146 @@ HFwDetStrawDigitizer::~HFwDetStrawDigitizer()
 
 void HFwDetStrawDigitizer::initVariables(void)
 {
-    // initialize the variables in constructor
-    fGeantFwDetCat    = 0;
-    fFwDetStrawCalCat = 0;
-    fStrawDigiPar     = 0;
-    fLoc.setNIndex(2);
-    fLoc.set(2,0,0);
+   // initialize the variables in constructor
+   fGeantFwDetCat    = NULL;
+   fFwDetStrawCalCat = NULL;
+   fStrawDigiPar     = NULL;
+   fLoc.setNIndex(4);
+   fLoc.set(4,0,0,0,0);
 }
 
 Bool_t HFwDetStrawDigitizer::init(void)
 {
-    // initializes the task
+   // initializes the task
 
-    // find the Forward detector in the HADES setup
-    HFwDetDetector* pFwDet = (HFwDetDetector*)(gHades->getSetup()->getDetector("FwDet"));
-    if (!pFwDet)
-    {
-        Error("FwDetStrawDigitizer::init","No Forward Detector found");
-        return kFALSE;
-    }
+   // find the Forward detector in the HADES setup
+   HFwDetDetector* pFwDet = (HFwDetDetector*)(gHades->getSetup()->getDetector("FwDet"));
+   if (!pFwDet)
+   {
+      Error("FwDetStrawDigitizer::init","No Forward Detector found");
+      return kFALSE;
+   }
 
-    // GEANT input data
-    fGeantFwDetCat = gHades->getCurrentEvent()->getCategory(catFwDetGeantRaw);
-    if (!fGeantFwDetCat)
-    {
-        Error("HFwDetStrawDigitizer::init()","HGeant FwDet input missing");
-        return kFALSE;
-    }
+   // GEANT input data
+   fGeantFwDetCat = gHades->getCurrentEvent()->getCategory(catFwDetGeantRaw);
+   if (!fGeantFwDetCat)
+   {
+      Error("HFwDetStrawDigitizer::init()","HGeant FwDet input missing");
+      return kFALSE;
+   }
 
-    // build the Calibration category
-    fFwDetStrawCalCat=pFwDet->buildCategory(catFwDetStrawCal);
-    if (!fFwDetStrawCalCat)
-    {
-        Error("HFwDetStrawDigitizer::init()","Cal category not created");
-        return kFALSE;
-    }
+   // build the Calibration category
+   fFwDetStrawCalCat=pFwDet->buildCategory(catFwDetStrawCal);
+   if (!fFwDetStrawCalCat)
+   {
+      Error("HFwDetStrawDigitizer::init()","Cal category not created");
+      return kFALSE;
+   }
 
-    // create the parameter container
-    fStrawDigiPar = (HFwDetStrawDigiPar *)gHades->getRuntimeDb()->getContainer("FwDetStrawDigiPar");
-    if (!fStrawDigiPar)
-    {
-        Error("HFwDetStrawDigitizer::init()","Parameter container for digitizer not created");
-        return kFALSE;
-    }
+   // create the parameter container
+   fStrawDigiPar = (HFwDetStrawDigiPar *)gHades->getRuntimeDb()->getContainer("FwDetStrawDigiPar");
+   if (!fStrawDigiPar)
+   {
+      Error("HFwDetStrawDigitizer::init()","Parameter container for digitizer not created");
+      return kFALSE;
+   }
 
-    return kTRUE;
+   return kTRUE;
 }
 
 Int_t HFwDetStrawDigitizer::execute(void)
 {
-    // Digitization of GEANT hits and storage in HFwDetStrawCalSim
-    gErrorIgnoreLevel = kFatal;
+   // Digitization of GEANT hits and storage in HFwDetStrawCalSim
+//   gErrorIgnoreLevel = kFatal;
 
-    HGeantFwDet* ghit = 0;
+   Int_t entries = fGeantFwDetCat->getEntries();
+   for(Int_t i = 0; i < entries; ++i)
+   {
+      HGeantFwDet* ghit = (HGeantFwDet*)fGeantFwDetCat->getObject(i);
+      if (ghit)
+      {
+         ghit->getAddress(module, doubleLayer);
+         Int_t mod = module;
+                        fLoc[0] = mod;
+                        fLoc[1] = doubleLayer;
 
-    TVector3 Mom, Mom_unit;
+         if(mod > FWDET_STRAW_MAX_MODULES)
+            continue; // skip the other detectors of the FwDet
+    
+         ghit->getHit(xHit, yHit,  zHit, pxHit, pyHit, pzHit, tofHit, trackLength, eHit);
+         trackNumber = ghit->getTrackNumber();
+	 //cout << trackNumber << " " << mod << " " << doubleLayer << " " << xHit << " " << yHit << endl; //AZ
 
-    int mod = 0;
-
-    Int_t entries = fGeantFwDetCat->getEntries();
-    for(Int_t i = 0; i < entries; ++i)
-    {
-        ghit = (HGeantFwDet*)fGeantFwDetCat->getObject(i);
-        if (ghit)
-        {
-            ghit->getAddress(module, cell);
-            mod = (int)module;
-
-            if(mod > FWDET_STRAW_MAX_MODULES)
-                continue; // skip the other detectors of the FwDet
-
-            ghit->getHit(xHit, yHit,  zHit, pxHit, pyHit, pzHit, tofHit, trackLength, eHit);
-            trackNumber = ghit->getTrackNumber();
-
-            Mom.SetXYZ(pxHit, pyHit, pzHit);
-            Mom_unit = Mom.Unit();
-
-            float x_rot = xHit;
-            float y_rot = yHit;
-
-            // find the reference straw number
-            uint fstraw_a = find_straw(x_rot, 0, 0, Tx_x_a[mod], straw_diam, deg0);
-            uint fstraw_b = find_straw(x_rot, 0, 0, Tx_x_b[mod], straw_diam, deg0);
-
-            fLoc[0] = module;
-            fLoc[1] = cell;
-
-            // fill straw for subcell a for a reference straw
-            fill_straw_hit(fFwDetStrawCalCat, fLoc, Tx_x_a[mod], T12_z_a,
-                           straw_diam, fstraw_a, fstraw_a,
-                           x_rot, y_rot, zHit, Mom_unit, tofHit, eHit, trackNumber);
-
-            // if momentum vector is not 0, check also neighbour straws
-            if (Mom_unit.Mag() != 0)
-            {
-                // to the left from reference
-                for (int i = fstraw_a-1; i >= 0; --i)
-                {
-                    int res = fill_straw_hit(fFwDetStrawCalCat, fLoc, Tx_x_a[mod], T12_z_a,
-                                straw_diam, i, fstraw_a,
-                                x_rot, y_rot, zHit, Mom_unit, tofHit, eHit, trackNumber);
-                    if (res == -1)
-                        break;
-                }
-                // to the right from reference
-                for (int i = fstraw_a+1; i < (int)nstraws_Tx[mod]; ++i)
-                {
-                    int res = fill_straw_hit(fFwDetStrawCalCat, fLoc, Tx_x_a[mod], T12_z_a,
-                                straw_diam, i, fstraw_a,
-                                x_rot, y_rot, zHit, Mom_unit, tofHit, eHit, trackNumber);
-                    if (res == -1)
-                        break;
-                }
+         Float_t tanTr = pxHit/pzHit;
+         for(Int_t lay=0;lay<2;lay++) {
+            fLoc[2] = lay;
+            // Calculate range of cells (cell1-cell2) were track can give signal:
+            Float_t z1 = T12_z[lay] - zHit;                                       // It eq. to zWire-straw_diam/2 (doubleLayer coor.sys)
+            Float_t z2 = z1 + straw_diam ;                                        // It eq. to zWire+straw_diam/2 (doubleLayer coor.sys)
+            Float_t x1 = tanTr*z1 + xHit;                                         // x coor. of the cross point of the track with plane z=z1
+            Float_t x2 = tanTr*z2 + xHit;                                         // x coor. of the cross point of the track with plane z=z2
+            Float_t c1 = calcCellNumber(x1,mod,lay);
+            Float_t c2 = calcCellNumber(x2,mod,lay);
+            if(c1 > c2) {Float_t c=c1; c1=c2; c2=c;}                              // c1 must be < c2
+            if(c2 < 0.) continue;                                                 // out of acceptance
+            Int_t   cell1 = TMath::Max(Int_t(c1),0);
+            Int_t   cell2 = TMath::Min(Int_t(c2),nstraws_Tx[mod]-1);
+            if(cell1 >= nstraws_Tx[mod]) continue;                               // out of acceptance
+            
+            for(Int_t c=cell1; c<=cell2; c++) {             
+               fLoc[3] = c;
+               // Calculate the minimal distance from track to the wire:
+               Float_t xPos = Tx_x[mod][lay] + straw_diam*c;                                           // wire position
+               Float_t minDist = TMath::Abs(( (x1 + x2)/2. - xPos))/TMath::Sqrt(1.+tanTr*tanTr);       // minimal distance from track to the wire
+               
+               if(minDist < straw_diam/2.) fillStrawCalSim(minDist, xPos, T12_z[lay]+straw_diam/2.);
             }
-
-            // same like above
-            fill_straw_hit(fFwDetStrawCalCat, fLoc, Tx_x_b[mod], T12_z_b,
-                           straw_diam, fstraw_a, fstraw_a,
-                           x_rot, y_rot, zHit, Mom_unit, tofHit, eHit, trackNumber);
-
-            if (Mom_unit.Mag() != 0)
-            {
-                for (int i = fstraw_b-1; i >= 0; --i)
-                {
-                    int res = fill_straw_hit(fFwDetStrawCalCat, fLoc, Tx_x_b[mod], T12_z_b,
-                                straw_diam, i, fstraw_a,
-                                x_rot, y_rot, zHit, Mom_unit, tofHit, eHit, trackNumber);
-                    if (res == -1)
-                        break;
-                }
-                for (int i = fstraw_b+1; i < (int)nstraws_Tx[mod]; ++i)
-                {
-                    int res = fill_straw_hit(fFwDetStrawCalCat, fLoc, Tx_x_b[mod], T12_z_b,
-                                straw_diam, i, fstraw_a,
-                                x_rot, y_rot, zHit, Mom_unit, tofHit, eHit, trackNumber);
-                    if (res == -1)
-                        break;
-                }
-            }
-        }
-    }
-    return 0;
+         }
+      }
+   }
+   return 0;
 }
 
-uint find_straw(double xh, double yh, double zh, float mod_xref, float straw_diam, CELL_DIR cd)
+Bool_t HFwDetStrawDigitizer::fillStrawCalSim( Float_t radius, Float_t posX, Float_t posZ)
 {
-    // Find straw number by calculating the distance from the edge
-    // of the detector, and dividing by the straw radius
-    float r = 0.0;
-    switch (cd)
-    {
-        case deg0:
-            r = xh;
-            break;
-        case deg90:
-            r = yh;
-            break;
-        case deg45m:
-        case deg45p:
-            r = sqrt(xh*xh + yh*yh);
-            break;
-    }
+   // function creat and fill object HFwDetStrawCalSim
+   // return kFALSE if dat was not stored to the category 
 
-    float dist_ = (r - mod_xref);
-    float found_cell_f = dist_/straw_diam;
+   const Float_t resol = 0.2; //AZ!!! - straw tube resolution 200 um (interim solution) 
+   Int_t first = 1; //AZ
 
-    return (int)round(found_cell_f);
-}
+   //printf("loc= %i %i %i %i  %.2f\n",fLoc[0],fLoc[1],fLoc[2],fLoc[3],radius);
+   HFwDetStrawCalSim * cal = (HFwDetStrawCalSim*)fFwDetStrawCalCat->getObject(fLoc);
+   if( cal != NULL) {                                     // straw tube ocupaed by another track:
+      /*AZ
+      Float_t time,elos, radi, X, Z;
+      Int_t StrawN;
+      cal->getHit(time, elos, radi, X, Z, StrawN);
+      if(radi <= radius) return kFALSE;                      // FIXME Sorting need to be done by signale time !
+      */
+      //*AZ
+      if (cal->getDriftId().begin()->first <= radius) {
+	cal->addTrack(radius,trackNumber);
+	return kFALSE;
+      }
+      first = 0;
+      //*/
+   } else {
+      cal = (HFwDetStrawCalSim*)fFwDetStrawCalCat->getSlot(fLoc);
+   }
+   if (cal)
+   {
+      //AZ cal = new(cal) HFwDetStrawCalSim;
+      if (first) cal = new(cal) HFwDetStrawCalSim; //AZ
+      cal->addTrack(radius,trackNumber); //AZ
+      cal->setAddress(fLoc[0], fLoc[1], fLoc[2], fLoc[3]);
+      //AZ cal->setHit(tofHit, eHit, radius, posX, posZ, 0);
+      Float_t coord = radius + gRandom->Gaus() * resol; //AZ
+      coord = TMath::Max(Float_t(0), coord); //AZ
+      coord = TMath::Min(coord, straw_diam/2); //AZ
+      cal->setHit(tofHit, eHit, coord, posX, posZ, 0); //AZ
+      cal->setTrack(trackNumber);
+   } else return kFALSE;
 
-double find_radius(int dx, int dy, int dz, float mod_xref, float mod_zref, float straw_diam, double xh, double yh, double zh, int straw_n, const TVector3 & Mu)
-{
-    // Calculate distance between straw wire with directions (cos) dx,dy,dz
-    // and coordinates 2 coordinates in straw plane (thrid coordinate is 0)
-    // and 3rd line in space crossing sensitive volume at xh, yh, zh and
-    // directions given by Mu vctor
-
-    float dX = -xh;
-    float dY = -yh;
-
-    if (dx)
-    {
-        dY += mod_xref + straw_diam*straw_n;
-    }
-
-    if (dy)
-    {
-        dX += mod_xref + straw_diam*straw_n;
-    }
-
-    TMatrixD D(3,3), D1(2,2), D2(2,2), D3(2,2);
-
-    D(0,0) = dX;
-    D(0,1) = dY;
-    D(0,2) = mod_zref + straw_diam/2. - zh;
-    D(1,0) = Mu.X();
-    D(1,1) = Mu.Y();
-    D(1,2) = Mu.Z();
-    D(2,0) = dx;  // 0
-    D(2,1) = dy;  // 1
-    D(2,2) = dz;  // 0
-
-    D1(0,0) = Mu.Y();
-    D1(0,1) = Mu.Z();
-    D1(1,0) = dy; //1
-    D1(1,1) = dz; //0
-
-    D2(0,0) = Mu.Z();
-    D2(0,1) = Mu.X();
-    D2(1,0) = dz; //0
-    D2(1,1) = dx; //0
-
-    D3(0,0) = Mu.X();
-    D3(0,1) = Mu.Y();
-    D3(1,0) = dx; //0
-    D3(1,1) = dy; //1
-
-    float r = D.Determinant() / TMath::Sqrt(
-        D1.Determinant()*D1.Determinant()+D2.Determinant()*D2.Determinant()+D3.Determinant()*D3.Determinant());
-    return TMath::Abs(r);
-}
-
-int fill_straw_hit(HCategory* fFwDetStrawCalCat, HLocation & fLoc, float x_ref, float z_ref, float straw_diam, int straw, int straw_ref, float x, float y, float z, const TVector3 & mom, float tofHit, float eHit, int track)
-{
-    int ret = 0;
-
-    float posZ = z_ref + straw_diam/2.;
-    float posX = x_ref + straw_diam*straw;
-
-    float radius = straw_diam/2.;
-
-    if (mom.Mag() != 0)
-        radius = find_radius(0, 1, 0, x_ref, z_ref, straw_diam, x, y, z, straw, mom);
-
-    if (radius > straw_diam/2.)
-        return -1;
-
-    HFwDetStrawCalSim * cal = (HFwDetStrawCalSim*)fFwDetStrawCalCat->getSlot(fLoc);
-    if (cal)
-    {
-        cal = new(cal) HFwDetStrawCalSim;
-        cal->setAddress(fLoc[0], fLoc[1], straw); // FIXME straw here and below
-        cal->setHit(tofHit, eHit, radius, posX, posZ, straw - straw_ref);
-        cal->setTrack(track);
-
-        ret = 1;
-    }
-
-    return ret;
+   return kTRUE;
 }

@@ -14,6 +14,8 @@
 #pragma link C++ class HFwDetStrawCalSim;
 #pragma link C++ class HFwDetStrawDigitizer;
 #pragma link C++ class HFwDetStrawDigiPar;
+#pragma link C++ class HFwDetStrawVectorFinder;
+#pragma link C++ class HFwDetStrawVector;
 
 #pragma link C++ class HFwDetScinCalSim;
 #pragma link C++ class HFwDetScinDigitizer;
@@ -26,5 +28,6 @@
 #pragma link C++ global catFwDetStrawCal;
 #pragma link C++ global catFwDetScinCal;
 #pragma link C++ global catFwDetRpcCal;
+#pragma link C++ global catFwDetStrawVector;
 
 #endif

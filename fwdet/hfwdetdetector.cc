@@ -82,6 +82,19 @@ HCategory* HFwDetDetector::buildMatrixCategory(const Text_t* className, Int_t ma
     return category;
 }
 
+HCategory* HFwDetDetector::buildMatrixCategory(const Text_t* className, Int_t maxMod,
+                                               Int_t maxDbLay, Int_t nLays, Int_t maxCell, Float_t fillRate)
+{
+    Int_t* sizes = new Int_t[4]; // 4 levels Module - DoubleLayer - Layer - Cell(straw tube)
+    sizes[0] = maxMod;
+    sizes[1] = maxDbLay; 
+    sizes[2] = nLays;
+    sizes[3] = maxCell;
+    HMatrixCategory* category = new HMatrixCategory(className, 4, sizes, fillRate);
+    delete [] sizes;
+    return category;
+}
+
 HCategory* HFwDetDetector::buildLinearCategory(const Text_t* className, Int_t size)
 {
     if (size > 0)
@@ -106,7 +119,7 @@ HCategory* HFwDetDetector::buildCategory(Cat_t cat)
     switch (cat)
     {
         case catFwDetStrawCal:
-            pcat = buildMatrixCategory("HFwDetStrawCalSim", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_CELLS);
+            pcat = buildMatrixCategory("HFwDetStrawCalSim", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_DOUBLELAYS, 2, FWDET_STRAW_MAX_CELLS); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             break;
         case catFwDetScinCal:
             if (maxModInSetup >= 4)

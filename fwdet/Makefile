@@ -23,7 +23,9 @@ SOURCE_FILES := hfwdetdetector.cc         \
                 hfwdetscindigipar.cc	  \
                 hfwdetrpccalsim.cc        \
                 hfwdetrpcdigitizer.cc     \
-                hfwdetrpcdigipar.cc
+                hfwdetrpcdigipar.cc       \
+                hfwdetstrawvectorfinder.cc \
+                hfwdetstrawvector.cc
 
 include $(HADDIR)/hades.def.mk
 include $(HADDIR)/hades.module.mk
