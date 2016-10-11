@@ -15,15 +15,18 @@ SOURCE_FILES := hfwdetdetector.cc         \
                 hfwdetparasciifileio.cc   \
                 hfwdetgeompar.cc          \
                 hfwdettaskset.cc          \
-                hfwdetstrawcalsim.cc      \
-                hfwdetstrawdigitizer.cc   \
-                hfwdetstrawdigipar.cc	  \
-                hfwdetscincalsim.cc       \
-                hfwdetscindigitizer.cc    \
-                hfwdetscindigipar.cc	  \
+                hfwdetrpccal.cc           \
                 hfwdetrpccalsim.cc        \
                 hfwdetrpcdigitizer.cc     \
                 hfwdetrpcdigipar.cc       \
+                hfwdetscincal.cc          \
+                hfwdetscincalsim.cc       \
+                hfwdetscindigitizer.cc    \
+                hfwdetscindigipar.cc      \
+                hfwdetstrawcal.cc         \
+                hfwdetstrawcalsim.cc      \
+                hfwdetstrawdigitizer.cc   \
+                hfwdetstrawdigipar.cc     \
                 hfwdetstrawvectorfinder.cc \
                 hfwdetstrawvector.cc
 

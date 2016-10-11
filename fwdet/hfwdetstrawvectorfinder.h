@@ -51,11 +51,6 @@ public:
     /** Finish at the event end **/
     virtual Bool_t finalize();
 
-    /** Accessors **/
-    //Int_t GetNofStat() const       { return fgkStat; }
-    //TDecompLU *GetLU(Int_t patt) { return fLus[patt]; }
-    //TMatrixDSym *GetMatr(Int_t patt) { return fMatr[patt]; }
-
 private:
     // Some constants
     static const Int_t fgkStat = 2;               // Number of stations
@@ -91,27 +86,27 @@ private:
 
     std::vector<std::pair<Int_t,Int_t> > fHit2d[fgkStat][fgkPlanes/2]; //! Indx1,Indx2 of doublet hits
 
-    void ComputeMatrix();
-    void GetHits();
-    Bool_t SelectHitId(HFwDetStrawCalSim *hit, Int_t idSel);
-    void MakeVectors();
-    void ProcessDouble(Int_t ista, Int_t lay2, Int_t patt, Int_t flag, Int_t tube0, Int_t segment0);
-    void AddVector(Int_t ista, Int_t patt, Double_t chi2, Double_t *pars, Bool_t lowRes = kTRUE);
-    void SetTrackId(HFwDetStrawVector *vec);
-    Bool_t SelDoubleId(Int_t indx1, Int_t indx2);
-    void FindLine(Int_t patt, Double_t *pars);
-    Double_t FindChi2(Int_t ista, Int_t patt, Double_t *pars);
-    void CheckParams();
-    void HighRes();
-    void ProcessSingleHigh(Int_t ista, Int_t plane, Int_t patt, Int_t flag, Int_t nok, Double_t uu[fgkPlanes][2]);
-    void MoveVectors();
-    void RemoveClones();
-    void RemoveShorts();
-    void StoreVectors(Int_t sel);
-    void MergeVectors();
-    void SelectTracks(Int_t ipass);
-    Double_t Refit(Int_t patt, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr);
-    void AddTrack(Int_t ista0, HFwDetStrawVector *tr1, HFwDetStrawVector *tr2,
+    void computeMatrix();
+    void getHits();
+    Bool_t selectHitId(HFwDetStrawCalSim *hit, Int_t idSel);
+    void makeVectors();
+    void processDouble(Int_t ista, Int_t lay2, Int_t patt, Int_t flag, Int_t tube0, Int_t segment0);
+    void addVector(Int_t ista, Int_t patt, Double_t chi2, Double_t *pars, Bool_t lowRes = kTRUE);
+    void setTrackId(HFwDetStrawVector *vec);
+    Bool_t selDoubleId(Int_t indx1, Int_t indx2);
+    void findLine(Int_t patt, Double_t *pars);
+    Double_t findChi2(Int_t ista, Int_t patt, Double_t *pars);
+    void checkParams();
+    void highRes();
+    void processSingleHigh(Int_t ista, Int_t plane, Int_t patt, Int_t flag, Int_t nok, Double_t uu[fgkPlanes][2]);
+    void moveVectors();
+    void removeClones();
+    void removeShorts();
+    void storeVectors(Int_t sel);
+    void mergeVectors();
+    void selectTracks(Int_t ipass);
+    Double_t refit(Int_t patt, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr);
+    void addTrack(Int_t ista0, HFwDetStrawVector *tr1, HFwDetStrawVector *tr2,
             Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2);
 
     HFwDetStrawVectorFinder(const HFwDetStrawVectorFinder&);

@@ -1,9 +1,13 @@
-/**  HFwDetStrawVector.h
- *@author A.Zinchenko <alexander.zinchenko@jinr.ru>
- *@since 2016
- **
- ** Segments / tracks in the Forward Straw tracker.
- **/
+//*-- Author  : A.Zinchenko <alexander.zinchenko@jinr.ru>
+//*-- Created : 2016
+
+//_HADES_CLASS_DESCRIPTION
+/////////////////////////////////////////////////////////////
+//  HFwDetStrawVector
+//
+//  Segments / tracks in the Forward Straw tracker.
+//
+/////////////////////////////////////////////////////////////
 
 #include "hfwdetstrawvector.h"
 #include "hmdcsizescells.h"
@@ -25,7 +29,7 @@ HFwDetStrawVector::~HFwDetStrawVector()
 // -------------------------------------------------------------------------
 
 // -----   Public method AddHit   ------------------------------------------
-Int_t HFwDetStrawVector::AddHit(Int_t indx)
+Int_t HFwDetStrawVector::addHit(Int_t indx)
 {
     // Add hit with index indx to the track
 
@@ -35,7 +39,7 @@ Int_t HFwDetStrawVector::AddHit(Int_t indx)
 // -------------------------------------------------------------------------
 
 // -----   Public method GetCovarMatr   ------------------------------------
-TMatrixDSym HFwDetStrawVector::GetCovarMatr()
+TMatrixDSym HFwDetStrawVector::getCovarMatr()
 {
   // Return covariance matrix as TMatrixDSym
 
@@ -54,7 +58,7 @@ TMatrixDSym HFwDetStrawVector::GetCovarMatr()
 // -------------------------------------------------------------------------
 
 // -----   Public method SetCovar   ----------------------------------------
-void HFwDetStrawVector::SetCovar(TMatrixDSym cov)
+void HFwDetStrawVector::setCovar(TMatrixDSym cov)
 {
   // Set covariance matrix
 
@@ -70,7 +74,7 @@ void HFwDetStrawVector::SetCovar(TMatrixDSym cov)
 // -------------------------------------------------------------------------
 
 // -----   Public method HadesParams   -------------------------------------
-void HFwDetStrawVector::HadesParams(Double_t *params)
+void HFwDetStrawVector::hadesParams(Double_t *params)
 {
     // Convert to HADES track parameters
 
@@ -82,12 +86,12 @@ void HFwDetStrawVector::HadesParams(Double_t *params)
 // -------------------------------------------------------------------------
 
 // -----   Private method HadesParam   -------------------------------------
-Double_t HFwDetStrawVector::HadesParam(Int_t ipar)
+Double_t HFwDetStrawVector::hadesParam(Int_t ipar)
 {
     // Convert (at first call) and return HADES track parameters
 
     Double_t params[4];
-    HadesParams(params);
+    hadesParams(params);
     return params[ipar];
 }
 // -------------------------------------------------------------------------

@@ -1,10 +1,11 @@
 #ifndef HFWDETSCINCALSIM_H
 #define HFWDETSCINCALSIM_H
 
+#include "hfwdetscincal.h"
 
 #include "TObject.h"
 
-class HFwDetScinCalSim : public TObject
+class HFwDetScinCalSim : public HFwDetScinCal
 {
 private:
     Int_t  fTrack;     // geant track contributing to the hit
