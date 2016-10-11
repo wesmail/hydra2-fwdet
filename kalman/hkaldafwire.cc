@@ -114,7 +114,7 @@ Bool_t HKalDafWire::calcVirtPlane(Int_t iSite) const {
 
 	// Ensure v axis of virtual layer points in direction of positive y-axis
 	// in the layer coordinate system.
-	const TVector3 &n = site->getHitMeasLayer().getNormal();
+	//const TVector3 &n = site->getHitMeasLayer().getNormal();   // gcc warning unused var
 
 	HMdcSizesCells *fSizesCells = HMdcSizesCells::getExObject();
 	HMdcSizesCellsLayer &fSizesCellsLayer =

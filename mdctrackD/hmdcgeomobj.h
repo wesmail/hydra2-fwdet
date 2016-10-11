@@ -155,7 +155,7 @@ class HMdcPlane : public TObject {
     ClassDef(HMdcPlane,1)
 };
 
-class HMdcPointOnPlane : protected HGeomVector {
+class HMdcPointOnPlane : public HGeomVector {
   protected:
     HMdcPlane pl;     // plane
   public:

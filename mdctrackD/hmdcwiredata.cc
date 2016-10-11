@@ -2370,10 +2370,10 @@ Int_t HMdcWiresArr::testRestForTrack(Int_t sec,HMdcLineParam &lineParam,
             // Collecting wires:
             Int_t iLayer  = 0; //seg != 1 ?  0 : 12;
             Int_t lastLay = 12; //seg == 0 ? 12 : 24;
-            Int_t nWires  = 0;
+            //Int_t nWires  = 0;  not used ==>gcc warning "set but not used"
 
             tmpListCells.clear();
-            nWires  = 0;
+            //nWires  = 0;  not used ==>gcc warning "set but not used"
             for(;iLayer<lastLay;iLayer++) {
               Int_t mod = iLayer/6;
 // ????              if(fSCModAr[mod]==0) continue;

@@ -138,7 +138,7 @@ Int_t HMdcClustFromSeg::execute(void) {
     Float_t mom  = pSplineTrack->getP();
 
     // apply the cuts - for defaults, see constructor
-    if(!fPolarity == 2){
+    if(fPolarity != 2){
 	if (fPolarity > 0 && pol <  0) continue;
 	if (fPolarity < 0 && pol >= 0) continue;
     }

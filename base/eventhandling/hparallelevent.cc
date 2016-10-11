@@ -238,12 +238,10 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
 
 
     Int_t kineLastTr  = 0;
-    Int_t firstRich   = -1;
 
     if(kineCat && kineCat->getEntries()>0){
 	kine       = (HGeantKine* )kineCat->getObject(kineCat->getEntries()-1);
 	kineLastTr  = kine->getTrack();
-	firstRich   = kine->getFirstRichHit();
     }
 
     if(kineCatLoc && kineCatLoc->getEntries()>0){
