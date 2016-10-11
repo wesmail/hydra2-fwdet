@@ -8,6 +8,7 @@ class HFwDetTaskSet : public HTaskSet
 {
 protected:
     Bool_t doStraw;
+    Bool_t doStrawCal;   // Up to cal level only
     Bool_t doScin;
     Bool_t doRpc;
     void parseArguments(TString s);

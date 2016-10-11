@@ -18,7 +18,7 @@ using namespace std;
 #include "hspectrometer.h"
 #include "hfwdetdetector.h"
 #include "hfwdetgeompar.h"
-#include <iostream> 
+#include <iostream>
 #include <iomanip>
 
 ClassImp(HFwDetParRootFileIo);

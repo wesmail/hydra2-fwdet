@@ -1,10 +1,10 @@
 //*-- AUTHOR : Ilse Koenig
 //*-- Created : 16/11/2015
 
-//_HADES_CLASS_DESCRIPTION 
+//_HADES_CLASS_DESCRIPTION
 //////////////////////////////////////////////////////////////////////////////
 // HFwDetGeomPar
-// 
+//
 // Geometry parameter container for the Forward Detector
 //////////////////////////////////////////////////////////////////////////////
 
@@ -13,7 +13,7 @@ using namespace std;
 #include "hgeomcompositevolume.h"
 #include "hpario.h"
 #include "hdetpario.h"
-#include <iostream> 
+#include <iostream>
 #include <iomanip>
 
 ClassImp(HFwDetGeomPar);

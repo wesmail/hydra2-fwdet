@@ -1,5 +1,5 @@
 //*-- Author   : Ilse Koenig
-//*-- Created  : 19.02.2016 
+//*-- Created  : 19.02.2016
 
 //_HADES_CLASS_DESCRIPTION
 ///////////////////////////////////////////////////////////////////////
@@ -49,7 +49,7 @@ HFwDetScinDigitizer::~HFwDetScinDigitizer()
 
 void HFwDetScinDigitizer::initVariables()
 {
-    // initialize the variables in constructor 
+    // initialize the variables in constructor
     fGeantFwDetCat   = 0;
     fFwDetScinCalCat = 0;
     fScinDigiPar     = 0;

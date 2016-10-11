@@ -11,7 +11,7 @@ private:
     Char_t fModule;    // module number (0..1 for Rpc modules)
     Char_t fGeantCell; // geant cell number
     Char_t fRpc;       // rpc cell number
-    Float_t fTime;     // 
+    Float_t fTime;     //
     Float_t fElos;     //
 
 public:

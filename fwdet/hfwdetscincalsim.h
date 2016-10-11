@@ -11,7 +11,7 @@ private:
     Char_t fModule;    // module number (0..1 for Scin modules)
     Char_t fGeantCell; // geant cell number
     Char_t fScin;      // scintillator cell number
-    Float_t fTime;     // 
+    Float_t fTime;     //
     Float_t fElos;     //
     //    Float_t fTime2;
     //    Float_t fElos2;

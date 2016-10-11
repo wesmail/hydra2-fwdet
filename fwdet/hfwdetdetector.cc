@@ -26,7 +26,7 @@ using namespace std;
 #include "hfwdetparrootfileio.h"
 #include "hfwdetparasciifileio.h"
 #include "TClass.h"
-#include <iostream> 
+#include <iostream>
 #include <iomanip>
 
 ClassImp(HFwDetDetector); // FwDet detector class
@@ -76,7 +76,7 @@ HCategory* HFwDetDetector::buildMatrixCategory(const Text_t* className, Int_t ma
 {
     Int_t* sizes = new Int_t[2]; // 2 levels Module - Cell
     sizes[0] = maxMod;
-    sizes[1] = maxCell; 
+    sizes[1] = maxCell;
     HMatrixCategory* category = new HMatrixCategory(className, 2, sizes, fillRate);
     delete [] sizes;
     return category;

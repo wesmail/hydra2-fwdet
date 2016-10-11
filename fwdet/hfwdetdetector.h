@@ -12,10 +12,10 @@ public:
     void   activateParIo(HParIo* io);
     Bool_t write(HParIo* io);
 
-	HCategory* buildCategory(Cat_t cat);
-	HCategory* buildMatrixCategory(const Text_t *, Int_t, Int_t, Float_t fillRate = 0.5);
-	HCategory* buildMatrixCategory(const Text_t *, Int_t, Int_t, Int_t, Int_t, Float_t fillRate = 0.5);
-	HCategory* buildLinearCategory(const Text_t*, Int_t);
+    HCategory* buildCategory(Cat_t cat);
+    HCategory* buildMatrixCategory(const Text_t *, Int_t, Int_t, Float_t fillRate = 0.5);
+    HCategory* buildMatrixCategory(const Text_t *, Int_t, Int_t, Int_t, Int_t, Float_t fillRate = 0.5);
+    HCategory* buildLinearCategory(const Text_t*, Int_t);
 
     Int_t getMaxModInSetup();
 

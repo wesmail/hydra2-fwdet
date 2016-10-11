@@ -1,5 +1,5 @@
 //*-- Author   : Georgy Kornakov
-//*-- Created  : 27.01.2016 
+//*-- Created  : 27.01.2016
 
 //_HADES_CLASS_DESCRIPTION
 /////////////////////////////////////////////////////////////

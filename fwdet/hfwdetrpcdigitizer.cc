@@ -49,7 +49,7 @@ HFwDetRpcDigitizer::~HFwDetRpcDigitizer()
 
 void HFwDetRpcDigitizer::initVariables()
 {
-    // initialize the variables in constructor 
+    // initialize the variables in constructor
     fGeantFwDetCat  = 0;
     fFwDetRpcCalCat = 0;
     fRpcDigiPar     = 0;

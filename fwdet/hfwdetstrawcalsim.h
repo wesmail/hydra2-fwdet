@@ -20,7 +20,7 @@ private:
     Float_t fX;         // X-coordinate in respect to straw-0 !  X position of wire in the coor.sys.of doubleLayer
     Float_t fZ;         // Z-coordinate of fired straw        !  Z position of wire in the coor.sys.of doubleLayer
     Int_t   fNStraw;    // TODO what is this?
-    std::multimap<Double32_t,Int_t> fDriftId; //AZ - drift radius - track ID map
+    std::multimap<Double32_t,Int_t> fDriftId; // - drift radius - track ID map
 
 public:
     HFwDetStrawCalSim();
@@ -29,19 +29,19 @@ public:
     Int_t getTrack() const { return fTrack; }
     void  getAddress(Char_t& m, Char_t& dl, Char_t& l, Int_t& c);
     void  getHit(Float_t& time, Float_t& elos, Float_t& radi, Float_t& X, Float_t& Z, Int_t& StrawN) const;
-    Double_t getDrift() const { return fDriftRad / 10; } //AZ - in cm
-    Int_t getStation() const { return fModule; } //AZ
-    Int_t getDoublet() const { return fDoubleLayer; } //AZ
-    Int_t getLayer() const { return (fZ < 0) ? 0 : 1; } //AZ
-    Int_t getTube() const { return fCell; } //AZ
-    Int_t getPlane() const { return fModule * 8 + fDoubleLayer * 2 + fLayer; } //AZ
-    Double_t getU() const { return fX / 10; } //AZ - in cm
-    std::multimap<Double_t,Int_t>& getDriftId() { return fDriftId; } //AZ
+    Double_t getDrift() const { return fDriftRad; }
+    Int_t getStation() const { return fModule; }
+    Int_t getDoublet() const { return fDoubleLayer; }
+    Int_t getLayer() const { return (fZ < 0) ? 0 : 1; }
+    Int_t getTube() const { return fCell; }
+    Int_t getPlane() const { return fModule * 8 + fDoubleLayer * 2 + fLayer; }
+    Double_t getU() const { return fX; }
+    std::multimap<Double_t,Int_t>& getDriftId() { return fDriftId; }
 
     void  setTrack(Int_t num) { fTrack = num; }
     void  setAddress(Char_t m, Char_t dl, Char_t l, Int_t c);
-    void  setDrift(Double_t drift) { fDriftRad = drift; } //AZ
-    void  addTrack(Double_t drift, Int_t trId) { fDriftId.insert(std::pair<Double_t,Int_t>(drift, trId)); } //AZ
+    void  setDrift(Double_t drift) { fDriftRad = drift; }
+    void  addTrack(Double_t drift, Int_t trId) { fDriftId.insert(std::pair<Double_t,Int_t>(drift, trId)); }
 
     void  setHit(Float_t time, Float_t elos, Float_t radi, Float_t X, Float_t Z, Int_t StrawN);
 

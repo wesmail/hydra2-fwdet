@@ -18,7 +18,8 @@ using namespace std;
 #include "hfwdetstrawdigitizer.h"
 #include "hfwdetscindigitizer.h"
 #include "hfwdetrpcdigitizer.h"
-#include <iostream> 
+#include "hfwdetstrawvectorfinder.h"
+#include <iostream>
 #include <iomanip>
 #include "TObjString.h"
 
@@ -27,18 +28,20 @@ ClassImp(HFwDetTaskSet);
 HFwDetTaskSet::HFwDetTaskSet() : HTaskSet()
 {
     // Default constructor
-    doStraw = kFALSE;
-    doScin  = kFALSE;
-    doRpc   = kFALSE;
+    doStraw    = kFALSE;
+    doStrawCal = kFALSE;
+    doScin     = kFALSE;
+    doRpc      = kFALSE;
 }
 
 HFwDetTaskSet::HFwDetTaskSet(const Text_t name[], const Text_t title[]) :
     HTaskSet(name, title)
 {
     // Constructor
-    doStraw = kFALSE;
-    doScin  = kFALSE;
-    doRpc   = kFALSE;
+    doStraw    = kFALSE;
+    doStrawCal = kFALSE;
+    doScin     = kFALSE;
+    doRpc      = kFALSE;
 }
 
 HFwDetTaskSet::~HFwDetTaskSet()
@@ -67,17 +70,23 @@ void HFwDetTaskSet::parseArguments(TString s)
             argument=stemp->GetString();
             Info("parseArguments()", "option: %s", argument.Data());
 
-            if (argument.CompareTo("straw") == 0)
+            if (argument.CompareTo("strawcal") == 0)
             {
-                doStraw    = kTRUE;
+                doStraw     = kFALSE;
+                doStrawCal  = kTRUE;
+            }
+            else if (argument.CompareTo("straw") == 0)
+            {
+                doStraw     = kTRUE;
+                doStrawCal  = kTRUE;
             }
             else if( argument.CompareTo("scin") == 0)
             {
-                doScin    = kTRUE;
+                doScin      = kTRUE;
             }
             else if (argument.CompareTo("rpc") == 0)
             {
-                doRpc    = kTRUE;
+                doRpc       = kTRUE;
             }
             else
             {
@@ -109,8 +118,11 @@ HTask* HFwDetTaskSet::make(const Char_t *select, const Option_t *option)
 
     if(sel.CompareTo(simulation) == 0 || gHades->getEmbeddingMode() > 0)
     {
-        if (doStraw)
+        if (doStrawCal)
+                {
             tasks->add( new HFwDetStrawDigitizer("fwdetstraw.digi", "fwdetstraw.digi") );
+                        if(doStraw) tasks->add( new HFwDetStrawVectorFinder("vectorFinder","vectorFinder") );
+                }
         if (doScin)
             tasks->add( new HFwDetScinDigitizer("fwdetscin.digi", "fwdetscin.digi") );
         if (doRpc)
