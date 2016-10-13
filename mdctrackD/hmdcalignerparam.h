@@ -1,5 +1,5 @@
 #ifndef HMDCALIGNERPARAM_H
-#define HMDCaKIGNERPARAM_H
+#define HMDCALIGNERPARAM_H
 
 #include "TObject.h"
 #include "hmdcsizescells.h"

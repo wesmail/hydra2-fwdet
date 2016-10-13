@@ -43,7 +43,7 @@ public:
    Int_t  write(HParIo* output);
    void   clear();
    void   putAsciiHeader(TString& header);
-   void   write(fstream& fout);
+   void   write(std::fstream& fout);
    void   printParams();
 
    HRichCalParCell* getSlot(HLocation &loc);

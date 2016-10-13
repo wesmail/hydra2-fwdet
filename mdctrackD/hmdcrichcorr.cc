@@ -161,9 +161,15 @@ void HMdcRichCorr::makeHist(void) {
     hNRings=new TH1F("hRings","<Num. of rings/event>",250,0.,500000.);
     hNMRings=new TH1F("hMRings","<Num. of matched rings/event>",250,0.,500000.);
     hNEvents=new TH1F("nEvents","Num of events",250,0.,500000.);
+#if ROOT_VERSION_CODE  > ROOT_VERSION(6,0,0)
+    hNRings->SetCanExtend(TH1::kAllAxes);
+    hNMRings->SetCanExtend(TH1::kAllAxes);
+    hNEvents->SetCanExtend(TH1::kAllAxes);
+#else
     hNRings->SetBit(TH1::kCanRebin);
     hNMRings->SetBit(TH1::kCanRebin);
     hNEvents->SetBit(TH1::kCanRebin);
+#endif
   } else {
     hNRings->Reset();
     hNMRings->Reset();

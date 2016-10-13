@@ -33,8 +33,7 @@ protected:
                                 // zRichCenter = aligned rich pos in simu (web interface) - 405mm (e.g. Rich at -440 -> richCenter = -35)
                                 // dzTarg: shift used to define reference value for parametrization
     Float_t zRichCenter, dzTarg, zRef, zNorm, thetaRef, yRef;
-    const static Float_t rad2deg = 57.29578F;
-    //Float_t rad2deg = TMath::RadToDeg();
+    Float_t rad2deg ;
 
 public:
     HParticleBtAngleTrafo(void) {initParam();};

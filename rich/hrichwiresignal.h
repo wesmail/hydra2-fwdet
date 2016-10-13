@@ -86,7 +86,7 @@ public:
    void setEne(Float_t ene) {
       fEnergy = ene;
    }
-   friend ostream& operator<< (ostream& output, HRichWireSignal& element);
+   friend std::ostream& operator<< (std::ostream& output, HRichWireSignal& element);
 
    Int_t getSector() {
       return fSector;

@@ -155,7 +155,7 @@ public:
 
     virtual Int_t                getTrackNum     () const            { return kalsys->getTrackNum(); }
 
-    virtual void   setConstField      (Bool_t constField)                       { (kalsys) ? kalsys->setConstField(constField)  : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setConstField      (Bool_t constField)                       { (kalsys) ?   kalsys->setConstField(constField) : Warning("setConstField()",  noKalman.Data()); }
 
     virtual void   setCounterStep     (Int_t  c)                                { counterstep = c; }
 

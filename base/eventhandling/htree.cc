@@ -5,7 +5,10 @@
 #include "TFile.h"
 #include "TMath.h"
 #include "TClonesArray.h"
-#include "Api.h"
+
+#if ROOT_VERSION_CODE  < ROOT_VERSION(6,0,0)
+  #include "Api.h"     changedROOT6
+#endif
 
 //*-- Author : Manuel Sanchez
 //*-- Modified : 12/1/2000 by R.Holzmann

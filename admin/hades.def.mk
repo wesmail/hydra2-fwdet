@@ -198,6 +198,7 @@ LIST_EXT   := lis
 DEP_EXT    := d
 OBJ_EXT    := o
 SO_EXT     := so
+PCM_EXT    := pcm
 
 # build/install directory definitions
 ifdef MODULES
@@ -337,6 +338,7 @@ OBJECTS += \
 # shared library path and name
 SO_FILE_NAME := lib$(LIB_NAME).$(SO_EXT)
 SO_FILE      := $(LIB_DIR)/$(SO_FILE_NAME)
+PCM_FILE_NAME := $(LIB_NAME)Dict_rdict.$(PCM_EXT)
 
 # miscellaneous files
 CREATE_DOC_MACRO := macros/makeDocs.C
@@ -454,7 +456,7 @@ ifeq ($(strip $(USES_X11)),yes)
 endif
 
 # C, C++ and Fortran preprocessor flags
-CPP_FLAGS += -DR__GLIBC -DDEBUG_LEVEL=$(DEBUG_LEVEL)
+CPP_FLAGS += -DR__GLIBC -DDEBUG_LEVEL=$(DEBUG_LEVEL)  -std=c++11
 CPP_FLAGS += $(addprefix -I,$(call cleanlist,$(INC_DIRS)))
 FPP_FLAGS += $(addprefix -I,$(call cleanlist,$(INC_DIRS)))
 

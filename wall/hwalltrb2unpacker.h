@@ -1,5 +1,5 @@
 #ifndef HWALLTRB2UNPACKER_H
-#define HWALTRB2UNPACKER_H
+#define HWALLTRB2UNPACKER_H
 
 #include "htrb2unpacker.h"
 #include "hlocation.h"

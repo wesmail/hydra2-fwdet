@@ -329,8 +329,15 @@ Bool_t HMdcTargetMon::initHists(void) {
             sprintf(title,"S.%i M.%i-%i  Z_{min} vs Nev.;Event;Zmin",sec+1,mod1+1,mod2+1);
             zVerVsEventH[sec][comb] = new TH2F(name,title,1000,0,1000,500,zmin,zmax);
 //new TH2F(name,title,1000,0,1000,256,0.,256.);
-            zVerVsEventH[sec][comb]->SetBit(TH1::kCanRebin);
-          } else if(plotType==2) {
+
+
+#if ROOT_VERSION_CODE  > ROOT_VERSION(6,0,0)
+	    zVerVsEventH[sec][comb]->SetCanExtend(TH1::kAllAxes);
+#else
+	    zVerVsEventH[sec][comb]->SetBit(TH1::kCanRebin);
+#endif
+
+	  } else if(plotType==2) {
             sprintf(name,"s%im%iv%i_YvX",sec+1,mod1+1,mod2+1);
             sprintf(title,"S.%i M.%i-%i  Y vs X;X (mm);Y (mm)",sec+1,mod1+1,mod2+1);
             zVerVsEventH[sec][comb] = new TH2F(name,title,30,-30.,30.,30,-30.,30.);
@@ -340,7 +347,12 @@ Bool_t HMdcTargetMon::initHists(void) {
             sprintf(title,"S.%i M.%i-%i  Z_{min} vs ev.time;Time;Zmin",sec+1,mod1+1,mod2+1);
             zVerVsEventH[sec][comb] = new TH2F(name,title,500,0,500,500,zmin,zmax);
 //new TH2F(name,title,1000,0,1000,256,0.,256.);
-            zVerVsEventH[sec][comb]->SetBit(TH1::kCanRebin);
+
+#if ROOT_VERSION_CODE  > ROOT_VERSION(6,0,0)
+	    zVerVsEventH[sec][comb]->SetCanExtend(TH1::kAllAxes);
+#else
+	    zVerVsEventH[sec][comb]->SetBit(TH1::kCanRebin);
+#endif
           } else {
             sprintf(name,"s%im%iv%i_ThVZm",sec+1,mod1+1,mod2+1);
             sprintf(title,"Theta vs Zmin;Zmin;Theta");
@@ -394,8 +406,17 @@ void HMdcTargetMon::initRunsSumHists(void) {
             sprintf(name,"s%im%iv%i_ZmVev_%iruns",sec+1,mod1+1,mod2+1,collectNRuns);
             zVerVsEventForNR[sec][comb]=new TH2F(*(zVerVsEventH[sec][comb]));
             zVerVsEventForNR[sec][comb]->SetName(name);
-            zVerVsEventForNR[sec][comb]->SetBit(TH1::kCanRebin);
-          } else if(plotType==2) {
+
+#if ROOT_VERSION_CODE  > ROOT_VERSION(6,0,0)
+	    zVerVsEventForNR[sec][comb]->SetCanExtend(TH1::kAllAxes);
+#else
+	    zVerVsEventForNR[sec][comb]->SetBit(TH1::kCanRebin);
+#endif
+
+
+
+
+	  } else if(plotType==2) {
             sprintf(name,"s%im%iv%i_YvX_%iruns",sec+1,mod1+1,mod2+1,collectNRuns);
             zVerVsEventForNR[sec][comb]=new TH2F(*(zVerVsEventH[sec][comb]));
             zVerVsEventForNR[sec][comb]->SetName(name);

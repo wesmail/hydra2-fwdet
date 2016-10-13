@@ -149,6 +149,12 @@ install:
 	$(ECHO) "$(INSTALL) -m 755 $(SO_FILE) $(INSTALL_DIR)/lib";	\
 	$(INSTALL) -m 755 $(SO_FILE) $(INSTALL_DIR)/lib
 
+	@set -e;										\
+	if [ -f $(PC_DIR)/$(PCM_FILE_NAME) ]; then						\
+		$(ECHO) "$(INSTALL) -m 755 $(PC_DIR)/$(PCM_FILE_NAME) $(INSTALL_DIR)/lib";	\
+		$(INSTALL) -m 755 $(PC_DIR)/$(PCM_FILE_NAME) $(INSTALL_DIR)/lib;		\
+	fi
+
 	@set -e;							\
 	if [ "x$(HEADER_FILES)" = "x" ]; then				\
 		$(ECHO) -ne "ERROR: ";					\
@@ -176,12 +182,13 @@ deinstall:
 		$(ECHO) "$(RM) -f $(INSTALL_DIR)/include/$$file";	\
 		$(RM) -f $(INSTALL_DIR)/include/$$file;			\
 	done
-	$(RM) -f $(INSTALL_DIR)/lib/$(SO_FILE_NAME)
+	$(RM) -f $(INSTALL_DIR)/lib/$(SO_FILE_NAME);			\
+	$(RM) -f $(INSTALL_DIR)/lib/$(PCM_FILE_NAME)
 
 
 # delete all but the source and dependency files
 clean:
-	$(RM) -f $(SO_FILE) $(OBJECTS) $(PRECOMPILED) 
+	$(RM) -f $(SO_FILE) $(PC_DIR)/$(PCM_FILE_NAME) $(OBJECTS) $(PRECOMPILED) 
 
 
 # delete all but the source files

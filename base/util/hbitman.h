@@ -1,5 +1,5 @@
 #ifndef __HBITMAN_H__
-#define __HBitMAN_H__
+#define __HBITMAN_H__
 
 #include "TObject.h"
 #include "TString.h"

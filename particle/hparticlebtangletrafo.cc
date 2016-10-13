@@ -296,6 +296,9 @@ void HParticleBtAngleTrafo::setRichPos(const char * beamtime)
 
 void HParticleBtAngleTrafo::initParam()
 {
+    rad2deg = 57.29578F;
+
+
     {
 	const Float_t yTheta[yParMax] =
 	{-13.9019,8.2065,-0.00230282,0.000319631,-1.16559e-5,7.70673e-8};
