@@ -456,7 +456,8 @@ ifeq ($(strip $(USES_X11)),yes)
 endif
 
 # C, C++ and Fortran preprocessor flags
-CPP_FLAGS += -DR__GLIBC -DDEBUG_LEVEL=$(DEBUG_LEVEL)  -std=c++11
+#CPP_FLAGS += -DR__GLIBC -DDEBUG_LEVEL=$(DEBUG_LEVEL)  -std=c++11
+CPP_FLAGS += -DR__GLIBC -DDEBUG_LEVEL=$(DEBUG_LEVEL)
 CPP_FLAGS += $(addprefix -I,$(call cleanlist,$(INC_DIRS)))
 FPP_FLAGS += $(addprefix -I,$(call cleanlist,$(INC_DIRS)))
 
