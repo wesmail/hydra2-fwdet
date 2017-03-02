@@ -109,7 +109,7 @@ Int_t HFwDetScinDigitizer::execute()
         ghit = (HGeantFwDet*)fGeantFwDetCat->getObject(i);
         if (ghit)
         {
-            ghit->getAddress(geantModule,geantCell);
+            ghit->getAddress(geantModule, geantLayer, geantCell);
             if(geantModule < 4 || geantModule > 5) continue; // skip the other detectors of the FwDet
 
             ghit->getHit(xHit, yHit,  zHit, pxHit, pyHit, pxHit, tofHit, trackLength, eHit);

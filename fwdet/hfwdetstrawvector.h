@@ -8,17 +8,14 @@
 #ifndef HFWDETSTRAWVECTOR_H
 #define HFWDETSTRAWVECTOR_H
 
-#include <TObject.h>
-#include <TBits.h>
-#include <TMatrixDSym.h>
+#include "TObject.h"
+#include "TBits.h"
+#include "TMatrixDSym.h"
 
 class HFwDetStrawVector: public TObject
 {
 public:
-    /** Default constructor **/
     HFwDetStrawVector();
-
-    /** Destructor **/
     virtual ~HFwDetStrawVector();
 
     Int_t getFlag() const { return fFlag; }
@@ -56,7 +53,7 @@ private:
     Double_t hadesParam(Int_t ipar);
 
 private:
-    Int_t fFlag;              // flag
+    Int_t fFlag;              // flag TODO what flag?
     Int_t fNhits;             // number of hits
     Int_t fNDF;               // number of degrees of freedom
     Int_t fHitInds[16];       // hit indices in planes

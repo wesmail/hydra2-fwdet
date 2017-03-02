@@ -185,13 +185,13 @@ void HGeomInterface::addInputFile(const Char_t* file) {
       if (!pSet&&!setName.Contains(".hit")) {
         pSet=new HGeomEmc;
         sets->AddAt(pSet,kHGeomEmc);
-      }  
+      }
     } else if (setName.Contains("fwdet")) {
       pSet=(HGeomSet*)sets->At(kHGeomFwDet);
       if (!pSet&&!setName.Contains(".hit")) {
         pSet=new HGeomFwDet;
         sets->AddAt(pSet,kHGeomFwDet);
-      }  
+      }
     } else if (setName.Contains("user")) {
       pSet=(HGeomSet*)sets->At(kHGeomUser);
       if (!pSet&&!setName.Contains(".hit")) {

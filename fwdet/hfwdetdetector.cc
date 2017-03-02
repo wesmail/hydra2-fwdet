@@ -119,18 +119,18 @@ HCategory* HFwDetDetector::buildCategory(Cat_t cat)
     switch (cat)
     {
         case catFwDetStrawCal:
-            pcat = buildMatrixCategory("HFwDetStrawCalSim", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_DOUBLELAYS, 2, FWDET_STRAW_MAX_CELLS); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            pcat = buildMatrixCategory("HFwDetStrawCal", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_LAYERS, FWDET_STRAW_MAX_PLANES, FWDET_STRAW_MAX_CELLS);
             break;
         case catFwDetScinCal:
             if (maxModInSetup >= 4)
             {
-                pcat = buildMatrixCategory("HFwDetScinCalSim", FWDET_SCIN_MAX_MODULES, FWDET_SCIN_MAX_CELLS);
+                pcat = buildMatrixCategory("HFwDetScinCal", FWDET_SCIN_MAX_MODULES, FWDET_SCIN_MAX_CELLS);
             }
             break;
         case catFwDetRpcCal:
             if (maxModInSetup >= 6)
             {
-                pcat = buildMatrixCategory("HFwDetRpcCalSim", FWDET_RPC_MAX_MODULES, FWDET_RPC_MAX_CELLS);
+                pcat = buildMatrixCategory("HFwDetRpcCal", FWDET_RPC_MAX_MODULES, FWDET_RPC_MAX_CELLS);
             }
             break;
     default:

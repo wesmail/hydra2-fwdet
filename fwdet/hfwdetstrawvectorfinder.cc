@@ -134,8 +134,6 @@ Bool_t HFwDetStrawVectorFinder::init()
     }
 
     gHades->getRuntimeDb()->getContainer("FwDetGeomPar");
-
-    fDiam = HFwDetStrawDigitizer::getRadius_S() * 2.0;
     fErrU = fDiam / TMath::Sqrt(12.0);
 
     return kTRUE;
@@ -554,19 +552,19 @@ Bool_t HFwDetStrawVectorFinder::selectHitId(HFwDetStrawCalSim *hit, Int_t idSel)
 {
     // Select hits with certain track IDs (for debugging)
 
-    map<Double_t,Int_t>::iterator mit = hit->getDriftId().begin();
-    for ( ; mit != hit->getDriftId().end(); ++mit)
+    //map<Double_t,Int_t>::iterator mit = hit->getDriftId().begin();
+    //for ( ; mit != hit->getDriftId().end(); ++mit)
     {
-        if (mit->second == idSel)
+        //if (mit->second == idSel)
         {
             //cout << " Plane: " << hit->getPlane() << " " << mit->second << endl;
             // Set proper drift distance
-            Double_t err = hit->getDrift() - hit->getDriftId().begin()->first;
-            Double_t coord = mit->first + err;
-            coord = TMath::Max (0.0, coord);
-            coord = TMath::Min (coord, fDiam/2);
-            hit->setDrift(coord);
-            return kTRUE;
+            //Double_t err = hit->getDrift() - hit->getDriftId().begin()->first;
+            //Double_t coord = mit->first + err;
+            //coord = TMath::Max (0.0, coord);
+            //coord = TMath::Min (coord, fDiam/2);
+            //hit->setDrift(coord);
+            //return kTRUE;
         }
     }
 
@@ -606,7 +604,7 @@ void HFwDetStrawVectorFinder::makeVectors()
             if (indx1 >= 0)
             {
                 hit = (HFwDetStrawCalSim*) fHits->getObject(indx1);
-                fUz[lay2*2][0] = hit->getU();
+                fUz[lay2*2][0] = hit->getX();
                 //fUz[lay2*2][2] = hit->GetPhi();
                 //fUzi[lay2*2][0] = hit->GetSegment();
                 fUzi[lay2*2][0] = 0;
@@ -616,7 +614,7 @@ void HFwDetStrawVectorFinder::makeVectors()
             if (indx2 >= 0)
             {
                 hit = (HFwDetStrawCalSim*) fHits->getObject(indx2);
-                fUz[lay2*2+1][0] = hit->getU();
+                fUz[lay2*2+1][0] = hit->getX();
                 //fUz[lay2*2+1][2] = hit->GetPhi();
                 //fUzi[lay2*2+1][0] = hit->GetSegment();
                 fUzi[lay2*2+1][0] = 0;
@@ -685,7 +683,7 @@ void HFwDetStrawVectorFinder::processDouble(Int_t ista, Int_t lay2, Int_t patt, 
                 z += fZ0[ista];
                 //Double_t dzz = (hit->get() - z) / z;
                 //Int_t hitPlane = hit->getStation() * fgkPlanes + hit->getDoublet() * 2 + hit->getLayer();
-                Int_t hitPlane = hit->getDoublet() * 2 + hit->getLayer();
+                Int_t hitPlane = hit->getLayer() * 2 + hit->getPlane();
                 Double_t zHit = fDz[hitPlane] + fZ0[ista];
                 Double_t dzz = (zHit - z) / z;
                 if (TMath::Abs(tube - tu - dzz * tu) > dTubes2)
@@ -714,7 +712,7 @@ void HFwDetStrawVectorFinder::processDouble(Int_t ista, Int_t lay2, Int_t patt, 
         if (indx1 >= 0)
         {
             hit = (HFwDetStrawCalSim*) fHits->getObject(indx1);
-            fUz[lay2*2][0] = hit->getU();
+            fUz[lay2*2][0] = hit->getX();
             //fUz[lay2*2][2] = hit->GetPhi();
             //fUzi[lay2*2][0] = hit->GetSegment();
             fUzi[lay2*2][0] = 0;
@@ -724,7 +722,7 @@ void HFwDetStrawVectorFinder::processDouble(Int_t ista, Int_t lay2, Int_t patt, 
         if (indx2 >= 0)
         {
             hit = (HFwDetStrawCalSim*) fHits->getObject(indx2);
-            fUz[lay2*2+1][0] = hit->getU();
+            fUz[lay2*2+1][0] = hit->getX();
             //fUz[lay2*2+1][2] = hit->GetPhi();
             //fUzi[lay2*2+1][0] = hit->GetSegment();
             fUzi[lay2*2+1][0] = 0;
@@ -782,7 +780,7 @@ void HFwDetStrawVectorFinder::addVector(Int_t ista, Int_t patt, Double_t chi2, D
 
         // Store info about left-right ambig. resolving (set true if positive drift direction)
         HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(fUzi[ipl][1]);
-        if (hit->getU() < fUz[ipl][0])
+        if (hit->getX() < fUz[ipl][0])
             track->setLRbit(track->getNofHits()-1);
     }
     Int_t ndf = (track->getNofHits() > 5) ? track->getNofHits() - 4 : 1;
@@ -801,44 +799,32 @@ void HFwDetStrawVectorFinder::setTrackId(HFwDetStrawVector *vec)
 {
     // Set vector ID as its flag (maximum track ID of its poins)
 
-    //return;
+//     map<Int_t,Int_t> ids;
+//     Int_t nhits = vec->getNofHits(), id = 0;
 
-    map<Int_t,Int_t> ids;
-    Int_t nhits = vec->getNofHits(), id = 0;
-
-    for (Int_t ih = 0; ih < nhits; ++ih)
-    {
-        HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
-        /*
-        if (hit->getFlag() % 2) {
-        //if (0) {
-        // Mirror hit
-        id = -1;
-        if (ids.find(id) == ids.end()) ids.insert(pair<Int_t,Int_t>(id,1));
-        else ++ids[id];
-        } else {
-        */
-        //Int_t np = hit->getDriftId().size();
-        for (multimap<Double_t,Int_t>::iterator mit = hit->getDriftId().begin();
-        mit != hit->getDriftId().end(); ++mit)
-        {
-            id = mit->second;
-            //if (np > 1) cout << ip << " " << id << endl;
-            if (ids.find(id) == ids.end()) ids.insert(pair<Int_t,Int_t>(id,1));
-            else ++ids[id];
-        }
-        //if (np > 1) { cout << " digi " << digiM->GetNofLinks() << " " << ista << " " << hit->GetX() << " " << hit->GetY() << endl; exit(0); }
-    }
-
+    // FIXME all!
+//     for (Int_t ih = 0; ih < nhits; ++ih)
+//     {
+//         HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(vec->getHitIndex(ih));
+// 
+//         for (multimap<Double_t,Int_t>::iterator mit = hit->getDriftId().begin();
+//         mit != hit->getDriftId().end(); ++mit)
+//         {
+//             id = mit->second;
+//             if (ids.find(id) == ids.end()) ids.insert(pair<Int_t,Int_t>(id,1));
+//             else ++ids[id];
+//         }
+//     }
+// 
     Int_t maxim = -1, idmax = -9;
-    for (map<Int_t,Int_t>::iterator it = ids.begin(); it != ids.end(); ++it)
-    {
-        if (it->second > maxim)
-        {
-            maxim = it->second;
-            idmax = it->first;
-        }
-    }
+//     for (map<Int_t,Int_t>::iterator it = ids.begin(); it != ids.end(); ++it)
+//     {
+//         if (it->second > maxim)
+//         {
+//             maxim = it->second;
+//             idmax = it->first;
+//         }
+//     }
     // Set vector ID as its flag
     vec->setFlag(idmax);
 }
@@ -956,10 +942,10 @@ void HFwDetStrawVectorFinder::highRes()
             for (Int_t ih = 0; ih < nhits; ++ih)
             {
                 HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
-                Int_t lay = hit->getDoublet();
-                Int_t side = hit->getLayer();
+                Int_t lay = hit->getLayer();
+                Int_t side = hit->getPlane();
                 Int_t plane = lay*2 + side;
-                uu[plane][0] = hit->getU();
+                uu[plane][0] = hit->getX();
                 uu[plane][1] = hit->getDrift(); // drift distance with error
                 patt |= (1 << plane);
                 //fUzi[plane][0] = hit->GetSegment();
@@ -1082,8 +1068,8 @@ void HFwDetStrawVectorFinder::removeClones()
             for (Int_t ih = 0; ih < nhits; ++ih)
             {
                 HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
-                Int_t lay = hit->getDoublet();
-                Int_t side = hit->getLayer();
+                Int_t lay = hit->getLayer();
+                Int_t side = hit->getPlane();
                 planes[lay*2+side] = vec->getHitIndex(ih);
                 //cout << iv << " " << lay*2+side << " " << vec->getHitIndex(ih) << endl;
             }
@@ -1101,8 +1087,8 @@ void HFwDetStrawVectorFinder::removeClones()
                 for (Int_t ih = 0; ih < nhits1; ++ih)
                 {
                     HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec1->getHitIndex(ih));
-                    Int_t lay = hit->getDoublet();
-                    Int_t side = hit->getLayer();
+                    Int_t lay = hit->getLayer();
+                    Int_t side = hit->getPlane();
                     if (planes[lay*2+side] >= 0)
                     {
                         if (vec1->getHitIndex(ih) == planes[lay*2+side]) same[lay] = 1;
@@ -1170,8 +1156,8 @@ void HFwDetStrawVectorFinder::removeShorts()
             for (Int_t ih = 0; ih < nhits; ++ih)
             {
                 HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
-                Int_t lay = hit->getDoublet();
-                Int_t side = hit->getLayer();
+                Int_t lay = hit->getLayer();
+                Int_t side = hit->getPlane();
                 planes[lay*2+side] = vec->getHitIndex(ih);
             }
 
@@ -1184,8 +1170,8 @@ void HFwDetStrawVectorFinder::removeShorts()
                 // Compare hits
                 for (Int_t ih = 0; ih < nhits1; ++ih) {
                     HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec1->getHitIndex(ih));
-                    Int_t lay = hit->getDoublet();
-                    Int_t side = hit->getLayer();
+                    Int_t lay = hit->getLayer();
+                    Int_t side = hit->getPlane();
                     if (vec1->getHitIndex(ih) == planes[lay*2+side] && planes[lay*2+side] >= 0) overlap.insert(ih);
                 }
 
@@ -1505,8 +1491,8 @@ Double_t HFwDetStrawVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars
         onoff = patt & (1 << i);
         if (!onoff) continue;
         HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(hinds[i]);
-        Double_t uc = (hit->getU() + lr[i] * hit->getDrift()) * fCosa[i]; // resolved ambiguity !!!
-        Double_t us = (hit->getU() + lr[i] * hit->getDrift()) * fSina[i]; // resolved ambiguity !!!
+        Double_t uc = (hit->getX() + lr[i] * hit->getDrift()) * fCosa[i]; // resolved ambiguity !!!
+        Double_t us = (hit->getX() + lr[i] * hit->getDrift()) * fSina[i]; // resolved ambiguity !!!
         b[0] += uc;
         b[1] += us;
         b[2] += uc * fDz[i];
@@ -1531,7 +1517,7 @@ Double_t HFwDetStrawVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars
         Double_t y = pars[1] + pars[3] * fDz[i];
         Double_t u = x * fCosa[i] + y * fSina[i];
         HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(hinds[i]);
-        Double_t du = (u - hit->getU() - lr[i] * hit->getDrift()) / fErrU;
+        Double_t du = (u - hit->getX() - lr[i] * hit->getDrift()) / fErrU;
         chi2 += du * du;
     }
     return chi2;

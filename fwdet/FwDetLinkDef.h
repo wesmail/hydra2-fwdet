@@ -11,6 +11,7 @@
 #pragma link C++ class HFwDetGeomPar;
 #pragma link C++ class HFwDetTaskSet;
 
+#pragma link C++ class HFwDetStrawGeomPar;
 #pragma link C++ class HFwDetStrawCal;
 #pragma link C++ class HFwDetStrawCalSim;
 #pragma link C++ class HFwDetStrawDigitizer;

@@ -15,7 +15,8 @@ class HGeantFwDet : public HLinkedDataObject
 private:
   Int_t   trackNumber;  // GEANT track number
   Char_t  module;       // module number (0...8)
-  Char_t  cell;         // cell number inside module (0...8)
+  Char_t  layer;        // layer number (0...8)
+  Int_t   cell;         // cell number inside module (0...999)
   Float_t xHit;         // x of hit  (in mm) in cell coord. system
   Float_t yHit;         // y of hit  (in mm) in cell coord. system
   Float_t zHit;         // z of hit  (in mm) in cell coord. system
@@ -31,12 +32,12 @@ public:
   ~HGeantFwDet(void) {}
 
   void setTrack(Int_t aTrack)   {trackNumber = aTrack;}
-  inline void setAddress (Char_t aMod, Char_t aCell);
+  inline void setAddress (Char_t aMod, Char_t aLayer, Int_t aCell);
   void setHit(Float_t aX, Float_t aY, Float_t aZ, Float_t aPx, Float_t aPy, Float_t aPz,
               Float_t aTof, Float_t aLen, Float_t aE);
   
   Int_t getTrackNumber(void) {return trackNumber;}
-  inline void getAddress(Char_t& aMod, Char_t& aCell);
+  inline void getAddress(Char_t& aMod, Char_t& alayer, Int_t& aCell);
   void getHit(Float_t& aX, Float_t& aY, Float_t& aZ, Float_t& aPx, Float_t& aPy, Float_t& aPz,
               Float_t& aTof, Float_t& aLen, Float_t& aE);  
   Int_t getNLocationIndex(void) {return 2;}
@@ -46,21 +47,25 @@ public:
 };
 
 // Sets the module and cell number
-inline void HGeantFwDet::setAddress (Char_t aMod, Char_t aCell) {
+inline void HGeantFwDet::setAddress (Char_t aMod, Char_t aLayer, Int_t aCell) {
   module = aMod;
+  layer  = aLayer;
   cell   = aCell;
 }
 
 // Returns the module and cell number
-inline void HGeantFwDet::getAddress(Char_t& aMod, Char_t& aCell) {
-  aMod  = module;
-  aCell = cell;
+inline void HGeantFwDet::getAddress(Char_t& aMod, Char_t& aLayer, Int_t& aCell) {
+  aMod   = module;
+  aLayer = layer;
+  aCell  = cell;
 }
 
 inline Int_t HGeantFwDet::getLocationIndex(Int_t i) {
   switch (i) {
     case 0 : return module;
-    case 1 : return cell;
+    case 1 : return layer;
+    case 2 : return cell;
+    default: return -1;
   }
   return -1;
 }

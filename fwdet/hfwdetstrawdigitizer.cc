@@ -16,13 +16,30 @@
 //  Programm store to the output category catFwDetStrawCal tof from geant hit
 //  and minimal distance from geant track to the wire.
 //
+//  Geant stores three values: module, layer, cell.
+//  Each module contains fixed number of layers. Each layer is composed of
+/// several double-modules. Each double-module is built of single plane blocks.
+//  Each block is built out of straws.
+//
+//  The first double-module is most left (negative x), the last is most right
+//  (positive x).
+//  Odd block number is for the front plane, even for the back plane. Block
+//  numbers increas from left (negative x) to right (positive x).
+//  Straws in a block goes from left (negative x) to right (positive x).
+//
+//  Cell value encodes position of single straw in a layer in a following way:
+//    cell=double_module*100 + block*10 + straw
+//  e.g. cell=437 -> double_module 4, block 3 (back plane), straw 7
+//
+//  Geometry of a single straw module for station T1(T2) is following:
+//  Number of layers in a module:               4 (4)
+//  Number of double-modules in a layer:        5 (7)
+//  Number of blocks in a double-module:        4 (4)
+//  Number of straws in a block:                8 (8)
+//
+//  While module and layer numbers go from 0..n, double_module, block and straw
+//  numbers encoded in the cell value go 1..n
 /////////////////////////////////////////////////////////////
-
-using namespace std;
-
-#include <cstring>
-
-using namespace std;
 
 #include "hfwdetstrawdigitizer.h"
 #include "hades.h"
@@ -37,34 +54,19 @@ using namespace std;
 #include "hfwdetdetector.h"
 #include "hfwdetstrawcalsim.h"
 #include "hfwdetstrawdigipar.h"
-#include <TError.h>
-#include <TRandom.h>
+#include "hfwdetstrawgeompar.h"
+#include "hfwdetgeompar.h"
+#include "hgeomvolume.h"
+#include "hgeomcompositevolume.h"
+
+#include "TError.h"
+#include "TRandom.h"
+#include "TVector2.h"
+
+#include <cstring>
+using namespace std;
 
 ClassImp(HFwDetStrawDigitizer);
-
-const Float_t HFwDetStrawDigitizer::T12_z[2] =
-{
-   -9.424,  // z-coord. of the begining of the 1st layer in doubleLayer
-   -0.674   // z-coord. of the begining of the 2nd layer in doubleLayer
-};
-
-const Int_t HFwDetStrawDigitizer::nstraws_Tx[HFwDetStrawDigitizer::nstations] =
-{
-   80,   //160, // number of straws per layer in module 1
-   113   //226  // number of straws per layer in module 2
-};
-
-const Float_t HFwDetStrawDigitizer::Tx_x[HFwDetStrawDigitizer::nstations][2] =
-{
-  {
-   -396.15, // x coord. of the 1st wire in 1st layer of doubleLayer in module 1 A1SV1)
-   -401.19  //  x coord. of the 1st wire in 2nd layer of doubleLayer in module 1 A1SV1)
-  },
-  {
-   -558.025, // the same like above, but for module 2 A2SV1
-   -563.075
-  }
-};
 
 HFwDetStrawDigitizer::HFwDetStrawDigitizer()
 {
@@ -85,51 +87,64 @@ HFwDetStrawDigitizer::~HFwDetStrawDigitizer()
 
 void HFwDetStrawDigitizer::initVariables(void)
 {
-   // initialize the variables in constructor
-   fGeantFwDetCat    = NULL;
-   fFwDetStrawCalCat = NULL;
-   fStrawDigiPar     = NULL;
-   fLoc.setNIndex(4);
-   fLoc.set(4,0,0,0,0);
+    // initialize the variables in constructor
+    pGeantFwDetCat    = NULL;
+    pFwDetStrawCalCat = NULL;
+    pStrawDigiPar     = NULL;
+    fLoc.setNIndex(4);
+    fLoc.set(4,0,0,0,0);
 }
 
 Bool_t HFwDetStrawDigitizer::init(void)
 {
-   // initializes the task
+    // initializes the task
 
-   // find the Forward detector in the HADES setup
-   HFwDetDetector* pFwDet = (HFwDetDetector*)(gHades->getSetup()->getDetector("FwDet"));
-   if (!pFwDet)
-   {
-      Error("FwDetStrawDigitizer::init","No Forward Detector found");
-      return kFALSE;
-   }
+    // find the Forward detector in the HADES setup
+    HFwDetDetector* pFwDet = (HFwDetDetector*)(gHades->getSetup()->getDetector("FwDet"));
+    if (!pFwDet)
+    {
+        Error("FwDetStrawDigitizer::init","No Forward Detector found");
+        return kFALSE;
+    }
 
-   // GEANT input data
-   fGeantFwDetCat = gHades->getCurrentEvent()->getCategory(catFwDetGeantRaw);
-   if (!fGeantFwDetCat)
-   {
-      Error("HFwDetStrawDigitizer::init()","HGeant FwDet input missing");
-      return kFALSE;
-   }
+    // GEANT input data
+    pGeantFwDetCat = gHades->getCurrentEvent()->getCategory(catFwDetGeantRaw);
+    if (!pGeantFwDetCat)
+    {
+        Error("HFwDetStrawDigitizer::init()","HGeant FwDet input missing");
+        return kFALSE;
+    }
 
-   // build the Calibration category
-   fFwDetStrawCalCat=pFwDet->buildCategory(catFwDetStrawCal);
-   if (!fFwDetStrawCalCat)
-   {
-      Error("HFwDetStrawDigitizer::init()","Cal category not created");
-      return kFALSE;
-   }
+    // build the Calibration category
+    pFwDetStrawCalCat = pFwDet->buildCategory(catFwDetStrawCal);
+    if (!pFwDetStrawCalCat)
+    {
+        Error("HFwDetStrawDigitizer::init()","Cal category not created");
+        return kFALSE;
+    }
 
-   // create the parameter container
-   fStrawDigiPar = (HFwDetStrawDigiPar *)gHades->getRuntimeDb()->getContainer("FwDetStrawDigiPar");
-   if (!fStrawDigiPar)
-   {
-      Error("HFwDetStrawDigitizer::init()","Parameter container for digitizer not created");
-      return kFALSE;
-   }
+    // create the parameter container
+    pStrawDigiPar = (HFwDetStrawDigiPar *)gHades->getRuntimeDb()->getContainer("FwDetStrawDigiPar");
+    if (!pStrawDigiPar)
+    {
+        Error("HFwDetStrawDigitizer::init()","Parameter container for digitizer not created");
+        return kFALSE;
+    }
 
-   return kTRUE;
+    // create the parameter container
+    pStrawGeomPar = (HFwDetStrawGeomPar *)gHades->getRuntimeDb()->getContainer("FwDetStrawGeomPar");
+    if (!pStrawGeomPar)
+    {
+        Error("HFwDetStrawDigitizer::init()","Parameter container for geometry not created");
+        return kFALSE;
+    }
+
+    return kTRUE;
+}
+
+Bool_t HFwDetStrawDigitizer::reinit()
+{
+    return kTRUE;
 }
 
 Int_t HFwDetStrawDigitizer::execute(void)
@@ -137,96 +152,131 @@ Int_t HFwDetStrawDigitizer::execute(void)
     // Digitization of GEANT hits and storage in HFwDetStrawCalSim
     // gErrorIgnoreLevel = kFatal;
 
-    Int_t entries = fGeantFwDetCat->getEntries();
+    Float_t time_reso = pStrawDigiPar->getTimeReso();
+    Float_t eloss_reso = pStrawDigiPar->getElossReso();
+    Float_t drift_reso = pStrawDigiPar->getDriftReso();
+
+    Int_t entries = pGeantFwDetCat->getEntries();
     for(Int_t i = 0; i < entries; ++i)
     {
-        HGeantFwDet* ghit = (HGeantFwDet*)fGeantFwDetCat->getObject(i);
+        HGeantFwDet* ghit = (HGeantFwDet*)pGeantFwDetCat->getObject(i);
         if (ghit)
         {
-            ghit->getAddress(module, doubleLayer);
-            Int_t mod = module;
-                            fLoc[0] = mod;
-                            fLoc[1] = doubleLayer;
+            ghit->getAddress(geantModule, geantLayer, geantCell);
+
+            Int_t mod = geantModule;
+            Int_t layer = geantLayer;
+            Int_t plane = -1;
+            Int_t cell = -1;
+
+            Int_t l_panel = (Int_t) geantCell/100 - 1;
+            Int_t l_block = (Int_t) (geantCell%100)/10 - 1;
+            Int_t l_straw = (Int_t) geantCell%10 - 1;
+
+            if (l_block % 2 == 0)
+                plane = 0; // TODO add module and layer dep
+            else
+                plane = 1; // TODO as above
+
+            Int_t n_blocks = pStrawGeomPar->getBlocks(mod);
+            Int_t n_straws = pStrawGeomPar->getStraws(mod);
+
+            // for a single panel, blocks/2 blocks for a plane =>  n_blocks >> 1
+            // 
+            //     | no of straws in a plane of panel | * panel number +
+            //     | number of straw in current panel |
+            cell = ((n_blocks >> 1) * n_straws ) * l_panel +
+                (l_block >> 1) * n_straws + l_straw;
 
             if(mod > FWDET_STRAW_MAX_MODULES)
                 continue; // skip the other detectors of the FwDet
 
-            ghit->getHit(xHit, yHit,  zHit, pxHit, pyHit, pzHit, tofHit, trackLength, eHit);
+            // straws are rotated in the geo by 90 degrees around x axis
+            // y and z must be swap
+            ghit->getHit(xHit, zHit,  yHit, pxHit, pzHit, pyHit, tofHit, trackLength, eHit);
             trackNumber = ghit->getTrackNumber();
-        //cout << trackNumber << " " << mod << " " << doubleLayer << " " << xHit << " " << yHit << endl;
 
-            Float_t tanTr = pxHit/pzHit;
-            for(Int_t lay=0;lay<2;lay++) {
-                fLoc[2] = lay;
-                // Calculate range of cells (cell1-cell2) were track can give signal:
-                Float_t z1 = T12_z[lay] - zHit;                                       // It eq. to zWire-straw_diam/2 (doubleLayer coor.sys)
-                Float_t z2 = z1 + straw_diam ;                                        // It eq. to zWire+straw_diam/2 (doubleLayer coor.sys)
-                Float_t x1 = tanTr*z1 + xHit;                                         // x coor. of the cross point of the track with plane z=z1
-                Float_t x2 = tanTr*z2 + xHit;                                         // x coor. of the cross point of the track with plane z=z2
-                Float_t c1 = calcCellNumber(x1,mod,lay);
-                Float_t c2 = calcCellNumber(x2,mod,lay);
-                if(c1 > c2) {Float_t c=c1; c1=c2; c2=c;}                              // c1 must be < c2
-                if(c2 < 0.) continue;                                                 // out of acceptance
-                Int_t   cell1 = TMath::Max(Int_t(c1),0);
-                Int_t   cell2 = TMath::Min(Int_t(c2),nstraws_Tx[mod]-1);
-                if(cell1 >= nstraws_Tx[mod]) continue;                               // out of acceptance
+            fLoc[0] = mod;
+            fLoc[1] = layer;
+            fLoc[2] = plane;
+            fLoc[3] = cell;
 
-                for(Int_t c=cell1; c<=cell2; c++) {
-                fLoc[3] = c;
-                // Calculate the minimal distance from track to the wire:
-                Float_t xPos = Tx_x[mod][lay] + straw_diam*c;                                           // wire position
-                Float_t minDist = TMath::Abs(( (x1 + x2)/2. - xPos))/TMath::Sqrt(1.+tanTr*tanTr);       // minimal distance from track to the wire
+            Float_t cell_x = pStrawGeomPar->getOffsetX(mod, layer, plane) + cell*pStrawGeomPar->getStrawPitch(mod, layer);
+            Float_t cell_z = pStrawGeomPar->getOffsetZ(mod, layer, plane);
 
-                if(minDist < straw_diam/2.) fillStrawCalSim(minDist, xPos, T12_z[lay]+straw_diam/2.);
-                }
+            TVector2 v_n(pzHit, pxHit);                 // track vector dir.  n
+            v_n = v_n/v_n.Mod();
+            TVector2 p_a(zHit + cell_z, xHit + cell_x); // track hit position a
+            TVector2 p_p(cell_z, cell_x);               // wire position      p
+
+            // calculations:
+            // dist = | (a-p) - ((a-p)*n)n|
+            TVector2 a_p_diff = p_a - p_p;
+            TVector2 v_proj_n_diff = (a_p_diff * v_n) * v_n;
+            TVector2 v_dist = a_p_diff - v_proj_n_diff;
+            Float_t radius = v_dist.Mod();
+
+            Float_t tof = tofHit;
+            Float_t eloss = eHit;
+
+            if (time_reso > 0.0)
+            {
+                tof = tof + gRandom->Gaus() * time_reso;
+                tof = TMath::Max(Float_t(0), tof);
+            }
+
+            if (eloss_reso > 0.0)
+            {
+                eloss = eloss + gRandom->Gaus() * eloss_reso;
+                eloss = TMath::Max(Float_t(0), eloss);
+            }
+
+            if (drift_reso > 0.0)
+            {
+                radius = radius + gRandom->Gaus() * drift_reso;
+                radius = TMath::Max(Float_t(0), radius);
+                radius = TMath::Min(radius, pStrawGeomPar->getStrawRadius(mod, layer));
+            }
+
+            Bool_t res =  fillStrawCalSim(tof, eloss, radius, cell_x, cell_z, cell);
+            if (!res)
+            {
+                Error("HFwDetStrawDigitizer::execute()",
+                "Can't fill from %d for m=%d l=%d p=%d s=%d", geantCell, mod, layer, plane, cell);
+//                 return kFALSE;
             }
         }
     }
     return 0;
 }
 
-Bool_t HFwDetStrawDigitizer::fillStrawCalSim( Float_t radius, Float_t posX, Float_t posZ)
+Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw)
 {
     // function creat and fill object HFwDetStrawCalSim
-    // return kFALSE if dat was not stored to the category
+    // return kFALSE if data was not stored to the category
 
-    const Float_t resol = 0.2; // !!! - straw tube resolution 200 um (interim solution)
     Int_t first = 1;
 
-    //printf("loc= %i %i %i %i  %.2f\n",fLoc[0],fLoc[1],fLoc[2],fLoc[3],radius);
-    HFwDetStrawCalSim * cal = (HFwDetStrawCalSim*)fFwDetStrawCalCat->getObject(fLoc);
+    HFwDetStrawCalSim * cal = (HFwDetStrawCalSim*)pFwDetStrawCalCat->getObject(fLoc);
     if (cal != NULL)
     {                                     // straw tube ocupaed by another track:
-        /*AZ
-        Float_t time,elos, radi, X, Z;
-        Int_t StrawN;
-        cal->getHit(time, elos, radi, X, Z, StrawN);
-        if(radi <= radius) return kFALSE;                      // FIXME Sorting need to be done by signale time !
-        */
-        //*AZ
-        if (cal->getDriftId().begin()->first <= radius)
+        if (cal->getDrift() <= radius)
         {
-            cal->addTrack(radius,trackNumber);
+            cal->setTrack(trackNumber);
             return kFALSE;
         }
         first = 0;
-        //*/
     }
     else
     {
-        cal = (HFwDetStrawCalSim*)fFwDetStrawCalCat->getSlot(fLoc);
+        cal = (HFwDetStrawCalSim*)pFwDetStrawCalCat->getSlot(fLoc);
     }
     if (cal)
     {
-//         cal = new(cal) HFwDetStrawCalSim;
         if (first) cal = new(cal) HFwDetStrawCalSim;
-        cal->addTrack(radius,trackNumber);
         cal->setAddress(fLoc[0], fLoc[1], fLoc[2], fLoc[3]);
 //         cal->setHit(tofHit, eHit, radius, posX, posZ, 0);
-        Float_t coord = radius + gRandom->Gaus() * resol;
-        coord = TMath::Max(Float_t(0), coord);
-        coord = TMath::Min(coord, straw_diam/2);
-        cal->setHit(tofHit, eHit, coord, posX, posZ, 0);
+        cal->setHit(tofHit, eHit, radius, posX, posZ, straw);
         cal->setTrack(trackNumber);
     }
     else

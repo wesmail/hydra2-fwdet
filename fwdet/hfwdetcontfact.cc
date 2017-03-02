@@ -13,6 +13,7 @@
 #include "hfwdetcontfact.h"
 #include "hruntimedb.h"
 #include "hfwdetgeompar.h"
+#include "hfwdetstrawgeompar.h"
 #include "hfwdetstrawdigipar.h"
 #include "hfwdetscindigipar.h"
 #include "hfwdetrpcdigipar.h"

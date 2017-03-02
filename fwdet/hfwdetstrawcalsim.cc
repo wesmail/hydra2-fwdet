@@ -14,3 +14,11 @@
 #include "hfwdetstrawcalsim.h"
 
 ClassImp(HFwDetStrawCalSim);
+
+HFwDetStrawCalSim::HFwDetStrawCalSim() : fTrack(-1)
+{
+}
+
+HFwDetStrawCalSim::~HFwDetStrawCalSim()
+{
+}

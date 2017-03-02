@@ -26,8 +26,9 @@ HFwDetStrawDigiPar::~HFwDetStrawDigiPar()
 
 void HFwDetStrawDigiPar::clear()
 {
-    nStrawCells = 0;
-    fStrawRadius = 0.;
+    fTimeReso = 0.0;
+    fElossReso = 0.0;
+    fDriftReso = 0.0;
     status = kFALSE;
     resetInputVersions();
     changed = kFALSE;
@@ -37,15 +38,17 @@ void HFwDetStrawDigiPar::putParams(HParamList* l)
 {
     // puts all parameters to the parameter list, which is used by the io
     if (!l) return;
-    l->add("nStrawCells", nStrawCells);
-    l->add("fStrawRadius", fStrawRadius);
+    l->add("fTimeReso", fTimeReso);
+    l->add("fElossReso", fElossReso);
+    l->add("fDriftReso", fDriftReso);
 }
 
 Bool_t HFwDetStrawDigiPar::getParams(HParamList* l)
 {
     // gets all parameters from the parameter list, which is used by the io
     if (!l) return kFALSE;
-    if (!( l->fill("nStrawCells", &nStrawCells) )) return kFALSE;
-    if (!( l->fill("fStrawRadius", &fStrawRadius) )) return kFALSE;
+    if (!( l->fill("fTimeReso", &fTimeReso) )) return kFALSE;
+    if (!( l->fill("fElossReso", &fElossReso) )) return kFALSE;
+    if (!( l->fill("fDriftReso", &fDriftReso) )) return kFALSE;
     return kTRUE;
 }

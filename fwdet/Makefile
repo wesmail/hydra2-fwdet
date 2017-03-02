@@ -23,6 +23,7 @@ SOURCE_FILES := hfwdetdetector.cc         \
                 hfwdetscincalsim.cc       \
                 hfwdetscindigitizer.cc    \
                 hfwdetscindigipar.cc      \
+                hfwdetstrawgeompar.cc	  \
                 hfwdetstrawcal.cc         \
                 hfwdetstrawcalsim.cc      \
                 hfwdetstrawdigitizer.cc   \

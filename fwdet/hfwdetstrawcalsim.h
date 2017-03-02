@@ -10,6 +10,15 @@
 class HFwDetStrawCalSim : public HFwDetStrawCal
 {
 private:
+    Int_t   fTrack;         // geant track contributing to the hit
+
+public:
+    HFwDetStrawCalSim();
+    virtual ~HFwDetStrawCalSim();
+
+    inline Int_t getTrack() const { return fTrack; }
+    inline void  setTrack(Int_t num) { fTrack = num; }
+
     ClassDef(HFwDetStrawCalSim, 1);
 };
 

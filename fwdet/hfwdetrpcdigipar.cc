@@ -1,4 +1,4 @@
-//*-- Author  : Georgy Kornakov
+//*-- Author  : Luis Silva
 //*-- Created : 27.01.2016
 
 //_HADES_CLASS_DESCRIPTION

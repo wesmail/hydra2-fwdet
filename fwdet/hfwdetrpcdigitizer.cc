@@ -1,4 +1,4 @@
-//*-- Author  : Georgy Kornakov
+//*-- Author  : Luis silva
 //*-- Created : 27.01.2016
 
 //_HADES_CLASS_DESCRIPTION
@@ -108,7 +108,7 @@ Int_t HFwDetRpcDigitizer::execute()
         ghit = (HGeantFwDet*)fGeantFwDetCat->getObject(i);
         if (ghit)
         {
-            ghit->getAddress(geantModule, geantCell);
+            ghit->getAddress(geantModule, geantLayer, geantCell);
             if(geantModule < 6)
                 continue; // skip the other detectors of the FwDet
 

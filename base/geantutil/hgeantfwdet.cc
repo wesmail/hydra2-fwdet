@@ -27,6 +27,7 @@ HGeantFwDet::HGeantFwDet(void) {
   // Default constructor.
   trackNumber = 0;
   module      = -1;
+  layer       = -1;
   cell        = -1;
   xHit        = 0.0F;
   yHit        = 0.0F;
@@ -43,6 +44,7 @@ HGeantFwDet::HGeantFwDet(HGeantFwDet &aFwDet) {
   // Copy constructor
   trackNumber = aFwDet.trackNumber;
   module      = aFwDet.module;
+  layer       = aFwDet.layer;
   cell        = aFwDet.cell;
   xHit        = aFwDet.xHit;
   yHit        = aFwDet.yHit;

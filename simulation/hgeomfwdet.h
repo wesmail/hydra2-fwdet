@@ -26,8 +26,8 @@ inline const Char_t* HGeomFwDet::getModuleName(Int_t m) {
 
 inline const Char_t* HGeomFwDet::getEleName(Int_t m) {
   // Returns the element name in module m
-  sprintf(modName,"A%i",m+1);
-  return modName;
+  sprintf(eleName,"A%i",m+1);
+  return eleName;
 }
 
 inline Int_t HGeomFwDet::getModNumInMod(const TString& name) {

@@ -14,8 +14,6 @@ private:
     Char_t fScin;      // scintillator cell number
     Float_t fTime;     //
     Float_t fElos;     //
-    //    Float_t fTime2;
-    //    Float_t fElos2;
 
 public:
     HFwDetScinCalSim();

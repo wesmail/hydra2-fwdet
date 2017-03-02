@@ -16,9 +16,10 @@ private:
 
     Int_t   trackNumber;  // GEANT track number
     Char_t  geantModule;  // GEANT FwDet module number (0...8)
-    Char_t  geantCell;    // GEANT cell number inside module (0...8)
+    Char_t  geantLayer;   // GEANT FwDet layer number (0...8)
+    Int_t   geantCell;    // GEANT cell number inside module (0...8)
     Char_t  module;       // scintillator module number (0..1)
-    Char_t  scinNum;      // scintillator cell number
+    Int_t   scinNum;      // scintillator cell number
     Float_t xHit;         // x of hit  (in mm) in cell coord. system
     Float_t yHit;         // y of hit  (in mm) in cell coord. system
     Float_t zHit;         // z of hit  (in mm) in cell coord. system

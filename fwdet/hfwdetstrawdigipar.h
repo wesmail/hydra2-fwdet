@@ -7,9 +7,10 @@ class HFwDetStrawDigiPar : public HParCond
 {
 protected:
     // Parameters needed for digitizations of straws
-    // Geometry, layout ...
-    Int_t   nStrawCells;
-    Float_t fStrawRadius;
+    // Time, Energy Loss, Drift Radius
+    Float_t fTimeReso;
+    Float_t fElossReso;
+    Float_t fDriftReso;
 
 public:
     HFwDetStrawDigiPar(const Char_t* name = "FwDetStrawDigiPar",
@@ -17,11 +18,13 @@ public:
                        const Char_t* context = "FwDetDigiProduction");
     virtual ~HFwDetStrawDigiPar();
 
-    inline Float_t getStrawRadius() const { return fStrawRadius; }
-    inline Int_t   getStrawCells() const { return nStrawCells; }
+    inline Float_t getTimeReso() const { return fTimeReso; }
+    inline Float_t getElossReso() const { return fElossReso; }
+    inline Int_t   getDriftReso() const { return fDriftReso; }
 
-    inline void setStrawRadius(Float_t r) { fStrawRadius = r; }
-    inline void setStrawCells(Int_t c) { nStrawCells = c; }
+    inline void setTimeReso(Float_t t) { fTimeReso = t; }
+    inline void setELossReso(Float_t e) { fElossReso = e; }
+    inline void setDriftReso(Float_t d) { fDriftReso = d; }
 
     void   putParams(HParamList*);
     Bool_t getParams(HParamList*);
