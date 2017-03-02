@@ -13,6 +13,7 @@
 #include "hfwdetparasciifileio.h"
 #include "hparset.h"
 #include "hfwdetgeompar.h"
+#include "hfwdetstrawgeompar.h"
 
 ClassImp(HFwDetParAsciiFileIo);
 

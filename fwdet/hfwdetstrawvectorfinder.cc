@@ -12,6 +12,7 @@
 /////////////////////////////////////////////////////////////
 
 #include "hfwdetstrawvectorfinder.h"
+#include "hfwdetstrawvectorfinderpar.h"
 #include "fwdetdef.h"
 #include "hades.h"
 #include "hcategory.h"
@@ -19,9 +20,10 @@
 #include "hevent.h"
 #include "hfwdetdetector.h"
 #include "hfwdetgeompar.h"
+#include "hfwdetstrawgeompar.h"
 #include "hfwdetstrawdigitizer.h"
 #include "hfwdetstrawdigipar.h"
-#include "hfwdetstrawcalsim.h"
+#include "hfwdetstrawcal.h"
 #include "hfwdetstrawvector.h"
 #include "hgeominterface.h"
 #include "hgeomrootbuilder.h"
@@ -38,16 +40,15 @@
 #include "TVectorD.h"
 
 #include <iostream>
+
 using namespace std;
 
-//FILE *lun = fopen("chi2.dat","w");
 
 // -----   Default constructor   -------------------------------------------
 HFwDetStrawVectorFinder::HFwDetStrawVectorFinder() : HReconstructor()
 {
     initVariables();
 }
-// -------------------------------------------------------------------------
 
 // -----   Constructor   ---------------------------------------------------
 HFwDetStrawVectorFinder::HFwDetStrawVectorFinder(const Text_t *name, const Text_t *title) :
@@ -55,12 +56,11 @@ HFwDetStrawVectorFinder::HFwDetStrawVectorFinder(const Text_t *name, const Text_
 {
     initVariables();
 }
-// -------------------------------------------------------------------------
 
 // -----   Destructor   ----------------------------------------------------
 HFwDetStrawVectorFinder::~HFwDetStrawVectorFinder()
 {
-    for (Int_t i = 0; i <= fgkStat; ++i)
+    for (Int_t i = 0; i <= FWDET_STRAW_MAX_MODULES; ++i)
     {
         Int_t nVecs = fVectors[i].size();
         for (Int_t j = 0; j < nVecs; ++j) delete fVectors[i][j];
@@ -70,21 +70,24 @@ HFwDetStrawVectorFinder::~HFwDetStrawVectorFinder()
         delete it->second;
     }
 }
-// -------------------------------------------------------------------------
 
 // -----   Public method initVariables  ------------------------------------
 void HFwDetStrawVectorFinder::initVariables()
 {
-    fHits = fPoints = fTrackArray = NULL;
-    fStrawDigiPar = NULL;
-    fCutChi2 = 24.0; // chi2/ndf=6 for 8 hits
-    fNpass = 1; // number of passes
-    for (Int_t i = 0; i < fgkStat; ++i)
+    isSimulation = kFALSE;
+    pKine = pHits = pTrackArray = NULL;
+    pStrawVFPar = NULL;
+
+    fMinHits = 10;// FIXME to aparams
+    nModules = 0;
+    nVplanes = 0;
+    nVplanesH = 0;
+
+    for (Int_t i = 0; i < FWDET_STRAW_MAX_MODULES; ++i)
     {
         fIndx0[i] = 0;
     }
 }
-// -------------------------------------------------------------------------
 
 // -----   Public method init (abstract in base class)  --------------------
 Bool_t HFwDetStrawVectorFinder::init()
@@ -97,108 +100,102 @@ Bool_t HFwDetStrawVectorFinder::init()
         return kFALSE;
     }
 
-    // GEANT input data
-    fPoints = gHades->getCurrentEvent()->getCategory(catFwDetGeantRaw);
-    if (!fPoints)
-    {
-        Error("HFwDetStrawVectorFinder::init()","HGeant FwDet input missing");
-        return kFALSE;
+   // GEANT input data 
+    pKine = gHades->getCurrentEvent()->getCategory(catGeantKine); 
+    if (!pKine) 
+    { 
+        isSimulation = kTRUE;
     }
 
     // hits
-    fHits = gHades->getCurrentEvent()->getCategory(catFwDetStrawCal);
-    if (!fHits)
+    pHits = gHades->getCurrentEvent()->getCategory(catFwDetStrawCal);
+    if (!pHits)
     {
         Error("HFwDetStrawVectorFinder::init()","HFwDetStrawCal input missing");
         return kFALSE;
     }
 
     // build the Straw vector category
-    fTrackArray = new HLinearCategory("HFwDetStrawVector");
-    if (!fTrackArray)
+    pTrackArray = new HLinearCategory("HFwDetStrawVector");
+    if (!pTrackArray)
     {
         Error("HFwDetStrawVectorFinder::init()","Straw vector category not created");
         return kFALSE;
     }
     else
     {
-        gHades->getCurrentEvent()->addCategory(catFwDetStrawVector, fTrackArray, "FwDet");
+        gHades->getCurrentEvent()->addCategory(catFwDetStrawVector, pTrackArray, "FwDet");
     }
 
-    // create the parameter container
-    fStrawDigiPar = (HFwDetStrawDigiPar*) gHades->getRuntimeDb()->getContainer("FwDetStrawDigiPar");
-    if (!fStrawDigiPar)
+    pStrawVFPar = (HFwDetStrawVectorFinderPar *)
+        gHades->getRuntimeDb()->getContainer ("FwDetStrawVectorFinderPar");
+    if (!pStrawVFPar)
     {
-        Error("HFwDetStrawVectorFinder::init()","Parameter container for vector finder not created");
+        Error("HFwDetStrawVectorFinder::init()","Parameter container for vector finder parameters not created");
         return kFALSE;
     }
 
-    gHades->getRuntimeDb()->getContainer("FwDetGeomPar");
-    fErrU = fDiam / TMath::Sqrt(12.0);
+    // create the parameter container
+    pStrawGeomPar = (HFwDetStrawGeomPar *)gHades->getRuntimeDb()->getContainer("FwDetStrawGeomPar");
+    if (!pStrawGeomPar)
+    {
+        Error("HFwDetStrawDigitizer::init()","Parameter container for geometry not created");
+        return kFALSE;
+    }
 
     return kTRUE;
 }
-// -------------------------------------------------------------------------
 
 // -----   Public method reinit  -------------------------------------------
 Bool_t HFwDetStrawVectorFinder::reinit()
 {
     // Get geometry parameters from database
 
-    HRuntimeDb *rtdb = gHades->getRuntimeDb();
-    HFwDetGeomPar* fwDetGeomPar = (HFwDetGeomPar*) rtdb->getContainer("FwDetGeomPar");
-    for (Int_t i = 0; i < fgkStat; ++i)
+    fLRCutChi2 = pStrawVFPar->getLRCutChi2();
+    fHRCutChi2 = pStrawVFPar->getHRCutChi2();
+
+    fLRErrU = pStrawVFPar->getLRErrU() / TMath::Sqrt(12.0);
+    fHRErrU = pStrawVFPar->getLRErrU();
+
+    fErrU = fLRErrU;
+
+    fNpass = pStrawVFPar->getNpass();
+
+    Int_t plane = 0;
+    nModules = pStrawGeomPar->getModules();
+
+    for (Int_t m = 0; m < nModules; ++m)
     {
-        HModGeomPar* modgeom = fwDetGeomPar->getModule(i);
-        HGeomTransform& modLabTrans = modgeom->getLabTransform();
-        //modLabTrans.print();
-        HGeomCompositeVolume* mod = modgeom->getRefVolume();
-
-        // Loop over doublets
-        for (Int_t lay = 0; lay < fgkPlanes/2; ++lay)
+        nLayers[m] = pStrawGeomPar->getLayers(m);
+        // Loop over layers
+        for (Int_t l = 0; l < nLayers[m]; ++l)
         {
-            HGeomVolume* vol = mod->getComponent(lay);
-            HGeomTransform tr(vol->getTransform());
-            tr.transFrom(modLabTrans);
-            //tr.print();
-            Double_t layZ = tr.getTransVector().getZ(); // layer position
-            Double_t layDZ = TMath::Abs (vol->getPoint(0)->getZ()); // layer half-thickness
-            //cout << " layZ, dz " << layZ << " " << layDZ << endl;
-            HGeomRotation rot(tr.getRotMatrix());
+            Float_t a = pStrawGeomPar->getLayerRotation(m, l) * TMath::DegToRad();
 
-            // Loop over tube planes
-            for (Int_t iside = 0; iside < 2; ++iside)
+            for (Int_t p = 0; p < FWDET_STRAW_MAX_PLANES; ++p)
             {
-                Int_t plane = lay * 2 + iside;
-                Double_t shift = layDZ - fDiam / 2;
-                if (iside) shift = -shift;
-                Double_t wireZ = layZ - shift;
-                if (plane == 0) fZ0[i] = wireZ;
-                plane += i * fgkPlanes;
-                fDz[plane] = wireZ;
-                fCosa[plane] = rot.getElement(0,0);
-                fSina[plane] = rot.getElement(1,0);
-                if (lay)
-                {
-                    fDtubes[i][lay-1] =
-                        fRmax[i] * TMath::Tan (TMath::ASin(fSina[plane]) - TMath::ASin(fSina[plane-2]));
-                    fDtubes[i][lay-1] = TMath::Abs(fDtubes[i][lay-1]) / fDiam + 10;
-                }
+                fDz[plane] = pStrawGeomPar->getOffsetZ(m, l, p);
+                fCosa[plane] = cos(a);
+                fSina[plane] = sin(a);
+                ++plane;
             }
+            ++nVplanesH;
+
+            if (l == 0)
+                fZ0[m] = pStrawGeomPar->getOffsetZ(m, l, 0);
         }
     }
 
-    for (Int_t i = fgkPlanes2 - 1; i >= 0; --i)
+    nVplanes = plane;
+
+    for (Int_t i = nVplanes - 1; i >= 0; --i)
     {
-        cout << i << " " << fDz[i] << " " << fSina[i] << endl;
         fDz[i] -= fDz[0];
-        //fDz[i+fgkPlanes] = fDz[i];
     }
 
     computeMatrix(); // compute system matrices
     return kTRUE;
 }
-// -------------------------------------------------------------------------
 
 // -----   Public method execute   -----------------------------------------
 Int_t HFwDetStrawVectorFinder::execute()
@@ -206,31 +203,27 @@ Int_t HFwDetStrawVectorFinder::execute()
     //gErrorIgnoreLevel = kInfo; //debug level
     gErrorIgnoreLevel = kWarning; //debug level
 
-    //cout << " Hades: " << gHades->getTree() << " " << gHades->getTree()->GetBranch("HFwDetStrawVector") << endl;
-    //gHades->getTree()->GetBranch("HFwDetStrawVector")->setName("StrawVector"); // to change branch name
-
-    for (Int_t i = 0; i <= fgkStat; ++i)
+    for (Int_t i = 0; i <= nModules; ++i)
     {
         Int_t nVecs = fVectors[i].size();
-        for (Int_t j = 0; j < nVecs; ++j) delete fVectors[i][j];
+
+        for (Int_t j = 0; j < nVecs; ++j)
+            delete fVectors[i][j];
+
         fVectors[i].clear();
-        if (i < fgkStat)
+
+        if (i < nModules)
         {
             fVectorsHigh[i].clear();
             fIndx0[i] = 0;
         }
     }
 
-    // Do all processing
-    //Warning("execute"," Event No: %d", gHades->getEventCounter());
-    cout << " Event No: " << gHades->getEventCounter() << " " << fHits->getEntries() << endl;
-
     for (Int_t ipass = 0; ipass < fNpass; ++ipass)
     {
-        // Get hits
-        getHits();
+        fErrU = fLRErrU;
 
-        // Build vectors
+        getHits();
         makeVectors();
 
         // Remove vectors with wrong orientation
@@ -238,15 +231,8 @@ Int_t HFwDetStrawVectorFinder::execute()
         checkParams();
 
         // Go to the high resolution mode processing
-        Double_t err = fErrU;
-        fErrU = 0.2;
-        if (fErrU < 1.0) highRes();
-
-        // Remove clones
-        //RemoveClones();
-
-        // Remove short tracks
-        //RemoveShorts();
+        fErrU = fHRErrU;
+        if (fHRErrU > 0.0) highRes();
 
         // Store vectors
         storeVectors(0);
@@ -257,45 +243,36 @@ Int_t HFwDetStrawVectorFinder::execute()
         // Select final tracks - remove ghosts
         selectTracks(ipass);
 
-        fErrU = err;
         if (ipass == fNpass - 1) continue;
-        for (Int_t i = 0; i < fgkStat; ++i) fIndx0[i] = fVectors[i].size();
+        for (Int_t i = 0; i < nModules; ++i) fIndx0[i] = fVectors[i].size();
     }
+    fErrU = fLRErrU;
 
     // Store tracks
     storeVectors(1);
 
     return 0;
 }
-// -------------------------------------------------------------------------
 
 // -----   Public method finalize (after each event) -----------------------
 Bool_t HFwDetStrawVectorFinder::finalize()
 {
-    /*
-    for (Int_t i = 0; i < fgkStat; ++i) {
-        Int_t nVecs = fVectors[i].size();
-        for (Int_t j = 0; j < nVecs; ++j) delete fVectors[i][j];
-        //nVecs = fVectorsHigh[i].size();
-        //for (Int_t j = 0; j < nVecs; ++j) delete fVectorsHigh[i][j];
-    }
-    for (map<Int_t,TDecompLU*>::iterator it = fLus.begin(); it != fLus.end(); ++it)
-        delete it->second;
-    */
-
     return kTRUE;
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method ComputeMatrix   ----------------------------------
 void HFwDetStrawVectorFinder::computeMatrix()
 {
     // Compute system matrices for different hit plane patterns
 
-    Double_t cos2[fgkPlanes2], sin2[fgkPlanes2], sincos[fgkPlanes2], dz2[fgkPlanes2];
-    Bool_t onoff[fgkPlanes2];
+    Double_t cos2[FWDET_STRAW_MAX_VPLANES];
+    Double_t sin2[FWDET_STRAW_MAX_VPLANES];
+    Double_t sincos[FWDET_STRAW_MAX_VPLANES];
+    Double_t dz2[FWDET_STRAW_MAX_VPLANES];
 
-    for (Int_t i = 0; i < fgkPlanes2; ++i)
+    Bool_t onoff[nVplanes];
+
+    for (Int_t i = 0; i < nVplanes; ++i)
     {
         cos2[i] = fCosa[i] * fCosa[i];
         sin2[i] = fSina[i] * fSina[i];
@@ -305,7 +282,7 @@ void HFwDetStrawVectorFinder::computeMatrix()
     }
 
     TMatrixD coef(4,4);
-    Int_t  pattMax = 1 << fgkPlanes2, pattMax1 = 1 << fgkPlanes, nDouble = 0, nTot = 0;
+    Int_t  pattMax = 1 << nVplanes, pattMax1 = 1 << nVplanes/2, nDouble = 0, nTot = 0;
 
     // Loop over doublet patterns
     for (Int_t ipat = 1; ipat < pattMax; ++ipat)
@@ -317,63 +294,67 @@ void HFwDetStrawVectorFinder::computeMatrix()
         if (ipat < pattMax1)
         {
             // One station
-            for (Int_t j = 0; j < fgkPlanes; j += 2) if (ipat & (3 << j)) ++nDouble; else break;
+            for (Int_t j = 0; j < nVplanesH; j += 2)
+            {
+                if (ipat & (3 << j))
+                    ++nDouble;
+                else
+                    break;
+            }
         }
         else
         {
             // The other station
-            Int_t ipat1 = ipat & ((pattMax1-1)<<fgkPlanes);
-            for (Int_t j = 0; j < fgkPlanes; j += 2)
+            Int_t ipat1 = ipat & ((pattMax1-1)<<nVplanesH);
+            for (Int_t j = 0; j < nVplanesH; j += 2)
             {
-                if (ipat1 & (3 << (j+fgkPlanes))) ++nDouble;
+                if (ipat1 & (3 << (j+nVplanesH))) ++nDouble;
                 else break;
             }
         }
-        //if ((ipat & (3 << 6)) == 0) ++nDouble; // 3 doublets
-        //if (nDouble < fgkPlanes / 2) continue;
-        //if (nDouble + 1 < fgkPlanes / 2) continue;
-        if (nDouble + 0 < fgkPlanes / 2) continue;
 
-        for (Int_t j = 0; j < fgkPlanes2; ++j) onoff[j] = (ipat & (1 << j));
+        if (nDouble + 0 < nVplanesH / 2) continue;
+
+        for (Int_t j = 0; j < nVplanes; ++j) onoff[j] = (ipat & (1 << j));
 
         coef = 0.0;
-        for (Int_t i = 0; i < fgkPlanes2; ++i)
+        for (Int_t i = 0; i < nVplanes; ++i)
         {
             if (!onoff[i]) continue;
             coef(0,0) += cos2[i];
             coef(0,1) += sincos[i];
             Double_t dz = fDz[i];
-            if ((ipat&255)==0) dz = fDz[i%fgkPlanes]; // only second station
+            if ((ipat&255)==0) dz = fDz[i%nVplanesH]; // only second station
             coef(0,2) += dz * cos2[i];
             coef(0,3) += dz * sincos[i];
         }
-        for (Int_t i = 0; i < fgkPlanes2; ++i)
+        for (Int_t i = 0; i < nVplanes; ++i)
         {
             if (!onoff[i]) continue;
             coef(1,0) += sincos[i];
             coef(1,1) += sin2[i];
             Double_t dz = fDz[i];
-            if ((ipat&255)==0) dz = fDz[i%fgkPlanes]; // only second station
+            if ((ipat&255)==0) dz = fDz[i%nVplanesH]; // only second station
             coef(1,2) += dz * sincos[i];
             coef(1,3) += dz * sin2[i];
         }
-        for (Int_t i = 0; i < fgkPlanes2; ++i)
+        for (Int_t i = 0; i < nVplanes; ++i)
         {
             if (!onoff[i]) continue;
             Double_t dz = fDz[i], dzz = dz2[i];
-            if ((ipat&255)==0) { dz = fDz[i%fgkPlanes]; dzz = dz2[i%fgkPlanes]; } // only second station
+            if ((ipat&255)==0) { dz = fDz[i%nVplanesH]; dzz = dz2[i%nVplanesH]; } // only second station
             coef(2,0) += dz * cos2[i];
             coef(2,1) += dz * sincos[i];
             coef(2,2) += dzz * cos2[i];
             coef(2,3) += dzz * sincos[i];
         }
-        for (Int_t i = 0; i < fgkPlanes2; ++i)
+        for (Int_t i = 0; i < nVplanes; ++i)
         {
             if (!onoff[i]) continue;
             Double_t dz = fDz[i], dzz = dz2[i];
             if ((ipat&255)==0)
             {
-                dz = fDz[i%fgkPlanes]; dzz = dz2[i%fgkPlanes];
+                dz = fDz[i%nVplanesH]; dzz = dz2[i%nVplanesH];
             } // only second station
             coef(3,0) += dz * sincos[i];
             coef(3,1) += dz * sin2[i];
@@ -396,391 +377,324 @@ void HFwDetStrawVectorFinder::computeMatrix()
         fMatr.insert(pair<Int_t,TMatrixDSym*>(ipat,new TMatrixDSym(cov)));
     }
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method GetHits   ----------------------------------------
 void HFwDetStrawVectorFinder::getHits()
 {
     // Group hits according to their plane number
-
-    for (Int_t ista = 0; ista < fgkStat; ++ista)
+    for (Int_t m = 0; m < nModules; ++m)
     {
-        for (Int_t i = 0; i < fgkPlanes; ++i) fHitPl[ista][i].clear();
-        for (Int_t i = 0; i < fgkPlanes / 2; ++i) fHit2d[ista][i].clear();
+        for (Int_t l = 0; l < nLayers[m]*2; ++l) fHitPl[m][l].clear();
+        for (Int_t l = 0; l < nLayers[m]; ++l) fHit[m][l].clear();
     }
 
-    Int_t nHits = fHits->getEntries(), nSelTu[fgkStat] = {0}, sel = 0;
-    Char_t st3, doub, lay;
-    Int_t station3, doublet, tube;
-    HFwDetStrawCalSim *hit;
+    Int_t nHits = pHits->getEntries();
+    Char_t addr_module, addr_layer, addr_plane;
+    Int_t module, layer, tube;
+    HFwDetStrawCal *hit;
 
     for (Int_t i = 0; i < nHits; ++i)
     {
-        hit = (HFwDetStrawCalSim*) fHits->getObject(i);
+        hit = (HFwDetStrawCal*) pHits->getObject(i);
+
         if (hit->GetUniqueID() != 0) continue; // already used
-        //if (hit->getPlane() == 2) continue; //!!! test
 
-        //!!! For debug - select hits with certain track IDs
-        //sel = SelectHitId(hit, 2);
-        sel = 1;
-        if (!sel) continue;
-        //
+        hit->getAddress(addr_module, addr_layer, addr_plane, tube);
+        module = (Int_t) addr_module;
+        layer = (Int_t) addr_layer;
 
-        hit->getAddress(st3, doub, lay, tube);
-        station3 = (Int_t) st3;
-        doublet = (Int_t) doub;
-        Int_t layer = hit->getLayer();
-        //cout << hit->get() << " " << station3 << " " << doublet << " " << layer << endl;
-        Int_t plane = doublet * 2 + layer;
-        //fHitPl[station3][plane].insert(pair<Int_t,Int_t>(hit->GetTube()+1000*hit->GetSegment(),i));
-        fHitPl[station3][plane].insert(pair<Int_t,Int_t>(tube+1000*0,i));
-        //if (fErrU < 0) fErrU = hit->GetDu();
-        if (sel) ++nSelTu[station3];
+        Int_t vplane = layer * FWDET_STRAW_MAX_PLANES + addr_plane;
+
+        fHitPl[module][vplane].insert(pair<Int_t,Int_t>(tube, i));
     }
 
-    // Merge neighbouring hits from 2 layers of 1 doublet.
-    // If there is no neighbour, takes hit from a single layer (to account for inefficiency)
-    Int_t nlay2 = fgkPlanes / 2, indx1 = 0, indx2 = 0, tube1, tube2, next1, next2;
+    // Merge neighbouring hits from two planes of one layer.
+    // If there is no neighbour, takes hit from a single plane (to account for inefficiency)
+    Int_t indx1 = 0, indx2 = 0, tube1 = 0, tube2 = 0;
 
-    for (Int_t ista = 0; ista < fgkStat; ++ista)
+    for (Int_t m = 0; m < nModules; ++m)
     {
         // Loop over stations
-        Int_t nSelDouble = 0;
-
-        for (Int_t i1 = 0; i1 < nlay2; ++i1)
+        for (Int_t i1 = 0; i1 < nLayers[m]; ++i1)
         {
             // Loop over doublets
-            multimap<Int_t,Int_t>::iterator it1 = fHitPl[ista][i1*2].begin(), it2 = fHitPl[ista][i1*2+1].begin();
-            multimap<Int_t,Int_t>::iterator it1end = fHitPl[ista][i1*2].end(), it2end = fHitPl[ista][i1*2+1].end();
-            set<Int_t> tubeOk[2];
-            next1 = next2 = 1;
-            if (it1 == it1end) next1 = 0;
-            if (it2 == it2end) next2 = 0;
+            multimap<Int_t,Int_t>::iterator
+                it1 = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES].begin(),
+                it2 = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES+1].begin();
 
-            while (next1 || next2)
+            multimap<Int_t,Int_t>::iterator
+                it1end = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES].end(),
+                it2end = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES+1].end();
+
+            Bool_t tube1_has_partner = kFALSE;  // if tube1 was matched
+            Bool_t tube2_has_partner = kFALSE;  // if tube2 was matched
+
+            // straws in two planes are as following
+            //
+            //        \   |    / <-- tracks
+            // p=1    (1) (2) (3)... (n)  <-- tube number
+            // p=0  (1) (2) (3)... (n)
+            //           \| /
+            //
+            // possible pairs for [p=0,p=1] and for 1 < k < n
+            // are [k, k] and [k+1, k]
+            //
+            // Algorithm is as follow:
+            // 1. Iterate over p=0
+            // 2. check for partners in p=1
+            // 3. when all straws from p=0 are done
+            // 4. fill remaining straws from p=1
+
+            while(it1 != it1end)
             {
-                // Loop over tubes
-                if (next1)
+                indx1 = it1->second;
+                tube1 = it1->first;
+
+                if (it2 == it2end)
                 {
-                    indx1 = it1->second;
-                    //hit1 = (CbmMuchStrawHit*) fHits->UncheckedAt(indx1);
-                    tube1 = it1->first;
+                    if (!tube1_has_partner)
+                    {
+                        fHit[m][i1].push_back(pair<Int_t,Int_t>(indx1, -1));
+                    }
+                    ++it1;
+                    tube1_has_partner = kFALSE;
+
+                    continue;
                 }
 
-                if (next2)
+                while (it2 != it2end)
                 {
                     indx2 = it2->second;
-                    //hit2 = (CbmMuchStrawHit*) fHits->UncheckedAt(indx2);
                     tube2 = it2->first;
-                }
 
-                if ((it2 != it2end && tube2 < tube1) || it1 == it1end)
-                {
-                    // Single layer hit2 ?
-                    if (tubeOk[1].find(tube2) == tubeOk[1].end())
+                    // difference between tubes
+                    Int_t tube_diff = tube1 - tube2;
+
+                    if (tube_diff > 1)      // tube1 ahead of tube 2
                     {
-                        sel = selDoubleId(-1, indx2);
-                        nSelDouble += sel;
-                        if (sel) fHit2d[ista][i1].push_back(pair<Int_t,Int_t>(-1,indx2));
-                        tubeOk[1].insert(tube2);
+                        if (!tube2_has_partner)
+                        {
+                            fHit[m][i1].push_back(pair<Int_t,Int_t>(-1, indx2));
+                        }
+
+                        ++it2;   // searching for [k, k] case
+                        tube2_has_partner = kFALSE;
+
+                        continue;
                     }
-                    ++it2;
-                    next2 = 1;
-                    next1 = 0;
-                    if (it2 == fHitPl[ista][i1*2+1].end()) next2 = 0;
-                    continue;
-                }
 
-                if ((it1 != it1end && tube2 > tube1 + 1) || it2 == it2end)
-                {
-                    // Single layer hit1 ?
-                    if (tubeOk[0].find(tube1) == tubeOk[0].end())
+                    if (tube_diff == 1)     // we have first possible pair
                     {
-                        sel = selDoubleId(indx1, -1);
-                        nSelDouble += sel;
-                        if (sel) fHit2d[ista][i1].push_back(pair<Int_t,Int_t>(indx1,-1));
-                        tubeOk[0].insert(tube1);
+                        fHit[m][i1].push_back(pair<Int_t,Int_t>(indx1, indx2));
+
+                        tube1_has_partner = kTRUE;
+
+                        ++it2;   // searching for [k, k] case
+                        tube2_has_partner = kFALSE;
+
+                        continue;
                     }
-                    ++it1;
-                    next1 = 1;
-                    next2 = 0;
-                    if (it1 == fHitPl[ista][i1*2].end()) next1 = 0;
-                    continue;
-                }
 
-                // Double layer hit
-                sel = selDoubleId(indx1, indx2);
-                nSelDouble += sel;
-                if (sel) fHit2d[ista][i1].push_back(pair<Int_t,Int_t>(indx1,indx2));
-                tubeOk[0].insert(tube1);
-                tubeOk[1].insert(tube2);
-                if (tube2 == tube1)
-                {
-                    ++it2;
-                    next2 = 1;
-                    next1 = 0;
-                    if (it2 == fHitPl[ista][i1*2+1].end())
+                    if (tube_diff == 0)     // we have second possible pair
                     {
-                        next2 = 0;
-                        next1 = 1;
-                        if (it1 == fHitPl[ista][i1*2].end()) next1 = 0;
+                        fHit[m][i1].push_back(pair<Int_t,Int_t>(indx1, indx2));
+
+                        tube2_has_partner = kTRUE;
+
+                        ++it1;   // searching for [k+1, k] case
+                        tube1_has_partner = kFALSE;
+
+                        break;
+                    }
+
+                    if (tube_diff < 0)      // tube2 ahead of tube1
+                    {
+                        if (!tube1_has_partner)
+                        {
+                            fHit[m][i1].push_back(pair<Int_t,Int_t>(indx1, -1));
+                        }
+                        tube1_has_partner = kFALSE;
+                        ++it1;  // searching for [k, k] case
+                        break;
                     }
                 }
-                else
+            }
+
+            while (it2 != it2end)
+            {
+                indx2 = it2->second;
+                tube2 = it2->first;
+
+                if (!tube2_has_partner)
                 {
-                    ++it1;
-                    next1 = 1;
-                    next2 = 0;
-                    if (it1 == fHitPl[ista][i1*2].end())
-                    {
-                        next1 = 0;
-                        next2 = 1;
-                        if (it2 == fHitPl[ista][i1*2+1].end()) next2 = 0;
-                    }
+                    fHit[m][i1].push_back(pair<Int_t,Int_t>(-1, indx2));
                 }
-                continue;
-            } // while (next1...
-        }
-        cout << " Selected tubes: " << ista << " " << nSelTu[ista] << endl;
-        cout << " Selected doublets: " << ista << " " << nSelDouble << endl;
-    }
-}
-// -------------------------------------------------------------------------
 
-// -----   Private method SelectHitId   ------------------------------------
-Bool_t HFwDetStrawVectorFinder::selectHitId(HFwDetStrawCalSim *hit, Int_t idSel)
-{
-    // Select hits with certain track IDs (for debugging)
-
-    //map<Double_t,Int_t>::iterator mit = hit->getDriftId().begin();
-    //for ( ; mit != hit->getDriftId().end(); ++mit)
-    {
-        //if (mit->second == idSel)
-        {
-            //cout << " Plane: " << hit->getPlane() << " " << mit->second << endl;
-            // Set proper drift distance
-            //Double_t err = hit->getDrift() - hit->getDriftId().begin()->first;
-            //Double_t coord = mit->first + err;
-            //coord = TMath::Max (0.0, coord);
-            //coord = TMath::Min (coord, fDiam/2);
-            //hit->setDrift(coord);
-            //return kTRUE;
+                ++it2;
+                tube2_has_partner = kFALSE;
+            }
         }
     }
-
-    return kFALSE;
 }
-// -------------------------------------------------------------------------
-
-// -----   Private method selDoubleId   ------------------------------------
-Bool_t HFwDetStrawVectorFinder::selDoubleId(Int_t indx1, Int_t indx2)
-{
-    // Select doublets with certain track IDs (for debugging)
-
-    return kTRUE; // no selection
-}
-// -------------------------------------------------------------------------
 
 // -----   Private method MakeVectors   ------------------------------------
 void HFwDetStrawVectorFinder::makeVectors()
 {
     // Make vectors for stations
-
-    for (Int_t ista = 0; ista < fgkStat; ++ista)
+    for (Int_t m = 0; m < nModules; ++m)
     {
-        /*
-        Int_t nvec = fVectors[ista].size();
-        for (Int_t j = 0; j < nvec; ++j) delete fVectors[ista][j];
-        fVectors[ista].clear();
-        */
-        Int_t lay2 = 0, patt = 0, flag = 0, ndoubl = fHit2d[ista][lay2].size();
-        HFwDetStrawCalSim *hit = NULL;
+        Int_t l = 0;    // layer
+        Int_t patt = 0, ndoubl = fHit[m][l].size();
+        HFwDetStrawCal *hit = NULL;
 
-        cout << " Doublets: " << ista << " " << ndoubl << endl;
+//         cout << " Doublets: " << m << " " << ndoubl << endl;
         for (Int_t id = 0; id < ndoubl; ++id)
         {
-            Int_t indx1 = fHit2d[ista][lay2][id].first;
-            Int_t indx2 = fHit2d[ista][lay2][id].second;
+            Int_t indx1 = fHit[m][l][id].first;
+            Int_t indx2 = fHit[m][l][id].second;
             if (indx1 >= 0)
             {
-                hit = (HFwDetStrawCalSim*) fHits->getObject(indx1);
-                fUz[lay2*2][0] = hit->getX();
-                //fUz[lay2*2][2] = hit->GetPhi();
-                //fUzi[lay2*2][0] = hit->GetSegment();
-                fUzi[lay2*2][0] = 0;
-                fUzi[lay2*2][1] = indx1;
-                fUzi[lay2*2][2] = hit->getTube();
+                hit = (HFwDetStrawCal*) pHits->getObject(indx1);
+                fUz[l*FWDET_STRAW_MAX_PLANES] = hit->getX();
+
+                fUzi[l*FWDET_STRAW_MAX_PLANES][HITNR] = indx1;
+                fUzi[l*FWDET_STRAW_MAX_PLANES][TUBENR] = hit->getTube();
             }
             if (indx2 >= 0)
             {
-                hit = (HFwDetStrawCalSim*) fHits->getObject(indx2);
-                fUz[lay2*2+1][0] = hit->getX();
-                //fUz[lay2*2+1][2] = hit->GetPhi();
-                //fUzi[lay2*2+1][0] = hit->GetSegment();
-                fUzi[lay2*2+1][0] = 0;
-                fUzi[lay2*2+1][1] = indx2;
-                fUzi[lay2*2+1][2] = hit->getTube();
+                hit = (HFwDetStrawCal*) pHits->getObject(indx2);
+                fUz[l*FWDET_STRAW_MAX_PLANES+1] = hit->getX();
+
+                fUzi[l*FWDET_STRAW_MAX_PLANES+1][HITNR] = indx2;
+                fUzi[l*FWDET_STRAW_MAX_PLANES+1][TUBENR] = hit->getTube();
             }
             Bool_t ind1 = indx1 + 1;
             Bool_t ind2 = indx2 + 1;
             patt = ind1;
             patt |= (ind2 << 1);
-            //cout << plane0 << " " << hit->GetX() << " " << hit->GetY() << " " << hit->get() << " " << hit->GetU() << " " << u << endl;
-            //processDouble(ista, lay2+1, patt, flag, hit->GetTube(), hit->GetSegment());
-            processDouble(ista, lay2+1, patt, flag, hit->getTube(), 0);
+
+            processDouble(m, l+1, patt);
         }
     }
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method processDouble   ----------------------------------
-void HFwDetStrawVectorFinder::processDouble(Int_t ista, Int_t lay2, Int_t patt, Int_t flag,
-                        Int_t tube0, Int_t segment0)
+void HFwDetStrawVectorFinder::processDouble(Int_t m, Int_t l, Int_t patt)
 {
     // Main processing engine (recursively adds doublet hits to the vector)
 
-    // !!! Tube differences between the same views for mu from omega at 8 GeV !!!
+    // Tube differences between the same views for mu from omega at 8 GeV
     const Int_t dTubes2 = 30;
     Double_t pars[4] = {0.0};
 
-    Int_t ndoubl = fHit2d[ista][lay2].size();
+    Int_t ndoubl = fHit[m][l].size();
 
     for (Int_t id = 0; id < ndoubl; ++id)
     {
-        Int_t indx1 = fHit2d[ista][lay2][id].first;
-        Int_t indx2 = fHit2d[ista][lay2][id].second;
-        HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(TMath::Max(indx1,indx2));
-        //Int_t segment = hit->GetSegment();
-        Int_t segment = 0;
+        Int_t indx1 = fHit[m][l][id].first;
+        Int_t indx2 = fHit[m][l][id].second;
+        HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(TMath::Max(indx1,indx2));
         Int_t tube = hit->getTube();
-
-        //if (TMath::Abs(tube - tube0) > fDtubes[ista][lay2-1]) continue; // !!! cut
 
         // Check the same views
         Int_t ok = 1;
-        for (Int_t il = 0; il < lay2; ++il)
+        for (Int_t il = 0; il < l; ++il)
         {
             Int_t pl = il * 2;
-            if (TMath::Abs(fSina[pl+ista*fgkPlanes]-fSina[lay2*2+ista*fgkPlanes]) < 0.01)
+            if (TMath::Abs(fSina[pl+m*nVplanesH]-fSina[l*2+m*nVplanesH]) < 0.01)
             {
-                // The same views
-                Int_t seg = fUzi[pl][0];
-                if (!(patt & (1 << pl))) seg = fUzi[pl+1][0];
-                if (segment != seg)
-                {
-                    ok = 0;
-                    break;
-                }
-
                 // Check tube difference
-                Double_t z = fDz[pl%fgkPlanes];
-                Int_t tu = fUzi[pl][2];
+                Double_t z = fDz[pl%nVplanesH];
+                Int_t tu = fUzi[pl][TUBENR];
                 if (!(patt & (1 << pl)))
                 {
-                    z = fDz[pl%fgkPlanes+1];
-                    tu = fUzi[pl+1][2];
+                    z = fDz[pl%nVplanesH+1];
+                    tu = fUzi[pl+1][TUBENR];
                 }
-                z += fZ0[ista];
-                //Double_t dzz = (hit->get() - z) / z;
-                //Int_t hitPlane = hit->getStation() * fgkPlanes + hit->getDoublet() * 2 + hit->getLayer();
+                z += fZ0[m];
+
                 Int_t hitPlane = hit->getLayer() * 2 + hit->getPlane();
-                Double_t zHit = fDz[hitPlane] + fZ0[ista];
+                Double_t zHit = fDz[hitPlane] + fZ0[m];
                 Double_t dzz = (zHit - z) / z;
+
                 if (TMath::Abs(tube - tu - dzz * tu) > dTubes2)
                 {
                     // !!! cut
                     ok = 0;
-                    //cout << " !!! dTube cut " << tube - tu - dzz * tu << endl;
                     break;
                 }
             }
         }
-        if (!ok) continue; // !!! cut
 
-        /*
-        if (lay2 > 1) {
-        // Tube difference with previous to previous doublet
-        Int_t pl = (lay2 - 2) * 2;
-        Int_t tu = fUzi[pl][2];
-        if (patt & (1 << pl+1)) tu = fUzi[pl+1][2];
-        Double_t dtu = tube - tu;
-        if (lay2 == 3) dtu -= slope[ista] * tu;
-        //if (TMath::Abs(dtu) > dTubes2[lay2-2]) continue; // !!! cut
-        }
-        */
+        if (!ok) continue; // !!! cut
 
         if (indx1 >= 0)
         {
-            hit = (HFwDetStrawCalSim*) fHits->getObject(indx1);
-            fUz[lay2*2][0] = hit->getX();
-            //fUz[lay2*2][2] = hit->GetPhi();
-            //fUzi[lay2*2][0] = hit->GetSegment();
-            fUzi[lay2*2][0] = 0;
-            fUzi[lay2*2][1] = indx1;
-            fUzi[lay2*2][2] = hit->getTube();
+            hit = (HFwDetStrawCal*) pHits->getObject(indx1);
+            fUz[l*2] = hit->getX();
+
+            fUzi[l*2][HITNR] = indx1;
+            fUzi[l*2][TUBENR] = hit->getTube();
         }
         if (indx2 >= 0)
         {
-            hit = (HFwDetStrawCalSim*) fHits->getObject(indx2);
-            fUz[lay2*2+1][0] = hit->getX();
-            //fUz[lay2*2+1][2] = hit->GetPhi();
-            //fUzi[lay2*2+1][0] = hit->GetSegment();
-            fUzi[lay2*2+1][0] = 0;
-            fUzi[lay2*2+1][1] = indx2;
-            fUzi[lay2*2+1][2] = hit->getTube();
+            hit = (HFwDetStrawCal*) pHits->getObject(indx2);
+            fUz[l*2+1] = hit->getX();
+
+            fUzi[l*2+1][HITNR] = indx2;
+            fUzi[l*2+1][TUBENR] = hit->getTube();
         }
 
         Bool_t ind1 = indx1 + 1;
         Bool_t ind2 = indx2 + 1;
         // Clear bits
-        patt &= ~(1 << lay2*2);
-        patt &= ~(1 << (lay2*2+1));
+        patt &= ~(1 << l*FWDET_STRAW_MAX_PLANES);
+        patt &= ~(1 << (l*FWDET_STRAW_MAX_PLANES+1));
         // Set bits
-        patt |= (ind1 << lay2*2);
-        patt |= (ind2 << (lay2*2+1));
+        patt |= (ind1 << l*FWDET_STRAW_MAX_PLANES);
+        patt |= (ind2 << (l*FWDET_STRAW_MAX_PLANES+1));
 
-        //cout << patt << " " << hit->GetX() << " " << hit->GetY() << " " << hit->get() << " " << hit->GetU() << " " << endl;
-
-        if (lay2 + 1 < fgkPlanes / 2)
+        if (l + 1 < nVplanesH / FWDET_STRAW_MAX_PLANES)
         {
-            processDouble(ista, lay2+1, patt, flag, tube, segment);
+            processDouble(m, l+1, patt);
         }
         else
         {
             // Straight line fit of the vector
-            Int_t patt1 = patt << ista*fgkPlanes;
+            Int_t patt1 = patt << m*nVplanesH;
             findLine(patt1, pars);
-            Double_t chi2 = findChi2(ista, patt1, pars);
-            //cout << " *** Stat: " << ista << " " << id << " " << indx1 << " " << indx2 << " " << chi2 << " " << pars[0] << " " << pars[1] << endl;
-            if (chi2 <= fCutChi2) addVector(ista, patt1, chi2, pars); // add vector to the temporary container
+            Double_t chi2 = findChi2(m, patt1, pars);
+
+             // add vector to the temporary container
+            if (chi2 <= fLRCutChi2)
+                addVector(m, patt1, chi2, pars);
         }
-    } // for (id = 0; id < ndoubl;
+    }
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method addVector   --------------------------------------
-void HFwDetStrawVectorFinder::addVector(Int_t ista, Int_t patt, Double_t chi2, Double_t *pars, Bool_t lowRes)
+void HFwDetStrawVectorFinder::addVector(Int_t m, Int_t patt, Double_t chi2, Double_t *pars, Bool_t lowRes)
 {
     // Add vector to the temporary container (as HFwDetStrawVector)
 
     HFwDetStrawVector *track = new HFwDetStrawVector();
     track->setChi2(chi2);
     track->setParams(pars);
-    track->setZ(fZ0[ista]);
+    track->setZ(fZ0[m]);
     TMatrixDSym cov(*fMatr[patt]);
     cov *= (fErrU * fErrU);
     track->setCovar(cov);
 
-    if (patt > (1 << fgkPlanes)) patt = patt >> fgkPlanes; // second station
-    for (Int_t ipl = 0; ipl < fgkPlanes; ++ipl)
+    if (patt > (1 << nVplanesH)) patt = patt >> nVplanesH; // second station
+    for (Int_t ipl = 0; ipl < nVplanesH; ++ipl)
     {
         if (!(patt & (1 << ipl))) continue;
-        track->addHit(fUzi[ipl][1]);
+        track->addHit(fUzi[ipl][HITNR]);
         if (lowRes) continue;
 
         // Store info about left-right ambig. resolving (set true if positive drift direction)
-        HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(fUzi[ipl][1]);
-        if (hit->getX() < fUz[ipl][0])
+        HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(fUzi[ipl][HITNR]);
+        if (hit->getX() < fUz[ipl])
             track->setLRbit(track->getNofHits()-1);
     }
     Int_t ndf = (track->getNofHits() > 5) ? track->getNofHits() - 4 : 1;
@@ -788,11 +702,10 @@ void HFwDetStrawVectorFinder::addVector(Int_t ista, Int_t patt, Double_t chi2, D
     setTrackId(track); // set track ID as its flag
 
     if (lowRes)
-        fVectors[ista].push_back(track);
+        fVectors[m].push_back(track);
     else
-        fVectorsHigh[ista].push_back(track);
+        fVectorsHigh[m].push_back(track);
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method SetTrackId   -------------------------------------
 void HFwDetStrawVectorFinder::setTrackId(HFwDetStrawVector *vec)
@@ -828,7 +741,6 @@ void HFwDetStrawVectorFinder::setTrackId(HFwDetStrawVector *vec)
     // Set vector ID as its flag
     vec->setFlag(idmax);
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method findLine   ---------------------------------------
 void HFwDetStrawVectorFinder::findLine(Int_t patt, Double_t *pars)
@@ -838,53 +750,43 @@ void HFwDetStrawVectorFinder::findLine(Int_t patt, Double_t *pars)
     // Solve system of linear equations
     Bool_t ok = kFALSE, onoff;
     TVectorD b(4);
-    for (Int_t i = 0; i < fgkPlanes2; ++i)
+    for (Int_t i = 0; i < nVplanes; ++i)
     {
         onoff = patt & (1 << i);
         if (!onoff) continue;
-        Int_t i1 = i % fgkPlanes;
-        b[0] += fUz[i1][0] * fCosa[i];
-        b[1] += fUz[i1][0] * fSina[i];
-        b[2] += fUz[i1][0] * fDz[i%fgkPlanes] * fCosa[i];
-        b[3] += fUz[i1][0] * fDz[i%fgkPlanes] * fSina[i];
+        Int_t i1 = i % nVplanesH;
+        b[0] += fUz[i1] * fCosa[i];
+        b[1] += fUz[i1] * fSina[i];
+        b[2] += fUz[i1] * fDz[i%nVplanesH] * fCosa[i];
+        b[3] += fUz[i1] * fDz[i%nVplanesH] * fSina[i];
     }
 
-    //lu.Print();
     TVectorD solve = fLus[patt]->Solve(b, ok);
-    //TVectorD solve = lu.TransSolve(b, ok);
-    //lu.Print();
     for (Int_t i = 0; i < 4; ++i) pars[i] = solve[i];
-    //for (Int_t i = 0; i < 4; ++i) { cout << pars[i] << " "; if (i == 3) cout << endl; }
-    //Double_t y1 = cosa / sina * (uz[1][0] * cosa - uz[0][0]) + uz[1][0] * sina;
-    //Double_t y2 = -cosa / sina * (uz[2][0] * cosa - uz[0][0]) - uz[2][0] * sina;
-    //cout << " OK " << ok << " " << y1 << " " << y2 << endl;
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method findChi2   ---------------------------------------
-Double_t HFwDetStrawVectorFinder::findChi2(Int_t ista, Int_t patt, Double_t *pars)
+Double_t HFwDetStrawVectorFinder::findChi2(Int_t m, Int_t patt, Double_t *pars)
 {
     // Compute chi2 of the fit
 
-    Double_t chi2 = 0, x = 0, y = 0, u = 0, errv = 1.;
-    if (fErrU > 0.1) errv = 10;
+    Double_t chi2 = 0, x = 0, y = 0, u = 0;
 
     Bool_t onoff;
-    for (Int_t i = 0; i < fgkPlanes2; ++i)
+    for (Int_t i = 0; i < nVplanes; ++i)
     {
         onoff = patt & (1 << i);
         if (!onoff) continue;
-        x = pars[0] + pars[2] * fDz[i%fgkPlanes];
-        y = pars[1] + pars[3] * fDz[i%fgkPlanes];
+        x = pars[0] + pars[2] * fDz[i%nVplanesH];
+        y = pars[1] + pars[3] * fDz[i%nVplanesH];
         u = x * fCosa[i] + y * fSina[i];
-        Int_t i1 = i % fgkPlanes;
-        Double_t du = (u - fUz[i1][0]) / fErrU;
+        Int_t i1 = i % nVplanesH;
+        Double_t du = (u - fUz[i1]) / fErrU;
         chi2 += du * du;
     }
 
     return chi2;
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method CheckParams   ------------------------------------
 void HFwDetStrawVectorFinder::checkParams()
@@ -892,56 +794,63 @@ void HFwDetStrawVectorFinder::checkParams()
     // Remove vectors with wrong orientation
     // using empirical cuts for omega muons at 8 Gev
 
-    Double_t cut[2] = {0.6, 0.7}; // !!! empirical !!!
+    Double_t cut[2] = {
+        pStrawVFPar->getCutX(),
+        pStrawVFPar->getCutY() }; // !!! empirical !!!
+
     Double_t pars[4];
 
-    for (Int_t ista = 0; ista < fgkStat; ++ista)
+    for (Int_t m = 0; m < nModules; ++m)
     {
-        Int_t nvec = fVectors[ista].size();
+        Int_t nvec = fVectors[m].size();
 
         //for (Int_t iv = 0; iv < nvec; ++iv) {
-        for (Int_t iv = fIndx0[ista]; iv < nvec; ++iv)
+        for (Int_t iv = fIndx0[m]; iv < nvec; ++iv)
         {
-            HFwDetStrawVector *vec = fVectors[ista][iv];
+            HFwDetStrawVector *vec = fVectors[m][iv];
             vec->params(pars);
             Double_t x = pars[0], y = pars[1], tx = pars[2], ty = pars[3], z = vec->getZ();
             Double_t dTx = tx - x / z;
             Double_t dTy = ty - y / z;
-            if (TMath::Abs(dTx) > cut[0] || TMath::Abs(dTy) > cut[1]) vec->setChi2(-1.0);
+            if (TMath::Abs(dTx) > cut[0] || TMath::Abs(dTy) > cut[1])
+                vec->setChi2(-1.0);
         }
 
         //for (Int_t iv = nvec-1; iv >= 0; --iv) {
-        for (Int_t iv = nvec-1; iv >= fIndx0[ista]; --iv)
+        for (Int_t iv = nvec-1; iv >= fIndx0[m]; --iv)
         {
-            HFwDetStrawVector *vec = fVectors[ista][iv];
-            if (vec->getChi2() < 0) {
-            delete fVectors[ista][iv];
-            fVectors[ista].erase(fVectors[ista].begin()+iv);
+            HFwDetStrawVector *vec = fVectors[m][iv];
+            if (vec->getChi2() < 0)
+            {
+                delete fVectors[m][iv];
+                fVectors[m].erase(fVectors[m].begin()+iv);
+            }
         }
-        }
-        cout << " Vectors after parameter check (ista, inp, out): " << ista << " " << nvec << " " << fVectors[ista].size() << endl;
+//         cout << " Vectors after parameter check (m, inp, out): " << m << " " << nvec << " " << fVectors[m].size() << endl;
     }
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method HighRes   ----------------------------------------
 void HFwDetStrawVectorFinder::highRes()
 {
     // High resolution processing (resolve ghost hits and make high resolution vectors)
 
-    for (Int_t ista = 0; ista < fgkStat; ++ista)
+    HFwDetStrawCal * hit = 0;
+
+    for (Int_t m = 0; m < nModules; ++m)
     {
-        Int_t nvec = fVectors[ista].size();
+        Int_t nvec = fVectors[m].size();
 
-        for (Int_t iv = fIndx0[ista]; iv < nvec; ++iv)
+        for (Int_t iv = fIndx0[m]; iv < nvec; ++iv)
         {
-            HFwDetStrawVector *vec = fVectors[ista][iv];
+            HFwDetStrawVector *vec = fVectors[m][iv];
             Int_t nhits = vec->getNofHits(), patt = 0;
-            Double_t uu[fgkPlanes][2];
+            Double_t uu[nVplanesH][2];
 
-            for (Int_t ih = 0; ih < nhits; ++ih)
+            for (Int_t h = 0; h < nhits; ++h)
             {
-                HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
+                hit = (HFwDetStrawCal*) pHits->getObject(vec->getHitIndex(h));
+
                 Int_t lay = hit->getLayer();
                 Int_t side = hit->getPlane();
                 Int_t plane = lay*2 + side;
@@ -949,30 +858,28 @@ void HFwDetStrawVectorFinder::highRes()
                 uu[plane][1] = hit->getDrift(); // drift distance with error
                 patt |= (1 << plane);
                 //fUzi[plane][0] = hit->GetSegment();
-                fUzi[plane][0] = 0;
-                fUzi[plane][1] = vec->getHitIndex(ih);
+                fUzi[plane][HITNR] = vec->getHitIndex(h);
             }
 
             // Number of hit combinations is 2
             // - left-right ambiguity resolution does not really work for doublets
-            Int_t nCombs = (patt & 1) ? 2 : 1, flag = 1, nok = nCombs - 1;
+            Int_t nCombs = (patt & 1) ? 2 : 1;
+            Int_t flag = 1, nok = nCombs - 1;
 
             //cout << " Doublet ID: " << vec->getFlag() << endl;
             for (Int_t icomb = -1; icomb < nCombs; icomb += 2)
             {
-                fUz[0][0] = (nCombs == 2) ? uu[0][0] + uu[0][1] * icomb : 0.0;
-                processSingleHigh(ista, 1, patt, flag, nok, uu);
+                fUz[0] = (nCombs == 2) ? uu[0][0] + uu[0][1] * icomb : 0.0;
+                processSingleHigh(m, 1, patt, flag, nok, uu);
             }
-        } // for (Int_t iv = 0;
-    } // for (Int_t ista = 0;
+        }
+    }
 
     moveVectors(); // move vectors from one container to another, i.e. drop low resolution ones
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method processDoubleHigh   ------------------------------
-void HFwDetStrawVectorFinder::processSingleHigh(Int_t ista, Int_t plane, Int_t patt, Int_t flag,
-                        Int_t nok, Double_t uu[fgkPlanes][2])
+void HFwDetStrawVectorFinder::processSingleHigh(Int_t m, Int_t plane, Int_t patt, Int_t flag, Int_t nok, Double_t uu[FWDET_STRAW_MAX_VPLANES/2][FWDET_STRAW_MAX_PLANES])
 {
     // Main processing engine for high resolution mode
     // (recursively adds singlet hits to the vector)
@@ -985,251 +892,83 @@ void HFwDetStrawVectorFinder::processSingleHigh(Int_t ista, Int_t plane, Int_t p
 
     for (Int_t icomb = -1; icomb < nCombs; icomb += 2)
     {
-        fUz[plane][0] = (nCombs == 2) ? uu[plane][0] + uu[plane][1] * icomb : 0.0;
-        if (plane == fgkPlanes - 1 || (nok == fMinHits && flag))
+        fUz[plane] = (nCombs == 2) ? uu[plane][0] + uu[plane][1] * icomb : 0.0;
+
+        if (plane == nVplanesH - 1 || (nok == fMinHits && flag))
         {
             // Straight line fit of the vector
             Int_t patt1 = patt & ((1 << (plane + 1)) - 1); // apply mask
-            patt1 = patt1 << ista*fgkPlanes;
+            patt1 = patt1 << m*nVplanesH;
             findLine(patt1, pars);
-            Double_t chi2 = findChi2(ista, patt1, pars);
-            //cout << " *** StatHigh: " << ista << " " << plane << " " << chi2 << " " << pars[0] << " " << pars[1] << endl;
+            Double_t chi2 = findChi2(m, patt1, pars);
+
             if (icomb > -1) flag = 0;
-            if (chi2 > fCutChi2) continue; // too high chi2 - do not extend line
-            //cout << " *** Stat: " << ista << " " << plane << " " << chi2 << " " << pars[0] << " " << pars[1] << endl;
-            //if (plane + 1 < fgkPlanes) ProcessSingleHigh(ista, plane + 1, patt, flag, nok, uu);
-            if (plane + 1 < fgkPlanes)
-                processSingleHigh(ista, plane + 1, patt, 0, nok, uu);
+
+            if (chi2 > fHRCutChi2) continue; // too high chi2 - do not extend line
+
+            if (plane + 1 < nVplanesH)
+                processSingleHigh(m, plane + 1, patt, 0, nok, uu);
             else
-                addVector(ista, patt, chi2, pars, kFALSE); // add vector to the temporary container
+                addVector(m, patt, chi2, pars, kFALSE); // add vector to the temporary container
         }
         else
         {
-            processSingleHigh(ista, plane + 1, patt, flag, nok, uu);
+            processSingleHigh(m, plane + 1, patt, flag, nok, uu);
         }
     }
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method MoveVectors   ------------------------------------
 void HFwDetStrawVectorFinder::moveVectors()
 {
     // Drop low-resolution vectors and move high-res. ones to their container
 
-    for (Int_t ista = 0; ista < fgkStat; ++ista)
+    for (Int_t m = 0; m < nModules; ++m)
     {
-        Int_t nVecs = fVectors[ista].size();
-        //for (Int_t j = 0; j < nVecs; ++j) delete fVectors[ista][j];
-        //fVectors[ista].clear();
-        //for (Int_t j = fIndx0[ista]; j < nVecs; ++j) {
-        for (Int_t j = nVecs - 1; j >= fIndx0[ista]; --j)
+        Int_t nVecs = fVectors[m].size();
+        //for (Int_t j = 0; j < nVecs; ++j) delete fVectors[m][j];
+        //fVectors[m].clear();
+        //for (Int_t j = fIndx0[m]; j < nVecs; ++j) {
+        for (Int_t j = nVecs - 1; j >= fIndx0[m]; --j)
         {
-            delete fVectors[ista][j];
-            fVectors[ista].erase(fVectors[ista].begin()+j);
+            delete fVectors[m][j];
+            fVectors[m].erase(fVectors[m].begin()+j);
         }
 
-        nVecs = fVectorsHigh[ista].size();
-        for (Int_t j = 0; j < nVecs; ++j) fVectors[ista].push_back(fVectorsHigh[ista][j]);
-        fVectorsHigh[ista].clear(); //
+        nVecs = fVectorsHigh[m].size();
+        for (Int_t j = 0; j < nVecs; ++j) fVectors[m].push_back(fVectorsHigh[m][j]);
+        fVectorsHigh[m].clear(); //
     }
 }
-// -------------------------------------------------------------------------
-
-// -----   Private method RemoveClones   -----------------------------------
-void HFwDetStrawVectorFinder::removeClones()
-{
-    // Remove clone vectors (having at least 1 the same hit in each doublet (min. 4 the same hits))
-
-    //Int_t nthr = 4, planes[20];
-    Int_t nthr = 3, planes[20];
-
-    for (Int_t ista = 0; ista < fgkStat; ++ista)
-    {
-        Int_t nvec = fVectors[ista].size();
-
-        // Do sorting according to "quality"
-        multimap<Double_t,HFwDetStrawVector*> qMap;
-        multimap<Double_t,HFwDetStrawVector*>::iterator it, it1;
-
-        for (Int_t iv = 0; iv < nvec; ++iv)
-        {
-            HFwDetStrawVector *vec = fVectors[ista][iv];
-            Double_t qual = vec->getNofHits() + (99 - TMath::Min(Double_t(vec->getChi2()),99.0)) / 100;
-            qMap.insert(pair<Double_t,HFwDetStrawVector*>(-qual,vec));
-        }
-
-        for (it = qMap.begin(); it != qMap.end(); ++it)
-        {
-            HFwDetStrawVector *vec = it->second;
-            if (vec->getChi2() < 0) continue;
-            for (Int_t j = 0; j < fgkPlanes; ++j) planes[j] = -1;
-
-            Int_t nhits = vec->getNofHits();
-            for (Int_t ih = 0; ih < nhits; ++ih)
-            {
-                HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
-                Int_t lay = hit->getLayer();
-                Int_t side = hit->getPlane();
-                planes[lay*2+side] = vec->getHitIndex(ih);
-                //cout << iv << " " << lay*2+side << " " << vec->getHitIndex(ih) << endl;
-            }
-
-            it1 = it;
-            for (++it1; it1 != qMap.end(); ++it1)
-            {
-                HFwDetStrawVector *vec1 = it1->second;
-                if (vec1->getChi2() < 0) continue;
-                Int_t nsame = 0, same[fgkPlanes/2] = {0};
-
-                Int_t nhits1 = vec1->getNofHits();
-                //nthr = TMath::Min(nhits,nhits1) / 2;
-                //nthr = TMath::Min(nhits,nhits1) * 0.75;
-                for (Int_t ih = 0; ih < nhits1; ++ih)
-                {
-                    HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec1->getHitIndex(ih));
-                    Int_t lay = hit->getLayer();
-                    Int_t side = hit->getPlane();
-                    if (planes[lay*2+side] >= 0)
-                    {
-                        if (vec1->getHitIndex(ih) == planes[lay*2+side]) same[lay] = 1;
-                        //else same[lay] = 0;
-                    }
-                }
-
-                for (Int_t lay = 0; lay < fgkPlanes/2; ++lay)
-                {
-                    nsame += same[lay];
-                }
-
-                if (nsame >= nthr)
-                {
-                    // Too many the same hits
-                    Int_t clone = 0;
-                    if (nhits > nhits1 + 0) clone = 1;
-                    //else if (vec->GetChiSq() * 3.0 <= vec1->GetChiSq()) vec1->setChiSq(-1.0); // the same number of hits on 2 tracks
-                    //else if (fgkPlanes > -8 && vec->getChi2() * 1 <= vec1->getChi2()) clone = 1; // the same number of hits on 2 tracks
-                    else if (fgkPlanes > -8 && vec->getChi2() * 1 <= vec1->getChi2()) clone = 1; // the same number of hits on 2 tracks
-                    if (clone)
-                    {
-                        vec1->setChi2(-1.0);
-                    }
-                }
-            }
-        }
-
-        for (Int_t iv = nvec-1; iv >= 0; --iv)
-        {
-            HFwDetStrawVector *vec = fVectors[ista][iv];
-            if (vec->getChi2() < 0)
-            {
-                   delete fVectors[ista][iv];
-                fVectors[ista].erase(fVectors[ista].begin()+iv);
-            }
-        }
-        cout << " Vectors after clones removed: " << ista << " " << nvec << " " << fVectors[ista].size() << endl;
-
-    } // for (Int_t ista = 0; ista < fgkStat;
-}
-// -------------------------------------------------------------------------
-
-// -----   Private method RemoveShorts   -----------------------------------
-void HFwDetStrawVectorFinder::removeShorts()
-{
-    // Remove short tracks
-
-    Int_t nshort = fgkPlanes / 2, planes[20];
-
-    for (Int_t ista = 0; ista < fgkStat; ++ista)
-    {
-        Int_t nvec = fVectors[ista].size();
-        Int_t remove = 0;
-
-        for (Int_t iv = 0; iv < nvec; ++iv)
-        {
-            HFwDetStrawVector *vec = fVectors[ista][iv];
-            if (vec->getChi2() < 0) continue;
-            Int_t nhits = vec->getNofHits();
-            if (nhits != nshort) continue;
-            set<Int_t> overlap;
-            //multiset<Int_t> overlap1;
-            for (Int_t j = 0; j < fgkPlanes; ++j) planes[j] = -1;
-            for (Int_t ih = 0; ih < nhits; ++ih)
-            {
-                HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
-                Int_t lay = hit->getLayer();
-                Int_t side = hit->getPlane();
-                planes[lay*2+side] = vec->getHitIndex(ih);
-            }
-
-            for (Int_t iv1 = iv + 1; iv1 < nvec; ++iv1)
-            {
-                HFwDetStrawVector *vec1 = fVectors[ista][iv1];
-                if (vec1->getChi2() < 0) continue;
-                Int_t nhits1 = vec1->getNofHits();
-
-                // Compare hits
-                for (Int_t ih = 0; ih < nhits1; ++ih) {
-                    HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec1->getHitIndex(ih));
-                    Int_t lay = hit->getLayer();
-                    Int_t side = hit->getPlane();
-                    if (vec1->getHitIndex(ih) == planes[lay*2+side] && planes[lay*2+side] >= 0) overlap.insert(ih);
-                }
-
-                //if (overlap.size() == nshort) {
-                if (overlap.size() > 0)
-                {
-                    // Hits are shared with other tracks
-                    remove = 1;
-                    break;
-                }
-            } // for (Int_t iv1 = iv + 1;
-            if (remove) vec->setChi2(-1.0);
-        } // for (Int_t iv = 0; iv < nvec;
-
-        for (Int_t iv = nvec-1; iv >= 0; --iv)
-        {
-            HFwDetStrawVector *vec = fVectors[ista][iv];
-            if (vec->getChi2() < 0)
-            {
-                delete fVectors[ista][iv];
-                fVectors[ista].erase(fVectors[ista].begin()+iv);
-            }
-        }
-        cout << " Vectors after shorts removed: " << ista << " " << nvec << " " << fVectors[ista].size() << endl;
-
-    } // for (Int_t ista = 0;
-}
-// -------------------------------------------------------------------------
 
 // -----   Private method StoreVectors   -----------------------------------
 void HFwDetStrawVectorFinder::storeVectors(Int_t isel)
 {
     // Store vectors into category
 
-    Int_t ibeg[2] = {0, fgkStat}, iend[2] = {fgkStat-1, fgkStat};
+    Int_t ibeg[2] = {0, nModules}, iend[2] = {nModules-1, nModules};
     HLocation loc;
     loc.set(1,0);
 
-    //for (Int_t ist = 0; ist <= fgkStat; ++ist) {
+    //for (Int_t ist = 0; ist <= nModules; ++ist) {
     for (Int_t ist = ibeg[isel]; ist <= iend[isel]; ++ist)
     {
         Int_t nvec = fVectors[ist].size();
-        Int_t iv0 = (ist < fgkStat) ? fIndx0[ist] : 0;
+        Int_t iv0 = (ist < nModules) ? fIndx0[ist] : 0;
 
         //for (Int_t iv = 0; iv < nvec; ++iv) {
         for (Int_t iv = iv0; iv < nvec; ++iv)
         {
-            HFwDetStrawVector* cal = (HFwDetStrawVector*) fTrackArray->getNewSlot(loc);
+            HFwDetStrawVector* cal = (HFwDetStrawVector*) pTrackArray->getNewSlot(loc);
 
             if (cal)
             {
-            cal = new(cal) HFwDetStrawVector(*(fVectors[ist][iv]));
-            cal->SetUniqueID(ist);
+                cal = new(cal) HFwDetStrawVector(*(fVectors[ist][iv]));
+                cal->SetUniqueID(ist);
             }
         }
     }
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method MergeVectors   -----------------------------------
 void HFwDetStrawVectorFinder::mergeVectors()
@@ -1240,17 +979,16 @@ void HFwDetStrawVectorFinder::mergeVectors()
     TMatrixD unit(TMatrixD::kUnit,matr);
     Double_t pars[4];
     Double_t zMed = (fZ0[0] + fZ0[1]) / 2;
-    cout << fVectors[0].size() << " " << fVectors[1].size() << " " << fVectors[2].size() << endl;
 
-    for (Int_t ista = 0; ista < 2; ++ista)
+    for (Int_t m = 0; m < 2; ++m)
     {
         // Propagate vectors to the median plane
-        Int_t nvec = fVectors[ista].size();
+        Int_t nvec = fVectors[m].size();
 
         //for (Int_t iv = 0; iv < nvec; ++iv) {
-        for (Int_t iv = fIndx0[ista]; iv < nvec; ++iv)
+        for (Int_t iv = fIndx0[m]; iv < nvec; ++iv)
         {
-            HFwDetStrawVector *tr = fVectors[ista][iv];
+            HFwDetStrawVector *tr = fVectors[m][iv];
             tr->params(pars);
             Double_t zbeg = tr->getZ();
             Double_t dz = zMed - zbeg;
@@ -1269,23 +1007,23 @@ void HFwDetStrawVectorFinder::mergeVectors()
             tr->setZ(zbeg);
             tr->setCovar(covd);
         }
-    } // for (Int_t ista = 0; ista < 2;
+    }
 
     // Merge vectors
-    Int_t ista1 = 0, ista2 = 1, nvec1 = fVectors[ista1].size(), nvec2 = fVectors[ista2].size();
+    Int_t m1 = 0, m2 = 1, nvec1 = fVectors[m1].size(), nvec2 = fVectors[m2].size();
     Double_t pars1[4], pars2[4];
 
-    for (Int_t iv1 = fIndx0[ista1]; iv1 < nvec1; ++iv1)
+    for (Int_t iv1 = fIndx0[m1]; iv1 < nvec1; ++iv1)
     {
-        HFwDetStrawVector *tr1 = fVectors[ista1][iv1];
+        HFwDetStrawVector *tr1 = fVectors[m1][iv1];
         tr1->params(pars1);
         TMatrixDSym w1 = tr1->getCovarMatr();
         TMatrixD p1(4, 1, pars1);
         TMatrixD wp1(w1, TMatrixD::kTransposeMult, p1);
 
-        for (Int_t iv2 = fIndx0[ista2]; iv2 < nvec2; ++iv2)
+        for (Int_t iv2 = fIndx0[m2]; iv2 < nvec2; ++iv2)
         {
-            HFwDetStrawVector *tr2 = fVectors[ista2][iv2];
+            HFwDetStrawVector *tr2 = fVectors[m2][iv2];
             tr2->params(pars2);
             TMatrixDSym w2 = tr2->getCovarMatr(), w20 = w2;
             TMatrixD p2(4, 1, pars2);
@@ -1307,24 +1045,21 @@ void HFwDetStrawVectorFinder::mergeVectors()
             Double_t c2 = chi21(0,0) + chi22(0,0);
             Info("MergeVectors"," Chi2: %f %f %f %d %d",
                  chi21(0,0), chi22(0,0), c2, tr1->getFlag(), tr2->getFlag());
-            if (c2 < 0 || c2 > fCutChi2 * 2) continue;
+            if (c2 < 0 || c2 > fLRCutChi2 * 2) continue;
+
             // Merged track parameters
             pars[0] = pMerge(0,0);
             pars[1] = pMerge(1,0);
-            //parOk.SetZ(par2.GetZ());
             pars[2] = pMerge(2,0);
             pars[3] = pMerge(3,0);
-            //parOk.SetCovMatrix(w2);
-            addTrack(ista1, tr1, tr2, iv1, iv2, pars, c2, w2); // add track
-        } // for (Int_t iv2 = 0;
-    } // for (Int_t iv1 = 0;
-    //RemoveClonesHades(ibeg, mapMerged);
-    cout << fVectors[0].size() << " " << fVectors[1].size() << " " << fVectors[2].size() << endl;
+
+            addTrack(m1, tr1, tr2, iv1, iv2, pars, c2, w2);
+        }
+    }
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method AddTrack   ---------------------------------------
-void HFwDetStrawVectorFinder::addTrack(Int_t ista0, HFwDetStrawVector *tr1, HFwDetStrawVector *tr2, Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2)
+void HFwDetStrawVectorFinder::addTrack(Int_t m0, HFwDetStrawVector *tr1, HFwDetStrawVector *tr2, Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2)
 {
     // Save merged vector
 
@@ -1336,12 +1071,11 @@ void HFwDetStrawVectorFinder::addTrack(Int_t ista0, HFwDetStrawVector *tr1, HFwD
     track->addHit(indx2); // second vector index
     if (tr1->getFlag() == tr2->getFlag()) track->setFlag(tr1->getFlag());
     else track->setFlag(-1);
-    fVectors[fgkStat].push_back(track);
+    fVectors[nModules].push_back(track);
 
     Info("AddTrack", "trID1=%i, trID2=%i, chi2=%f, merged vectors %i",
          tr1->getFlag(),tr2->getFlag(),track->getChi2(),track->getNofHits());
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method SelectTracks   -----------------------------------
 void HFwDetStrawVectorFinder::selectTracks(Int_t ipass)
@@ -1349,13 +1083,12 @@ void HFwDetStrawVectorFinder::selectTracks(Int_t ipass)
     // Remove ghost tracks (having at least N the same hits (i.e. fired tubes))
 
     const Int_t nMax = 8, nPl = 40, nVecMin = 2;
-    Int_t planes[nPl], hinds[nPl], lr[nPl], ntrs = fVectors[fgkStat].size();
+    Int_t planes[nPl], hinds[nPl], lr[nPl], ntrs = fVectors[nModules].size();
     multimap<Double_t,Int_t> c2merge;
 
-    //for (Int_t i = (ipass == 0) ? 0 : 6; i < ntrs; ++i) { // for test
     for (Int_t i = 0; i < ntrs; ++i)
     {
-        HFwDetStrawVector *tr = fVectors[fgkStat][i];
+        HFwDetStrawVector *tr = fVectors[nModules][i];
         if (tr->getNofHits() != nVecMin) continue;
         Double_t qual = tr->getNofHits() +
         (499 - TMath::Min(tr->getChi2()/tr->getNDF(),499.0)) / 500;
@@ -1366,7 +1099,7 @@ void HFwDetStrawVectorFinder::selectTracks(Int_t ipass)
     multimap<Double_t,Int_t>::iterator it, it1;
     for (it = c2merge.begin(); it != c2merge.end(); ++it)
     {
-        HFwDetStrawVector *tr1 = fVectors[fgkStat][it->second];
+        HFwDetStrawVector *tr1 = fVectors[nModules][it->second];
         if (tr1 == NULL) continue;
         Int_t nvecs1 = tr1->getNofHits();
         for (Int_t j = 0; j < nPl; ++j) planes[j] = hinds[j] = lr[j] = -1;
@@ -1378,8 +1111,8 @@ void HFwDetStrawVectorFinder::selectTracks(Int_t ipass)
             Int_t nh = vec->getNofHits();
             for (Int_t ih = 0; ih < nh; ++ih)
             {
-                HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
-                Int_t ipl = hit->getPlane();
+                HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(vec->getHitIndex(ih));
+                Int_t ipl = hit->getVPlane();
                 planes[ipl] = vec->getHitIndex(ih);
                 patt |= (1 << ipl);
                 hinds[ipl] = vec->getHitIndex(ih);
@@ -1390,9 +1123,9 @@ void HFwDetStrawVectorFinder::selectTracks(Int_t ipass)
         it1 = it;
         for (++it1; it1 != c2merge.end(); ++it1)
         {
-            HFwDetStrawVector *tr2 = fVectors[fgkStat][it1->second];
+            HFwDetStrawVector *tr2 = fVectors[nModules][it1->second];
             if (tr2 == NULL) continue;
-            //if (tr2->GetUniqueID() != tr1->GetUniqueID()) continue;
+
             Int_t nvecs2 = tr2->getNofHits(), nover = 0;
             Bool_t over = kFALSE;
 
@@ -1403,27 +1136,26 @@ void HFwDetStrawVectorFinder::selectTracks(Int_t ipass)
 
                 for (Int_t ih = 0; ih < nh; ++ih)
                 {
-                    HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
-                    Int_t ipl = hit->getPlane();
+                    HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(vec->getHitIndex(ih));
+                    Int_t ipl = hit->getVPlane();
                     if (planes[ipl] < 0) continue;
                     if (planes[ipl] == vec->getHitIndex(ih))
                     {
                         ++nover;
                         if (nover >= nMax)
                         {
-                            //cout << ipl << " " << vec->getHitIndex(ih) << endl;
                             Info("Select tracks", "Track quality: qual1 %f, qual2 %f, trID1 %i, trID2 %i, overlaps: %i",
                             it->first,it1->first,tr1->getFlag(),tr2->getFlag(),nover);
-                            delete fVectors[fgkStat][it1->second];
-                            fVectors[fgkStat][it1->second] = NULL;
+                            delete fVectors[nModules][it1->second];
+                            fVectors[nModules][it1->second] = NULL;
                             over = kTRUE;
                             break;
                         }
                     }
                 }
                 if (over) break;
-            } // for (Int_t iv = 0; iv < nvecs2;
-        } // for (++it1; it1 != c2merge.end();
+            }
+        }
 
         // Refit whole line
         Double_t pars[4], chi2;
@@ -1435,14 +1167,14 @@ void HFwDetStrawVectorFinder::selectTracks(Int_t ipass)
         tr1->setCovar(cov);
         tr1->setZ(fZ0[0]);
         ++nSel;
-    } // for (++it; it != c2merge.end();
+    }
 
     // Apply extra slection cuts
     if (ipass < fNpass - 1 && nSel > 1)
     {
         for (Int_t i = 0; i < ntrs; ++i)
         {
-            HFwDetStrawVector *tr = fVectors[fgkStat][i];
+            HFwDetStrawVector *tr = fVectors[nModules][i];
             if (tr == NULL) continue;
             if (tr->getChi2() / tr->getNDF() <= 3.0)
             {
@@ -1454,7 +1186,7 @@ void HFwDetStrawVectorFinder::selectTracks(Int_t ipass)
                     Int_t nh = vec->getNofHits();
                     for (Int_t ih = 0; ih < nh; ++ih)
                     {
-                        HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(vec->getHitIndex(ih));
+                        HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(vec->getHitIndex(ih));
                         hit->SetUniqueID(999);
                     }
                 }
@@ -1462,20 +1194,19 @@ void HFwDetStrawVectorFinder::selectTracks(Int_t ipass)
             }
             else
             {
-                delete fVectors[fgkStat][i];
-                fVectors[fgkStat][i] = NULL;
+                delete fVectors[nModules][i];
+                fVectors[nModules][i] = NULL;
             }
         }
     }
 
-    vector<HFwDetStrawVector*>::iterator vit = fVectors[fgkStat].begin();
-    while (vit != fVectors[fgkStat].end())
+    vector<HFwDetStrawVector*>::iterator vit = fVectors[nModules].begin();
+    while (vit != fVectors[nModules].end())
     {
-        if (*vit == NULL) vit = fVectors[fgkStat].erase(vit);
+        if (*vit == NULL) vit = fVectors[nModules].erase(vit);
         else ++vit;
     }
 }
-// -------------------------------------------------------------------------
 
 // -----   Private method Refit   ------------------------------------------
 Double_t HFwDetStrawVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr)
@@ -1486,11 +1217,11 @@ Double_t HFwDetStrawVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars
     Bool_t ok = kFALSE, onoff;
     TVectorD b(4);
 
-    for (Int_t i = 0; i < fgkPlanes2; ++i)
+    for (Int_t i = 0; i < nVplanes; ++i)
     {
         onoff = patt & (1 << i);
         if (!onoff) continue;
-        HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(hinds[i]);
+        HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(hinds[i]);
         Double_t uc = (hit->getX() + lr[i] * hit->getDrift()) * fCosa[i]; // resolved ambiguity !!!
         Double_t us = (hit->getX() + lr[i] * hit->getDrift()) * fSina[i]; // resolved ambiguity !!!
         b[0] += uc;
@@ -1509,20 +1240,18 @@ Double_t HFwDetStrawVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars
 
     // Compute chi2
     Double_t chi2 = 0;
-    for (Int_t i = 0; i < fgkPlanes2; ++i)
+    for (Int_t i = 0; i < nVplanes; ++i)
     {
         onoff = patt & (1 << i);
         if (!onoff) continue;
         Double_t x = pars[0] + pars[2] * fDz[i];
         Double_t y = pars[1] + pars[3] * fDz[i];
         Double_t u = x * fCosa[i] + y * fSina[i];
-        HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) fHits->getObject(hinds[i]);
+        HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(hinds[i]);
         Double_t du = (u - hit->getX() - lr[i] * hit->getDrift()) / fErrU;
         chi2 += du * du;
     }
     return chi2;
 }
-
-// -------------------------------------------------------------------------
 
 ClassImp(HFwDetStrawVectorFinder);

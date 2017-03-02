@@ -72,13 +72,13 @@ void HFwDetTaskSet::parseArguments(TString s)
 
             if (argument.CompareTo("strawcal") == 0)
             {
-                doStraw     = kFALSE;
                 doStrawCal  = kTRUE;
+                doStraw     = kFALSE;
             }
             else if (argument.CompareTo("straw") == 0)
             {
-                doStraw     = kTRUE;
                 doStrawCal  = kTRUE;
+                doStraw     = kTRUE;
             }
             else if( argument.CompareTo("scin") == 0)
             {
@@ -119,17 +119,24 @@ HTask* HFwDetTaskSet::make(const Char_t *select, const Option_t *option)
     if(sel.CompareTo(simulation) == 0 || gHades->getEmbeddingMode() > 0)
     {
         if (doStrawCal)
-                {
-            tasks->add( new HFwDetStrawDigitizer("fwdetstraw.digi", "fwdetstraw.digi") );
-                        if(doStraw) tasks->add( new HFwDetStrawVectorFinder("vectorFinder","vectorFinder") );
-                }
+        {
+            tasks->add(new HFwDetStrawDigitizer("fwdetstraw.digi", "fwdetstraw.digi"));
+            if(doStraw)
+                tasks->add(new HFwDetStrawVectorFinder("vectorFinder", "vectorFinder"));
+        }
         if (doScin)
-            tasks->add( new HFwDetScinDigitizer("fwdetscin.digi", "fwdetscin.digi") );
+            tasks->add(new HFwDetScinDigitizer("fwdetscin.digi", "fwdetscin.digi"));
         if (doRpc)
-            tasks->add( new HFwDetRpcDigitizer("fwdetrpc.digi", "fwdetrpc.digi") );
+            tasks->add(new HFwDetRpcDigitizer("fwdetrpc.digi", "fwdetrpc.digi"));
     }
     if(sel.CompareTo(real) == 0 || gHades->getEmbeddingMode() > 0)
     {
+        if (doStrawCal)
+        {
+//             tasks->add(new HFwDetStrawCalibrator("fwdetstraw.cal", "fwdetstraw.cal")); // TODO
+//             if(doStraw)
+//                 tasks->add(new HFwDetStrawVectorFinder("vectorFinder", "vectorFinder"));
+        }
     }
     return tasks;
 }

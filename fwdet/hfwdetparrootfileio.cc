@@ -12,14 +12,17 @@
 //
 /////////////////////////////////////////////////////////////////////////////////
 
-using namespace std;
 #include "hfwdetparrootfileio.h"
 #include "hades.h"
 #include "hspectrometer.h"
 #include "hfwdetdetector.h"
 #include "hfwdetgeompar.h"
+#include "hfwdetstrawgeompar.h"
+
 #include <iostream>
 #include <iomanip>
+
+using namespace std;
 
 ClassImp(HFwDetParRootFileIo);
 

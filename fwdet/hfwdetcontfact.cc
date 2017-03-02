@@ -15,6 +15,7 @@
 #include "hfwdetgeompar.h"
 #include "hfwdetstrawgeompar.h"
 #include "hfwdetstrawdigipar.h"
+#include "hfwdetstrawvectorfinderpar.h"
 #include "hfwdetscindigipar.h"
 #include "hfwdetrpcdigipar.h"
 
@@ -44,9 +45,17 @@ void HFwDetContFact::setAllContainers()
             "Geometry parameters of the Forward Detector",
             "GeomProduction"));
     containers->Add(
+        new HContainer("FwDetStrawGeomPar",
+            "Geometry parameters of the Straw Forward Detector",
+            "StrawGeomProduction"));
+    containers->Add(
         new HContainer("FwDetStrawDigiPar",
             "FwDetStraw digitization parameters",
             "FwDetStrawDigiProduction"));
+    containers->Add(
+        new HContainer("FwDetStrawVectorFinderPar",
+            "FwDetStraw vector finder parameters",
+            "FwDetStrawVectorFinderProduction"));
     containers->Add(
         new HContainer("FwDetScinDigiPar",
             "FwDetScin digitization parameters",
@@ -65,8 +74,13 @@ HParSet* HFwDetContFact::createContainer(HContainer* c)
     const Char_t* name=c->GetName();
     if (strcmp(name,"FwDetGeomPar") == 0)
         return new HFwDetGeomPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+    if (strcmp(name,"FwDetStrawGeomPar") == 0)
+        return new HFwDetStrawGeomPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+
     if (strcmp(name,"FwDetStrawDigiPar") == 0)
         return new HFwDetStrawDigiPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+    if (strcmp(name,"FwDetStrawVectorFinderPar") == 0)
+        return new HFwDetStrawVectorFinderPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
     if (strcmp(name,"FwDetScinDigiPar") == 0)
         return new HFwDetScinDigiPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
     if (strcmp(name,"FwDetRpcDigiPar") == 0)
