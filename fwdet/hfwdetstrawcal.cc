@@ -21,13 +21,12 @@ HFwDetStrawCal::HFwDetStrawCal()
     fModule = -1;
     fLayer  = -1;
     fPlane  = -1;
-    fCell   = -1;
+    fStraw  = -1;
 
     fTime   = -100000.;
     fADC    = -100000.;
     fU      = 0;
     fZ      = 0;
-    fStraw  = -1000;
 }
 
 HFwDetStrawCal::~HFwDetStrawCal()

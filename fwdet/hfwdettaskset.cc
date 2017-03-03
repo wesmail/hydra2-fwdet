@@ -9,8 +9,6 @@
 //
 /////////////////////////////////////////////////////////////
 
-using namespace std;
-
 #include "hfwdettaskset.h"
 #include "hdebug.h"
 #include "haddef.h"

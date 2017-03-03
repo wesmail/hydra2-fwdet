@@ -26,25 +26,25 @@ public:
     void    putParams (HParamList *);
     Bool_t  getParams (HParamList *);
 
-    inline Float_t  getCutX() const { return fCutX; }
-    inline Float_t  getCutY() const { return fCutY; }
-    inline Float_t  getLRCutChi2() const { return fLRCutChi2; }
-    inline Float_t  getHRCutChi2() const { return fHRCutChi2; }
-    inline Float_t  getLRErrU() const { return fLRErrU; }
-    inline Float_t  getHRErrU() const { return fHRErrU; }
-    inline Float_t  getTubesD() const { return fTubesD; }
-    inline Int_t    getMaxBest() const { return nMaxBest; }
-    inline Int_t    getNpass() const { return nPass; }
+    Float_t  getCutX() const { return fCutX; }
+    Float_t  getCutY() const { return fCutY; }
+    Float_t  getLRCutChi2() const { return fLRCutChi2; }
+    Float_t  getHRCutChi2() const { return fHRCutChi2; }
+    Float_t  getLRErrU() const { return fLRErrU; }
+    Float_t  getHRErrU() const { return fHRErrU; }
+    Float_t  getTubesD() const { return fTubesD; }
+    Int_t    getMaxBest() const { return nMaxBest; }
+    Int_t    getNpass() const { return nPass; }
 
-    inline void setCutX(const Float_t cutx) { fCutX = cutx; }
-    inline void setCutY(const Float_t cuty) { fCutY = cuty; }
-    inline void setLRCutChi2(const Float_t chi2) { fLRCutChi2 = chi2; }
-    inline void setHRCutChi2(const Float_t chi2) { fHRCutChi2 = chi2; }
-    inline void setLRErrU(const Float_t err) { fLRErrU = err; }
-    inline void setHRErrU(const Float_t err) { fHRErrU = err; }
-    inline void setTubesD(const Float_t d) { fTubesD = d; }
-    inline void setMaxBest(const Int_t nbest) { nMaxBest = nbest; }
-    inline void setNpass(const Int_t npass) { nPass = npass; }
+    void setCutX(const Float_t cutx) { fCutX = cutx; }
+    void setCutY(const Float_t cuty) { fCutY = cuty; }
+    void setLRCutChi2(const Float_t chi2) { fLRCutChi2 = chi2; }
+    void setHRCutChi2(const Float_t chi2) { fHRCutChi2 = chi2; }
+    void setLRErrU(const Float_t err) { fLRErrU = err; }
+    void setHRErrU(const Float_t err) { fHRErrU = err; }
+    void setTubesD(const Float_t d) { fTubesD = d; }
+    void setMaxBest(const Int_t nbest) { nMaxBest = nbest; }
+    void setNpass(const Int_t npass) { nPass = npass; }
 
     ClassDef (HFwDetVectorFinderPar, 1);
 };

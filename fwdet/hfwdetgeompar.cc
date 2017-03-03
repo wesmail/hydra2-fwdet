@@ -8,13 +8,10 @@
 // Geometry parameter container for the Forward Detector
 //////////////////////////////////////////////////////////////////////////////
 
-using namespace std;
 #include "hfwdetgeompar.h"
 #include "hgeomcompositevolume.h"
 #include "hpario.h"
 #include "hdetpario.h"
-#include <iostream>
-#include <iomanip>
 
 ClassImp(HFwDetGeomPar);
 

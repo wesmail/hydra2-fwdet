@@ -80,13 +80,11 @@ HFwDetStrawDigitizer::HFwDetStrawDigitizer(const Text_t *name, const Text_t *tit
    initVariables();
 }
 
-HFwDetStrawDigitizer::~HFwDetStrawDigitizer()
-{
-}
+HFwDetStrawDigitizer::~HFwDetStrawDigitizer() { }
 
 void HFwDetStrawDigitizer::initVariables(void)
 {
-    // initialize the variables in constructor
+    // Initialize the variables in constructor
     pGeantFwDetCat = nullptr;
     pStrawCalCat = nullptr;
     pStrawDigiPar = nullptr;
@@ -99,8 +97,6 @@ void HFwDetStrawDigitizer::initVariables(void)
 Bool_t HFwDetStrawDigitizer::init(void)
 {
     rand = new TRandom3(0); 
-
-    // initializes the task
 
     // find the Forward detector in the HADES setup
     HFwDetDetector* p = (HFwDetDetector*)(gHades->getSetup()->getDetector("FwDet"));
@@ -182,6 +178,10 @@ Int_t HFwDetStrawDigitizer::execute(void)
     // Digitization of GEANT hits and storage in HFwDetStrawCalSim
     // gErrorIgnoreLevel = kFatal;
 
+    Char_t  geaModule;      // module number (0...8) - 2 modules- first station (module0), second station (module1)
+    Char_t  geaLayer;       // layer number (0..8) - four layers per module
+    Int_t   geaCell;        // doubleLayer number inside module (0...4) - 4 double layers
+
 #ifdef VERBOSE_MODE
 int cnt = -1;
 printf("<<----------------------------------------------->>\n");
@@ -194,11 +194,11 @@ printf("<<----------------------------------------------->>\n");
         if (ghit)
         {
 #ifdef VERBOSE_MODE
-            ++cnt;
+++cnt;
 #endif
-            ghit->getAddress(geantModule, geantLayer, geantCell);
+            ghit->getAddress(geaModule, geaLayer, geaCell);
 
-            Int_t mod = geantModule;
+            Int_t mod = geaModule;
 
             if(mod > FWDET_STRAW_MAX_MODULES)
                 continue; // skip the other detectors of the FwDet
@@ -211,16 +211,13 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             if (rnd > efficiency)
                 continue;
 
-            Int_t lay = geantLayer;
+            Int_t lay = geaLayer;
             Int_t plane = -1;
-            Int_t cell = -1;
+            Int_t straw = -1;
 
-            if(mod > FWDET_STRAW_MAX_MODULES)
-                continue; // skip the other detectors of the FwDet
-
-            Int_t l_panel = (Int_t) geantCell/100 - 1;
-            Int_t l_block = (Int_t) (geantCell%100)/10 - 1;
-            Int_t l_straw = (Int_t) geantCell%10 - 1;
+            Int_t l_panel = (Int_t) geaCell/100 - 1;
+            Int_t l_block = (Int_t) (geaCell%100)/10 - 1;
+            Int_t l_straw = (Int_t) geaCell%10 - 1;
 
             if (l_block % 2 == 0)
                 plane = 0; // TODO add module and layer dep
@@ -234,12 +231,12 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             // 
             //     | no of straws in a plane of panel | * panel number +
             //     | number of straw in current panel |
-            cell = ((n_blocks >> 1) * n_straws ) * l_panel +
+            straw = ((n_blocks >> 1) * n_straws ) * l_panel +
                 (l_block >> 1) * n_straws + l_straw;
 
             // straws are rotated in the geo by 90 degrees around x axis
             // y and z must be swap
-            ghit->getHit(xHit, zHit,  yHit, pxHit, pzHit, pyHit, tofHit, trackLength, eHit);
+            ghit->getHit(xHit, zHit, yHit, pxHit, pzHit, pyHit, tofHit, trackLength, eHit);
             trackNumber = ghit->getTrackNumber();
 
             // in the sim, z-axis is inverted
@@ -249,9 +246,9 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             fLoc[0] = mod;
             fLoc[1] = lay;
             fLoc[2] = plane;
-            fLoc[3] = cell;
+            fLoc[3] = straw;
 
-            Float_t cell_x = pStrawGeomPar->getOffsetX(mod, lay, plane) + cell*pStrawGeomPar->getStrawPitch(mod, lay);
+            Float_t cell_x = pStrawGeomPar->getOffsetX(mod, lay, plane) + straw*pStrawGeomPar->getStrawPitch(mod, lay);
             Float_t cell_z = pStrawGeomPar->getOffsetZ(mod, lay, plane);
 
             Float_t hit_x = cell_x + xHit;
@@ -284,7 +281,7 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             Float_t adc = eloss*eloss_slope + eloss_offset;
 
 #ifdef VERBOSE_MODE
-printf("     g (m=%d l=%d c=%d) -> p=%d s=%03d  u=%f  el=%.4f tof=%.3f dr=%f  adc=%.2f time=%f  p=%f (%f,%f) loc=(%f,%f,%f)\n", geantModule, geantLayer, geantCell, plane, cell, cell_x, eloss, tof, radius, adc, time, sqrt(pxHit*pxHit + pyHit*pyHit + pzHit*pzHit), pxHit/pzHit, pyHit/pzHit, loc_x, loc_y, loc_z);
+printf("     g (m=%d l=%d c=%d) -> p=%d s=%03d  u=%f  el=%.4f tof=%.3f dr=%f  adc=%.2f time=%f  p=%f (%f,%f) loc=(%f,%f,%f)\n", geaModule, geaLayer, geaCell, plane, straw, cell_x, eloss, tof, radius, adc, time, sqrt(pxHit*pxHit + pyHit*pyHit + pzHit*pzHit), pxHit/pzHit, pyHit/pzHit, loc_x, loc_y, loc_z);
 #endif
 
             if (adc_reso > 0.0)
@@ -308,11 +305,11 @@ printf("     g (m=%d l=%d c=%d) -> p=%d s=%03d  u=%f  el=%.4f tof=%.3f dr=%f  ad
 printf("     resolution effects                                                             adc=%.2f time=%f\n", adc, time);
 #endif
 
-            Bool_t res = fillStrawCalSim(time, adc, tof, eloss, radius, cell_x, cell_z, cell, loc_x, loc_y, loc_z);
+            Bool_t res = fillStrawCalSim(time, adc, tof, eloss, radius, cell_x, cell_z, loc_x, loc_y, loc_z);
             if (!res)
             {
                 Error("HFwDetStrawDigitizer::execute()",
-                "Can't fill from %d for m=%d l=%d p=%d s=%d", geantCell, mod, lay, plane, cell);
+                "Can't fill from %d for m=%d l=%d p=%d s=%d", geaCell, mod, lay, plane, straw);
 //                 return kFALSE;
             }
         }
@@ -320,9 +317,9 @@ printf("     resolution effects                                                 
     return 0;
 }
 
-Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw, Float_t lx, Float_t ly, Float_t lz)
+Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Float_t lx, Float_t ly, Float_t lz)
 {
-    // function creat and fill object HFwDetStrawCalSim
+    // Function creat and fill object HFwDetStrawCalSim
     // return kFALSE if data was not stored to the category
 
     Int_t first = 1;
@@ -346,7 +343,7 @@ Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t time, Float_t adc, Float_t 
         if (first) cal = new(cal) HFwDetStrawCalSim;
         cal->setAddress(fLoc[0], fLoc[1], fLoc[2], fLoc[3]);
 
-        cal->setHit(time, adc, posX, posZ, straw);
+        cal->setHit(time, adc, posX, posZ);
 
         cal->setToF(tof);
         cal->setDrift(radius);
@@ -363,6 +360,7 @@ Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t time, Float_t adc, Float_t 
 
 Float_t HFwDetStrawDigitizer::calcDriftTime(Float_t x) const
 {
+    // Calculate dirft time using simulated drift radius
     Float_t x2 = x * x;
     Float_t x3 = x2 * x;
     Float_t x4 = x3 * x;

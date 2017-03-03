@@ -1,13 +1,3 @@
-/** HFwDetVectorFinder.h
- *@author A.Zinchenko <Alexander.Zinchenko@jinr.ru>
- *@since 2016
- **
- ** Task class for vector finding in FwDet.
- ** Input: HFwDetStrawCalSim hits
- ** Output: HVectorCand objects
- **
- **/
-
 #ifndef HFWDETVECTORFINDER_H
 #define HFWDETVECTORFINDER_H
 
@@ -38,7 +28,7 @@ struct ComboSet {
         printf("\n");
     }
 
-    bool operator<(const ComboSet & cs) { return chi2 < cs.chi2; }
+    bool operator<(const ComboSet & cs) const { return chi2 < cs.chi2; }
 };
 
 class HFwDetVectorFinder : public HReconstructor

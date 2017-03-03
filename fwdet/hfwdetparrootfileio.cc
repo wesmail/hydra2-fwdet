@@ -19,11 +19,6 @@
 #include "hfwdetgeompar.h"
 #include "hfwdetstrawgeompar.h"
 
-#include <iostream>
-#include <iomanip>
-
-using namespace std;
-
 ClassImp(HFwDetParRootFileIo);
 
 HFwDetParRootFileIo::HFwDetParRootFileIo(HParRootFile* f) : HDetParRootFileIo(f)

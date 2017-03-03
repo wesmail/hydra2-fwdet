@@ -39,10 +39,6 @@
 #include "TMatrixFLazy.h"
 #include "TVectorD.h"
 
-#include <iostream>
-
-using namespace std;
-
 // #define VERBOSE_MODE 1
 
 HFwDetVectorFinder::HFwDetVectorFinder() : HReconstructor()
@@ -605,7 +601,7 @@ void HFwDetVectorFinder::makeVectors()
                 hit = (HFwDetStrawCal*) pStrawHits->getObject(indx1);
                 fUz[pl] = hit->getU();
                 fUzHit[pl] = indx1;
-                fUzTube[pl] = hit->getTube();
+                fUzTube[pl] = hit->getStraw();
             }
             if (indx2 >= 0)
             {
@@ -613,7 +609,7 @@ void HFwDetVectorFinder::makeVectors()
                 hit = (HFwDetStrawCal*) pStrawHits->getObject(indx2);
                 fUz[pl] = hit->getU();
                 fUzHit[pl] = indx2;
-                fUzTube[pl] = hit->getTube();
+                fUzTube[pl] = hit->getStraw();
             }
             Bool_t ind1 = indx1 + 1;
             Bool_t ind2 = indx2 + 1;
@@ -649,7 +645,7 @@ printf("processDouble(): m=%d  l=%d  id=%d  patt=%x  pl=%d  idx=%d,%d\n", m, l, 
 #endif
 
         HFwDetStrawCal *hit = (HFwDetStrawCal*) pStrawHits->getObject(TMath::Max(indx1,indx2));
-        Int_t tube = hit->getTube();
+        Int_t tube = hit->getStraw();
 
         // Check the same views
         Int_t ok = 1;
@@ -692,7 +688,7 @@ printf("[%d,%d] -> [(%d,%.1f),(%d,%.1f)] dtub = %f < %f\n", ipl, pl, tube, zHit,
             fUz[pl] = hit->getU();
 
             fUzHit[pl] = indx1;
-            fUzTube[pl] = hit->getTube();
+            fUzTube[pl] = hit->getStraw();
         }
         if (indx2 >= 0)
         {
@@ -700,7 +696,7 @@ printf("[%d,%d] -> [(%d,%.1f),(%d,%.1f)] dtub = %f < %f\n", ipl, pl, tube, zHit,
             fUz[pl+1] = hit->getU();
 
             fUzHit[pl+1] = indx2;
-            fUzTube[pl+1] = hit->getTube();
+            fUzTube[pl+1] = hit->getStraw();
         }
 
         Bool_t ind1 = indx1 + 1;
@@ -896,7 +892,8 @@ void HFwDetVectorFinder::checkParams()
             }
         }
 #ifdef VERBOSE_MODE
-cout << " Vectors after parameter check (m, inp, out): " << m << " " << nvec << " " << fVectors[m].size() << endl;
+    printf(" Vectors after parameter check: m=%d, inp=%d, out=%d\n",
+           m, nvec, fVectors[m].size());
 #endif
     }
 }
@@ -935,7 +932,7 @@ void HFwDetVectorFinder::highRes()
                 rpchit = (HFwDetRpcHit*) pRpcHits->getObject(hitno);
                 tof_grad = rpchit->getTof() / rpchit->getZ();
                 vec->setTof(rpchit->getTof());
-                vec->setTofL(rpchit->getZ());
+                vec->setDistance(rpchit->getZ());
                 if (isSimulation)
                     ((HVectorCandSim*) vec)->setRpcTrack(rpchit->getTrack());
             }
@@ -1000,7 +997,7 @@ void HFwDetVectorFinder::highRes()
                 if (hc)
                 {
                     hc->setTof(current_track->getTof());
-                    hc->setTofL(current_track->getTofL());
+                    hc->setDistance(current_track->getDistance());
                     if (isSimulation)
                         ((HVectorCandSim*) hc)->setRpcTrack(
                             ((HVectorCandSim*) current_track)->getRpcTrack());
@@ -1298,7 +1295,7 @@ void HFwDetVectorFinder::addTrack(Int_t m0, HVectorCand *tr1, HVectorCand *tr2, 
     }
 
     track->setTof(fVectors[0][indx1]->getTof());
-    track->setTofL(fVectors[0][indx1]->getTofL());
+    track->setDistance(fVectors[0][indx1]->getDistance());
     if (isSimulation)
         ((HVectorCandSim*) track)->setRpcTrack(
             ((HVectorCandSim*) fVectors[0][indx1])->getRpcTrack());
@@ -1352,7 +1349,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
         // Refit whole line
         Double_t pars[4], chi2;
         TMatrixDSym cov(4);
-        chi2 = refit(patt, hinds, pars, &cov, lr, tr->getTof(), tr->getTofL());
+        chi2 = refit(patt, hinds, pars, &cov, lr, tr->getTof(), tr->getDistance());
         if (chi2 < fHRCutChi2)
         {
             cov *= (fErrU * fErrU);
@@ -1581,6 +1578,7 @@ Double_t HFwDetVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars, TMa
 
 Int_t HFwDetVectorFinder::matchRpcHit(Double_t* params, Double_t z)
 {
+    // Match RPC hit to the track in straws
     if (!pRpcHits)
         return -1;
 
@@ -1630,6 +1628,7 @@ printf(" (%02d/%02d) RPCHIT   x=%f y=%f z=%f tof=%f    for %f,%f (%f,%f) -> %f,%
 
 Float_t HFwDetVectorFinder::calcDriftRadius(Float_t r) const
 {
+    // Calculate drift radius using drift time
     Float_t r2 = r * r;
     Float_t r3 = r2 * r;
     Float_t r4 = r3 * r;

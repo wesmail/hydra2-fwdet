@@ -17,10 +17,10 @@ public:
                     const Char_t* context = "FwDetScinDigiProduction");
     virtual ~HFwDetScinDigiPar();
     Int_t getNScinCells() const { return nScinCells; }
-    void  getScinSize(Float_t& w, Float_t& h) const;
+    inline void  getScinSize(Float_t& w, Float_t& h) const;
 
     void setNScinCells(Int_t n) { nScinCells = n; }
-    void setScinSize(Float_t w, Float_t h);
+    inline void setScinSize(Float_t w, Float_t h);
 
     void   putParams(HParamList*);
     Bool_t getParams(HParamList*);
@@ -29,13 +29,13 @@ public:
     ClassDef(HFwDetScinDigiPar, 1); // Container for the Forward Scintillator Detector digitization
 };
 
-inline void HFwDetScinDigiPar::getScinSize(Float_t& w, Float_t& h) const
+void HFwDetScinDigiPar::getScinSize(Float_t& w, Float_t& h) const
 {
     w = fScinSize.At(0);
     h = fScinSize.At(1);
 }
 
-inline void HFwDetScinDigiPar::setScinSize(Float_t w, Float_t h)
+void HFwDetScinDigiPar::setScinSize(Float_t w, Float_t h)
 {
     fScinSize.SetAt(w, 0);
     fScinSize.SetAt(h, 1);

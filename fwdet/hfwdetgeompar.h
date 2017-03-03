@@ -22,19 +22,19 @@ public:
     ClassDef(HFwDetGeomPar, 1); // Geometry parameter container for the Forward Detector
 };
 
-inline Int_t HFwDetGeomPar::getModNumInMod(const TString& name)
+Int_t HFwDetGeomPar::getModNumInMod(const TString& name)
 {
     // returns the module index retrieved from the module name ADxM
     return (Int_t)(name[2]-'0') - 1;
 }
 
-inline Int_t HFwDetGeomPar::getModNumInComp(const TString& name)
+Int_t HFwDetGeomPar::getModNumInComp(const TString& name)
 {
     // returns the module index retrieved from the element name Ax
     return (Int_t)(name[1]-'0') - 1;
 }
 
-inline Int_t HFwDetGeomPar::getCompNum(const TString& name)
+Int_t HFwDetGeomPar::getCompNum(const TString& name)
 {
     // returns the cell index retrieved from the component name AxSVy
     return (Int_t)(name[4]-'0') - 1;

@@ -10,7 +10,6 @@
 //
 /////////////////////////////////////////////////////////////
 
-using namespace std;
 #include "hfwdetdetector.h"
 #include "fwdetdef.h"
 #include "hcategory.h"
@@ -26,8 +25,6 @@ using namespace std;
 #include "hfwdetparrootfileio.h"
 #include "hfwdetparasciifileio.h"
 #include "TClass.h"
-#include <iostream>
-#include <iomanip>
 
 ClassImp(HFwDetDetector); // FwDet detector class
 

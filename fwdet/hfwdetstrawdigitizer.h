@@ -20,20 +20,17 @@ private:
     HFwDetStrawGeomPar* pStrawGeomPar;
     HLocation fLoc;
 
-    Int_t   trackNumber;  // GEANT track number
-    Char_t  geantModule;  // module number (0...8) - 2 modules- first station (module0), second station (module1)
-    Char_t  geantLayer;   // layer number (0..8) - four layers per module
-    Int_t   geantCell;    // doubleLayer number inside module (0...4) - 4 double layers
+    Int_t   trackNumber;    // GEANT track number
 
-    Float_t xHit;         // geant x of hit  (in mm) in cell coord. system
-    Float_t yHit;         // geant y of hit  (in mm) in cell coord. system
-    Float_t zHit;         // geant z of hit  (in mm) in cell coord. system
-    Float_t pxHit;        // geant x component of hit momentum (in MeV/c)
-    Float_t pyHit;        // geant y component of hit momentum (in MeV/c)
-    Float_t pzHit;        // geant z component of hit momentum (in MeV/c)
-    Float_t tofHit;       // geant time of flight of hit (in ns)
-    Float_t trackLength;  // geant track length (in mm)
-    Float_t eHit;         // geant energy deposited (in MeV)
+    Float_t xHit;           // geant x of hit  (in mm) in cell coord. system
+    Float_t yHit;           // geant y of hit  (in mm) in cell coord. system
+    Float_t zHit;           // geant z of hit  (in mm) in cell coord. system
+    Float_t pxHit;          // geant x component of hit momentum (in MeV/c)
+    Float_t pyHit;          // geant y component of hit momentum (in MeV/c)
+    Float_t pzHit;          // geant z component of hit momentum (in MeV/c)
+    Float_t tofHit;         // geant time of flight of hit (in ns)
+    Float_t trackLength;    // geant track length (in mm)
+    Float_t eHit;           // geant energy deposited (in MeV)
 
 public:
     HFwDetStrawDigitizer();
@@ -46,7 +43,7 @@ public:
     Bool_t finalize() { return kTRUE; }
 
 private:
-    Bool_t fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw, Float_t lx, Float_t ly, Float_t lz);
+    Bool_t fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Float_t lx, Float_t ly, Float_t lz);
 
     Float_t calcDriftTime(Float_t x) const;
 

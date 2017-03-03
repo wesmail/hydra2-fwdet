@@ -20,8 +20,8 @@ public:
     Float_t getMatchRadius() const { return fMatchRadius; }
     Float_t getMatchTime() const { return fMatchTime; }
 
-    inline void setMatchRadius(Float_t r) { fMatchRadius = r; }
-    inline void setMatchTime(Float_t t) { fMatchTime = t; }
+    void setMatchRadius(Float_t r) { fMatchRadius = r; }
+    void setMatchTime(Float_t t) { fMatchTime = t; }
 
     void   putParams(HParamList*);
     Bool_t getParams(HParamList*);

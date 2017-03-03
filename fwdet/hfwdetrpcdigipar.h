@@ -20,8 +20,8 @@ public:
     Float_t getRpcRadius() const { return rpcRadius; }
     Int_t   getNRpcCells() const { return nRpcCells; }
 
-    inline void setRpcRadius(Float_t r) { rpcRadius = r; }
-    inline void setNRpcCells(Int_t c) { nRpcCells = c; }
+    void setRpcRadius(Float_t r) { rpcRadius = r; }
+    void setNRpcCells(Int_t c) { nRpcCells = c; }
 
     void   putParams(HParamList*);
     Bool_t getParams(HParamList*);

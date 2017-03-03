@@ -3,14 +3,12 @@
 //
 // HFwDetVectorFinderPar
 //
-// Container class for PionTracker hit finder parameters
+// Container class for VectorFinder hit finder parameters
 //
 /////////////////////////////////////////////////////////////
 
-using namespace std;
 #include "hfwdetvectorfinderpar.h"
 #include "hparamlist.h"
-#include <iostream>
 
 ClassImp (HFwDetVectorFinderPar)
 
@@ -22,7 +20,7 @@ HFwDetVectorFinderPar::HFwDetVectorFinderPar(const Char_t * name, const Char_t *
 
 void HFwDetVectorFinderPar::clear()
 {
-    // clears the container
+    // Clear the container
     fCutX = 0.0;
     fCutY = 0.0;
     fLRCutChi2 = 0.0;
@@ -36,7 +34,7 @@ void HFwDetVectorFinderPar::clear()
 
 void HFwDetVectorFinderPar::putParams(HParamList * l)
 {
-    // add the parameters to the list for writing
+    // Add the parameters to the list for writing
     if (!l) return;
 
     l->add("fCutX", fCutX);
@@ -52,7 +50,7 @@ void HFwDetVectorFinderPar::putParams(HParamList * l)
 
 Bool_t HFwDetVectorFinderPar::getParams(HParamList * l)
 {
-    // gets the parameters from the list (read from input)
+    // Get the parameters from the list (read from input)
     if (!l) return kFALSE;
 
     if (!l->fill ("fCutX", &fCutX)) return kFALSE;

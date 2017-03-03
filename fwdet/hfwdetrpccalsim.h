@@ -72,5 +72,4 @@ Bool_t HFwDetRpcCalSim::getTrack(Int_t n, Int_t & track) const
     return kFALSE;
 }
 
-
 #endif /* !HFWDETRPCCALSIM_H */
