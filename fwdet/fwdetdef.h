@@ -1,6 +1,7 @@
 #ifndef FWDETDEF_H
 #define FWDETDEF_H
 
+#include "Rtypes.h"
 #include "haddef.h"
 
 const Cat_t catFwDetStrawCal        = FWDET_OFFSET+1;

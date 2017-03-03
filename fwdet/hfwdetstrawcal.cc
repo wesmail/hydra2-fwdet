@@ -25,7 +25,7 @@ HFwDetStrawCal::HFwDetStrawCal()
 
     fTime   = -100000.;
     fADC    = -100000.;
-    fX      = 0;
+    fU      = 0;
     fZ      = 0;
     fStraw  = -1000;
 }

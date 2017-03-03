@@ -149,7 +149,7 @@ HCategory* HFwDetDetector::buildCategory(Cat_t cat, Bool_t simulation)
             }
             break;
     default:
-        return NULL;
+        return nullptr;
     }
 
     if (pcat) gHades->getCurrentEvent()->addCategory(cat, pcat, "FwDet");

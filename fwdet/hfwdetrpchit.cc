@@ -13,6 +13,8 @@
 
 #include "hfwdetrpchit.h"
 
+#include "TMath.h"
+
 const Float_t c2 = 2.99 * 2.99 * 1.0e16;
 
 ClassImp(HFwDetRpcHit)
@@ -43,5 +45,5 @@ Float_t HFwDetRpcHit::calcMomentum(Float_t l, Float_t t, Float_t mass)
     Float_t tt = t * 1.0e-09;
     Float_t zz = l * 1.0e-03;
 
-    return mass/sqrt((tt*tt*c2)/(zz*zz) - 1.0);
+    return mass/TMath::Sqrt((tt*tt*c2)/(zz*zz) - 1.0);
 }

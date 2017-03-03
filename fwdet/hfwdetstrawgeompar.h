@@ -1,9 +1,9 @@
 #ifndef HFWDETSTRAWGEOMPAR_H
 #define HFWDETSTRAWGEOMPAR_H
 
+#include "fwdetdef.h"
 #include "hparcond.h"
 #include "hgeomtransform.h"
-#include "fwdetdef.h"
 
 #include "TObjArray.h"
 #include "TArrayF.h"
@@ -16,23 +16,23 @@ class HParamList;
 class HFwDetStrawGeomPar :  public HParCond
 {
 private:
-    Int_t        modules;       // number of modules (stations)
+    Int_t        nModules;       // number of modules (stations)
     struct SingleModule
     {
-        Int_t    layers;        // number of layers per module
-        TArrayI  panels;        // number of panels in each layer
-        Int_t    blocks;        // number of blocks in each panel
-        Int_t    straws;        // number of straws in each block of a panel
+        Int_t    nLayers;        // number of layers per module
+        TArrayI  nPanels;        // number of panels in each layer
+        Int_t    nBlocks;        // number of blocks in each panel
+        Int_t    nStraws;        // number of straws in each block of a panel
 
-        TArrayF  strawRadius;   // [layer:sublayer]
-        TArrayF  strawPitch;    // [layer:sublayer]
+        TArrayF  fStrawRadius;   // [layer:sublayer]
+        TArrayF  fStrawPitch;    // [layer:sublayer]
 
-        TMatrixF offsetZ;       // [layer:sublayer] offset of the plane center
+        TMatrixF fOffsetZ;       // [layer:sublayer] offset of the plane center
                                 // from the layer center in local z-direction
-        TMatrixF offsetX;       // [layer:sublayer] offset of the plane center
+        TMatrixF fOffsetX;       // [layer:sublayer] offset of the plane center
                                 // from the layer center in local x-direction
 
-        TArrayF layerRotation;  // rotation of the layer (planes are binded)
+        TArrayF fLayerRotation;  // rotation of the layer (planes are binded)
     } sm_mods[FWDET_STRAW_MAX_MODULES]; //!
 
 public:

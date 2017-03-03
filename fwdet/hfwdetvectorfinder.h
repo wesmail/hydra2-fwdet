@@ -12,7 +12,6 @@
 #define HFWDETVECTORFINDER_H
 
 #include "hreconstructor.h"
-#include "fwdetdef.h"
 
 #include "TDecompLU.h"
 
@@ -61,7 +60,7 @@ public:
 private:
     HCategory* pStrawHits;                  // Input array of straw hits
     HCategory* pRpcHits;                    // Input array of rpc hits
-    HCategory* pTrackArray;                 // Output array of vectors
+    HCategory* pVectorCand;                 // Output array of vectors
     HFwDetStrawGeomPar* pStrawGeomPar;      // straw geometry parameters
     HFwDetStrawDigiPar* pStrawDigiPar;      // straw digitizer parameters
     HFwDetVectorFinderPar * pStrawVFPar;    // vector finder parameters

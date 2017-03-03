@@ -1,6 +1,7 @@
 #ifndef HFWDETSTRAWDIGITIZER_H
 #define HFWDETSTRAWDIGITIZER_H
 
+#include "fwdetdef.h"
 #include "hreconstructor.h"
 #include "hlocation.h"
 
@@ -45,7 +46,7 @@ public:
     Bool_t finalize() { return kTRUE; }
 
 private:
-    Bool_t fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw);
+    Bool_t fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw, Float_t lx, Float_t ly, Float_t lz);
 
     Float_t calcDriftTime(Float_t x) const;
 
@@ -59,6 +60,9 @@ private:
     Float_t start_offset;
     Float_t threshold;
     Float_t efficiency;
+
+    Float_t sina[FWDET_STRAW_MAX_MODULES][FWDET_STRAW_MAX_LAYERS];
+    Float_t cosa[FWDET_STRAW_MAX_MODULES][FWDET_STRAW_MAX_LAYERS];
 
     ClassDef(HFwDetStrawDigitizer, 0);
 };

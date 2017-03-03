@@ -2,7 +2,6 @@
 #define HFWDETRPCGEOMPAR_H
 
 #include "hparcond.h"
-#include "hgeomtransform.h"
 #include "fwdetdef.h"
 
 #include "TObjArray.h"
@@ -16,15 +15,15 @@ class HParamList;
 class HFwDetRpcGeomPar :  public HParCond
 {
 private:
-    Int_t        modules;       // number of modules (stations)
+    Int_t        nModules;       // number of modules (stations)
     struct SingleModule
     {
-        Int_t    layers;        // numer of layers
+        Int_t    nLayers;        // numer of layers
 
-        Float_t  moduleZ;       // z coordinate of the module
-        Float_t  modulePhi;     // rotation of the module
+        Float_t  fModuleZ;       // z coordinate of the module
+        Float_t  fModulePhi;     // rotation of the module
 
-        TArrayF  layerY;        // y offset of each layer in the module
+        TArrayF  fLayerY;        // y offset of each layer in the module
     } sm_mods[FWDET_RPC_MAX_MODULES]; //!
 
 public:

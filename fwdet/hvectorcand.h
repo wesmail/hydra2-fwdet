@@ -24,8 +24,6 @@ public:
     HVectorCand();
     virtual ~HVectorCand();
 
-    inline Int_t getTrack() const { return fTrack; }
-    inline Int_t getRpcTrack() const { return fRpcTrack; }
     inline Int_t getNofHits() const { return fNhits; }
     inline Int_t getNDF() const { return fNDF; }
     inline Double_t getChi2() const { return fChi2; }
@@ -47,8 +45,6 @@ public:
     void getParams(Double_t *pars) const;
     TMatrixDSym getCovarMatr() const;
 
-    inline void setTrack(Int_t track) { fTrack = track; }
-    inline void setRpcTrack(Int_t track) { fRpcTrack = track; }
     inline void setNDF(Int_t ndf) { fNDF = ndf; }
     inline void setChi2(Double_t c2) { fChi2 = c2; }
     inline void setZ(Double_t z) { refVec.SetZ(z); }
@@ -69,8 +65,6 @@ private:
     Double_t getHadesParam(Int_t ipar) const;
 
 private:
-    Int_t fTrack;           // track number (only for sim, -1 for exp and unknown tracks)
-    Int_t fRpcTrack;        // the same but for RPC
     Int_t fNhits;           // number of hits
     Int_t fNDF;             // number of degrees of freedom
     Int_t fHitInds[FWDET_STRAW_MAX_VPLANES];  // hit indices in planes

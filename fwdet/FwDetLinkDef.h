@@ -34,6 +34,7 @@
 #pragma link C++ class HFwDetVectorFinder;
 #pragma link C++ class HFwDetVectorFinderPar;
 #pragma link C++ class HVectorCand;
+#pragma link C++ class HVectorCandSim;
 
 #pragma link C++ global catFwDetStrawCal;
 #pragma link C++ global catFwDetScinCal;

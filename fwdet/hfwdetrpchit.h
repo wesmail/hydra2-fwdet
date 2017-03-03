@@ -1,9 +1,6 @@
 #ifndef HFWDETRPCHIT_H
 #define HFWDETRPCHIT_H
 
-#include "hades.h"
-#include "fwdetdef.h"
-
 #include "TObject.h"
 
 class HFwDetRpcHit : public TObject

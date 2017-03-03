@@ -56,10 +56,7 @@
 #include "hfwdetstrawdigipar.h"
 #include "hfwdetstrawgeompar.h"
 #include "hfwdetgeompar.h"
-#include "hgeomvolume.h"
-#include "hgeomcompositevolume.h"
 
-#include "TError.h"
 #include "TRandom3.h"
 #include "TVector2.h"
 
@@ -90,13 +87,13 @@ HFwDetStrawDigitizer::~HFwDetStrawDigitizer()
 void HFwDetStrawDigitizer::initVariables(void)
 {
     // initialize the variables in constructor
-    pGeantFwDetCat = NULL;
-    pStrawCalCat = NULL;
-    pStrawDigiPar = NULL;
+    pGeantFwDetCat = nullptr;
+    pStrawCalCat = nullptr;
+    pStrawDigiPar = nullptr;
     fLoc.setNIndex(4);
     fLoc.set(4,0,0,0,0);
 
-    rand = NULL;
+    rand = nullptr;
 }
 
 Bool_t HFwDetStrawDigitizer::init(void)
@@ -165,6 +162,14 @@ Bool_t HFwDetStrawDigitizer::reinit()
     threshold = pStrawDigiPar->getThreshold();
     efficiency = pStrawDigiPar->getEfficiency();
 
+    for (Int_t m = 0; m < FWDET_STRAW_MAX_MODULES; ++m)
+        for (Int_t l = 0; l < FWDET_STRAW_MAX_LAYERS; ++l)
+        {
+            Float_t a = pStrawGeomPar->getLayerRotation(m, l) * TMath::DegToRad();
+            cosa[m][l] = TMath::Cos(a);
+            sina[m][l] = TMath::Sin(a);
+        }
+
 #ifdef VERBOSE_MODE
     pStrawDigiPar->print();
 #endif
@@ -206,9 +211,12 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             if (rnd > efficiency)
                 continue;
 
-            Int_t layer = geantLayer;
+            Int_t lay = geantLayer;
             Int_t plane = -1;
             Int_t cell = -1;
+
+            if(mod > FWDET_STRAW_MAX_MODULES)
+                continue; // skip the other detectors of the FwDet
 
             Int_t l_panel = (Int_t) geantCell/100 - 1;
             Int_t l_block = (Int_t) (geantCell%100)/10 - 1;
@@ -234,13 +242,29 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             ghit->getHit(xHit, zHit,  yHit, pxHit, pzHit, pyHit, tofHit, trackLength, eHit);
             trackNumber = ghit->getTrackNumber();
 
+            // in the sim, z-axis is inverted
+            pzHit = -pzHit;
+            zHit = -zHit;
+
             fLoc[0] = mod;
-            fLoc[1] = layer;
+            fLoc[1] = lay;
             fLoc[2] = plane;
             fLoc[3] = cell;
 
-            Float_t cell_x = pStrawGeomPar->getOffsetX(mod, layer, plane) + cell*pStrawGeomPar->getStrawPitch(mod, layer);
-            Float_t cell_z = pStrawGeomPar->getOffsetZ(mod, layer, plane);
+            Float_t cell_x = pStrawGeomPar->getOffsetX(mod, lay, plane) + cell*pStrawGeomPar->getStrawPitch(mod, lay);
+            Float_t cell_z = pStrawGeomPar->getOffsetZ(mod, lay, plane);
+
+            Float_t hit_x = cell_x + xHit;
+            Float_t hit_y = yHit;
+            Float_t hit_z = cell_z + zHit;
+
+            Float_t loc_x = hit_x*cosa[mod][lay] - hit_y*sina[mod][lay];
+            Float_t loc_y = hit_x*sina[mod][lay] + hit_y*cosa[mod][lay];
+            Float_t loc_z = hit_z;
+
+            hit_x = xHit + cell_x;
+            hit_y = yHit;
+            hit_z = zHit + cell_z;
 
             TVector2 v_n(pzHit, pxHit);                 // track vector dir.  n
             v_n = v_n/v_n.Mod();
@@ -260,7 +284,7 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             Float_t adc = eloss*eloss_slope + eloss_offset;
 
 #ifdef VERBOSE_MODE
-printf("     g (m=%d l=%d c=%d) -> p=%d s=%03d  u=%f  el=%f tof=%f dr=%f  adc=%f time=%f  p=%f (%f,%f)\n", geantModule, geantLayer, geantCell, plane, cell, cell_x, eloss, tof, radius, adc, time, sqrt(pxHit*pxHit + pyHit*pyHit + pzHit*pzHit), pxHit/pzHit, pyHit/pzHit);
+printf("     g (m=%d l=%d c=%d) -> p=%d s=%03d  u=%f  el=%.4f tof=%.3f dr=%f  adc=%.2f time=%f  p=%f (%f,%f) loc=(%f,%f,%f)\n", geantModule, geantLayer, geantCell, plane, cell, cell_x, eloss, tof, radius, adc, time, sqrt(pxHit*pxHit + pyHit*pyHit + pzHit*pzHit), pxHit/pzHit, pyHit/pzHit, loc_x, loc_y, loc_z);
 #endif
 
             if (adc_reso > 0.0)
@@ -281,14 +305,14 @@ printf("     g (m=%d l=%d c=%d) -> p=%d s=%03d  u=%f  el=%f tof=%f dr=%f  adc=%f
             time += start_offset;
 
 #ifdef VERBOSE_MODE
-printf("     resolution effects                                                             adc=%f time=%f\n", adc, time);
+printf("     resolution effects                                                             adc=%.2f time=%f\n", adc, time);
 #endif
 
-            Bool_t res = fillStrawCalSim(time, adc, tof, eloss, radius, cell_x, cell_z, cell);
+            Bool_t res = fillStrawCalSim(time, adc, tof, eloss, radius, cell_x, cell_z, cell, loc_x, loc_y, loc_z);
             if (!res)
             {
                 Error("HFwDetStrawDigitizer::execute()",
-                "Can't fill from %d for m=%d l=%d p=%d s=%d", geantCell, mod, layer, plane, cell);
+                "Can't fill from %d for m=%d l=%d p=%d s=%d", geantCell, mod, lay, plane, cell);
 //                 return kFALSE;
             }
         }
@@ -296,7 +320,7 @@ printf("     resolution effects                                                 
     return 0;
 }
 
-Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw)
+Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw, Float_t lx, Float_t ly, Float_t lz)
 {
     // function creat and fill object HFwDetStrawCalSim
     // return kFALSE if data was not stored to the category
@@ -304,7 +328,7 @@ Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t time, Float_t adc, Float_t 
     Int_t first = 1;
 
     HFwDetStrawCalSim * cal = (HFwDetStrawCalSim*)pStrawCalCat->getObject(fLoc);
-    if (cal != NULL)    // straw tube ocuppied by another track
+    if (cal != nullptr)    // straw tube ocuppied by another track
     {
         if (cal->getDrift() <= radius)
         {
@@ -329,6 +353,7 @@ Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t time, Float_t adc, Float_t 
         cal->setEloss(eloss);
         cal->setTrack(trackNumber);
         cal->setP(pxHit, pyHit, pzHit);
+        cal->setHitPos(lx, ly, lz);
     }
     else
         return kFALSE;

@@ -15,7 +15,7 @@
 
 // -----   Default constructor   -------------------------------------------
 HVectorCand::HVectorCand() : TLorentzVector(),
-    fTrack(-1), fRpcTrack(-1), fNhits(0), fNDF(0), fTof(-1.0), fChi2(0.0),
+    fNhits(0), fNDF(0), fTof(-1.0), fChi2(0.0),
     dirVec(0., 0., 1.0), refVec(0., 0., 0.)
 {
     for (Int_t i = 0; i < 16; ++i) fHitInds[i] = 0;
@@ -100,8 +100,7 @@ Double_t HVectorCand::getHadesParam(Int_t ipar) const
 void HVectorCand::print() const
 {
     printf("----- VECTOR -----\n");
-    printf("   track=%d   nhits=%d   ndf=%d\n", fTrack, fNhits, fNDF);
-    printf("   indexes=");
+    printf("   nhits=%d   ndf=%d   indexes=", fNhits, fNDF);
     for (Int_t i = 0; i < fNhits; ++i)
         printf("%2d,", fHitInds[i]);
     printf("\n");

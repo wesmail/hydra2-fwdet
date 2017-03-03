@@ -237,7 +237,7 @@ bool HFwDetRpcHitFinder::fillHit(Float_t x, Float_t y, Float_t z, Float_t tof, I
     fLoc[0] = h;    // hit nr
 
     HFwDetRpcHit * hit = (HFwDetRpcHit*)pFwDetRpcHitCat->getObject(fLoc);
-    if (hit == NULL)
+    if (hit == nullptr)
     {
         hit = (HFwDetRpcHit*)pFwDetRpcHitCat->getSlot(fLoc);
         hit = new(hit) HFwDetRpcHit;

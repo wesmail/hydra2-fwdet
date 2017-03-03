@@ -25,7 +25,7 @@ ClassImp(HFwDetRpcGeomPar);
 
 HFwDetRpcGeomPar::HFwDetRpcGeomPar(const Char_t* name, const Char_t* title,
                                        const Char_t* context) :
-                                       HParCond(name, title, context), modules(0)
+                                       HParCond(name, title, context), nModules(0)
 {
     clear();
 }
@@ -43,14 +43,14 @@ void HFwDetRpcGeomPar::print() const
         cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
         cout << "Detector number:       " << m << endl;
         // prints the geometry parameters of a single detector
-        cout << "Number of layers:      " << sm_mods[m].layers << endl;
-        cout << "Module rotations:      " << sm_mods[m].modulePhi<< endl;
-        cout << "Module Z-offset:       " << sm_mods[m].moduleZ << endl;
+        cout << "Number of layers:      " << getLayers(m) << endl;
+        cout << "Module rotations:      " << getModulePhi(m) << endl;
+        cout << "Module Z-offset:       " << getModuleZ(m) << endl;
 
         cout << "Layer Y-offsets:      ";
-        for (Int_t i = 0; i < sm_mods[m].layers; ++i)
+        for (Int_t i = 0; i < getLayers(m); ++i)
         {
-            cout << " " << sm_mods[m].layerY[i];
+            cout << " " << getLayerY(m, i);
         }
         cout << endl;
     }
@@ -61,17 +61,17 @@ void HFwDetRpcGeomPar::clear()
     for (Int_t i = 0; i < FWDET_RPC_MAX_MODULES; ++i)
     {
         // clear all variables
-        sm_mods[i].layers = 0;
-        sm_mods[i].modulePhi = 0;
-        sm_mods[i].moduleZ = 0;
-        sm_mods[i].layerY = 0;
+        sm_mods[i].nLayers = 0;
+        sm_mods[i].fModulePhi = 0;
+        sm_mods[i].fModuleZ = 0;
+        sm_mods[i].fLayerY = 0;
     }
 }
 
 Int_t HFwDetRpcGeomPar::getModules() const
 {
     // return number of layers in single detector
-    return modules;
+    return nModules;
 }
 
 Int_t HFwDetRpcGeomPar::getLayers(Int_t m) const
@@ -79,7 +79,7 @@ Int_t HFwDetRpcGeomPar::getLayers(Int_t m) const
     // return number of layers in module 'm'
     // m -- module number
     if (m < getModules())
-        return sm_mods[m].layers;
+        return sm_mods[m].nLayers;
     else
         return -1;
 }
@@ -89,7 +89,7 @@ Float_t HFwDetRpcGeomPar::getModulePhi(Int_t m) const
     // return number of layers in module 'm'
     // m -- module number
     if (m < getModules())
-        return sm_mods[m].modulePhi;
+        return sm_mods[m].fModulePhi;
     else
         return 0.0;
 }
@@ -99,7 +99,7 @@ Float_t HFwDetRpcGeomPar::getModuleZ(Int_t m) const
     // return number of layers in module 'm'
     // m -- module number
     if (m < getModules())
-        return sm_mods[m].moduleZ;
+        return sm_mods[m].fModuleZ;
     else
         return 0.0;
 }
@@ -109,7 +109,7 @@ Float_t HFwDetRpcGeomPar::getLayerY(Int_t m, Int_t l) const
     // return number of planes in layer 'l'
     // l -- layer number
     if (m < getModules() && l < getLayers(m))
-        return sm_mods[m].layerY[l];
+        return sm_mods[m].fLayerY[l];
     else
         return -1;
 }
@@ -117,15 +117,15 @@ Float_t HFwDetRpcGeomPar::getLayerY(Int_t m, Int_t l) const
 void HFwDetRpcGeomPar::setModules(int m)
 {
     if (m <= FWDET_RPC_MAX_MODULES)
-        modules = m;
+        nModules = m;
 }
 
 void HFwDetRpcGeomPar::setLayers(Int_t m, Int_t l)
 {
     // set number of layers, this function automatically
     // resizes all depending arrays
-    sm_mods[m].layers = l;
-    sm_mods[m].layerY.Set(l);
+    sm_mods[m].nLayers = l;
+    sm_mods[m].fLayerY.Set(l);
 }
 
 void HFwDetRpcGeomPar::setModulePhi(Int_t m, Float_t r)
@@ -135,7 +135,7 @@ void HFwDetRpcGeomPar::setModulePhi(Int_t m, Float_t r)
     // b -- number of blocks
     if (m < getModules())
     {
-        sm_mods[m].modulePhi = r;
+        sm_mods[m].fModulePhi = r;
     }
 }
 
@@ -146,7 +146,7 @@ void HFwDetRpcGeomPar::setModuleZ(Int_t m, Float_t z)
     // b -- number of blocks
     if (m < getModules())
     {
-        sm_mods[m].moduleZ = z;
+        sm_mods[m].fModuleZ = z;
     }
 }
 
@@ -157,7 +157,7 @@ void HFwDetRpcGeomPar::setLayerY(Int_t m, Int_t l, Float_t o)
     // s -- number of panels
     if (m < getModules() && l < getLayers(m))
     {
-        sm_mods[m].layerY[l] = o;
+        sm_mods[m].fLayerY[l] = o;
     }
 }
 
@@ -169,19 +169,19 @@ void HFwDetRpcGeomPar::putParams(HParamList* l)
     Int_t total_layers = 0;
 
     // first find total number of layers
-    for (Int_t i = 0; i < modules; ++i)
+    for (Int_t i = 0; i < nModules; ++i)
     {
         total_layers += getLayers(i);
     }
 
-    TArrayI nLayers(modules);
-    TArrayF fModulePhi(modules);
-    TArrayF fModuleZ(modules);
-    TArrayF fLayerY(total_layers);
+    TArrayI par_layers(nModules);
+    TArrayF par_modulePhi(nModules);
+    TArrayF par_moduleZ(nModules);
+    TArrayF par_layerY(total_layers);
 
     Int_t cnt_layers = 0;
 
-    for (Int_t i = 0; i < modules; ++i)
+    for (Int_t i = 0; i < nModules; ++i)
     {
         // get number of layers
         Int_t layers = getLayers(i);
@@ -189,9 +189,9 @@ void HFwDetRpcGeomPar::putParams(HParamList* l)
         Float_t offZ = getModuleZ(i);
 
         // set number of layers
-        nLayers.SetAt(layers, i);
-        fModulePhi.SetAt(rot, i);
-        fModuleZ.SetAt(offZ, i);
+        par_layers.SetAt(layers, i);
+        par_modulePhi.SetAt(rot, i);
+        par_moduleZ.SetAt(offZ, i);
 
         // iterate over layers
         for (Int_t l = 0; l < layers; ++l)
@@ -199,18 +199,18 @@ void HFwDetRpcGeomPar::putParams(HParamList* l)
             Int_t offset = getLayerY(i, l);
 
             // set number of panels
-            fLayerY.SetAt(offset, cnt_layers + l);
+            par_layerY.SetAt(offset, cnt_layers + l);
         }
 
         cnt_layers += layers;
     }
 
 
-    l->add("modules",   modules);
-    l->add("layers",    nLayers);
-    l->add("modulePhi", fModulePhi);
-    l->add("moduleZ",   fModuleZ);
-    l->add("layerY",    fLayerY);
+    l->add("fModules",   nModules);
+    l->add("fLayers",    par_layers);
+    l->add("fModulePhi", par_modulePhi);
+    l->add("fModuleZ",   par_moduleZ);
+    l->add("fLayerY",    par_layerY);
 }
 
 Bool_t HFwDetRpcGeomPar::getParams(HParamList* l)
@@ -218,37 +218,37 @@ Bool_t HFwDetRpcGeomPar::getParams(HParamList* l)
     // gets the parameters from the list (read from input)
     if (!l) return kFALSE;
 
-    Int_t nModules;
-    if (!l->fill("modules", &nModules))
+    Int_t par_modules;
+    if (!l->fill("nModules", &par_modules))
         return kFALSE;
 
-    TArrayI nLayers(nModules);
-    if (!l->fill("layers", &nLayers))
+    TArrayI par_layers(par_modules);
+    if (!l->fill("nLayers", &par_layers))
         return kFALSE;
 
-    if (nLayers.GetSize() != nModules)
+    if (par_layers.GetSize() != par_modules)
     {
         Error("HFwDetRpcGeomPar::getParams(HParamList* l)",
               "Array size of layers does not fit to number of detectors");
         return kFALSE;
     }
 
-    TArrayF fModulePhi(nModules);
-    if (!l->fill("modulePhi", &fModulePhi))
+    TArrayF par_modulePhi(par_modules);
+    if (!l->fill("fModulePhi", &par_modulePhi))
         return kFALSE;
 
-    if (fModulePhi.GetSize() != nModules)
+    if (par_modulePhi.GetSize() != par_modules)
     {
         Error("HFwDetRpcGeomPar::getParams(HParamList* l)",
               "Array size of modulePhi does not fit to number of detectors");
         return kFALSE;
     }
 
-    TArrayF fModuleZ(nModules);
-    if (!l->fill("moduleZ", &fModuleZ))
+    TArrayF par_moduleZ(par_modules);
+    if (!l->fill("fModuleZ", &par_moduleZ))
         return kFALSE;
 
-    if (fModuleZ.GetSize() != nModules)
+    if (par_moduleZ.GetSize() != par_modules)
     {
         Error("HFwDetRpcGeomPar::getParams(HParamList* l)",
               "Array size of moduleZ does not fit to number of detectors");
@@ -256,40 +256,40 @@ Bool_t HFwDetRpcGeomPar::getParams(HParamList* l)
     }
 
     Int_t total_layers = 0;
-    for (Int_t d = 0; d < nModules; ++d)
+    for (Int_t d = 0; d < par_modules; ++d)
     {
-        total_layers += nLayers[d];
+        total_layers += par_layers[d];
     }
 
-    TArrayF fLayerY;
-    if (!l->fill("layerY", &fLayerY))
+    TArrayF par_layerY;
+    if (!l->fill("fLayerY", &par_layerY))
         return kFALSE;
 
-    if (fLayerY.GetSize() != total_layers)
+    if (par_layerY.GetSize() != total_layers)
     {
         Error("HFwDetRpcGeomPar::getParams(HParamList* l)",
-              "Array size of panels=%d does not fit to number of layers=%d", nLayers.GetSize(), total_layers);
+              "Array size of panels=%d does not fit to number of layers=%d", par_layers.GetSize(), total_layers);
         return kFALSE;
     }
 
-    setModules(nModules);
+    setModules(par_modules);
 
     Int_t cnt_layers = 0;
-    for (Int_t i = 0; i < modules; ++i)
+    for (Int_t i = 0; i < par_modules; ++i)
     {
         // get number of layers
-        Int_t layers = nLayers[i];
+        Int_t layers = par_layers[i];
 
         // set number of layers
         setLayers(i, layers);
 
-        setModulePhi(i, fModulePhi[i]);
-        setModuleZ(i, fModuleZ[i]);
+        setModulePhi(i, par_modulePhi[i]);
+        setModuleZ(i, par_moduleZ[i]);
 
         // iterate over layers
         for (Int_t l = 0; l < layers; ++l)
         {
-            Float_t offset = fLayerY[cnt_layers + l];
+            Float_t offset = par_layerY[cnt_layers + l];
 
             // set number of planes
             setLayerY(i, l, offset);

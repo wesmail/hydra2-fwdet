@@ -12,7 +12,7 @@ private:
     Int_t   fCell;      // cell number in fLayer (straw tube number)
     Float_t fTime;      // hit detection time (tof + drift_time - start_offset)
     Float_t fADC;       // straw energy loss
-    Float_t fX;         // X-coordinate in the lab system
+    Float_t fU;         // U-coordinate in the lab system
     Float_t fZ;         // Z-coordinate in the lab system
     Int_t   fStraw;     // straw number in the plane
 
@@ -27,7 +27,7 @@ public:
     Int_t getPlane() const { return fPlane; }
     Int_t getTube() const { return fCell; }
     Float_t getTime() const { return fTime; }
-    Float_t getX() const { return fX; }
+    Float_t getU() const { return fU; }
 
     void  setAddress(Char_t m, Char_t l, Char_t p, Int_t c);
     void  setHit(Float_t time, Float_t adc, Float_t x, Float_t z, Int_t s);
@@ -54,20 +54,20 @@ inline void HFwDetStrawCal::setAddress(Char_t m, Char_t l, Char_t p, Int_t c)
     fCell   = c;
 }
 
-inline void HFwDetStrawCal::getHit(Float_t& time, Float_t& adc, Float_t& x, Float_t& z, Int_t& s) const
+inline void HFwDetStrawCal::getHit(Float_t& time, Float_t& adc, Float_t& u, Float_t& z, Int_t& s) const
 {
     time = fTime;
     adc  = fADC;
-    x    = fX;
+    u    = fU;
     z    = fZ;
     s    = fStraw;
 }
 
-inline void HFwDetStrawCal::setHit(Float_t time, Float_t adc, Float_t x, Float_t z, Int_t s)
+inline void HFwDetStrawCal::setHit(Float_t time, Float_t adc, Float_t u, Float_t z, Int_t s)
 {
     fTime  = time;
     fADC   = adc;
-    fX     = x;
+    fU     = u;
     fZ     = z;
     fStraw = s;
 }
