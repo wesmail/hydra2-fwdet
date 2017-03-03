@@ -8,11 +8,13 @@ class HCategory;
 class HFwDetStrawDigiPar;
 class HFwDetStrawGeomPar;
 
+class TRandom3;
+
 class HFwDetStrawDigitizer : public HReconstructor
 {
 private:
     HCategory*          pGeantFwDetCat;
-    HCategory*          pFwDetStrawCalCat;
+    HCategory*          pStrawCalCat;
     HFwDetStrawDigiPar* pStrawDigiPar;
     HFwDetStrawGeomPar* pStrawGeomPar;
     HLocation fLoc;
@@ -43,7 +45,20 @@ public:
     Bool_t finalize() { return kTRUE; }
 
 private:
-    Bool_t fillStrawCalSim(Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw);
+    Bool_t fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw);
+
+    Float_t calcDriftTime(Float_t x) const;
+
+    TRandom3 *rand;
+
+    Float_t adc_reso;
+    Float_t eloss_slope;
+    Float_t eloss_offset;
+    Float_t time_reso;
+    Float_t dt_p[5];
+    Float_t start_offset;
+    Float_t threshold;
+    Float_t efficiency;
 
     ClassDef(HFwDetStrawDigitizer, 0);
 };

@@ -17,16 +17,16 @@ ClassImp(HFwDetStrawCal);
 
 HFwDetStrawCal::HFwDetStrawCal()
 {
-    fModule      = -1;
-    fLayer       = -1;
-    fPlane       = -1;
-    fCell        = -1;
+    fModule = -1;
+    fLayer  = -1;
+    fPlane  = -1;
+    fCell   = -1;
 
-    fTime = fEloss = -100000.;
-    fDriftRad = 0;
-    fX = 0;
-    fZ = 0;
-    fStraw = -1000;
+    fTime   = -100000.;
+    fADC    = -100000.;
+    fX      = 0;
+    fZ      = 0;
+    fStraw  = -1000;
 }
 
 HFwDetStrawCal::~HFwDetStrawCal()

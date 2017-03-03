@@ -60,11 +60,13 @@
 #include "hgeomcompositevolume.h"
 
 #include "TError.h"
-#include "TRandom.h"
+#include "TRandom3.h"
 #include "TVector2.h"
 
 #include <cstring>
 using namespace std;
+
+// #define VERBOSE_MODE 1
 
 ClassImp(HFwDetStrawDigitizer);
 
@@ -89,19 +91,23 @@ void HFwDetStrawDigitizer::initVariables(void)
 {
     // initialize the variables in constructor
     pGeantFwDetCat    = NULL;
-    pFwDetStrawCalCat = NULL;
+    pStrawCalCat      = NULL;
     pStrawDigiPar     = NULL;
     fLoc.setNIndex(4);
     fLoc.set(4,0,0,0,0);
+
+    rand = NULL;
 }
 
 Bool_t HFwDetStrawDigitizer::init(void)
 {
+    rand = new TRandom3(0); 
+
     // initializes the task
 
     // find the Forward detector in the HADES setup
-    HFwDetDetector* pFwDet = (HFwDetDetector*)(gHades->getSetup()->getDetector("FwDet"));
-    if (!pFwDet)
+    HFwDetDetector* p = (HFwDetDetector*)(gHades->getSetup()->getDetector("FwDet"));
+    if (!p)
     {
         Error("FwDetStrawDigitizer::init","No Forward Detector found");
         return kFALSE;
@@ -116,8 +122,8 @@ Bool_t HFwDetStrawDigitizer::init(void)
     }
 
     // build the Calibration category
-    pFwDetStrawCalCat = pFwDet->buildCategory(catFwDetStrawCal);
-    if (!pFwDetStrawCalCat)
+    pStrawCalCat = p->buildCategory(catFwDetStrawCal, kTRUE);
+    if (!pStrawCalCat)
     {
         Error("HFwDetStrawDigitizer::init()","Cal category not created");
         return kFALSE;
@@ -144,6 +150,25 @@ Bool_t HFwDetStrawDigitizer::init(void)
 
 Bool_t HFwDetStrawDigitizer::reinit()
 {
+    adc_reso = pStrawDigiPar->getAnalogReso();
+    eloss_slope = pStrawDigiPar->getElossSlope();
+    eloss_offset = pStrawDigiPar->getElossOffset();
+
+    time_reso = pStrawDigiPar->getTimeReso();
+    dt_p[0] = pStrawDigiPar->getDriftTimePar(0);
+    dt_p[1] = pStrawDigiPar->getDriftTimePar(1);
+    dt_p[2] = pStrawDigiPar->getDriftTimePar(2);
+    dt_p[3] = pStrawDigiPar->getDriftTimePar(3);
+    dt_p[4] = pStrawDigiPar->getDriftTimePar(4);
+
+    start_offset = pStrawDigiPar->getStartOffset();
+    threshold = pStrawDigiPar->getThreshold();
+    efficiency = pStrawDigiPar->getEfficiency();
+
+#ifdef VERBOSE_MODE
+    pStrawDigiPar->print();
+#endif
+
     return kTRUE;
 }
 
@@ -152,9 +177,10 @@ Int_t HFwDetStrawDigitizer::execute(void)
     // Digitization of GEANT hits and storage in HFwDetStrawCalSim
     // gErrorIgnoreLevel = kFatal;
 
-    Float_t time_reso = pStrawDigiPar->getTimeReso();
-    Float_t eloss_reso = pStrawDigiPar->getElossReso();
-    Float_t drift_reso = pStrawDigiPar->getDriftReso();
+#ifdef VERBOSE_MODE
+int cnt = -1;
+printf("<<----------------------------------------------->>\n");
+#endif
 
     Int_t entries = pGeantFwDetCat->getEntries();
     for(Int_t i = 0; i < entries; ++i)
@@ -162,9 +188,24 @@ Int_t HFwDetStrawDigitizer::execute(void)
         HGeantFwDet* ghit = (HGeantFwDet*)pGeantFwDetCat->getObject(i);
         if (ghit)
         {
+#ifdef VERBOSE_MODE
+            ++cnt;
+#endif
             ghit->getAddress(geantModule, geantLayer, geantCell);
 
             Int_t mod = geantModule;
+
+            if(mod > FWDET_STRAW_MAX_MODULES)
+                continue; // skip the other detectors of the FwDet
+
+            // detection efficiency
+            Float_t rnd = rand->Rndm();
+#ifdef VERBOSE_MODE
+printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
+#endif
+            if (rnd > efficiency)
+                continue;
+
             Int_t layer = geantLayer;
             Int_t plane = -1;
             Int_t cell = -1;
@@ -187,9 +228,6 @@ Int_t HFwDetStrawDigitizer::execute(void)
             //     | number of straw in current panel |
             cell = ((n_blocks >> 1) * n_straws ) * l_panel +
                 (l_block >> 1) * n_straws + l_straw;
-
-            if(mod > FWDET_STRAW_MAX_MODULES)
-                continue; // skip the other detectors of the FwDet
 
             // straws are rotated in the geo by 90 degrees around x axis
             // y and z must be swap
@@ -218,27 +256,35 @@ Int_t HFwDetStrawDigitizer::execute(void)
 
             Float_t tof = tofHit;
             Float_t eloss = eHit;
+            Float_t time = tof + calcDriftTime(radius);
+            Float_t adc = eloss*eloss_slope + eloss_offset;
+
+#ifdef VERBOSE_MODE
+printf("     g (m=%d l=%d c=%d) -> m=%d l=%d p=%d s=%03d  el=%f tof=%f dr=%f  adc=%f time=%f  p=%f\n", geantModule, geantLayer, geantCell, mod, layer, plane, cell, eloss, tof, radius, adc, time, sqrt(pxHit*pxHit + pyHit*pyHit + pzHit*pzHit));
+#endif
+
+            if (adc_reso > 0.0)
+            {
+                adc += + rand->Gaus() * adc_reso;
+                adc = TMath::Max(Float_t(0), adc);
+            }
+
+            if (adc < threshold)
+                continue;
 
             if (time_reso > 0.0)
             {
-                tof = tof + gRandom->Gaus() * time_reso;
-                tof = TMath::Max(Float_t(0), tof);
+                time += rand->Gaus() * time_reso;
+                time = TMath::Max(Float_t(0), time);
             }
 
-            if (eloss_reso > 0.0)
-            {
-                eloss = eloss + gRandom->Gaus() * eloss_reso;
-                eloss = TMath::Max(Float_t(0), eloss);
-            }
+            time += start_offset;
 
-            if (drift_reso > 0.0)
-            {
-                radius = radius + gRandom->Gaus() * drift_reso;
-                radius = TMath::Max(Float_t(0), radius);
-                radius = TMath::Min(radius, pStrawGeomPar->getStrawRadius(mod, layer));
-            }
+#ifdef VERBOSE_MODE
+printf("     resolution effects                                                             adc=%f time=%f\n", adc, time);
+#endif
 
-            Bool_t res =  fillStrawCalSim(tof, eloss, radius, cell_x, cell_z, cell);
+            Bool_t res = fillStrawCalSim(time, adc, tof, eloss, radius, cell_x, cell_z, cell);
             if (!res)
             {
                 Error("HFwDetStrawDigitizer::execute()",
@@ -250,16 +296,16 @@ Int_t HFwDetStrawDigitizer::execute(void)
     return 0;
 }
 
-Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw)
+Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t time, Float_t adc, Float_t tof, Float_t eloss, Float_t radius, Float_t posX, Float_t posZ, Int_t straw)
 {
     // function creat and fill object HFwDetStrawCalSim
     // return kFALSE if data was not stored to the category
 
     Int_t first = 1;
 
-    HFwDetStrawCalSim * cal = (HFwDetStrawCalSim*)pFwDetStrawCalCat->getObject(fLoc);
-    if (cal != NULL)
-    {                                     // straw tube ocupaed by another track:
+    HFwDetStrawCalSim * cal = (HFwDetStrawCalSim*)pStrawCalCat->getObject(fLoc);
+    if (cal != NULL)    // straw tube ocuppied by another track
+    {
         if (cal->getDrift() <= radius)
         {
             cal->setTrack(trackNumber);
@@ -269,18 +315,33 @@ Bool_t HFwDetStrawDigitizer::fillStrawCalSim(Float_t tof, Float_t eloss, Float_t
     }
     else
     {
-        cal = (HFwDetStrawCalSim*)pFwDetStrawCalCat->getSlot(fLoc);
+        cal = (HFwDetStrawCalSim*)pStrawCalCat->getSlot(fLoc);
     }
     if (cal)
     {
         if (first) cal = new(cal) HFwDetStrawCalSim;
         cal->setAddress(fLoc[0], fLoc[1], fLoc[2], fLoc[3]);
-//         cal->setHit(tofHit, eHit, radius, posX, posZ, 0);
-        cal->setHit(tofHit, eHit, radius, posX, posZ, straw);
+
+        cal->setHit(time, adc, posX, posZ, straw);
+
+        cal->setToF(tof);
+        cal->setDrift(radius);
+        cal->setEloss(eloss);
         cal->setTrack(trackNumber);
+        cal->setP(pxHit, pyHit, pzHit);
     }
     else
         return kFALSE;
 
     return kTRUE;
+}
+
+Float_t HFwDetStrawDigitizer::calcDriftTime(Float_t x) const
+{
+    Float_t x2 = x * x;
+    Float_t x3 = x2 * x;
+    Float_t x4 = x3 * x;
+
+    Float_t dt = dt_p[0] + dt_p[1]*x + dt_p[2]*x2 + dt_p[3]*x3 + dt_p[4]*x4;
+    return dt;
 }

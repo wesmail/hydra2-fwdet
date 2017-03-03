@@ -43,6 +43,7 @@
 
 using namespace std;
 
+// #define VERBOSE_MODE 1
 
 // -----   Default constructor   -------------------------------------------
 HFwDetStrawVectorFinder::HFwDetStrawVectorFinder() : HReconstructor()
@@ -405,7 +406,7 @@ void HFwDetStrawVectorFinder::getHits()
 
         Int_t vplane = layer * FWDET_STRAW_MAX_PLANES + addr_plane;
 
-        fHitPl[module][vplane].insert(pair<Int_t,Int_t>(tube, i));
+        fHitPl[module][vplane].insert(HitPair(tube, i));
     }
 
     // Merge neighbouring hits from two planes of one layer.
@@ -454,7 +455,7 @@ void HFwDetStrawVectorFinder::getHits()
                 {
                     if (!tube1_has_partner)
                     {
-                        fHit[m][i1].push_back(pair<Int_t,Int_t>(indx1, -1));
+                        fHit[m][i1].push_back(DoubletPair(indx1, -1));
                     }
                     ++it1;
                     tube1_has_partner = kFALSE;
@@ -474,7 +475,7 @@ void HFwDetStrawVectorFinder::getHits()
                     {
                         if (!tube2_has_partner)
                         {
-                            fHit[m][i1].push_back(pair<Int_t,Int_t>(-1, indx2));
+                            fHit[m][i1].push_back(DoubletPair(-1, indx2));
                         }
 
                         ++it2;   // searching for [k, k] case
@@ -485,7 +486,7 @@ void HFwDetStrawVectorFinder::getHits()
 
                     if (tube_diff == 1)     // we have first possible pair
                     {
-                        fHit[m][i1].push_back(pair<Int_t,Int_t>(indx1, indx2));
+                        fHit[m][i1].push_back(DoubletPair(indx1, indx2));
 
                         tube1_has_partner = kTRUE;
 
@@ -497,7 +498,7 @@ void HFwDetStrawVectorFinder::getHits()
 
                     if (tube_diff == 0)     // we have second possible pair
                     {
-                        fHit[m][i1].push_back(pair<Int_t,Int_t>(indx1, indx2));
+                        fHit[m][i1].push_back(DoubletPair(indx1, indx2));
 
                         tube2_has_partner = kTRUE;
 
@@ -511,7 +512,7 @@ void HFwDetStrawVectorFinder::getHits()
                     {
                         if (!tube1_has_partner)
                         {
-                            fHit[m][i1].push_back(pair<Int_t,Int_t>(indx1, -1));
+                            fHit[m][i1].push_back(DoubletPair(indx1, -1));
                         }
                         tube1_has_partner = kFALSE;
                         ++it1;  // searching for [k, k] case
@@ -527,7 +528,7 @@ void HFwDetStrawVectorFinder::getHits()
 
                 if (!tube2_has_partner)
                 {
-                    fHit[m][i1].push_back(pair<Int_t,Int_t>(-1, indx2));
+                    fHit[m][i1].push_back(DoubletPair(-1, indx2));
                 }
 
                 ++it2;
@@ -547,7 +548,6 @@ void HFwDetStrawVectorFinder::makeVectors()
         Int_t patt = 0, ndoubl = fHit[m][l].size();
         HFwDetStrawCal *hit = NULL;
 
-//         cout << " Doublets: " << m << " " << ndoubl << endl;
         for (Int_t id = 0; id < ndoubl; ++id)
         {
             Int_t indx1 = fHit[m][l][id].first;
@@ -855,7 +855,7 @@ void HFwDetStrawVectorFinder::highRes()
                 Int_t side = hit->getPlane();
                 Int_t plane = lay*2 + side;
                 uu[plane][0] = hit->getX();
-                uu[plane][1] = hit->getDrift(); // drift distance with error
+                uu[plane][1] = 2.5; /*hit->getDrift() FIXME: no drift radius anymore*/; // drift distance with error
                 patt |= (1 << plane);
                 //fUzi[plane][0] = hit->GetSegment();
                 fUzi[plane][HITNR] = vec->getHitIndex(h);
@@ -1222,8 +1222,8 @@ Double_t HFwDetStrawVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars
         onoff = patt & (1 << i);
         if (!onoff) continue;
         HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(hinds[i]);
-        Double_t uc = (hit->getX() + lr[i] * hit->getDrift()) * fCosa[i]; // resolved ambiguity !!!
-        Double_t us = (hit->getX() + lr[i] * hit->getDrift()) * fSina[i]; // resolved ambiguity !!!
+        Double_t uc = 0.0;// FIXME drift: (hit->getX() + lr[i] * hit->getDrift()) * fCosa[i]; // resolved ambiguity !!!
+        Double_t us = 0.0;// FIXME drift: (hit->getX() + lr[i] * hit->getDrift()) * fSina[i]; // resolved ambiguity !!!
         b[0] += uc;
         b[1] += us;
         b[2] += uc * fDz[i];
@@ -1248,7 +1248,7 @@ Double_t HFwDetStrawVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars
         Double_t y = pars[1] + pars[3] * fDz[i];
         Double_t u = x * fCosa[i] + y * fSina[i];
         HFwDetStrawCal *hit = (HFwDetStrawCal*) pHits->getObject(hinds[i]);
-        Double_t du = (u - hit->getX() - lr[i] * hit->getDrift()) / fErrU;
+        Double_t du = (u - hit->getX() - lr[i] * 5.05); // FIXME drift:  hit->getDrift()) / fErrU;
         chi2 += du * du;
     }
     return chi2;

@@ -60,6 +60,7 @@ void rootlogon(TString additional_libs           = "",
    common_libs += "Emc ";
    common_libs += "Rpc ";
    common_libs += "Wall ";
+   common_libs += "FwDet ";
    common_libs += "PionTracker ";
    common_libs += "MdcTrackD ";
    common_libs += "MdcTrackG ";

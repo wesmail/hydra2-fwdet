@@ -65,6 +65,9 @@ private:
 
     Bool_t isSimulation;                        // flag to mark simulation run
 
+    typedef std::pair<Int_t, Int_t> HitPair;
+    typedef std::pair<Int_t, Int_t> DoubletPair;
+
     Int_t fNpass;                               // Number of reco. passes
     Int_t fIndx0[FWDET_STRAW_MAX_MODULES];      // start indices of vectors for different passes
 
@@ -81,21 +84,21 @@ private:
     std::vector<HFwDetStrawVector*> fVectorsHigh[FWDET_STRAW_MAX_MODULES]; //! track vectors for stations (high resolution)
     Double_t fUz[FWDET_STRAW_MAX_VPLANES/2];   // hit float data
     Double_t fUzi[FWDET_STRAW_MAX_VPLANES/2][VF_SIZE];  // hit int data
-    Double_t fDz[FWDET_STRAW_MAX_VPLANES];                     // geometrical constants (Z-distances from layer 0)
-    Double_t fCosa[FWDET_STRAW_MAX_VPLANES];                   // geometrical constants (cos of stereo angles)
-    Double_t fSina[FWDET_STRAW_MAX_VPLANES];                   // geometrical constants (sin of stereo angles)
-    std::map<Int_t,TDecompLU*> fLus;              //! system matrices (for different hit layer patterns)
-    Double_t fLRErrU;                               // hit meas. error for LR
-    Double_t fHRErrU;                               // hit meas. error for HR
-    Double_t fErrU;                                 // hit meas. error
-    Double_t fLRCutChi2;                            // Chi2-cut
-    Double_t fHRCutChi2;                            // Chi2-cut
-    Int_t fMinHits;                               // Min. number of hits on track to do fit
-    Double_t fZ0[FWDET_STRAW_MAX_MODULES];      // Z-positions of the first layers
+    Double_t fDz[FWDET_STRAW_MAX_VPLANES];      // Z-distances from layer 0
+    Double_t fCosa[FWDET_STRAW_MAX_VPLANES];    // cos of stereo angles
+    Double_t fSina[FWDET_STRAW_MAX_VPLANES];    // sin of stereo angles
+    std::map<Int_t,TDecompLU*> fLus;            //! system matrices (for different hit layer patterns)
+    Double_t fLRErrU;                   // hit meas. error for LR
+    Double_t fHRErrU;                   // hit meas. error for HR
+    Double_t fErrU;                     // hit meas. error
+    Double_t fLRCutChi2;                // Chi2-cut
+    Double_t fHRCutChi2;                // Chi2-cut
+    Int_t fMinHits;                     // Min. number of hits on track to do fit
+    Double_t fZ0[FWDET_STRAW_MAX_MODULES];  // Z-positions of the first layers
     Double_t fDtubes[FWDET_STRAW_MAX_MODULES][FWDET_STRAW_MAX_LAYERS * FWDET_STRAW_MAX_PLANES];   // max. tube difference between views
     std::map<Int_t,TMatrixDSym*> fMatr;           //! system matrices (for different hit layer patterns)
 
-    std::vector<std::pair<Int_t,Int_t> > fHit[FWDET_STRAW_MAX_MODULES][FWDET_STRAW_MAX_LAYERS * FWDET_STRAW_MAX_PLANES/2]; //! Indx1,Indx2 of doublet hits
+    std::vector<DoubletPair> fHit[FWDET_STRAW_MAX_MODULES][FWDET_STRAW_MAX_LAYERS];     //! Indx1,Indx2 of doublet hits
 
     void computeMatrix();
     void getHits();

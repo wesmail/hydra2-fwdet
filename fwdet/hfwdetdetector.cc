@@ -105,7 +105,7 @@ HCategory* HFwDetDetector::buildLinearCategory(const Text_t* className, Int_t si
     return 0;
 }
 
-HCategory* HFwDetDetector::buildCategory(Cat_t cat)
+HCategory* HFwDetDetector::buildCategory(Cat_t cat, Bool_t simulation)
 {
     // gets the category if existing
     // builts and adds if not existing
@@ -119,18 +119,27 @@ HCategory* HFwDetDetector::buildCategory(Cat_t cat)
     switch (cat)
     {
         case catFwDetStrawCal:
-            pcat = buildMatrixCategory("HFwDetStrawCal", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_LAYERS, FWDET_STRAW_MAX_PLANES, FWDET_STRAW_MAX_CELLS);
+            if (simulation)
+                pcat = buildMatrixCategory("HFwDetStrawCalSim", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_LAYERS, FWDET_STRAW_MAX_PLANES, FWDET_STRAW_MAX_CELLS);
+            else
+                pcat = buildMatrixCategory("HFwDetStrawCal", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_LAYERS, FWDET_STRAW_MAX_PLANES, FWDET_STRAW_MAX_CELLS);
             break;
         case catFwDetScinCal:
             if (maxModInSetup >= 4)
             {
-                pcat = buildMatrixCategory("HFwDetScinCal", FWDET_SCIN_MAX_MODULES, FWDET_SCIN_MAX_CELLS);
+                if (simulation)
+                    pcat = buildMatrixCategory("HFwDetScinCalSim", FWDET_SCIN_MAX_MODULES, FWDET_SCIN_MAX_CELLS);
+                else
+                    pcat = buildMatrixCategory("HFwDetScinCal", FWDET_SCIN_MAX_MODULES, FWDET_SCIN_MAX_CELLS);
             }
             break;
         case catFwDetRpcCal:
             if (maxModInSetup >= 6)
             {
-                pcat = buildMatrixCategory("HFwDetRpcCal", FWDET_RPC_MAX_MODULES, FWDET_RPC_MAX_CELLS);
+                if (simulation)
+                    pcat = buildMatrixCategory("HFwDetRpcCalSim", FWDET_RPC_MAX_MODULES, FWDET_RPC_MAX_CELLS);
+                else
+                    pcat = buildMatrixCategory("HFwDetRpcCal", FWDET_RPC_MAX_MODULES, FWDET_RPC_MAX_CELLS);
             }
             break;
     default:
