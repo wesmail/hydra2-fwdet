@@ -90,9 +90,9 @@ HFwDetStrawDigitizer::~HFwDetStrawDigitizer()
 void HFwDetStrawDigitizer::initVariables(void)
 {
     // initialize the variables in constructor
-    pGeantFwDetCat    = NULL;
-    pStrawCalCat      = NULL;
-    pStrawDigiPar     = NULL;
+    pGeantFwDetCat = NULL;
+    pStrawCalCat = NULL;
+    pStrawDigiPar = NULL;
     fLoc.setNIndex(4);
     fLoc.set(4,0,0,0,0);
 
@@ -260,7 +260,7 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             Float_t adc = eloss*eloss_slope + eloss_offset;
 
 #ifdef VERBOSE_MODE
-printf("     g (m=%d l=%d c=%d) -> m=%d l=%d p=%d s=%03d  el=%f tof=%f dr=%f  adc=%f time=%f  p=%f\n", geantModule, geantLayer, geantCell, mod, layer, plane, cell, eloss, tof, radius, adc, time, sqrt(pxHit*pxHit + pyHit*pyHit + pzHit*pzHit));
+printf("     g (m=%d l=%d c=%d) -> p=%d s=%03d  u=%f  el=%f tof=%f dr=%f  adc=%f time=%f  p=%f (%f,%f)\n", geantModule, geantLayer, geantCell, plane, cell, cell_x, eloss, tof, radius, adc, time, sqrt(pxHit*pxHit + pyHit*pyHit + pzHit*pzHit), pxHit/pzHit, pyHit/pzHit);
 #endif
 
             if (adc_reso > 0.0)

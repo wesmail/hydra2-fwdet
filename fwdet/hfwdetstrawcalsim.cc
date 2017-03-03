@@ -13,6 +13,8 @@
 
 #include "hfwdetstrawcalsim.h"
 
+#include "TMath.h"
+
 ClassImp(HFwDetStrawCalSim);
 
 HFwDetStrawCalSim::HFwDetStrawCalSim() :
@@ -22,6 +24,11 @@ HFwDetStrawCalSim::HFwDetStrawCalSim() :
 
 HFwDetStrawCalSim::~HFwDetStrawCalSim()
 {
+}
+
+Float_t HFwDetStrawCalSim::getP()
+{
+    return TMath::Sqrt(px*px + py*py + pz*pz);
 }
 
 void HFwDetStrawCalSim::getP(Float_t & x, Float_t & y, Float_t & z) const

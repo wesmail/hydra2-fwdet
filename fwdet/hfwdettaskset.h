@@ -7,10 +7,13 @@
 class HFwDetTaskSet : public HTaskSet
 {
 protected:
-    Bool_t doStraw;
-    Bool_t doStrawCal;   // Up to cal level only
-    Bool_t doScin;
-    Bool_t doRpc;
+    Bool_t doStrawRaw;      // unpacker (exp)
+    Bool_t doStrawCal;      // calibrater (exp), digitizer (sim)
+    Bool_t doScinRaw;       // unpacker (exp)
+    Bool_t doScinCal;       // calibrater (exp), digitizer (sim)
+    Bool_t doRpcRaw;        // unpacker (exp)
+    Bool_t doRpcCal;        // calibrater (exp), digitizer (sim)
+    Bool_t doVectorFinder;  // tracker (exp,sim)
     void parseArguments(TString s);
 
 public:

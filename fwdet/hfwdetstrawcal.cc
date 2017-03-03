@@ -12,6 +12,7 @@
 /////////////////////////////////////////////////////////////
 
 #include "hfwdetstrawcal.h"
+#include "fwdetdef.h"
 
 ClassImp(HFwDetStrawCal);
 
@@ -31,4 +32,9 @@ HFwDetStrawCal::HFwDetStrawCal()
 
 HFwDetStrawCal::~HFwDetStrawCal()
 {
+}
+
+Int_t HFwDetStrawCal::getVPlane(Int_t m, Int_t l, Int_t p)
+{
+        return (m * FWDET_STRAW_MAX_LAYERS + l) * FWDET_STRAW_MAX_PLANES + p;
 }

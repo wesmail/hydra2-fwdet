@@ -3,10 +3,6 @@
 
 #include "hfwdetstrawcal.h"
 
-#include "TObject.h"
-
-#include <map>
-
 class HFwDetStrawCalSim : public HFwDetStrawCal
 {
 private:
@@ -32,6 +28,7 @@ public:
     void  setDrift(Double_t drift) { fDriftRad = drift; }
     void  setEloss(Double_t eloss) { fEloss = eloss; }
 
+    Float_t getP();
     void getP(Float_t & x, Float_t & y, Float_t & z) const;
     void setP(Float_t x, Float_t y, Float_t z);
 

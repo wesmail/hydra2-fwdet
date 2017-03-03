@@ -26,11 +26,13 @@ public:
     Int_t getLayer() const { return fLayer; }
     Int_t getPlane() const { return fPlane; }
     Int_t getTube() const { return fCell; }
-    Int_t getVPlane() const { return fModule * 8 + fLayer * 2 + fPlane; }
     Double_t getX() const { return fX; }
 
     void  setAddress(Char_t m, Char_t l, Char_t p, Int_t c);
     void  setHit(Float_t time, Float_t adc, Float_t x, Float_t z, Int_t s);
+
+    Int_t getVPlane() const { return getVPlane(fModule, fLayer, fPlane); }
+    static Int_t getVPlane(Int_t m, Int_t l, Int_t p);
 
     ClassDef(HFwDetStrawCal, 1);
 };

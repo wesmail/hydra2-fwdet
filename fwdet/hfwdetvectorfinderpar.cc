@@ -1,26 +1,26 @@
 //_HADES_CLASS_DESCRIPTION
 /////////////////////////////////////////////////////////////
 //
-// HFwDetStrawVectorFinderPar
+// HFwDetVectorFinderPar
 //
 // Container class for PionTracker hit finder parameters
 //
 /////////////////////////////////////////////////////////////
 
 using namespace std;
-#include "hfwdetstrawvectorfinderpar.h"
+#include "hfwdetvectorfinderpar.h"
 #include "hparamlist.h"
 #include <iostream>
 
-ClassImp (HFwDetStrawVectorFinderPar)
+ClassImp (HFwDetVectorFinderPar)
 
-HFwDetStrawVectorFinderPar::HFwDetStrawVectorFinderPar(const Char_t * name, const Char_t * title, const Char_t * context)
+HFwDetVectorFinderPar::HFwDetVectorFinderPar(const Char_t * name, const Char_t * title, const Char_t * context)
     : HParCond (name, title, context)
 {
     clear();
 }
 
-void HFwDetStrawVectorFinderPar::clear()
+void HFwDetVectorFinderPar::clear()
 {
     // clears the container
     fCutX = 0.0;
@@ -29,10 +29,11 @@ void HFwDetStrawVectorFinderPar::clear()
     fHRCutChi2 = 0.0;
     fLRErrU = 0.0;
     fHRErrU = 0.0;
+    fTubesD = 0.0;
     nPass = 0;
 }
 
-void HFwDetStrawVectorFinderPar::putParams(HParamList * l)
+void HFwDetVectorFinderPar::putParams(HParamList * l)
 {
     // add the parameters to the list for writing
     if (!l) return;
@@ -43,10 +44,11 @@ void HFwDetStrawVectorFinderPar::putParams(HParamList * l)
     l->add("fHRCutChi2", fHRCutChi2);
     l->add("fLRErrU", fLRErrU);
     l->add("fHRErrU", fHRErrU);
+    l->add("fTubesD", fTubesD);
     l->add("nPass", nPass);
 }
 
-Bool_t HFwDetStrawVectorFinderPar::getParams(HParamList * l)
+Bool_t HFwDetVectorFinderPar::getParams(HParamList * l)
 {
     // gets the parameters from the list (read from input)
     if (!l) return kFALSE;
@@ -57,6 +59,7 @@ Bool_t HFwDetStrawVectorFinderPar::getParams(HParamList * l)
     if (!l->fill ("fHRCutChi2", &fHRCutChi2)) return kFALSE;
     if (!l->fill ("fLRErrU", &fLRErrU)) return kFALSE;
     if (!l->fill ("fHRErrU", &fHRErrU)) return kFALSE;
+    if (!l->fill ("fTubesD", &fTubesD)) return kFALSE;
     if (!l->fill ("nPass", &nPass)) return kFALSE;
 
     return kTRUE;

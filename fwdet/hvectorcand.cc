@@ -3,33 +3,33 @@
 
 //_HADES_CLASS_DESCRIPTION
 /////////////////////////////////////////////////////////////
-//  HFwDetStrawVector
+//  HVectorCand
 //
 //  Segments / tracks in the Forward Straw tracker.
 //
 /////////////////////////////////////////////////////////////
 
-#include "hfwdetstrawvector.h"
+#include "hvectorcand.h"
 #include "hmdcsizescells.h"
 
 // -----   Default constructor   -------------------------------------------
-HFwDetStrawVector::HFwDetStrawVector() : TObject(),
-    fFlag(0), fNhits(0), fNDF(0), fZ(0.0), fChi2(0.0)
+HVectorCand::HVectorCand() : TLorentzVector(),
+    fFlag(0), fNhits(0), fNDF(0), fChi2(0.0),
+    dirVec(0., 0., 1.0), refVec(0., 0., 0.)
 {
-    for (Int_t i = 0; i < 4; ++i) fParams[i] = 0.0;
     for (Int_t i = 0; i < 16; ++i) fHitInds[i] = 0;
     for (Int_t i = 0; i < 10; ++i) fCovar[i] = 0;
 }
 // -------------------------------------------------------------------------
 
 // -----   Destructor   ----------------------------------------------------
-HFwDetStrawVector::~HFwDetStrawVector()
+HVectorCand::~HVectorCand()
 {
 }
 // -------------------------------------------------------------------------
 
 // -----   Public method AddHit   ------------------------------------------
-Int_t HFwDetStrawVector::addHit(Int_t indx)
+Int_t HVectorCand::addHit(Int_t indx)
 {
     // Add hit with index indx to the track
 
@@ -39,7 +39,7 @@ Int_t HFwDetStrawVector::addHit(Int_t indx)
 // -------------------------------------------------------------------------
 
 // -----   Public method GetCovarMatr   ------------------------------------
-TMatrixDSym HFwDetStrawVector::getCovarMatr()
+TMatrixDSym HVectorCand::getCovarMatr() const
 {
   // Return covariance matrix as TMatrixDSym
 
@@ -58,7 +58,7 @@ TMatrixDSym HFwDetStrawVector::getCovarMatr()
 // -------------------------------------------------------------------------
 
 // -----   Public method SetCovar   ----------------------------------------
-void HFwDetStrawVector::setCovar(TMatrixDSym cov)
+void HVectorCand::setCovar(TMatrixDSym cov)
 {
   // Set covariance matrix
 
@@ -74,25 +74,68 @@ void HFwDetStrawVector::setCovar(TMatrixDSym cov)
 // -------------------------------------------------------------------------
 
 // -----   Public method HadesParams   -------------------------------------
-void HFwDetStrawVector::hadesParams(Double_t *params)
+void HVectorCand::getHadesParams(Double_t *params) const
 {
     // Convert to HADES track parameters
 
-    Double_t x1 = fParams[0], y1 = fParams[1], z1 = fZ;
+    Double_t x1 = refVec.X(), y1 = refVec.Y(), z1 = refVec.Z();
     Double_t dz = 100.0;
-    Double_t z2 = z1 + dz, x2 = x1 + fParams[2] * dz, y2 = y1 + fParams[3] * dz;
+    Double_t z2 = z1 + dz, x2 = x1 + dirVec.X() * dz, y2 = y1 + dirVec.Y() * dz;
     HMdcSizesCells::calcMdcSeg(x1, y1, z1, x2, y2, z2, params[0], params[1], params[2], params[3]);
 }
 // -------------------------------------------------------------------------
 
 // -----   Private method HadesParam   -------------------------------------
-Double_t HFwDetStrawVector::hadesParam(Int_t ipar)
+Double_t HVectorCand::getHadesParam(Int_t ipar) const
 {
     // Convert (at first call) and return HADES track parameters
 
     Double_t params[4];
-    hadesParams(params);
+    getHadesParams(params);
     return params[ipar];
 }
 // -------------------------------------------------------------------------
-ClassImp(HFwDetStrawVector);
+
+void HVectorCand::print() const
+{
+    printf("----- VECTOR -----\n");
+    printf("   flag=%d   nhits=%d   ndf=%d\n", fFlag, fNhits, fNDF);
+    printf("   indexes=");
+    for (Int_t i = 0; i < fNhits; ++i)
+        printf("%2d,", fHitInds[i]);
+    printf("\n");
+    printf("      bits=");
+    for (Int_t i = 0; i < fNhits; ++i)
+        printf(" %c,", fLRbits[i] ? '+' : '-');
+    printf("\n");
+    printf("   ref=(%f,%f)   dir=(%f,%f)   z=%f\n",
+           refVec.X(), refVec.Y(), dirVec.X(), dirVec.Y(), refVec.z());
+//     Double32_t fCovar[10];    // covar. matrix
+    printf("   QA chi2=%f\n", fChi2);
+}
+
+void HVectorCand::getParams(Double_t* pars) const
+{
+    pars[0] = refVec.X();
+    pars[1] = refVec.Y();
+    pars[2] = dirVec.X();
+    pars[3] = dirVec.Y();
+}
+
+void HVectorCand::setParams(Double_t* pars)
+{
+    refVec.SetX(pars[0]);
+    refVec.SetY(pars[1]);
+    dirVec.SetX(pars[2]);
+    dirVec.SetY(pars[3]);
+}
+
+void HVectorCand::calc4vectorProperties(Double_t p, Double_t m)
+{
+    TVector3 v3(dirVec);
+    v3.SetMag(p);
+
+    SetVectM(v3, m);
+}
+
+ClassImp(HVectorCand);
