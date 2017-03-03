@@ -26,7 +26,8 @@ public:
     Int_t getLayer() const { return fLayer; }
     Int_t getPlane() const { return fPlane; }
     Int_t getTube() const { return fCell; }
-    Double_t getX() const { return fX; }
+    Float_t getTime() const { return fTime; }
+    Float_t getX() const { return fX; }
 
     void  setAddress(Char_t m, Char_t l, Char_t p, Int_t c);
     void  setHit(Float_t time, Float_t adc, Float_t x, Float_t z, Int_t s);

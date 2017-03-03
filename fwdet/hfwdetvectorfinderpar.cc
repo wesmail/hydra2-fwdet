@@ -30,6 +30,7 @@ void HFwDetVectorFinderPar::clear()
     fLRErrU = 0.0;
     fHRErrU = 0.0;
     fTubesD = 0.0;
+    nMaxBest = 0;
     nPass = 0;
 }
 
@@ -45,6 +46,7 @@ void HFwDetVectorFinderPar::putParams(HParamList * l)
     l->add("fLRErrU", fLRErrU);
     l->add("fHRErrU", fHRErrU);
     l->add("fTubesD", fTubesD);
+    l->add("nMaxBest", nMaxBest);
     l->add("nPass", nPass);
 }
 
@@ -60,6 +62,7 @@ Bool_t HFwDetVectorFinderPar::getParams(HParamList * l)
     if (!l->fill ("fLRErrU", &fLRErrU)) return kFALSE;
     if (!l->fill ("fHRErrU", &fHRErrU)) return kFALSE;
     if (!l->fill ("fTubesD", &fTubesD)) return kFALSE;
+    if (!l->fill ("nMaxBest", &nMaxBest)) return kFALSE;
     if (!l->fill ("nPass", &nPass)) return kFALSE;
 
     return kTRUE;

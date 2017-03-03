@@ -18,6 +18,7 @@ using namespace std;
 #include "hfwdetstrawdigitizer.h"
 #include "hfwdetscindigitizer.h"
 #include "hfwdetrpcdigitizer.h"
+#include "hfwdetrpchitfinder.h"
 #include "hfwdetvectorfinder.h"
 #include <iostream>
 #include <iomanip>
@@ -34,6 +35,7 @@ HFwDetTaskSet::HFwDetTaskSet() : HTaskSet()
     doScinCal  = kFALSE;
     doRpcRaw   = kFALSE;
     doRpcCal   = kFALSE;
+    doRpcHitF  = kFALSE;
     doVectorFinder = kFALSE;
 }
 
@@ -47,6 +49,7 @@ HFwDetTaskSet::HFwDetTaskSet(const Text_t name[], const Text_t title[]) :
     doScinCal  = kFALSE;
     doRpcRaw   = kFALSE;
     doRpcCal   = kFALSE;
+    doRpcHitF  = kFALSE;
     doVectorFinder = kFALSE;
 }
 
@@ -103,6 +106,10 @@ void HFwDetTaskSet::parseArguments(TString s)
                 doRpcRaw    = kTRUE;
                 doRpcCal    = kTRUE;
             }
+            else if (argument.CompareTo("rpchitf") == 0)
+            {
+                doRpcHitF    = kTRUE;
+            }
             else if (argument.CompareTo("vf") == 0)
             {
                 doVectorFinder = kTRUE;
@@ -143,14 +150,16 @@ HTask* HFwDetTaskSet::make(const Char_t *select, const Option_t *option)
             tasks->add(new HFwDetScinDigitizer("fwdetscin.digi", "fwdetscin.digi"));
         if (doRpcCal)
             tasks->add(new HFwDetRpcDigitizer("fwdetrpc.digi", "fwdetrpc.digi"));
+        if (doRpcCal)
+            tasks->add(new HFwDetRpcHitFinder("fwdetrpc.hitf", "fwdetrpc.hitf"));
 
         if(doVectorFinder)
-            tasks->add(new HFwDetVectorFinder("vectorFinder", "vectorFinder"));
+            tasks->add(new HFwDetVectorFinder("fwdet.vf", "fwdet.vf"));
 
     }
     if(sel.CompareTo(real) == 0 || gHades->getEmbeddingMode() > 0)
     {
-        if (doStrawCal)
+        if (doStrawRaw)
         {
 //             tasks->add(new HFwDetStrawCalibrator("fwdetstraw.cal", "fwdetstraw.cal")); // TODO
 //             if(doStraw)

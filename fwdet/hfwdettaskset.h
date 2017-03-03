@@ -13,6 +13,7 @@ protected:
     Bool_t doScinCal;       // calibrater (exp), digitizer (sim)
     Bool_t doRpcRaw;        // unpacker (exp)
     Bool_t doRpcCal;        // calibrater (exp), digitizer (sim)
+    Bool_t doRpcHitF;
     Bool_t doVectorFinder;  // tracker (exp,sim)
     void parseArguments(TString s);
 

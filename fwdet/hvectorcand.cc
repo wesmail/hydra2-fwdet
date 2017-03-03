@@ -10,11 +10,12 @@
 /////////////////////////////////////////////////////////////
 
 #include "hvectorcand.h"
+#include "hfwdetrpchit.h"
 #include "hmdcsizescells.h"
 
 // -----   Default constructor   -------------------------------------------
 HVectorCand::HVectorCand() : TLorentzVector(),
-    fFlag(0), fNhits(0), fNDF(0), fChi2(0.0),
+    fTrack(-1), fRpcTrack(-1), fNhits(0), fNDF(0), fTof(-1.0), fChi2(0.0),
     dirVec(0., 0., 1.0), refVec(0., 0., 0.)
 {
     for (Int_t i = 0; i < 16; ++i) fHitInds[i] = 0;
@@ -99,7 +100,7 @@ Double_t HVectorCand::getHadesParam(Int_t ipar) const
 void HVectorCand::print() const
 {
     printf("----- VECTOR -----\n");
-    printf("   flag=%d   nhits=%d   ndf=%d\n", fFlag, fNhits, fNDF);
+    printf("   track=%d   nhits=%d   ndf=%d\n", fTrack, fNhits, fNDF);
     printf("   indexes=");
     for (Int_t i = 0; i < fNhits; ++i)
         printf("%2d,", fHitInds[i]);
@@ -108,8 +109,8 @@ void HVectorCand::print() const
     for (Int_t i = 0; i < fNhits; ++i)
         printf(" %c,", fLRbits[i] ? '+' : '-');
     printf("\n");
-    printf("   ref=(%f,%f)   dir=(%f,%f)   z=%f\n",
-           refVec.X(), refVec.Y(), dirVec.X(), dirVec.Y(), refVec.z());
+    printf("   ref=(%f,%f)   dir=(%f,%f)   z=%f   tof=%f\n",
+           refVec.X(), refVec.Y(), dirVec.X(), dirVec.Y(), refVec.z(), fTof);
 //     Double32_t fCovar[10];    // covar. matrix
     printf("   QA chi2=%f\n", fChi2);
 }
@@ -136,6 +137,13 @@ void HVectorCand::calc4vectorProperties(Double_t p, Double_t m)
     v3.SetMag(p);
 
     SetVectM(v3, m);
+}
+
+void HVectorCand::calc4vectorProperties(Double_t m)
+{
+    Float_t mom = HFwDetRpcHit::calcMomentum(fTofL, fTof, m);
+
+    calc4vectorProperties(mom, m);
 }
 
 ClassImp(HVectorCand);

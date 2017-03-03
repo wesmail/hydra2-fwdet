@@ -15,9 +15,11 @@
 #include "hfwdetgeompar.h"
 #include "hfwdetstrawgeompar.h"
 #include "hfwdetstrawdigipar.h"
-#include "hfwdetvectorfinderpar.h"
 #include "hfwdetscindigipar.h"
+#include "hfwdetrpcgeompar.h"
 #include "hfwdetrpcdigipar.h"
+#include "hfwdetrpchitfinderpar.h"
+#include "hfwdetvectorfinderpar.h"
 
 ClassImp(HFwDetContFact);
 
@@ -49,13 +51,14 @@ void HFwDetContFact::setAllContainers()
             "Geometry parameters of the Straw Forward Detector",
             "StrawGeomProduction"));
     containers->Add(
+        new HContainer("FwDetRpcGeomPar",
+            "Geometry parameters of the RPC Forward Detector",
+            "RpcGeomProduction"));
+
+    containers->Add(
         new HContainer("FwDetStrawDigiPar",
             "FwDetStraw digitization parameters",
             "FwDetStrawDigiProduction"));
-    containers->Add(
-        new HContainer("FwDetVectorFinderPar",
-            "FwDetStraw vector finder parameters",
-            "FwDetStrawVectorFinderProduction"));
     containers->Add(
         new HContainer("FwDetScinDigiPar",
             "FwDetScin digitization parameters",
@@ -64,6 +67,16 @@ void HFwDetContFact::setAllContainers()
         new HContainer("FwDetRpcDigiPar",
             "FwDetRpc digitization parameters",
             "FwDetRpcDigiProduction"));
+
+    containers->Add(
+        new HContainer("FwDetRpcHitFinderPar",
+            "FwDetRpc digitization parameters",
+            "FwDetRpcDigiProduction"));
+
+    containers->Add(
+        new HContainer("FwDetVectorFinderPar",
+            "FwDetStraw vector finder parameters",
+            "FwDetStrawVectorFinderProduction"));
 }
 
 HParSet* HFwDetContFact::createContainer(HContainer* c)
@@ -76,14 +89,21 @@ HParSet* HFwDetContFact::createContainer(HContainer* c)
         return new HFwDetGeomPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
     if (strcmp(name,"FwDetStrawGeomPar") == 0)
         return new HFwDetStrawGeomPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+    if (strcmp(name,"FwDetRpcGeomPar") == 0)
+        return new HFwDetRpcGeomPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
 
     if (strcmp(name,"FwDetStrawDigiPar") == 0)
         return new HFwDetStrawDigiPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
-    if (strcmp(name,"FwDetVectorFinderPar") == 0)
-        return new HFwDetVectorFinderPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
     if (strcmp(name,"FwDetScinDigiPar") == 0)
         return new HFwDetScinDigiPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
     if (strcmp(name,"FwDetRpcDigiPar") == 0)
         return new HFwDetRpcDigiPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+
+    if (strcmp(name,"FwDetRpcHitFinderPar") == 0)
+        return new HFwDetRpcHitFinderPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+
+    if (strcmp(name,"FwDetVectorFinderPar") == 0)
+        return new HFwDetVectorFinderPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+
     return 0;
 }

@@ -134,12 +134,18 @@ HCategory* HFwDetDetector::buildCategory(Cat_t cat, Bool_t simulation)
             }
             break;
         case catFwDetRpcCal:
-            if (maxModInSetup >= 6)
+            if (maxModInSetup >= FWDET_RPC_MODULE_MIN)
             {
                 if (simulation)
-                    pcat = buildMatrixCategory("HFwDetRpcCalSim", FWDET_RPC_MAX_MODULES, FWDET_RPC_MAX_CELLS);
+                    pcat = buildMatrixCategory("HFwDetRpcCalSim", FWDET_RPC_MAX_MODULES, FWDET_RPC_MAX_LAYERS, 1, FWDET_RPC_MAX_STRIPS);
                 else
-                    pcat = buildMatrixCategory("HFwDetRpcCal", FWDET_RPC_MAX_MODULES, FWDET_RPC_MAX_CELLS);
+                    pcat = buildMatrixCategory("HFwDetRpcCal", FWDET_RPC_MAX_MODULES, FWDET_RPC_MAX_LAYERS, 1, FWDET_RPC_MAX_STRIPS);
+            }
+            break;
+        case catFwDetRpcHit:
+            if (maxModInSetup >= FWDET_RPC_MODULE_MIN)
+            {
+                pcat = buildLinearCategory("HFwDetRpcHit", 100);
             }
             break;
     default:
