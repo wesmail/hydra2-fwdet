@@ -121,6 +121,9 @@ public:
     static map<TString,particleproperties> initParticleName();
     static map<Int_t,TString>              initGeantProcess();
 
+
+
+    static void        loadGeantIons();
     static void        print();
 
     // -------------------------------------------------------------------------

@@ -24,7 +24,7 @@ using namespace std;
 ClassImp(HSeed)
 
 
-HSeed::HSeed(Int_t method,Int_t fallback,Int_t fixedSeed)
+HSeed::HSeed(Int_t method,Int_t fallback,Int_t fixedSeed, Bool_t noBlock)
 {
     //  method;           0 (default) : /dev/random,
     //                    1 : TRandom3 (local) with systime ,
@@ -34,6 +34,7 @@ HSeed::HSeed(Int_t method,Int_t fallback,Int_t fixedSeed)
     //                    5 : fixed (needs seed to be set)
     //  fallback          case /dev/random is not available : default 2
     //  fixedSeed  ;   //   default -1  used when method 5 is active
+    //  noBlock           :  kTRUE switch /dev/radom to /dev/urandom  to avoid blocking (less randomness!)
     //
     //
     //  Int_t     getFixedSeed();     //   default -1
@@ -45,7 +46,7 @@ HSeed::HSeed(Int_t method,Int_t fallback,Int_t fixedSeed)
 
 
 
-
+    fNoBlock = noBlock;
 
     fHostname = gSystem->HostName();
     fAddress  = getIP();
@@ -76,9 +77,11 @@ HSeed::HSeed(Int_t method,Int_t fallback,Int_t fixedSeed)
     fFixedSeed   =-1;
     fFileHandle  =-1;
 
-    fFileHandle = open("/dev/random", O_RDONLY);
+    if(fNoBlock) fFileHandle = open("/dev/urandom", O_RDONLY);
+    else         fFileHandle = open("/dev/random" , O_RDONLY);
     if(fFileHandle < 0){
-	Error("HSeed()","Could not open /dev/random for reading : will take numbers from TRandom3 ( method 2)");
+	if(fNoBlock) Error("HSeed()","Could not open /dev/urandom for reading : will take numbers from TRandom3 ( method 2)");
+	else         Error("HSeed()","Could not open /dev/random for reading : will take numbers from TRandom3 ( method 2)");
 	fMethod   = fallback;
 	fFallBack = fallback; // not used
 	fFileHandle =-1;
@@ -153,7 +156,8 @@ Int_t HSeed::getSeed()
     {
 	Int_t ret = read(fFileHandle, &rndNum, sizeof(rndNum));
 	if(ret < 0){
-	    Error("getSeed()"," Could not read from /dev/random : will take numbers from fallback");
+	    if(fNoBlock) Error("getSeed()"," Could not read from /dev/urandom : will take numbers from fallback");
+	    else         Error("getSeed()"," Could not read from /dev/random : will take numbers from fallback");
 	    close(fFileHandle);
 	    fFileHandle = -1;
 	    fMethod     = fFallBack;

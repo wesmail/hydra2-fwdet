@@ -16,6 +16,7 @@ private:
                               //   4 : like 2 but gRandom,
                               //   5 : fixed (needs seed to be set)
     Int_t     fFallBack;      //  case /dev/random is not available : default 2
+    Bool_t    fNoBlock;       //   default kTRUE switch /dev/radom to /dev/urandom  to avoid blocking (less randomness!)
 
     Int_t     fFixedSeed  ;   //   default -1  setFixedSeed()
     Int_t     fInitialSeed;   //   default -1, stores the seed input gRandom
@@ -27,7 +28,7 @@ private:
     Int_t     fFileHandle;    //!  filehandle for /dev/random
     TRandom*  frandom;        //!  pointer to use generator
 public:
-    HSeed(Int_t method=0,Int_t fallback=2,Int_t fixedseed=-1) ;
+    HSeed(Int_t method=0,Int_t fallback=2,Int_t fixedseed=-1, Bool_t noBlock = kTRUE) ;
     ~HSeed();
     UInt_t  getPid();
     UInt_t  getIP();

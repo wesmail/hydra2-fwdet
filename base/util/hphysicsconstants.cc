@@ -363,6 +363,77 @@ map<Int_t,TString> HPhysicsConstants::initGeantProcess()
 
 // -----------------------------------------------------------------------------
 
+void HPhysicsConstants::loadGeantIons()
+{
+    // load the table of ions know by Geant3 (id 61-112). The pluto particles
+    // with ids 61-69 will be removed.
+
+    ::Info("loadGeantIons()","Adding new Particles(Fragments) - remove Patricle 61-69 -- Re-Intialize HPhysicsConstants with GEANT3 numbering ... ");
+    for(UInt_t jj = 61 ; jj < 70; jj ++) HPhysicsConstants::removeParticle(jj);
+    
+    // Mass from GEANT3 gpions.F
+    // and information from shield to evt convert.sh
+
+//                                 id, name,           mass, chrg,leptc, baryc, strange
+    HPhysicsConstants::addParticle(61,"Li_3_6",      5603.05,      3,  0,  6, 0);  //
+    HPhysicsConstants::addParticle(62,"Li_3_7",      6535.36,      3,  0,  7, 0);  //
+    HPhysicsConstants::addParticle(63,"Be_4_7",      6536.22,      4,  0,  7, 0);  //
+    HPhysicsConstants::addParticle(64,"Be_4_9",      8394.79,      4,  0,  9, 0);  //
+    HPhysicsConstants::addParticle(65,"Be_5_10",     9326.99,      5,  0, 10, 0);  //
+    HPhysicsConstants::addParticle(66,"Be_5_11",    10255.10,      5,  0, 11, 0);  //
+    HPhysicsConstants::addParticle(67,"C_6_12" ,    11177.93,      6,  0, 12, 0);  //
+    HPhysicsConstants::addParticle(68,"N_7_14" ,    13043.78,      7,  0, 14, 0);  //
+    HPhysicsConstants::addParticle(69,"O_8_16" ,    14899.17,      8,  0, 16, 0);  //
+    HPhysicsConstants::addParticle(70,"F_9_19" ,    17696.90,      9,  0, 19, 0);  //
+    HPhysicsConstants::addParticle(71,"Ne_10_20",   18622.84,     10,  0, 20, 0);  //
+    HPhysicsConstants::addParticle(72,"Na_11_23",   21414.83,     11,  0, 23, 0);  //
+    HPhysicsConstants::addParticle(73,"Mg_12_24",   22341.93,     12,  0, 24, 0);  //
+    HPhysicsConstants::addParticle(74,"Al_13_27",   25133.14,     13,  0, 27, 0);  //
+    HPhysicsConstants::addParticle(75,"Si_14_28",   26060.34,     14,  0, 28, 0);  //
+    HPhysicsConstants::addParticle(76,"P_15_31" ,   28851.88,     15,  0, 31, 0);  //
+    HPhysicsConstants::addParticle(77,"S_16_32" ,   29781.80,     16,  0, 32, 0);  //
+    HPhysicsConstants::addParticle(78,"Cl_17_35",   32573.28,     17,  0, 35, 0);  //
+    HPhysicsConstants::addParticle(79,"Ar_18_36",   33503.56,     18,  0, 36, 0);  //
+    HPhysicsConstants::addParticle(80,"K_19_39" ,   36294.47,     19,  0, 39, 0);  //
+    HPhysicsConstants::addParticle(81,"Ca_20_40",   37224.92,     20,  0, 40, 0);  //
+    HPhysicsConstants::addParticle(82,"Sc_21_45",   41876.17,     21,  0, 45, 0);  //
+    HPhysicsConstants::addParticle(83,"Ti_22_48",   44663.24,     22,  0, 48, 0);  //
+    HPhysicsConstants::addParticle(84,"V_23_51" ,   47454.01,     23,  0, 51, 0);  //
+    HPhysicsConstants::addParticle(85,"Cr_24_52",   48382.28,     24,  0, 52, 0);  //
+    HPhysicsConstants::addParticle(86,"Mn_25_55",   51174.47,     25,  0, 55, 0);  //
+    HPhysicsConstants::addParticle(87,"Fe_26_56",   52103.07,     26,  0, 56, 0);  //
+    HPhysicsConstants::addParticle(88,"Co_27_59",   54895.93,     27,  0, 59, 0);  //
+    HPhysicsConstants::addParticle(89,"Ni_28_58",   53966.44,     28,  0, 58, 0);  //
+    HPhysicsConstants::addParticle(90,"Cu_29_63",   58618.56,     29,  0, 63, 0);  //
+    HPhysicsConstants::addParticle(91,"Zn_30_64",   59549.63,     30,  0, 64, 0);  //
+    HPhysicsConstants::addParticle(92,"Ge_32_74 ",  68857.15,     32,  0, 74, 0);  //
+    HPhysicsConstants::addParticle(93,"Se_34_80 ",  74441.78,     34,  0, 80, 0);  //
+    HPhysicsConstants::addParticle(94,"Kr_36_84 ",  78163.09,     36,  0, 84, 0);  //
+    HPhysicsConstants::addParticle(95,"Sr_38_88 ",  81883.58,     38,  0, 88, 0);  //
+    HPhysicsConstants::addParticle(96,"Zr_40_90 ",  83745.71,     40,  0, 90, 0);  //
+    HPhysicsConstants::addParticle(97,"Mo_42_98 ",  91198.32,     42,  0, 98, 0);  //
+    HPhysicsConstants::addParticle(98,"Pd_46_106",  98649.97,     46,  0, 106, 0);  //
+    HPhysicsConstants::addParticle(99,"Cd_48_114", 106109.97,     48,  0, 114, 0);  //
+    HPhysicsConstants::addParticle(100,"Sn_50_120",111688.21,     50,  0, 120, 0);  //
+    HPhysicsConstants::addParticle(101,"Xe_54_132",122867.96,     54,  0, 132, 0);  //
+    HPhysicsConstants::addParticle(102,"Ba_56_138",128457.93,     56,  0, 138, 0);  //
+    HPhysicsConstants::addParticle(103,"Ce_58_140",130321.11,     58,  0, 140, 0);  //
+    HPhysicsConstants::addParticle(104,"Sm_62_152",141512.36,     62,  0, 152, 0);  //
+    HPhysicsConstants::addParticle(105,"Dy_66_164",152699.09,     66,  0, 164, 0);  //
+    HPhysicsConstants::addParticle(106,"Yb_70_174",162022.45,     70,  0, 174, 0);  //
+    HPhysicsConstants::addParticle(107,"W_74_184" ,171349.24,     74,  0, 184, 0);  //
+    HPhysicsConstants::addParticle(108,"Pt_78_194",180675.13,     78,  0, 194, 0);  //
+    HPhysicsConstants::addParticle(109,"Au_79_197",183473.24,     79,  0, 197, 0);  //
+    HPhysicsConstants::addParticle(110,"Hg_80_202",188134.51,     80,  0, 110, 0);  //
+    HPhysicsConstants::addParticle(111,"Pb_82_208",193729.07,     82,  0, 111, 0);  //
+    HPhysicsConstants::addParticle(112,"U_92_238" ,221742.95,     92,  0, 112, 0);  //
+
+    HPhysicsConstants::print();
+
+    return;
+} 
+
+
 void HPhysicsConstants::print(){
 
     ::Info("HPhysicsConstants::print()","Printing table of all known particles and processes:");
