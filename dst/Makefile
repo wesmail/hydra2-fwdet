@@ -11,12 +11,7 @@
 LIB_NAME := Dst
 
 
-SOURCE_FILES :=	hdstproduction.cc	\
-		hdstrealdata.cc		\
-		hdstsimulation.cc	\
-		hdstembedding.cc	\
-		hdstutilities.cc        \
-                hdst.cc
+SOURCE_FILES := hdst.cc
 
 
 include $(HADDIR)/hades.def.mk

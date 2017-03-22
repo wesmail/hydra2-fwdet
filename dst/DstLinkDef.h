@@ -10,11 +10,5 @@
 #ifdef __CINT__
 
 #pragma link C++ class HDst;
-#pragma link C++ class HDstUtilities;
-#pragma link C++ class HDstProduction;
-#pragma link C++ class HDstSimulation;
-#pragma link C++ class HDstRealData;
-#pragma link C++ class HDstEmbedding;
-#pragma link C++ class HDstProduction::DstConfiguration_t;
 
 #endif

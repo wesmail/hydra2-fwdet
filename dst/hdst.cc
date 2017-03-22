@@ -8,6 +8,7 @@
 #include "htofdetector.h"
 #include "hrpcdetector.h"
 #include "hshowerdetector.h"
+#include "hemcdetector.h"
 #include "htboxdetector.h"
 #include "hstart2detector.h"
 #include "hwalldetector.h"
@@ -136,6 +137,7 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
     Int_t tofMods   [22] = {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     Int_t rpcMods   [1]  = {1};
     Int_t showerMods[3]  = {1,2,3};
+    Int_t emcMods   [1]  = {1};
     Int_t nStartMods[10]      = {1,1,1,1,0,0,0,0,0,0};  // before apr12
     Int_t nStartModsApr12[10] = {1,1,1,1,1,0,0,0,0,0};  // apr12
     Int_t nStartModsJul14[10] = {1,0,0,0,1,0,0,0,0,0};  // jul14 (+may14)  start+hodo
@@ -181,6 +183,7 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
     if(detectors.Contains("tof"))   {spec->addDetector(new HTofDetector);    ::Info("","Adding TOF");   }
     if(detectors.Contains("rpc"))   {spec->addDetector(new HRpcDetector);    ::Info("","Adding RPC");   }
     if(detectors.Contains("shower")){spec->addDetector(new HShowerDetector); ::Info("","Adding SHOWER");}
+    else if(detectors.Contains("emc")) {spec->addDetector(new HEmcDetector); ::Info("","Adding EMC");}
 
     for (Int_t is=0; is<6; is++) {
         if(detectors.Contains("rich"))  spec->getDetector("Rich")  ->setModules(is,richMods);
@@ -188,6 +191,7 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
         if(detectors.Contains("tof"))   spec->getDetector("Tof")   ->setModules(is,tofMods);
         if(detectors.Contains("rpc"))   spec->getDetector("Rpc")   ->setModules(is,rpcMods);
         if(detectors.Contains("shower"))spec->getDetector("Shower")->setModules(is,showerMods);
+        else if(detectors.Contains("emc"))spec->getDetector("Emc")->setModules(is,emcMods);
     }
 }
 void HDst::setupParameterSources(TString parsource,TString asciiParFile,TString rootParFile,TString histDate)
