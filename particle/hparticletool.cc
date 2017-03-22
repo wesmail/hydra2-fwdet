@@ -1968,7 +1968,7 @@ Bool_t HParticleTool::isParticledEdx(Int_t PID, HParticleCand* pCand, Float_t& d
     fdedx_vs_beta    -> SetParameter(3,1.);
     fdedx_vs_beta    -> SetParameter(4,1);
     fdedx_vs_beta    -> SetParameter(5,theta);
-    fdedx_vs_beta    -> SetParameter(5,(0.0783057+theta*0.00145768)*2100./distMeta);
+    fdedx_vs_beta    -> SetParameter(6,(0.0783057+theta*0.00145768)*2100./distMeta);
 
 
     Float_t meandEdx = fdedx_vs_beta       -> Eval(beta);
@@ -2062,14 +2062,9 @@ Bool_t HParticleTool::isParticleBeta(Int_t PID, HParticleCand* pCand, Float_t ns
 
 
     dtime  = distMeta/b/(TMath::C()*1e-6) - distMeta/be/(TMath::C()*1e-6);
-    Float_t dsigmab = sqrt( pow((sT/((mT/mom*sqrt(mom*mom+m*m) )-sT)),2)
-			   + pow(( (mom*(1.+sMom))/sqrt((mom*(1.+sMom))*(mom*(1.+sMom))+m*m)
-				  -mom/sqrt(mom*mom+m*m) ),2))*1.;
     Float_t sigbeta2 = sqrt(  pow( m*m/mom/mom/mom*pow(m*m/mom/mom+1.,-3/2.) * sMom*mom,2)
 			    + pow(distMeta/mT/mT/(TMath::C()*1e-6)*sT,2) );
-    dsigma = distMeta/be/be/(TMath::C()*1e-6)*dsigmab;
-    Float_t dsigma2 = distMeta/be/be/(TMath::C()*1e-6)*sigbeta2;
-    dsigma =  dsigma2;
+    dsigma = distMeta/be/be/(TMath::C()*1e-6)*sigbeta2;
 
     if(PID==2 || PID==3) {
 	dsigma = sT;  // for electrons no mom dependence

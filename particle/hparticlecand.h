@@ -51,13 +51,14 @@ protected:
     SmallFloat  fAngleToNearbyUnfittedInner; // angle to closest unfitted inner segment (negative angles indicate segments which belong to hadrons or neighbouring tracks) [deg]
 
     // properties of the RICH ring
-    Char_t      fRingNumPads;                // number of fired pads typ. (-1 - 100)
+    Char_t      fRingNumPads;                // number of fired pads typ. (-1 - 100) (OLD) | number of Cal objects (NEW)
     Short_t     fRingAmplitude;              // typ. (-1 - 4000)
     Short_t     fRingHouTra;                 // typ. (-1 - 5000)
     Short_t     fRingPatternMatrix;          // pattern matrix of ring
-    SmallFloat  fRingCentroid;               // ring centroid
+    SmallFloat  fRingCentroid;               // ring centroid (OLD) | radius (NEW)
     SmallFloat  fRichPhi;
     SmallFloat  fRichTheta;
+    Float_t     fRingChi2;                   // chi2 of ring fit (NEW)
 
     // properties of meta hits
     SmallFloat  fMetaMatchQuality;      // distance of the outer segment to the meta hit
@@ -125,6 +126,7 @@ public:
 	,fRingCentroid(-1)
 	,fRichPhi(-1)
 	,fRichTheta(-1)
+	,fRingChi2(-1000)
 	,fMetaMatchQuality(-1)
 	,fMetaMatchQualityShower(-1)
 	,fMetaMatchRadius(-1)
@@ -201,10 +203,13 @@ public:
 	void    setOuterSegmentChi2(Float_t c)            { fOuterSegmentChi2 = c;    }
 	void    setAngleToNearbyFittedInner(Float_t a)    { fAngleToNearbyFittedInner = a;       }
 	void    setAngleToNearbyUnfittedInner(Float_t a)  { fAngleToNearbyUnfittedInner = a;     }
+	void    setRingNumCals(Int_t n)                   { fRingNumPads = n <= 127 ? n: 127;    }  // RICH700
 	void    setRingNumPads(Int_t n)                   { fRingNumPads = n <= 127 ? n: 127;    }
 	void    setRingAmplitude(Int_t amp)               { fRingAmplitude = (Short_t) amp;      }
 	void    setRingHouTra(Int_t a)                    { fRingHouTra = (Short_t)a;            }
 	void    setRingPatternMatrix(Int_t p)             { fRingPatternMatrix = (Short_t) p;    }
+	void    setRingRadius(Float_t c)                  { fRingCentroid = c;          }     // RICH700
+	void    setRingChi2(Float_t c)                    { fRingChi2 = c;              }     // RICH700
 	void    setRingCentroid(Float_t c)                { fRingCentroid = c;          }
 	void    setRichPhi(Float_t p)                     { fRichPhi = p;               }
 	void    setRichTheta(Float_t p)                   { fRichTheta = p;             }
@@ -261,11 +266,14 @@ public:
 	Float_t getOuterSegmentChi2()           const     { return fOuterSegmentChi2; }
 	Float_t getAngleToNearbyFittedInner()   const     { return fAngleToNearbyFittedInner;    }
 	Float_t getAngleToNearbyUnfittedInner() const     { return fAngleToNearbyUnfittedInner;  }
+	Int_t   getRingNumCals()                const     { return (Int_t)fRingNumPads;          }
 	Int_t   getRingNumPads()                const     { return (Int_t)fRingNumPads;          }
 	Int_t   getRingAmplitude()              const     { return (Int_t) fRingAmplitude;       }
         Float_t getAverageRingCharge()          const     { return fRingNumPads == 0 ?  0 : fRingAmplitude/(Float_t)fRingNumPads;}
         Int_t   getRingHouTra()                 const     { return (Int_t) fRingHouTra;          }
 	Int_t   getRingPatternMatrix()          const     { return (Int_t)fRingPatternMatrix;    }
+	Float_t getRingRadius()                 const     { return fRingCentroid;       }     // RICH700
+	Float_t getRingChi2()                   const     { return fRingChi2;           }     // RICH700
 	Float_t getRingCentroid()               const     { return fRingCentroid;       }
 	Float_t getRichPhi()                    const     { return fRichPhi;            }
 	Float_t getRichTheta()                  const     { return fRichTheta;          }
@@ -332,7 +340,9 @@ public:
 	    }
 	}
         Float_t getRichMatchingQualityNorm();
-        Float_t getZprime(Float_t xBeam,Float_t yBeam,Float_t& rPrime);
+	Bool_t  isNewRich()              { return fRingChi2 !=1000 ? kTRUE : kFALSE;}
+
+	Float_t getZprime(Float_t xBeam,Float_t yBeam,Float_t& rPrime);
 	Float_t getZprime(Float_t xBeam,Float_t yBeam);
 	Float_t getRprime(Float_t xBeam,Float_t yBeam);
 
@@ -443,7 +453,7 @@ public:
 	Int_t getMetaModule(UInt_t hit) {  if(hit<2){ return (fmetaAddress>>(hit*11+7)&(0xF))-1; } else return -1; }
 	Int_t getMetaCell  (UInt_t hit) {  if(hit<2){ return (fmetaAddress>>(hit*11)&(0x7F))-1;  } else return -1; }
 
-	ClassDef(HParticleCand,8)  // A simple track of a particle
+	ClassDef(HParticleCand,9)  // A simple track of a particle
 };
 
 

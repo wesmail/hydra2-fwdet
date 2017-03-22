@@ -17,6 +17,16 @@ class HShowerHit;
 class HMdcSeg;
 class HRichHit;
 
+class HTofHitSim;
+class HTofClusterSim;
+class HRpcClusterSim;
+class HShowerHitSim;
+class HMdcSegSim;
+class HRichHitSim;
+class HParticleCandSim;
+
+class HCategory;
+
 R__EXTERN HParticleBooker *gParticleBooker;
 
 class HParticleBooker : public TObject
@@ -24,6 +34,8 @@ class HParticleBooker : public TObject
 
 private:
 
+    //-------------------------------------------------------
+    // indices user in candidates
     map<Int_t, vector<HParticleCand*> > mTofHittoCand;       //!  TOF hit     lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mTofClsttoCand;      //!  TOF cluster lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mRpcClsttoCand;      //!  RPC cluster lookup   detector hit ind -> list of candidates using this hit
@@ -33,31 +45,79 @@ private:
     map<Int_t, vector<HParticleCand*> > mRichtoCand;         //!  RICH hit    lookup   detector hit ind -> list of candidates using this hit
 
 
-    vector<Int_t> vTofHitInd;
-    vector<Int_t> vTofClstInd;
-    vector<Int_t> vRpcClstInd;
-    vector<Int_t> vShowerInd;
-    vector<Int_t> vInnerMdcInd;
-    vector<Int_t> vOuterMdcInd;
-    vector<Int_t> vRichInd;
+    //-------------------------------------------------------
+    // indices user in candidates
+    vector<Int_t> vTofHitInd;       //!
+    vector<Int_t> vTofClstInd;      //!
+    vector<Int_t> vRpcClstInd;      //!
+    vector<Int_t> vShowerInd;       //!
+    vector<Int_t> vInnerMdcInd;     //!
+    vector<Int_t> vOuterMdcInd;     //!
+    vector<Int_t> vRichInd;         //!
+    //-------------------------------------------------------
 
-    vector<HTofHit*>     vTofHit;
-    vector<HTofCluster*> vTofClst;
-    vector<HRpcCluster*> vRpcClst;
-    vector<HShowerHit*>  vShower;
-    vector<HMdcSeg*>     vInnerMdc;
-    vector<HMdcSeg*>     vOuterMdc;
-    vector<HRichHit*>    vRich;
+    //-------------------------------------------------------
+    // objects user in candidates
+    vector<HTofHit*>     vTofHit;   //!
+    vector<HTofCluster*> vTofClst;  //!
+    vector<HRpcCluster*> vRpcClst;  //!
+    vector<HShowerHit*>  vShower;   //!
+    vector<HMdcSeg*>     vInnerMdc; //!
+    vector<HMdcSeg*>     vOuterMdc; //!
+    vector<HRichHit*>    vRich;     //!
+    //-------------------------------------------------------
 
-    vector<HTofHit*>     vTofHitAll;
-    vector<HTofCluster*> vTofClstAll;
-    vector<HRpcCluster*> vRpcClstAll;
-    vector<HShowerHit*>  vShowerAll;
-    vector<HMdcSeg*>     vInnerMdcAll;
-    vector<HMdcSeg*>     vOuterMdcAll;
-    vector<HRichHit*>    vRichAll;
+    //-------------------------------------------------------
+    // all objects in event
+    vector<HTofHit*>     vTofHitAll;   //!
+    vector<HTofCluster*> vTofClstAll;  //!
+    vector<HRpcCluster*> vRpcClstAll;  //!
+    vector<HShowerHit*>  vShowerAll;   //!
+    vector<HMdcSeg*>     vInnerMdcAll; //!
+    vector<HMdcSeg*>     vOuterMdcAll; //!
+    vector<HRichHit*>    vRichAll;     //!
+    //-------------------------------------------------------
 
-    void bookHits(HParticleCand* cand1);
+
+    //-------------------------------------------------------
+    // SIMULATION INFO
+    //-------------------------------------------------------
+
+
+    //-------------------------------------------------------
+    map<Int_t, vector<HParticleCandSim*> > mTracktoCand;       //!  Geant Track lookup   geant track (assigned track)  -> list of candidates using this track
+    map<Int_t, vector<HParticleCandSim*> > mTracktoAnyCand;    //!  Geant Track lookup   geant track (in any detector) -> list of candidates using this track
+    map<Int_t, vector<HTofHitSim*> >       mTracktoTofHit;     //!  Geant Track lookup   geant track -> list of TofHits using this track
+    map<Int_t, vector<HTofClusterSim*> >   mTracktoTofCluster; //!  Geant Track lookup   geant track -> list of TofCluster using this track
+    map<Int_t, vector<HRpcClusterSim*> >   mTracktoRpcCluster; //!  Geant Track lookup   geant track -> list of RpcCluster using this track
+    map<Int_t, vector<HShowerHitSim*> >    mTracktoShowerHit;  //!  Geant Track lookup   geant track -> list of ShowerHit using this track
+    map<Int_t, vector<HMdcSegSim*> >       mTracktoInnerMdc;   //!  Geant Track lookup   geant track -> list of inner MdcSeg using this track
+    map<Int_t, vector<HMdcSegSim*> >       mTracktoOuterMdc;   //!  Geant Track lookup   geant track -> list of outer MdcSeg using this track
+    map<Int_t, vector<HRichHitSim*> >      mTracktoRichHit;    //!  Geant Track lookup   geant track -> list of RichHit using this track
+
+    map<Int_t, vector<Int_t> > mTracktoCandInd;       //!  Geant Track lookup   geant track (assigned track)  -> list of candidates indices using this track
+    map<Int_t, vector<Int_t> > mTracktoAnyCandInd;    //!  Geant Track lookup   geant track (in any detector) -> list of candidates indicesusing this track
+    map<Int_t, vector<Int_t> > mTracktoTofHitInd;     //!  Geant Track lookup   geant track -> list of TofHits indices using this track
+    map<Int_t, vector<Int_t> > mTracktoTofClusterInd; //!  Geant Track lookup   geant track -> list of TofCluster indices using this track
+    map<Int_t, vector<Int_t> > mTracktoRpcClusterInd; //!  Geant Track lookup   geant track -> list of RpcCluster indices using this track
+    map<Int_t, vector<Int_t> > mTracktoShowerHitInd;  //!  Geant Track lookup   geant track -> list of ShowerHit indices using this track
+    map<Int_t, vector<Int_t> > mTracktoInnerMdcInd;   //!  Geant Track lookup   geant track -> list of inner MdcSeg indices using this track
+    map<Int_t, vector<Int_t> > mTracktoOuterMdcInd;   //!  Geant Track lookup   geant track -> list of outer MdcSeg indices using this track
+    map<Int_t, vector<Int_t> > mTracktoRichHitInd;    //!  Geant Track lookup   geant track -> list of RichHit using indices this track
+    //-------------------------------------------------------
+
+    //-------------------------------------------------------
+    // helpers
+    HCategory* richhitCat;           //!
+    HCategory* tofhitCat;            //!
+    HCategory* tofclstCat;           //!
+    HCategory* rpcclstCat;           //!
+    HCategory* showerhitCat;         //!
+    HCategory* mdcsegCat;            //!
+    HCategory* candCat;              //!
+
+    //-------------------------------------------------------
+   void bookHits(HParticleCand* cand1);
 
 public:
 
@@ -93,6 +153,26 @@ public:
     Int_t getCandidatesForInnerMdc  (Int_t index,vector<HParticleCand*>& cands);
     Int_t getCandidatesForOuterMdc  (Int_t index,vector<HParticleCand*>& cands);
     Int_t getCandidatesForRich      (Int_t index,vector<HParticleCand*>& cands);
+
+    Int_t getCandidatesAnyDetectorForTrack(Int_t track,vector<HParticleCandSim*>& cands);
+    Int_t getCandidatesForTrack           (Int_t track,vector<HParticleCandSim*>& cands);
+    Int_t getTofHitForTrack               (Int_t track,vector<HTofHitSim*>&       cands);
+    Int_t getTofClusterForTrack           (Int_t track,vector<HTofClusterSim*>&   cands);
+    Int_t getRpcClusterForTrack           (Int_t track,vector<HRpcClusterSim*>&   cands);
+    Int_t getShowerHitForTrack            (Int_t track,vector<HShowerHitSim*>&    cands);
+    Int_t getInnerMdcSegForTrack          (Int_t track,vector<HMdcSegSim*>&       cands);
+    Int_t getOuterMdcSegForTrack          (Int_t track,vector<HMdcSegSim*>&       cands);
+    Int_t getRichHitForTrack              (Int_t track,vector<HRichHitSim*>&      cands);
+
+    Int_t getCandidatesIndAnyDetectorForTrack(Int_t track,vector<Int_t>& cands);
+    Int_t getCandidatesIndForTrack           (Int_t track,vector<Int_t>& cands);
+    Int_t getTofHitIndForTrack               (Int_t track,vector<Int_t>& cands);
+    Int_t getTofClusterIndForTrack           (Int_t track,vector<Int_t>& cands);
+    Int_t getRpcClusterIndForTrack           (Int_t track,vector<Int_t>& cands);
+    Int_t getShowerHitIndForTrack            (Int_t track,vector<Int_t>& cands);
+    Int_t getInnerMdcSegIndForTrack          (Int_t track,vector<Int_t>& cands);
+    Int_t getOuterMdcSegIndForTrack          (Int_t track,vector<Int_t>& cands);
+    Int_t getRichHitIndForTrack              (Int_t track,vector<Int_t>& cands);
 
 
     vector<HTofHit*>&     getTofHits     () { return vTofHit;  }

@@ -34,6 +34,7 @@ HGeantRichPhoton::HGeantRichPhoton()
  yHit = 0.0;
  eHit = 0.0;
  sector = -1;
+ fPmtId = -1;
 }
 //============================================================================
 
@@ -47,6 +48,7 @@ HGeantRichPhoton::HGeantRichPhoton(const HGeantRichPhoton &source)
   eHit = source.eHit;
   if(eHit < 0.) eHit = 0.;
   sector = source.sector;
+  fPmtId = source.fPmtId;
 }
 //============================================================================
 
@@ -85,6 +87,35 @@ Int_t HGeantRichPhoton::getLocationIndex(Int_t i)
     case 0 : return sector;
   }
   return -1;
+}
+//----------------------------------------------------------------------------
+void HGeantRichPhoton::Streamer(TBuffer &R__b)
+{
+   // Stream an object of class HGeantRichPhoton.
+
+   UInt_t R__s, R__c;
+   if (R__b.IsReading()) {
+      Version_t R__v = R__b.ReadVersion(&R__s, &R__c); if (R__v) { }
+      HLinkedDataObject::Streamer(R__b);
+      R__b >> parentTrack;
+      R__b >> xHit;
+      R__b >> yHit;
+      R__b >> eHit;
+      R__b >> sector;
+      if(R__v> 2 ) R__b >> fPmtId;
+      else                 fPmtId=-1;
+      R__b.CheckByteCount(R__s, R__c, HGeantRichPhoton::IsA());
+   } else {
+      R__c = R__b.WriteVersion(HGeantRichPhoton::IsA(), kTRUE);
+      HLinkedDataObject::Streamer(R__b);
+      R__b << parentTrack;
+      R__b << xHit;
+      R__b << yHit;
+      R__b << eHit;
+      R__b << sector;
+      R__b << fPmtId;
+      R__b.SetByteCount(R__c, kTRUE);
+   }
 }
 //============================================================================
 
@@ -132,6 +163,7 @@ HGeantRichDirect::HGeantRichDirect()
   eLoss = 0.0;
   trackLength = 0.0;
   sector = -1;
+  fPmtId = -1;
 }
 //============================================================================
 /*
@@ -150,6 +182,7 @@ HGeantRichDirect::HGeantRichDirect(const HGeantRichDirect &source)
   eLoss = source.eLoss;
   trackLength = source.trackLength;
   sector = source.sector;
+  fPmtId = source.fPmtId;
 }
 //============================================================================
 */
@@ -259,6 +292,50 @@ void HGeantRichDirect::getELoss(Float_t &ael, Float_t &alen) {
 //   Float_t getXRing()                retrieve ring x coordinate in pad plane
 //   Float_t getYRing()                retrieve ring y coordinate in pad plane
 //
+
+void HGeantRichDirect::Streamer(TBuffer &R__b)
+{
+   // Stream an object of class HGeantRichDirect.
+
+   UInt_t R__s, R__c;
+   if (R__b.IsReading()) {
+      Version_t R__v = R__b.ReadVersion(&R__s, &R__c); if (R__v) { }
+      HLinkedDataObject::Streamer(R__b);
+      R__b >> trackNumber;
+      R__b >> xHit;
+      R__b >> yHit;
+      R__b >> zHit;
+      R__b >> particleID;
+      R__b >> momentum;
+      R__b >> thetaHit;
+      R__b >> phiHit;
+      R__b >> eLoss;
+      R__b >> trackLength;
+      R__b >> sector;
+      R__b >> numPhot;
+      if (R__v > 2) R__b >> fPmtId;
+      else                  fPmtId = -1;
+
+      R__b.CheckByteCount(R__s, R__c, HGeantRichDirect::IsA());
+   } else {
+      R__c = R__b.WriteVersion(HGeantRichDirect::IsA(), kTRUE);
+      HLinkedDataObject::Streamer(R__b);
+      R__b << trackNumber;
+      R__b << xHit;
+      R__b << yHit;
+      R__b << zHit;
+      R__b << particleID;
+      R__b << momentum;
+      R__b << thetaHit;
+      R__b << phiHit;
+      R__b << eLoss;
+      R__b << trackLength;
+      R__b << sector;
+      R__b << numPhot;
+      R__b << fPmtId;
+      R__b.SetByteCount(R__c, kTRUE);
+   }
+}
 
 ClassImp(HGeantRichMirror)
 

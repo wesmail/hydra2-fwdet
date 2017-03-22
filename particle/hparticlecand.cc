@@ -268,7 +268,12 @@ void HParticleCand::print(UInt_t selection)
 	cout<<"PID            : pid   : " <<setw(12)<<(Int_t)fPID <<", charge    : "<<setw(12)<<fCharge                       <<", beta      : "<<setw(12)<<fBeta                 <<", mom       : "<<setw(12)<<fMomentum<<endl;
 	cout<<"               : mass2 : " <<setw(12)<<fMass2      <<", MDC dEdx  : "<<setw(12)<<fMdcdEdx                      <<", TOF dEdx  : "<<setw(12)<<fTofdEdx<<endl;
 	cout<<"RK seg         : phi   : " <<setw(12)<<fPhi        <<", theta     : "<<setw(12)<<fTheta                <<", r         : "<<setw(12)<<fR                    <<", z         : "<<setw(12)<<fZ<<endl;
-	cout<<"RICH           : npads : " <<setw(12)<<(Int_t)fRingNumPads<<", amplitude : "<<setw(12)<<fRingAmplitude<<", av. chrge : "<<setw(12)<<getAverageRingCharge()<<", centroid   "<<setw(12)<<fRingCentroid<<endl;
+
+	if(isNewRich()){
+	    cout<<"RICH           : ncals : " <<setw(12)<<(Int_t)fRingNumPads<<", chi2      : "<<setw(12)<<fRingAmplitude<<", av. chrge : "<<setw(12)<<getAverageRingCharge()<<", centroid   "<<setw(12)<<fRingCentroid<<endl;
+	} else {
+	    cout<<"RICH           : npads : " <<setw(12)<<(Int_t)fRingNumPads<<", amplitude : "<<setw(12)<<fRingChi2     <<", radius    : "<<setw(12)<<fRingCentroid<<endl;
+	}
 	cout<<"               : phi   : " <<setw(12)<<fRichPhi    <<", theta     : "<<setw(12)<<fRichTheta    <<", dphi      : "<<setw(12)<<getDeltaPhi()         <<", dtheta    : "<<setw(12)<<getDeltaTheta()<<endl;
 	cout<<"SHOWER         : sum0  : " <<setw(12)<<fShowerSum0 <<", sum1      : "<<setw(12)<<fShowerSum1   <<", sum2      : "<<setw(12)<<fShowerSum2           <<", deltasum  : "<<setw(12)<<getShowerDeltaSum()<<endl;
     }
@@ -510,6 +515,8 @@ void HParticleCand::Streamer(TBuffer &R__b)
       R__b >> fRingCentroid;
       R__b >> fRichPhi;
       R__b >> fRichTheta;
+      if(R__v > 8) R__b >> fRingChi2;
+      else                 fRingChi2 =-1000;
       R__b >> fMetaMatchQuality;
       if(R__v > 1) R__b >> fMetaMatchQualityShower;
       if(R__v > 3){
@@ -600,6 +607,7 @@ void HParticleCand::Streamer(TBuffer &R__b)
       R__b << fRingCentroid;
       R__b << fRichPhi;
       R__b << fRichTheta;
+      R__b << fRingChi2;
       R__b << fMetaMatchQuality;
       R__b << fMetaMatchQualityShower;
       R__b << fMetaMatchRadius;

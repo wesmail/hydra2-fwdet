@@ -667,8 +667,8 @@ HRichDigitizer::execute()
       // all pads the average photon energy for each pad can be calculated
       // as follows.
 
-      if (0 != calsimobj->getNTrack1())
-         calsimobj->setEnergy(calsimobj->getEnergy() / calsimobj->getNTrack1());
+      if (0 != calsimobj->getNHits())
+         calsimobj->setEnergy(calsimobj->getEnergy() / calsimobj->getNHits());
       //-------------------------------------------------------------------
       // set index range
 
@@ -711,11 +711,11 @@ HRichDigitizer::execute()
 		   index.push_back(catTrack->getIndex(list[i]));
 	       }
 	       std::sort(index.begin(), index.end()); // sort indices in ascending order
-	       calsimobj->setNTrack1(index[0]);
-	       calsimobj->setNTrack2(index[n - 1]);
+	       calsimobj->addTrackId(index[0]);
+	       calsimobj->addTrackId(index[n - 1]);
 	   } else { // only 1 track hit the pad
-	       calsimobj->setNTrack1(catTrack->getIndex(list[0]));   // both values are the same
-	       calsimobj->setNTrack2(calsimobj->getNTrack1());
+	       calsimobj->addTrackId(catTrack->getIndex(list[0]));   // both values are the same
+	       calsimobj->addTrackId(catTrack->getIndex(list[0]));
 	   }
        } else {
 	   Error("execute()", "address of pad =%i not found in map!",addPad);

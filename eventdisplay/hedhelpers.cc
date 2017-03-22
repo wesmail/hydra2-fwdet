@@ -37,6 +37,7 @@
 #include "hgeomvector2.h"
 #include "hgeomcompositevolume.h"
 
+#include "hrich700digimappar.h"
 #include "hrichgeometrypar.h"
 #include "hrichpadtab.h"
 #include "hrichpad.h"
@@ -73,8 +74,7 @@ ClassImp(HEDMdcWireManager)
 HGeomTransform* HEDTransform::richSecTrans    = 0;
 HGeomTransform* HEDTransform::richMirrorTrans = 0;
 TGeoSphere*     HEDTransform::richMirror      = 0;
-
-Float_t  HEDTransform::calcPhiToLab(Int_t sec)
+Bool_t          HEDTransform::fisNewRich      = kFALSE;Float_t  HEDTransform::calcPhiToLab(Int_t sec)
 {
     // returns the lower phi bound of the sector
     // in LAB [Deg].
@@ -1340,8 +1340,11 @@ Bool_t HEDMakeContainers::init(void){
     rtdb->getContainer("MdcLayerGeomPar");
     rtdb->getContainer("MdcGeomPar");
     rtdb->getContainer("SpecGeomPar");
-
-    rtdb->getContainer("RichGeometryParameters");
+    if(HEDTransform::isNewRich()){
+        rtdb->getContainer("Rich700DigiMapPar");
+    } else {
+	rtdb->getContainer("RichGeometryParameters");
+    }
     rtdb->getContainer("RpcGeomPar");
     rtdb->getContainer("ShowerGeometry");
     rtdb->getContainer("TofGeomPar");

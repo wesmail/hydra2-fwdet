@@ -101,7 +101,12 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
     TRegexp regTOFMOTHER   ("T[12345678].F_");
     TRegexp regSHOWER      ("SH[123]M");
     TRegexp regSHOWERMOTHER("SHK[123456]");
-    TRegexp regRICH        ("RPAD");
+
+    TString patternrich;
+    if(!HEDTransform::isNewRich()) patternrich="RPAD";
+    else                           patternrich="RDET";
+
+    TRegexp regRICH        (patternrich.Data());
     TRegexp regRICHMIR     ("RMIR");
     TRegexp regRPC         ("EG[123456789].");
     TRegexp regRPCMOTHER   ("EBOX_[123456]");
@@ -170,6 +175,7 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
 	    vol->SetTransparency(colorDef->transRICH);
 	    colorDef->volRICH.AddLast(vol);
 	}
+
 	result = name(regRICHMIR);
         if(result != ""){
 	    vol->SetLineColor(colorDef->colRICH);

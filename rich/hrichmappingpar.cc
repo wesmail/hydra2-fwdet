@@ -41,8 +41,7 @@ HRichMappingPar::HRichMappingPar(const Char_t* name,
    clear();
 }
 
-void
-HRichMappingPar::clear()
+void HRichMappingPar::clear()
 {
 // Claar the address arrays
 
@@ -57,8 +56,7 @@ HRichMappingPar::clear()
    resetInputVersions();
 }
 
-Bool_t
-HRichMappingPar::init(HParIo* inp, Int_t* set)
+Bool_t HRichMappingPar::init(HParIo* inp, Int_t* set)
 {
 // Initializes the container from an input
 
@@ -73,8 +71,7 @@ HRichMappingPar::init(HParIo* inp, Int_t* set)
    return kFALSE;
 }
 
-Int_t
-HRichMappingPar::write(HParIo* output)
+Int_t HRichMappingPar::write(HParIo* output)
 {
 // Writes the container to an output
 
@@ -85,8 +82,7 @@ HRichMappingPar::write(HParIo* output)
    return -1;
 }
 
-Bool_t
-HRichMappingPar::readline(const Char_t* buf)
+Bool_t HRichMappingPar::readline(const Char_t* buf)
 {
 // Decodes one line read from ASCII file I/O and fills the channel
 
@@ -100,8 +96,7 @@ HRichMappingPar::readline(const Char_t* buf)
    return setAddress(row, col, adc, apv, ch);
 }
 
-void
-HRichMappingPar::write(fstream& fout)
+void HRichMappingPar::write(fstream& fout)
 {
 // Writes the Rich Mapping Parameters to an ASCII file.
 
@@ -124,14 +119,13 @@ HRichMappingPar::write(fstream& fout)
    }
 }
 
-Bool_t
-HRichMappingPar::setAddress(UInt_t row, UInt_t col, UInt_t adc, UInt_t apv, UInt_t ch)
+Bool_t HRichMappingPar::setAddress(UInt_t row, UInt_t col, UInt_t adc, UInt_t apv, UInt_t ch)
 {
 // Checks the adresses and fills the array
 
-   if (row >= RICH_MAX_ROWS || col >= RICH_MAX_COLS) {
+   if (row >= RICH700_MAX_ROWS || col >= RICH700_MAX_COLS) {
       Error("setAddress", "Wrong SW pad coordinates: row %u out of (0, %i) \n\t\t\t col %u out of (0,%i)",
-            row, RICH_MAX_ROWS, col, RICH_MAX_COLS);
+            row, RICH700_MAX_ROWS, col, RICH700_MAX_COLS);
       return kFALSE;
    }
    if (adc >= RICH_MAX_ADCS || apv >= RICH_MAX_APVS ||
@@ -163,8 +157,7 @@ HRichMappingPar::setAddress(UInt_t row, UInt_t col, UInt_t adc, UInt_t apv, UInt
    return kTRUE;
 }
 
-void
-HRichMappingPar::printParams()
+void HRichMappingPar::printParams()
 {
 // Prints the lookup table
 
@@ -193,8 +186,7 @@ HRichMappingPar::printParams()
    cout << "#########################################################################" << endl << endl;
 }
 
-void
-HRichMappingPar::putAsciiHeader(TString& header)
+void HRichMappingPar::putAsciiHeader(TString& header)
 {
    // puts the ASCII header to the string used in HDetParAsciiFileIo
    header =
@@ -203,8 +195,7 @@ HRichMappingPar::putAsciiHeader(TString& header)
       "# Col Row ADC APV Channel\n";
 }
 
-Bool_t
-HRichMappingPar::getHWAddress(Int_t row, Int_t col,
+Bool_t HRichMappingPar::getHWAddress(Int_t row, Int_t col,
                               UInt_t& adc, UInt_t& apv, UInt_t& ch)
 {
    Int_t addrSW = col * 100 + row;
@@ -224,8 +215,7 @@ HRichMappingPar::getHWAddress(Int_t row, Int_t col,
    }
 }
 
-Bool_t
-HRichMappingPar::getSWAddress(Int_t addrHW,
+Bool_t HRichMappingPar::getSWAddress(Int_t addrHW,
                               Int_t& row, Int_t& col)
 {
    Int_t addrSW = -1;
@@ -246,8 +236,7 @@ HRichMappingPar::getSWAddress(Int_t addrHW,
    }
 }
 
-Bool_t
-HRichMappingPar::isValidSWAddress(Int_t row, Int_t col)
+Bool_t HRichMappingPar::isValidSWAddress(Int_t row, Int_t col)
 {
    if (row < 0 || col < 0 || (col * 100 + row) >= RICH_SIZE_SW) {
       Error("isValidSWAddress", "Address (row,col) = (%i,%i) out of bounds (0,%i)", row, col, RICH_SIZE_SW);
@@ -256,8 +245,7 @@ HRichMappingPar::isValidSWAddress(Int_t row, Int_t col)
    return (-1 != fAddrArrSW[(col * 100 + row)]) ? kTRUE : kFALSE;
 }
 
-Bool_t
-HRichMappingPar::isValidHWAddress(Int_t addrHW)
+Bool_t HRichMappingPar::isValidHWAddress(Int_t addrHW)
 {
    if (addrHW < 0 || addrHW >= RICH_SIZE_HW) {
       Error("isValidHWAddress", "Address %i out of bounds (0,%i)", addrHW, RICH_SIZE_HW);

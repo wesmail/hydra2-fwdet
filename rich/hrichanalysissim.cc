@@ -324,7 +324,7 @@ HRichAnalysisSim::getPadsNTrack1(Int_t padx, Int_t pady, Int_t sec)
 
    pRichCalSim = (HRichCalSim*)((HMatrixCategory*)getCalCat())->getObject(loc1);
    if (NULL != pRichCalSim)
-      return pRichCalSim->getNTrack1();
+      return pRichCalSim->getTrackId(0);
    return 0;
 }
 //============================================================================
@@ -338,7 +338,7 @@ HRichAnalysisSim::getPadsNTrack2()
 // Pad must be identified by calling getPadsNTrack1(...) first.
 
    if (NULL != pRichCalSim)
-      return pRichCalSim->getNTrack2();
+      return pRichCalSim->getTrackId(1);
    return 0;
 }
 //============================================================================

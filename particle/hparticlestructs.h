@@ -636,6 +636,15 @@ public:
     Float_t  phi;           // rich phi   0-360 deg
     Float_t  theta;         // rich theta 0-90 deg
 
+    // NEW RICH700
+    Float_t centerx;       // center position in X [mm]
+    Float_t centery;       // center position in Y [mm]
+    Float_t radius ;       // radius of ring
+    Float_t chi2   ;       // chi2 of ring fit
+    Int_t   ncals  ;       // number of cal objects used
+
+    Bool_t isNewRich() { return ncals == -1 ? kFALSE:  kTRUE;}
+
     void reset(void){
 	ind           = -1;
 	numPads       = -1;
@@ -645,6 +654,11 @@ public:
 	centroid      = -1;
 	phi           = -1;
 	theta         = -1;
+	centerx       = -1;
+	centery       = -1;
+	radius        = -1;
+	chi2          = -1;
+	ncals         = -1;
     }
 
     void fillMeta(HMetaMatch2* meta,Int_t n = 0){
@@ -654,11 +668,19 @@ public:
     }
     void fill(HRichHit* hit){
 	if(hit){
-	    numPads       = hit->getRingPadNr();
-	    amplitude     = hit->getRingAmplitude();
-	    houTra        = hit->getRingHouTra();
-	    patternMatrix = hit->getRingPatMat();
-	    centroid      = hit->getCentroid();
+	    if(hit->isNewRich()){
+		centerx       = hit->getRich700CircleCenterX();
+		centery       = hit->getRich700CircleCenterY();
+		radius        = hit->getRich700CircleRadius();
+		chi2          = hit->getRich700CircleChi2();
+		ncals         = hit->getRich700NofRichCals();
+	    } else {
+		numPads       = hit->getRingPadNr();
+		amplitude     = hit->getRingAmplitude();
+		houTra        = hit->getRingHouTra();
+		patternMatrix = hit->getRingPatMat();
+		centroid      = hit->getCentroid();
+	    }
 	    phi           = hit->getPhi();
 	    theta         = hit->getTheta();
 	}
@@ -1109,15 +1131,19 @@ public:
 	    part->setAngleToNearbyFittedInner  (oAFitted)  ;
 	    part->setAngleToNearbyUnfittedInner(oANoFitted);
 
-
-	    part->setRingNumPads      (richhit.numPads);
-	    part->setRingAmplitude    (richhit.amplitude);
-	    part->setRingHouTra       (richhit.houTra);
-	    part->setRingPatternMatrix(richhit.patternMatrix);
-	    part->setRingCentroid     (richhit.centroid);
+	    if(richhit.isNewRich()){
+		part->setRingRadius  (richhit.radius);
+		part->setRingChi2    (richhit.chi2);
+		part->setRingNumCals (richhit.ncals);
+	    } else {
+		part->setRingNumPads      (richhit.numPads);
+		part->setRingAmplitude    (richhit.amplitude);
+		part->setRingHouTra       (richhit.houTra);
+		part->setRingPatternMatrix(richhit.patternMatrix);
+		part->setRingCentroid     (richhit.centroid);
+	    }
 	    part->setRichPhi          (richhit.phi) ;
 	    part->setRichTheta        (richhit.theta);
-
 
 	    part->setShowerSum0       (showerhit.showerSum0);
 	    part->setShowerSum1       (showerhit.showerSum1);

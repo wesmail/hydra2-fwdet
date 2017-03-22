@@ -44,12 +44,27 @@ SOURCE_FILES := hrichanalysis.cc		\
 		hrichringfind.cc		\
 		hrichringfindsim.cc		\
 		hrichtaskset.cc			\
-		hrichthresholdpar.cc	\
+		hrichthresholdpar.cc	        \
 		hrichtrack.cc			\
 		hrichunpacker.cc		\
 		hrichwire.cc			\
 		hrichwiretab.cc			\
-		hrichwiresignal.cc
+		hrichwiresignal.cc		\
+		hrich700taskset.cc    		\
+		hrich700eventdisplay.cc	        \
+		hrich700drawhist.cc		\
+		hrich700utils.cc		\
+		hrich700geotestqa.cc		\
+		hrich700histmanager.cc		\
+		hrich700pmt.cc 			\
+		hrich700digitizer.cc 		\
+		hrich700digipar.cc 		\
+		hrich700digimappar.cc 		\
+		hrich700ringfinderpar.cc	\
+		hrich700ringfinderideal.cc 	\
+		hrich700ringfittercop.cc 	\
+		hrich700ringfinderhough.cc 	\
+		hrich700recoqa.cc
 
 DEBUG_LEVEL := 0
 

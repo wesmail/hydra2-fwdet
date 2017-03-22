@@ -9,6 +9,9 @@
 #define RICH_MAX_APVS        15
 #define RICH_MAX_CHANNELS    128
 
+#define RICH700_MAX_COLS     192
+#define RICH700_MAX_ROWS     192
+
 #define RICH_SIZE_HW         16384  // 3 bits for ADCs + 4 bits for APVs + 7 bits for Channels
 #define RICH_SIZE_SW         9696   // maxCols*100 + maxRows
 

@@ -23,6 +23,7 @@
 #pragma link C++ class HEDShowerHit;
 #pragma link C++ class HEDParticleCand;
 #pragma link C++ class HEDRichPadPlane;
+#pragma link C++ class HEDRich700PadPlane;
 #pragma link C++ class HEDRichRing;
 #pragma link C++ class HEDRichHitPadPlane;
 #pragma link C++ class HEDRichGeantPadPlane;

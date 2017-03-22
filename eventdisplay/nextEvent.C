@@ -546,12 +546,14 @@ public:
 
 	    //---------------------------------------------------------
             // RICH
-	    if(drawRichPadPlane){
+	    if(!HEDTransform::isNewRich()&&drawRichPadPlane){
 		for(Int_t s = 0 ; s < 6; s ++){
 		    // clean : 0 (all pads), 1 : cleaned (removed pads), 2 : kept pads after cleaning
 		    richpadplane       ->AddElement(s,new HEDRichPadPlane(s,2)); // rich pads fired on cal level
 	            richpadplanecleaned->AddElement(s,new HEDRichPadPlane(s,1)); // rich pads fired on cal level but cleanded
 	        }
+	    } else {
+		richpadplane       ->AddElement(0,new HEDRich700PadPlane()); // rich pads fired on cal level
 	    }
 	    if(drawRichCompound && richHitCat){
                 HRichHitSim* richhit;

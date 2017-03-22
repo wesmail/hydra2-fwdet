@@ -6,8 +6,8 @@
 
 #pragma link C++ class HGeantKine-;
 #pragma link C++ class HGeantMdc-;
-#pragma link C++ class HGeantRichDirect;
-#pragma link C++ class HGeantRichPhoton;
+#pragma link C++ class HGeantRichDirect-;
+#pragma link C++ class HGeantRichPhoton-;
 #pragma link C++ class HGeantRichMirror;
 #pragma link C++ class HGeantTof-;
 #pragma link C++ class HGeantRpc-;

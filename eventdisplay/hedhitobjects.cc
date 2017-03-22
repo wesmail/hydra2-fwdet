@@ -44,6 +44,8 @@
 #include "hgeomtransform.h"
 #include "hgeomvector.h"
 #include "hrichgeometrypar.h"
+#include "hrich700digimappar.h"
+#include "hrich700data.h"
 #include "hmdcsizescells.h"
 #include "hwallgeompar.h"
 
@@ -323,18 +325,23 @@ HEDRichHit::HEDRichHit(HRichHitSim* hit,HParticleCandSim* cand):TEveLine(2)
     title += Form(" sec   = %i\n"   ,sec);
     title += Form(" phi   = %5.3f\n",phi);
     title += Form(" theta = %5.3f\n",theta);
-    title += Form(" hough = %i \n"  ,hit->getRingHouTra());
-    title += Form(" ampl  = %i\n"   ,hit->getRingAmplitude());
-    title += Form(" patMat= %i\n"   ,hit->getRingPatMat());
-    title += Form(" padNr = %i\n"   ,hit->getRingPadNr());
-    title += Form(" centr = %5.3f\n",hit->getCentroid());
-
+    if(!hit->isNewRich()){
+	title += Form(" hough = %i \n"  ,hit->getRingHouTra());
+	title += Form(" ampl  = %i\n"   ,hit->getRingAmplitude());
+	title += Form(" patMat= %i\n"   ,hit->getRingPatMat());
+	title += Form(" padNr = %i\n"   ,hit->getRingPadNr());
+	title += Form(" centr = %5.3f\n",hit->getCentroid());
+    } else {
+ 	title += Form(" radius= %5.3f\n",hit->getRich700CircleRadius());
+	title += Form(" chi2  = %6.3f\n",hit->getRich700CircleChi2());
+	title += Form(" nCals = %i\n"   ,hit->getRich700NofRichCals() );
+    }
 
     TString cname = hit->ClassName();
     if(cname.CompareTo("HRichHitSim") == 0){
 
 	HCategory* kineCat = gHades->getCurrentEvent()->getCategory(catGeantKine);
-	Int_t   tracks[3] = {hit->track1    ,hit->track2    ,hit->track3};
+	Int_t tracks[3] = {hit->track1    ,hit->track2    ,hit->track3};
         Int_t weight[3] = {hit->weigTrack1,hit->weigTrack2,hit->weigTrack3};
 
 	for(Int_t i = 0; i < 3; i ++){
@@ -792,22 +799,26 @@ HEDParticleCand::HEDParticleCand(HParticleCandSim* cand)
         edrichhit->GetPoint(1,x,y,z);       // mirror hit
 	lineToPadPlane->SetPoint(1,x,y,z);
 
-	Float_t x,y;
-	hit->getXY(&x,&y);
-	x*=-1;
-
-
+	Float_t x,y,z;
 	HGeomVector p;
-	p.setXYZ(x,y,0);
+	if(hit->isNewRich()){
+	    hit->getLabXYZ(&x,&y,&z);
+	    p.setXYZ(x,y,z);
+            p *= TO_CM;
+	} else {
+	    hit->getXY(&x,&y);
+	    x*=-1;
+	    p.setXYZ(x,y,0);
 
-	HRichGeometryPar* fRichGeometryPar = (HRichGeometryPar*) gHades->getRuntimeDb()->getContainer("RichGeometryParameters");
-	if(fRichGeometryPar)
-	{
-	    //--------------------------------------------------------------------
-	    // get transformation RICH padplane -> sector sys
-	    HGeomTransform& trans = *HEDTransform::getRichSecTrans();
-	    HEDTransform::calcRichPadPlaneToLab(cand->getSector(),p,trans);
-	    //--------------------------------------------------------------------
+	    HRichGeometryPar* fRichGeometryPar = (HRichGeometryPar*) gHades->getRuntimeDb()->getContainer("RichGeometryParameters");
+	    if(fRichGeometryPar)
+	    {
+		//--------------------------------------------------------------------
+		// get transformation RICH padplane -> sector sys
+		HGeomTransform& trans = *HEDTransform::getRichSecTrans();
+		HEDTransform::calcRichPadPlaneToLab(cand->getSector(),p,trans);
+		//--------------------------------------------------------------------
+	    }
 	}
 
 	lineToPadPlane->SetPoint(0,p.X(),p.Y(),p.Z());  // pad plane hit
@@ -1124,6 +1135,93 @@ void HEDRichPadPlane::Print(){
 }
 
 //-----------------------------------------------------------------
+HEDRich700PadPlane::HEDRich700PadPlane()
+: TEveQuadSet(Form("Rich700_padplane"))
+{
+    // creates a TEveQuadSet object for a Rich700PadPlane
+    // The object contains the HRichCalHits hits of the
+    // event.
+    // Works for real and sim objects. The object info
+    // will be displayed in TEve my mouse over events in
+    // the GL Viewer and the EveBrowser of the Event scene.
+
+    HRich700DigiMapPar* fRich700DigiMapPar = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
+    if(fRich700DigiMapPar)
+    {
+	TEveRGBAPalette *pal = new TEveRGBAPalette(0,50);
+	SetOwnIds(kTRUE);  // quad deletes the id objects
+        SetPalette(pal);
+        Reset(TEveQuadSet::kQT_FreeQuad, kFALSE, 32);
+
+	//--------------------------------------------------------------------
+        // loop for the cal objects and fill the quad
+	HCategory* richCalCat = HCategoryManager::getCategory(catRichCal,2);
+	if(richCalCat){
+	    Float_t coord[4*3]; // xyz 4 corner of pad
+            HRichCal* cal;
+	    for(Int_t i = 0; i < richCalCat->getEntries(); i ++)
+	    {
+                cal = HCategoryManager::getObject(cal,richCalCat,i);
+                Int_t col    = cal->getCol();
+                Int_t row    = cal->getRow();
+                Int_t pmtid  = fRich700DigiMapPar->getPMTId(col,row);
+                Float_t w    = fRich700DigiMapPar->getPmtSize();
+                Int_t  npix  = fRich700DigiMapPar->getNPixelInRow();
+		Float_t pixw = w/npix;
+                w/=2;
+
+
+
+		HRich700PmtData* data = fRich700DigiMapPar ->getPMTData(pmtid);
+		if(data){
+		    //    +y   row 0 at max y
+		    //     |
+		    // +x--|   col 0 at max x
+		    //
+		    // (fx+w,fy+w) 1     2
+                    //                x(fx,fy)
+		    //             4     3
+                    //
+		    Int_t indx = npix-1 - (col%npix);  // local pixel index running along x in ascending order
+                    Int_t indy = npix-1 - (row%npix);  // local pixel index running along y in ascending order
+
+                    // 1
+		    coord [0] = (data->fX+w- ((indx  )*pixw))*TO_CM;
+                    coord [1] = (data->fY+w- ((indy  )*pixw))*TO_CM;
+                    coord [2] = (data->fZ)*TO_CM;
+                    // 2
+		    coord [3] = (data->fX+w- ((indx+1)*pixw))*TO_CM;
+                    coord [4] = (data->fY+w- ((indy  )*pixw))*TO_CM;
+                    coord [5] = (data->fZ)*TO_CM;
+                    // 3
+		    coord [6] = (data->fX+w- ((indx+1)*pixw))*TO_CM;
+                    coord [7] = (data->fY+w- ((indy+1)*pixw))*TO_CM;
+                    coord [8] = (data->fZ)*TO_CM;
+                    // 4
+		    coord [9]  = (data->fX+w- ((indx  )*pixw))*TO_CM;
+                    coord [10] = (data->fY+w- ((indy+1)*pixw))*TO_CM;
+                    coord [11] = (data->fZ)*TO_CM;
+
+
+		    AddQuad(coord);
+		    QuadValue(10);
+		    QuadId(new TNamed(Form("all_sector"), "TNamed assigned to a quad as an indentifier."));
+
+		}
+	    }
+	}
+	//--------------------------------------------------------------------
+	RefitPlex();
+    }
+}
+HEDRich700PadPlane::~HEDRich700PadPlane(){
+}
+
+void HEDRich700PadPlane::Print(){
+    cout<<GetTitle()<<endl;
+}
+
+//-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
 HEDRichRing::HEDRichRing(HRichHitSim* hit):TEveLine()
@@ -1151,40 +1249,68 @@ HEDRichRing::HEDRichRing(HRichHitSim* hit):TEveLine()
     title += Form(" sec   = %i\n"   ,sec);
     title += Form(" phi   = %5.3f\n",phi);
     title += Form(" theta = %5.3f\n",hit->getTheta());
-    title += Form(" hough = %i \n"  ,hit->getRingHouTra());
-    title += Form(" ampl  = %i\n"   ,hit->getRingAmplitude());
-    title += Form(" patMat= %i\n"   ,hit->getRingPatMat());
-    title += Form(" padNr = %i\n"   ,hit->getRingPadNr());
-    title += Form(" centr = %5.3f\n",hit->getCentroid());
-    title += Form(" radius= %5.3f\n",hit->getRadius());
-
-
-    HRichGeometryPar* fRichGeometryPar = (HRichGeometryPar*) gHades->getRuntimeDb()->getContainer("RichGeometryParameters");
-    if(fRichGeometryPar)
+    if(!hit->isNewRich())
     {
-	//--------------------------------------------------------------------
-        // get transformation RICH padplane -> sector sys
-	HGeomTransform& trans = *HEDTransform::getRichSecTrans();
-	//--------------------------------------------------------------------
+	title += Form(" hough = %i \n"  ,hit->getRingHouTra());
+	title += Form(" ampl  = %i\n"   ,hit->getRingAmplitude());
+	title += Form(" patMat= %i\n"   ,hit->getRingPatMat());
+	title += Form(" padNr = %i\n"   ,hit->getRingPadNr());
+	title += Form(" centr = %5.3f\n",hit->getCentroid());
+	title += Form(" radius= %5.3f\n",hit->getRadius());
+    } else {
+ 	title += Form(" radius= %5.3f\n",hit->getRich700CircleRadius());
+	title += Form(" chi2  = %6.3f\n",hit->getRich700CircleChi2());
+	title += Form(" nCals = %i\n"   ,hit->getRich700NofRichCals() );
+    }
 
-	Float_t x,y;
-        hit->getXY(&x,&y);
-        x*=-1;
+    Float_t R = 1., dW = 0, dH = 5;
+    Int_t n = 10;
 
-	Float_t R = 1., dW = 0, dH = 0.5;
-	Int_t n = 10;
-        if(hit->getRadius() > 1.) R = hit->getRadius(); // minimum radius
-	HGeomVector p;
+    Float_t x,y,z;
+    HGeomVector p;
+
+    if(hit->isNewRich())
+    {
+	hit->getLabXYZ(&x,&y,&z);
+
+	if(hit->getRich700CircleRadius() > 1.) R = hit->getRich700CircleRadius(); // minimum radius
 
 	for(Int_t i=0;i<=n;i++)
 	{
 	    p.setXYZ(x + (R+dW) * TMath::Cos(TMath::TwoPi()*i/n),
 		     y + (R+dW) * TMath::Sin(TMath::TwoPi()*i/n),
-		     dH);
-	    HEDTransform::calcRichPadPlaneToLab(sec,p,trans);
+		     z+dH);
+            p *= TO_CM;
 	    SetNextPoint(p.X(),p.Y(),p.Z());
 	}
+
+    } else {
+	HRichGeometryPar* fRichGeometryPar = (HRichGeometryPar*) gHades->getRuntimeDb()->getContainer("RichGeometryParameters");
+	if(fRichGeometryPar)
+	{
+	    //--------------------------------------------------------------------
+	    // get transformation RICH padplane -> sector sys
+	    HGeomTransform& trans = *HEDTransform::getRichSecTrans();
+	    //--------------------------------------------------------------------
+
+	    hit->getXY(&x,&y);
+	    x*=-1;
+
+	    if(hit->getRadius() > 1.) R = hit->getRadius(); // minimum radius
+
+
+
+	    for(Int_t i=0;i<=n;i++)
+	    {
+		p.setXYZ(x + (R+dW) * TMath::Cos(TMath::TwoPi()*i/n),
+			 y + (R+dW) * TMath::Sin(TMath::TwoPi()*i/n),
+			 dH);
+		HEDTransform::calcRichPadPlaneToLab(sec,p,trans);
+		SetNextPoint(p.X(),p.Y(),p.Z());
+	    }
+	}
     }
+
 
 
     SetElementName("EDRichRing");
@@ -1221,22 +1347,29 @@ HEDRichHitPadPlane::HEDRichHitPadPlane(HRichHitSim* hit) : TEvePointSet(1)
 	phi +=60.;
     }
 
-    Float_t x,y;
-    hit->getXY(&x,&y);
-    x*=-1;
-
+    Float_t x,y,z;
 
     HGeomVector p;
-    p.setXYZ(x,y,0);
+    if(hit->isNewRich()){
+	hit->getLabXYZ(&x,&y,&z);
+	p.setXYZ(x,y,z);
+        p *= TO_CM;
+    } else {
 
-    HRichGeometryPar* fRichGeometryPar = (HRichGeometryPar*) gHades->getRuntimeDb()->getContainer("RichGeometryParameters");
-    if(fRichGeometryPar)
-    {
-	//--------------------------------------------------------------------
-        // get transformation RICH padplane -> sector sys
-	HGeomTransform& trans = *HEDTransform::getRichSecTrans();
-	HEDTransform::calcRichPadPlaneToLab(sec,p,trans);
-	//--------------------------------------------------------------------
+	hit->getXY(&x,&y);
+	x*=-1;
+
+	p.setXYZ(x,y,0);
+
+	HRichGeometryPar* fRichGeometryPar = (HRichGeometryPar*) gHades->getRuntimeDb()->getContainer("RichGeometryParameters");
+	if(fRichGeometryPar)
+	{
+	    //--------------------------------------------------------------------
+	    // get transformation RICH padplane -> sector sys
+	    HGeomTransform& trans = *HEDTransform::getRichSecTrans();
+	    HEDTransform::calcRichPadPlaneToLab(sec,p,trans);
+	    //--------------------------------------------------------------------
+	}
     }
 
     TString title = "EDRichHit: \n";
@@ -1244,11 +1377,18 @@ HEDRichHitPadPlane::HEDRichHitPadPlane(HRichHitSim* hit) : TEvePointSet(1)
     title += Form(" sec   = %i\n"   ,sec);
     title += Form(" phi   = %5.3f\n",phi);
     title += Form(" theta = %5.3f\n",hit->getTheta());
-    title += Form(" hough = %i \n"  ,hit->getRingHouTra());
-    title += Form(" ampl  = %i\n"   ,hit->getRingAmplitude());
-    title += Form(" patMat= %i\n"   ,hit->getRingPatMat());
-    title += Form(" padNr = %i\n"   ,hit->getRingPadNr());
-    title += Form(" centr = %5.3f\n",hit->getCentroid());
+    if(!hit->isNewRich())
+    {
+	title += Form(" hough = %i \n"  ,hit->getRingHouTra());
+	title += Form(" ampl  = %i\n"   ,hit->getRingAmplitude());
+	title += Form(" patMat= %i\n"   ,hit->getRingPatMat());
+	title += Form(" padNr = %i\n"   ,hit->getRingPadNr());
+	title += Form(" centr = %5.3f\n",hit->getCentroid());
+    } else {
+	title += Form(" radius= 5.3%f\n",hit->getRich700CircleRadius());
+	title += Form(" chi2  = %6.3f\n",hit->getRich700CircleChi2());
+	title += Form(" nCals = %i\n"   ,hit->getRich700NofRichCals() );
+    }
 
 
     TString cname = hit->ClassName();
@@ -1325,16 +1465,28 @@ HEDRichGeantPadPlane::HEDRichGeantPadPlane(HGeantKine* kine,Int_t select,HGeantR
 		HGeantRichPhoton* rich = 0;
 		while ( (rich = HCategoryManager::getObject(rich,catRichPho,hitInd)) ){
 
+		    if(!HEDTransform::isNewRich()){
+			Int_t s  = rich->getSector();
 
-		    Int_t s  = rich->getSector();
+			p.setX( -rich->getX());
+			p.setY( rich->getY());
+			p.setZ(0);
 
-		    p.setX( -rich->getX());
-		    p.setY( rich->getY());
-		    p.setZ(0);
+			if(HEDTransform::calcRichGeantPadplanePointLab(s,p))
+			{
+			    SetNextPoint(p.getX(),p.getY(),p.getZ());
+			}
+		    } else {
 
-		    if(HEDTransform::calcRichGeantPadplanePointLab(s,p))
-		    {
-			SetNextPoint(p.getX(),p.getY(),p.getZ());
+			HRich700DigiMapPar* fRich700DigiMapPar = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
+			if(fRich700DigiMapPar){
+                           HRich700PmtData* data =  fRich700DigiMapPar->getPMTData(rich->getPmtId());
+			   if(data){
+			       p.setXYZ(rich->getY()+data->fX,rich->getX()+data->fY,data->fZ);
+                               p *= TO_CM;
+			       SetNextPoint(p.getX(),p.getY(),p.getZ());
+			   }
+			}
 		    }
 		    hitInd   = rich->getNextHitIndex();
 		} // end loop over rich photon
@@ -1350,14 +1502,27 @@ HEDRichGeantPadPlane::HEDRichGeantPadPlane(HGeantKine* kine,Int_t select,HGeantR
 
 	HGeomVector p;
 
-	Int_t s  = geadir->getSector();
-	p.setX( -geadir->getX());
-	p.setY(  geadir->getY());
-	p.setZ(0);
+	if(!HEDTransform::isNewRich()){
+	    Int_t s  = geadir->getSector();
+	    p.setX( -geadir->getX());
+	    p.setY(  geadir->getY());
+	    p.setZ(0);
 
-	if(HEDTransform::calcRichGeantPadplanePointLab(s,p))
-	{
-	    SetNextPoint(p.getX(),p.getY(),p.getZ());
+	    if(HEDTransform::calcRichGeantPadplanePointLab(s,p))
+	    {
+		SetNextPoint(p.getX(),p.getY(),p.getZ());
+	    }
+	} else {
+	    HRich700DigiMapPar* fRich700DigiMapPar = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
+	    if(fRich700DigiMapPar){
+		HRich700PmtData* data =  fRich700DigiMapPar->getPMTData(geadir->getPmtId());
+		if(data){
+		    p.setXYZ(geadir->getY()+data->fX,geadir->getX()+data->fY,data->fZ);
+		    p *= TO_CM;
+		    SetNextPoint(p.getX(),p.getY(),p.getZ());
+		}
+	    }
+
 	}
     }
     //----------------------------------------------------------------

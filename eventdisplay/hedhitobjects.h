@@ -202,6 +202,18 @@ public:
 //----------------------------------------------------------------
 
 //----------------------------------------------------------------
+class HEDRich700PadPlane : public TEveQuadSet {
+private:
+public:
+    HEDRich700PadPlane();
+    virtual ~HEDRich700PadPlane();
+    void Print();
+
+    ClassDef(HEDRich700PadPlane,0)   // RICH700 pad plane fired cells
+};
+//----------------------------------------------------------------
+
+//----------------------------------------------------------------
 class HEDRichRing : public TEveLine {
 private:
 

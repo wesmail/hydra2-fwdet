@@ -10,7 +10,7 @@
 #pragma link C++ class HRichCal;
 #pragma link C++ class HRichCalPar;
 #pragma link C++ class HRichCalParCell;
-#pragma link C++ class HRichCalSim;
+#pragma link C++ class HRichCalSim-;
 #pragma link C++ class HRichContFact;
 #pragma link C++ class HRichDetector;
 #pragma link C++ class HRichDigitisationPar-;
@@ -20,7 +20,7 @@
 #pragma link C++ class HRichFrameCorner;
 #pragma link C++ class HRichFrameTab;
 #pragma link C++ class HRichGeometryPar;
-#pragma link C++ class HRichHit;
+#pragma link C++ class HRichHit-;
 #pragma link C++ class HRichHitCandidate;
 #pragma link C++ class HRichHitHeader;
 #pragma link C++ class HRichHitSim;
@@ -45,6 +45,20 @@
 #pragma link C++ class HRichWire;
 #pragma link C++ class HRichWireSignal;
 #pragma link C++ class HRichWireTab;
+
+#pragma link C++ class HRichDrawHist;
+#pragma link C++ class HRich700EventDisplay;
+#pragma link C++ class HRich700GeoTestQa;
+#pragma link C++ class HRich700HistManager;
+#pragma link C++ class HRich700Pmt;
+#pragma link C++ class HRich700DigiPar;
+#pragma link C++ class HRich700Digitizer;
+#pragma link C++ class HRich700DigiMapPar;
+#pragma link C++ class HRich700RingFinderPar;
+#pragma link C++ class HRich700RingFinderIdeal;
+#pragma link C++ class HRich700RingFinderHough;
+#pragma link C++ class HRich700RecoQa;
+#pragma link C++ class HRich700TaskSet;
 
 #pragma link C++ global catRichRaw;
 #pragma link C++ global catRichCal;

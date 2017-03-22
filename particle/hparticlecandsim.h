@@ -65,8 +65,8 @@ public:
 	void     setGeantTrackRich(Int_t a,Int_t i)   { if(i<3 && i>=0) fGeantTrackRich  [i] = a; }
 	void     setGeantTrackMeta(Int_t a,Int_t i)   { if(i<4 && i>=0) fGeantTrackMeta  [i] = a; }
 	void     setGeantTrackShower(Int_t a,Int_t i) { if(i<4 && i>=0) fGeantTrackShower[i] = a; }
-	void     setGeantTrackInnerMdc(Int_t a,Int_t i,Int_t n) { if(i<3 && i>=0) { fGeantTrackInnerMdc[i] = a; fGeantTrackInnerMdcN[i] = n; }}
-	void     setGeantTrackOuterMdc(Int_t a,Int_t i,Int_t n) { if(i<3 && i>=0) { fGeantTrackOuterMdc[i] = a; fGeantTrackOuterMdcN[i] = n; }}
+	void     setGeantTrackInnerMdc(Int_t a,Int_t i,Int_t n) { if(i<2 && i>=0) { fGeantTrackInnerMdc[i] = a; fGeantTrackInnerMdcN[i] = n; }}
+	void     setGeantTrackOuterMdc(Int_t a,Int_t i,Int_t n) { if(i<2 && i>=0) { fGeantTrackOuterMdc[i] = a; fGeantTrackOuterMdcN[i] = n; }}
 	void     setGeantCorrTrackIds(UInt_t a)       { fGeantCorrTrackIds = a;          }
 	void     setGeantxMom(Float_t a)              { fGeantxMom = a;                  }
 	void     setGeantyMom(Float_t a)              { fGeantyMom = a;                  }
@@ -91,12 +91,12 @@ public:
 	Int_t    getGeantTrackRich(Int_t i)           { return (i<3 && i>=0)?  fGeantTrackRich  [i] :-1; }
 	Int_t    getGeantTrackMeta(Int_t i)           { return (i<4 && i>=0)?  fGeantTrackMeta  [i] :-1; }
 	Int_t    getGeantTrackShower(Int_t i)         { return (i<4 && i>=0)?  fGeantTrackShower[i] :-1; }
-	Int_t    getGeantTrackInnerMdc(Int_t i)       { return (i<3 && i>=0)?  fGeantTrackInnerMdc[i] :-1; }
-        Int_t    getGeantTrackOuterMdc(Int_t i)       { return (i<3 && i>=0)?  fGeantTrackOuterMdc[i] :-1; }
-	Int_t    getGeantTrackInnerMdcN(Int_t i)      { return (i<3 && i>=0)?  fGeantTrackInnerMdcN[i] : 0; }
-        Int_t    getGeantTrackOuterMdcN(Int_t i)      { return (i<3 && i>=0)?  fGeantTrackOuterMdcN[i] : 0; }
-	Float_t  getGeantTrackInnerMdcWeight(Int_t i) { return (i<3 && i>=0 && getNWSeg(0) !=0 )?  Float_t(fGeantTrackInnerMdcN[i])/getNWSeg(0) : 0; }
-        Float_t  getGeantTrackOuterMdcWeight(Int_t i) { return (i<3 && i>=0 && getNWSeg(0) !=0 )?  Float_t(fGeantTrackOuterMdcN[i])/getNWSeg(1) : 0; }
+	Int_t    getGeantTrackInnerMdc(Int_t i)       { return (i<2 && i>=0)?  fGeantTrackInnerMdc[i] :-1; }
+        Int_t    getGeantTrackOuterMdc(Int_t i)       { return (i<2 && i>=0)?  fGeantTrackOuterMdc[i] :-1; }
+	Int_t    getGeantTrackInnerMdcN(Int_t i)      { return (i<2 && i>=0)?  fGeantTrackInnerMdcN[i] : 0; }
+        Int_t    getGeantTrackOuterMdcN(Int_t i)      { return (i<2 && i>=0)?  fGeantTrackOuterMdcN[i] : 0; }
+	Float_t  getGeantTrackInnerMdcWeight(Int_t i) { return (i<2 && i>=0 && getNWSeg(0) !=0 )?  Float_t(fGeantTrackInnerMdcN[i])/getNWSeg(0) : 0; }
+        Float_t  getGeantTrackOuterMdcWeight(Int_t i) { return (i<2 && i>=0 && getNWSeg(0) !=0 )?  Float_t(fGeantTrackOuterMdcN[i])/getNWSeg(1) : 0; }
 
 	UInt_t   getGeantCorrTrackIds()        const  { return fGeantCorrTrackIds;       }
         Bool_t   isGhostTrack()                const  { return (fGeantCorrTrackIds&kIsGhost) == 0 ? kFALSE:kTRUE; }

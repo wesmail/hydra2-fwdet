@@ -36,8 +36,10 @@ class HEDTransform : public TObject {
     static HGeomTransform* richSecTrans;
     static HGeomTransform* richMirrorTrans;
     static TGeoSphere*     richMirror;
-
+    static Bool_t          fisNewRich;
 public:
+    static void            setIsNewRich(Bool_t newrich=kTRUE) { fisNewRich = newrich;}
+    static Bool_t          isNewRich()             { return fisNewRich;}
     static Float_t         calcPhiToLab            (Int_t sec);
     static void            setRichSecTrans         (Double_t x,Double_t y,Double_t z,Double_t rot1,Double_t rot2,Double_t rot3);
     static void            setRichMirrorTrans      (Double_t x,Double_t y,Double_t z,Double_t rot1,Double_t rot2,Double_t rot3);

@@ -19,13 +19,17 @@
 
 #include "hrichcal.h"
 
+
+#define NMAXTRACKS 10
+
 class HRichCalSim : public HRichCal {
 
 private:
-
-   Int_t   fTrack1;  // index of track nb. for first hit
-   Int_t   fTrack2;  // index of track nb. for last hit
-   Float_t fEnergy;  // energy of the photon coupling to the pad, in case of direct hits is -1
+   Int_t   fTrackIds[NMAXTRACKS]; // array trackids
+   Int_t   fNofTracks;            // number  stored track ids
+   Float_t fEnergy;               // energy of the photon coupling to the pad, in case of direct hits is -1
+   Int_t   fCt;                   //! tmp counter for HRichDigitizer
+   void    initTrackIds();
 
 public:
 
@@ -34,56 +38,22 @@ public:
    HRichCalSim(Int_t s, Int_t r, Int_t c);
    virtual ~HRichCalSim() {}
 
-   Int_t   getNTrack1(void) const;
-   Int_t   getNTrack2(void) const;
-   Float_t getEnergy() const;
+   void    setEnergy(Float_t ene)  { fEnergy = ene; }
+   void    addEnergy(Float_t e)    {  fEnergy += e; }
+   void    addHit()                { fCt++; }
+   Bool_t  checkTrackId(Int_t trackId);
+   void    addTrackId  (Int_t trackId);
 
-   void setNTrack1(const Int_t n);
-   void setNTrack2(const Int_t n);
-   void setEnergy(Float_t ene);
+   Int_t   getNHits()               { return fCt; }
+   Int_t   getNofTrackIds()         { return fNofTracks;}
+   Int_t   getTrackId(Int_t index);
+   Float_t getEnergy(void)  const   { return  fEnergy; }
 
-   void addEnergy(Float_t ene);
-   void addHit();
-
-   ClassDef(HRichCalSim, 1) // RICH simulated cal data
+   Bool_t  isNewRich() {return fEnergy == 0 ? kTRUE : kFALSE;}
+   
+   ClassDef(HRichCalSim, 2) // RICH simulated cal data
 };
 
 
-// Getters
-inline Int_t HRichCalSim::getNTrack1(void) const
-{
-   return fTrack1;
-}
-inline Int_t HRichCalSim::getNTrack2(void) const
-{
-   return fTrack2;
-}
-inline Float_t HRichCalSim::getEnergy() const
-{
-   return fEnergy;
-}
-
-// Setters
-inline void HRichCalSim::setNTrack1(const Int_t n)
-{
-   fTrack1 = n;
-}
-inline void HRichCalSim::setNTrack2(const Int_t n)
-{
-   fTrack2 = n;
-}
-inline void HRichCalSim::setEnergy(Float_t e)
-{
-   fEnergy = e;
-}
-
-inline void HRichCalSim::addEnergy(Float_t e)
-{
-   fEnergy += e;
-}
-inline void HRichCalSim::addHit()
-{
-   fTrack1++;
-}
 
 #endif /* !HRICHCALSIM_H */

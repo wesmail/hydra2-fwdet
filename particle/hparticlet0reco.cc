@@ -480,12 +480,11 @@ void HParticleT0Reco::fill()
 	    if(pCand->getMetaMatchQuality()>3.) continue;
 
 	    Float_t mom         = pCand->getMomentum();
-	    Float_t theta       = pCand->getTheta();
 	    Int_t   sys         = pCand->getSystemUsed();
             if(sys<0)  continue;
 
 	    HGeomVector base, dir;
-	    HParticleTool::calcSegVector(pCand->getZ(), pCand->getR(), pCand->getPhi(), theta, base, dir);
+	    HParticleTool::calcSegVector(pCand->getZ(), pCand->getR(), pCand->getPhi()*TMath::DegToRad(), pCand->getTheta()*TMath::DegToRad(), base, dir);
 	    Float_t dist = HParticleTool::calculateMinimumDistanceStraightToPoint(base,dir,vertex);
 	    if(dist>(1./mom)*1200.+ 10.) continue;
 

@@ -32,6 +32,7 @@ public:
   void    setTrack(Int_t aTrack) { parentTrack = aTrack; }
   void    setHit(Float_t ax, Float_t ay, Float_t ae);
   void    setAddress(Char_t s) { sector = s; }
+  void    setPmtId(Int_t pmtId) {fPmtId = pmtId;}
 
   virtual Int_t getTrack() { return parentTrack; }
   void    getHit(Float_t &ax, Float_t &ay, Float_t &ae);
@@ -41,7 +42,8 @@ public:
   Int_t   getSector() { return sector; }
   Int_t   getNLocationIndex() { return 1; }
   Int_t   getLocationIndex(Int_t i); 
-
+  Int_t   getPmtId() {return fPmtId;};
+  Bool_t  isNewRich() { return (fPmtId == -1) ? kFALSE:kTRUE; }
 private:
 
   Int_t parentTrack;     // GEANT track number of parent particle
@@ -49,8 +51,9 @@ private:
   Float_t yHit;          // y of hit (in mm) in pad plane
   Float_t eHit;          // energy of Cherenkov photon (in eV)
   Char_t sector;         // sector number (0...5)
+  Int_t fPmtId;          // Id of the PMT which is used for RICH700
   
-  ClassDef(HGeantRichPhoton,2) // GEANT RICH data class for photon hits
+  ClassDef(HGeantRichPhoton,3) // GEANT RICH data class for photon hits
 };
 
 //============================================================================
@@ -75,6 +78,7 @@ public:
   void    setELoss(Float_t ae, Float_t alen);
   void    setAddress (Char_t s) { sector = s; };
   void    setNumPhot(Int_t num) {numPhot = num;};
+  void    setPmtId(Int_t pmtId) {fPmtId = pmtId;}
 
   void    getTrack(Int_t &aTrack, Int_t &aID);
   virtual Int_t getTrack() {return trackNumber;}
@@ -91,6 +95,8 @@ public:
   Int_t   getNLocationIndex() { return 1; }
   inline Int_t   getLocationIndex(Int_t i); 
   Int_t   getNumPhot(){return numPhot;}; 
+  Int_t   getPmtId() {return fPmtId;};
+  Bool_t  isNewRich() { return (fPmtId == -1) ? kFALSE:kTRUE; }
 
 private:
 
@@ -106,8 +112,9 @@ private:
   Float_t trackLength;   // track length in gas detector (in mm)
   Char_t sector;         // sector number (0...5)
   Int_t numPhot;         // dummy (not used)
+  Int_t fPmtId;          // Id of the PMT which is used for RICH700
 
-  ClassDef(HGeantRichDirect,2) // GEANT RICH hit data class for direct hits
+  ClassDef(HGeantRichDirect,3) // GEANT RICH hit data class for direct hits
 };
 
 //----------------------------------------------------------------------------

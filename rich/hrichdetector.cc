@@ -46,8 +46,7 @@ HRichDetector::HRichDetector(void) : HDetector("Rich", "The RICH detector")
 
 }
 
-HTask*
-HRichDetector::buildTask(const Text_t*   name,
+HTask* HRichDetector::buildTask(const Text_t*   name,
                          const Option_t* opt)
 {
    if (NULL != name && 0 == strcmp(name, "default")) {
@@ -65,8 +64,7 @@ HRichDetector::buildTask(const Text_t*   name,
    return HDetector::buildTask(name, opt);
 }
 
-HCategory*
-HRichDetector::buildLinearCat(const Text_t* classname,
+HCategory* HRichDetector::buildLinearCat(const Text_t* classname,
                               const Int_t size)
 {
    HLinearCategory* category = NULL;
@@ -75,23 +73,21 @@ HRichDetector::buildLinearCat(const Text_t* classname,
    return category;
 }
 
-HCategory*
-HRichDetector::buildMatrixCat(const Text_t* classname,
+HCategory* HRichDetector::buildMatrixCat(const Text_t* classname,
                               const Float_t fillRate)
 {
    Int_t            sizes[3];
    HMatrixCategory* category = NULL;
 
    sizes[0] = RICH_MAX_SECTORS;
-   sizes[1] = RICH_MAX_ROWS;
-   sizes[2] = RICH_MAX_COLS;
+   sizes[1] = RICH700_MAX_ROWS;
+   sizes[2] = RICH700_MAX_COLS;
 
    category = new HMatrixCategory(classname, 3, sizes, fillRate);
    return category;
 }
 
-HCategory*
-HRichDetector::buildSimMatrixCat(const Text_t* classname,
+HCategory* HRichDetector::buildSimMatrixCat(const Text_t* classname,
                                  const Float_t fillRate,
                                  const Int_t   size)
 {
@@ -106,8 +102,7 @@ HRichDetector::buildSimMatrixCat(const Text_t* classname,
    return category;
 }
 
-HCategory*
-HRichDetector::buildCategory(Cat_t cat)
+HCategory* HRichDetector::buildCategory(Cat_t cat)
 {
    switch (cat) {
       case catRichCal             :
@@ -125,8 +120,7 @@ HRichDetector::buildCategory(Cat_t cat)
    }
 }
 
-void
-HRichDetector::activateParIo(HParIo* io)
+void HRichDetector::activateParIo(HParIo* io)
 {
 // Initialization according to Ilse's scheme
 // activates the input/output class for the parameters
@@ -152,8 +146,7 @@ HRichDetector::activateParIo(HParIo* io)
 
 }
 
-Bool_t
-HRichDetector::write(HParIo* output)
+Bool_t HRichDetector::write(HParIo* output)
 {
 // Writes the Rich setup to output
 

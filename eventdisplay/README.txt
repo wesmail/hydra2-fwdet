@@ -17,7 +17,12 @@
 //                   creates HADES including detectors,
 //                   parameter and data sources. Setup and
 //                   taskslists can be changed here.
-//                   Basically a DST macro.
+//                   Basically a DST macro. Put 
+//                   HEDTransform::setIsNewRich(kTRUE); in the top
+//                   of the macro, if you want to run new Rich.
+//                   HEDTranform functions , HED objects 
+//                   nextEvent.C and loadHadesGeom.C will use the 
+//                   flag to perform the proper action
 // createHadesReal.C: USER ACTION required here. same as
 //                    above, but for real data reading from hld file
 //
@@ -115,6 +120,7 @@
 // HEDRichHitPadPlane : public TEvePointSet ==> HEDRichHitPadPlane(HRichHitSim*) // RICH hit at pad plane
 // HEDRichRing        : public TEvePointSet ==> HEDRichRing(HRichHitSim*)        // RICH ring at pad plane
 // HEDRichPadPlane    : public TEveQuadSet  ==> HEDRichPadPlane(Int_t sector)    // RICH pad plane + fired pads
+// HEDRich700PadPlane() : public TEveQuadSet                                     // RICH700 pad plane + fired pads
 // HEDRichCompound    : public TEveCompound ==> HEDRichCompound(HRichHitSim*)    // RICH hit at pad plane + ring + mirror hit
 // HEDTofHit          : public TEvePointSet ==> HEDTofHit(HTofHitSim*)
 // HEDTofCluster      : public TEvePointSet ==> HEDTofCluster(HTofClusterSim*)
