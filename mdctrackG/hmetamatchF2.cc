@@ -152,11 +152,11 @@ Bool_t HMetaMatchF2::init() {
   // Shower:
   fCatShower = event->getCategory(catShowerHit);
   if(!fCatShower) {
-      Warning("init","NO catShowerHit in input! \n Matching with Shower will be skipped!");
+    Warning("init","NO catShowerHit in input! \n Matching with Shower will be skipped!");
   } else {
-      iterShower   = (HIterator*)fCatShower->MakeIterator("native");
+    iterShower   = (HIterator*)fCatShower->MakeIterator("native");
+    fShrGeometry = (HShowerGeometry*)rtdb->getContainer("ShowerGeometry");
   }
-  fShrGeometry  = (HShowerGeometry*)rtdb->getContainer("ShowerGeometry");
  
   // RPC:
   fCatRpcCluster = event->getCategory(catRpcCluster);
@@ -334,13 +334,15 @@ void HMetaMatchF2::makeOuterSegMatch(HMdcTrkCand* pTrkCand) {
 	    insertQual(qual2,fRpcClustersSec[nRpc]->getIndex(),nRpcMatched,qual2RpcAr,rpcInd);
 	}
     }
-
-    transMdcToMeta(fShrGeometry->getTransform(sector,0)); // Module 0 only!
+    
     nShrMatched = 0;
-    for(Int_t nSh=0; nSh<nShowerHitsSec;nSh++) {
-      Float_t qual2 = quality2Shower(fShowerHitsSec[nSh]);
-      if(qual2>quality2SHOWERCut[sector]) continue;
-      insertQual(qual2,indexShrHitSec[nSh],nShrMatched,qual2ShrAr,shrInd);
+    if(fShrGeometry != NULL) {
+      transMdcToMeta(fShrGeometry->getTransform(sector,0)); // Module 0 only!
+      for(Int_t nSh=0; nSh<nShowerHitsSec;nSh++) {
+        Float_t qual2 = quality2Shower(fShowerHitsSec[nSh]);
+        if(qual2>quality2SHOWERCut[sector]) continue;
+        insertQual(qual2,indexShrHitSec[nSh],nShrMatched,qual2ShrAr,shrInd);
+      }
     }
 
     if(nRpcMatched>0 || nShrMatched>0 || nTofMatched>0) {  // Is matching:
