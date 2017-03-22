@@ -70,7 +70,7 @@ Bool_t HRichCalSim::checkTrackId(Int_t trackId)
     // kTRUE : track is already in the list of tracks
     // kFALSE : track is not in the list of tracks
     for (Int_t i = 0; i < fNofTracks; i++) {
-	if (fTrackIds[i] == trackId) kTRUE;
+	if (fTrackIds[i] == trackId) return kTRUE;
     }
     return kFALSE;
 }
