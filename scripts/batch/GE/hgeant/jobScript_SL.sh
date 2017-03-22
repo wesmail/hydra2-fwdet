@@ -168,16 +168,87 @@ esac
 
   echo "==> execute program "
 
+  mydir=$(pwd)
   
+  mkdir sub_${myline}
+  cd    sub_${myline}
+
+  mysubdir=$(pwd)
+
+  echo created subdir $mysubdir
+  echo create link to input
+  ln -s ../input  input
+
 #  echo "==> ${par2} -b -c -f ${par3}"
 #  time  $par2 -b -c -f $par3
   files=$(echo $par3 | sed 's/,/ /g')
   for file in $files
   do
+     
+     entr=$(cat /proc/sys/kernel/random/entropy_avail)
+     
+     echo check entropy : ${entr} 
+     date
 
+     filenumber=0
+     if [[ $file =~ _([0-9]*).dat$ ]];
+     then
+        filenumber=${BASH_REMATCH[1]}
+        echo "filenumber is ${filenumber}"
+     fi
+     
+     replace=$(cat ../replaceMask.txt)
+     replace=$(echo $replace | sed "s/XXX/$filenumber/g")
+     echo "Setting up replace : $replace"
+     
+     echo "==> Execute replace"
+     $replace
+     
      echo "==> ${par2} -b -c -f ${file}"
      time  $par2 -b -c -f $file
+     date
+
+     infile=$(../extract_outfile.pl -i ${file} )  # output file of hgeant
+     outdir=$(dirname $infile)
+     outfile=$(basename $infile)
+     
+     ../testFiles2 $infile     # return 0 if ok
+     
+     good=$?
+     
+     if [ $good -ne 0 ]
+     then
+        echo "FILE $infile is corrupted, will be removed!"
+        rm -f $infile
+        par6="no" # do not do vertex ectract
+     
+        if [ ! -d  $outdir/crash ]
+        then
+          mkdir -p $outdir/crash
+        fi
+        echo "write log $outfile ==> $outdir/crash/${outfile}.txt"
+        echo  $outfile > $outdir/crash/${outfile}.txt
+     fi
+     
+     if [ $par6 != "no" ]
+     then
+     
+        outdir=${outdir}/vertex
+     
+        echo  "==> ../${par6} $infile $outdir -1"
+        time ../${par6} $infile $outdir -1
+        
+     fi
+     
   done
+
+  cd ${mydir}
+
+  if [ -d sub_${myline} ]
+  then 
+    echo remove subdir sub_${myline}
+    rm -rf sub_${myline}
+  fi
 
 #   END EDIT YOUR EXECUT JOB!
 ###################################################################

@@ -137,7 +137,10 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
 	catMetaMatch,
 	//catParticleCandidate, catParticleEvtInfo,
         catParticleMdc,
-	catWallRaw, catWallOneHit, catWallCal
+	catWallRaw, catWallOneHit, catWallCal,
+
+        catMdcGeantRaw,catTofGeantRaw,catRpcGeantRaw,catShowerGeantRaw,catWallGeantRaw,catStartGeantRaw,catRichGeantRaw,catRichGeantRaw+1,catRichGeantRaw+2
+
     };
     //--------------------------------------------------------------------
 

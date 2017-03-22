@@ -56,8 +56,9 @@ Int_t pluto_embedded(TString outdir="",TString outfile="",TString type="pi-",
     HSeed hseed(method);
     Int_t seed = hseed.getSeed();
 
-
     PUtils::SetSeed(seed);
+    UInt_t seed2 = (Int_t)PUtils::sampleFlat()*kMaxUInt;
+    gRandom->SetSeed(seed2); // workarround for pluto BUG (new in 5.43 fixed in 5.45)
 
     makeDistributionManager()->Print("decay_models");
 

@@ -236,7 +236,7 @@ else
      ((arrayoffset=${ctsend} * ${block}))
      command="--array=1-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog} ${arrayoffset}"
      #echo $command
-     echo sbatch $command
+     sbatch $command
 
      ((ctsend+=1))
   done

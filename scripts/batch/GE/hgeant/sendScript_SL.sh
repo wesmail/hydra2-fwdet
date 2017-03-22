@@ -74,35 +74,33 @@ offset=0
 
 submmissionbase=/lustre/nyx/hades/user/${user}/sub/apr12/gen8/cocktail/hgeant/${part}
 submissiondir=${submmissionbase}/hgeant
- nFilesPerJob=1                               # number of files to be analyzed by 1 job (default==1)
+ nFilesPerJob=50                              # number of files to be analyzed by 1 job (default==1)
     jobscript=${submissiondir}/jobScript_SL.sh  # exec script (full path, call without dot, set it executable!)
-    outputdir=/lustre/nyx/hades/dstsim/apr12/hgeant/${impact}/new/${part}     # outputdir for files AND logFiles
+    outputdir=/lustre/nyx/hades/dstsim/apr12/hgeant/${impact}/${part}     # outputdir for files AND logFiles
 pathoutputlog=${outputdir}/out                  # protocol from batch farm for each file
      filename=testrun                           # filename of log file if nFilesPerJob > 1 (partnumber will be appended)
-     replace=${currentDir}/replaceIniDat.pl
-     template=au123au.dat
-      input1=/lustre/nyx/hades/dstsim/apr12/pluto/${part}/${part}
+     replace=${submissiondir}/replaceIniDat.pl
+     template=${submissiondir}/au123au_pluto_vertex.dat  #  standard au123au.dat (random vertex,eventplane rot) pluto:  au123au_pluto_vertex.dat (vertex from file, not eventplane rot)
+      input1=/lustre/nyx/hades/dstsim/apr12/pluto/vertex/${part}/${part}
+      input2=/lustre/nyx/hades/dstsim/apr12/pluto/vertex/${part}/${part}
       input3=/lustre/nyx/hades/dstsim/apr12/urqmd/${impact}/new/all/evt/Au_Au_1230MeV_1000evts      # bmax10
-      output=/lustre/nyx/hades/dstsim/apr12/hgeant/${impact}/new/${part}/Au_Au_1230MeV_1000evts
+      output=/lustre/nyx/hades/dstsim/apr12/hgeant/${impact}/${part}/Au_Au_1230MeV_1000evts
 
-par1=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9m/defall.sh  # optional par1 : environment script
-par2=/cvmfs/hades.gsi.de/install/5.34.34/hgeant2-4.9m/hgeant    # optional par2 : executable
+par1=/cvmfs/hades.gsi.de/install/5.34.34/hydra2-4.9p/defall.sh # optional par1 : environment script
+par2=/cvmfs/hades.gsi.de/install/5.34.34/hgeant2-4.9p/hgeant   # optional par2 : executable
 par3=""                                                        # optional par3 : geant inidatfile
 par4="no"                                                      # optional par4 : 
 par5="no"                                                      # optional par5 : number of events
-par6="no"                                                      # optional par6
+par6="no"                                                      # optional par6 "no" -> no vertexfile   "extract_vertex" -> vertex file in outputdir/vertex
 par7="no"                                                      # optional par7
-resources="--mem=2000 --time=0-4:00:00"                            # runtime < 10h, mem < 2GB
+resources="--mem=2000 --time=0-8:00:00"                        # runtime < 10h, mem < 2GB
 
 jobarrayFile="gen8_${part}_jobarray.dat"
 
-filelist=${currentDir}/all_files_${part}_1files_${nFiles}.list  # file list in local dir! not in submissiondir!!!
+filelist=${currentDir}/lists/all_files_${part}_1files_${nFiles}.list  # file list in local dir! not in submissiondir!!!
 
 createList=no  # (yes/no) use this to create files list with generic names (for simulation, testing)
                  # use "no" if you have a filelist available
-
-createInput=yes  # (yes/no) use this to create inidatfiles
-                 # use "no" if input files are already created
 
 #nFiles=$(cat $filelist | wc -l)
 ######################################################################
@@ -131,28 +129,11 @@ mkdir -p $submissiondir/input
 
 #---------------------------------------------------------------------
 # create input inidat for geant
-if [ "$createInput" == "yes" ]
-then
-   #if [ -d $submisiondir/input ]
-   #then
-   #  echo "===> REMOVING EXISTING INPUTFILES"
-   #  rm -f $submissiondir/input/*.dat
-   #fi
-
-   echo "===> CREATE INPUTFILES"
-   for ((ct=1+$offset;ct<=$offset+$nFiles;ct++))
-   do
-      ct_pluto=0
-      ((ct_pluto=${ct}-${offset}))
-      iniDat=${submissiondir}/input/au123au_${part}_${ct}.dat
-      #$replace -t $template -d $iniDat -n $nevents -i ${input1}_${ct_pluto}.evt -s ${input2}_${ct}.evt -u ${input3}_${ct}.evt -p ${submissiondir}/geom_rich -o ${output}_${ct}_.root   # pluto lep + lambda + urqmd
-      $replace -t $template -d $iniDat -n $nevents -i ${input1}_${ct_pluto}.evt -u ${input3}_${ct}.evt -p ${submissiondir}/geom_rich   -o ${output}_${ct}_.root   # pluto  + urqmd
-      #$replace -t $template -d $iniDat -n $nevents -i ${input1}_${ct}.evt -p ${submissiondir}/geom_rich -o ${output}_${ct}_.root   # pluto lep only
-      #$replace -t $template -d $iniDat -n $nevents -i ${input3}_${ct}.evt -p ${submissiondir}/geom_rich -o ${output}_${ct}_.root   # urqmd
-   done
-fi
+echo $replace -t $template -d ${submissiondir}/input/au123au_${part}_XXX.dat -n $nevents -i ${input1}_XXX.evt -p ${submissiondir}/geom_rich -o ${output}_XXX_.root > replaceMask.txt  # pluto lep only
+#echo $replace -t $template -d ${submissiondir}/input/au123au_${part}_XXX.dat -n $nevents -i ${input3}_XXX.evt -p ${submissiondir}/geom_rich -o ${output}_XXX_.root > replaceMask.txt  # urqmd only
+#echo $replace -t $template -d ${submissiondir}/input/au123au_${part}_XXX.dat -n $nevents -i ${input1}_XXX.evt -u ${input3}_XXX.evt -p ${submissiondir}/geom_rich -o ${output}_XXX_.root > replaceMask.txt  # pluto + urqmd
+#echo $replace -t $template -d ${submissiondir}/input/au123au_${part}_XXX.dat -n $nevents -i ${input1}_XXX.evt -s ${input2}_XXX.evt -u ${input3}_XXX.evt -p ${submissiondir}/geom_rich -o ${output}_XXX_.root > replaceMask.txt  # pluto + pluto + urqmd
 #---------------------------------------------------------------------
-
 
 nFiles=$( cat $filelist | wc -l)
 
@@ -175,6 +156,22 @@ then
    mkdir -p $pathoutputlog
 else
    echo "===> USE LOGDIR : $pathoutputlog"
+fi
+
+if [ ! -d ${outputdir}/vertex ]
+then
+   echo "===> CREATE VERTEXDIR : ${outputdir}/vertex"
+   mkdir -p ${outputdir}/vertex
+else
+   echo "===> USE VERTEXDIR : ${outputdir}/vertex"
+fi
+
+if [ ! -d ${outputdir}/crash ]
+then
+   echo "===> CREATE CRASHDIR : ${outputdir}/crash"
+   mkdir -p ${outputdir}/crash
+else
+   echo "===> USE CRASHDIR : ${outputdir}/crash"
 fi
 #---------------------------------------------------------------------
 
@@ -255,7 +252,7 @@ do
      
      par3=${infileList}
 
-           #defall.sh prog filelist outdir  nev
+           #defall.sh prog filelist outdir  nev   extract_vert
      echo "${par1} ${par2} ${par3} ${par4} ${par5} ${par6} ${par7}" >>  $jobarrayFile
      
 
@@ -296,11 +293,10 @@ else
      fi
      ((arrayoffset=${ctsend} * ${block}))
      command="--array=1-${stop} ${resources} -D ${submissiondir}  --output=${pathoutputlog}/slurm-%A_%a.out ${jobscript} ${submissiondir}/${jobarrayFile} ${pathoutputlog} ${arrayoffset}"
-     #echo $command
-     sbatch $command
+      sbatch $command
 
      ((ctsend+=1))
   done
 
-  echo "${nFiles} jobs for day ${day} submitted"
+  echo "${nFiles} jobs for part ${part} submitted"
 fi

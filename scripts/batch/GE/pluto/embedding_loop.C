@@ -43,6 +43,8 @@ int loop_emb(TString outdir="",TString outfile="",TString type="e+", Int_t nEven
 
 
     PUtils::SetSeed(seed);
+    UInt_t seed2 = (Int_t)PUtils::sampleFlat()*kMaxUInt;
+    gRandom->SetSeed(seed2); // workarround for pluto BUG (new in 5.43 fixed in 5.45)
 
     Int_t calcVertex    = 0;
 

@@ -156,14 +156,33 @@ esac
 
   echo "==> execute program "
 
-  files=$(echo $par4 | sed 's/,/ /g')
-  for file in $files
-  do
-     echo "==> $par2 $par3 $file $par5 $par6 $par7"
-     time  $par2 $par3  $file  $par5 $par6 $par7
-     #     prog  outdir outfile type nev switch
-     
-  done
+  useVertex=0
+  if [[ $par4 =~ '#' ]]        #   format file#filevertex : use vertex ntuple
+  then
+     useVertex=1
+  fi
+
+  if [ $useVertex -eq 0 ]
+  then
+     files=$(echo $par4 | sed 's/,/ /g')
+     for file in $files
+     do
+        echo "==> $par2 $par3 $file $par5 $par6 $par7"
+        time  $par2 $par3  $file  $par5 $par6 $par7
+        #     prog  outdir outfile type nev switch
+     done
+  else
+     files=$(echo $par4 | sed 's/,/ /g')
+     for file in $files
+     do
+        outfile=$(echo $file | cut -d "#" -f1)
+        vertexfile=$(echo $file | cut -d "#" -f2)
+        echo "==> $par2 $par3 $outfile $par5 $par6 $par7 $vertexfile"
+        time  $par2 $par3  $outfile  $par5 $par6 $par7 $vertexfile
+        #     prog  outdir outfile   type  nev   switch  $vertexntuple
+     done
+  fi
+
 #---------------------------------------------------------------------
 
 

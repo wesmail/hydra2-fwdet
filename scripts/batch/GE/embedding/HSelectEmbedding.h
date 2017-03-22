@@ -69,7 +69,7 @@ public:
 	} // loop kine
 
 	if(!found){
-	    cout<<"skip  event seqNr in "<<seqNr<<" "<<nr<<endl;
+	    //cout<<"skip  event seqNr in "<<seqNr<<" "<<nr<<endl;
 	    return kSkipEvent;
 	}
 	// -------------------------------------------------------------------------

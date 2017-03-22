@@ -218,6 +218,10 @@ if [ $doPluto -eq 1 ]
 then
 
   echo "==> execute pluto program "
+  
+  
+  ldd  ./pluto_embedded
+  
   echo ./pluto_embedded  ${outdir}/pluto ${plutofile} ${particle} ${nevents} ${sourceType} ${outdir}/vertex/${vertexfile}
 ./pluto_embedded  ${outdir}/pluto ${plutofile} ${particle} ${nevents} ${sourceType} ${outdir}/vertex/${vertexfile}
    status=$?
@@ -232,9 +236,31 @@ then
 ./replaceIniDat.pl -t ${template} -d ${outdir}/input/${geantfile}.dat -n ${nevents} -i ${outdir}/pluto/${plutofile}_pluto_${particle}.evt -p ${geompath} -o ${outdir}/geant/${geantfile}.root
 
   echo "==> execute hgeant "
+
+  mydir=$(pwd)
+  
+  mkdir sub_${myline}
+  cd    sub_${myline}
+
+  mysubdir=$(pwd)
+
+  echo created subdir $mysubdir
+
   echo ${hgeant} -b -c -f ${outdir}/input/${geantfile}.dat
- ${hgeant} -b -c -f ${outdir}/input/${geantfile}.dat
+  ${hgeant} -b -c -f ${outdir}/input/${geantfile}.dat
   status=$?
+
+  cd ${mydir}
+
+  if [ -d sub_${myline} ]
+  then 
+    echo remove subdir sub_${myline}
+    rm -rf sub_${myline}
+  fi
+  
+  
+  
+  
 fi
 
 #---------------------------------------------

@@ -50,7 +50,8 @@ int main(int argc, char **argv)
         nevts        = argv[4];
 	sourceSwitch = argv[5];
         sSwitch      = sourceSwitch.Atoi();
-	if(sSwitch == 1 ) return loop_emb(TString(argv[1]),TString(argv[2]),TString(argv[3]),nevts.Atoi(),TString(argv[6]));
+	if(sSwitch == 0 )      return loop    (TString(argv[1]),TString(argv[2]),TString(argv[3]),nevts.Atoi(),TString(argv[6]));
+	else if(sSwitch == 1 ) return loop_emb(TString(argv[1]),TString(argv[2]),TString(argv[3]),nevts.Atoi(),TString(argv[6]));
         else  { cerr<<"ERROR: analysis() wrong source switch "<<sSwitch<<endl; return 1;}
 	break;
     default:

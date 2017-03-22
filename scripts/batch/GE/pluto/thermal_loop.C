@@ -5,6 +5,7 @@
 #include "PChannel.h"
 #include "PReaction.h"
 #include "PHGeantOutput.h"
+#include "PVertexFile.h"
 #include "TRandom.h"
 #include "TROOT.h"
 #include "TString.h"
@@ -15,7 +16,7 @@
 
 using namespace std;
 
-int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=1000)
+int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=1000,TString vertexntuple="")
 {  // test thermal source of omegas   (R.H. 16/2/2010)
 
     /*
@@ -30,10 +31,21 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
     HSeed hseed(method);
     Int_t seed = hseed.getSeed();
 
-
     PUtils::SetSeed(seed);
+    UInt_t seed2 = (Int_t)PUtils::sampleFlat()*kMaxUInt;
+    gRandom->SetSeed(seed2); // workarround for pluto BUG (new in 5.43 fixed in 5.45)
 
     makeDistributionManager()->Print("decay_models");
+
+    Bool_t useVertex = kFALSE;
+    if(vertexntuple.CompareTo("no")!=0&&vertexntuple.CompareTo("")!=0) useVertex = kTRUE;
+
+
+    Int_t  asciiOut     = 0;    // write pluto ascci output for HGeant (==0 if we use HGeantOutput)
+    Int_t  rootOut      = 0;    // write pluto root file
+    Int_t   calcVertex     = useVertex ? 1 : 0;           // write the vertex to the ascii output for HGeant
+    Bool_t  writeSeqNumber = useVertex ? kTRUE : kFALSE;  // write eventSeqNumber in addition
+    Bool_t  writeIndex     = useVertex ? kTRUE : kFALSE;  // write parentIndex in addition
 
     //PFireball(char* particle, float AGeV, float t1, float t2, float f,
     //        float b, float a2, float a4, float w1, float w2, int sp) :
@@ -61,7 +73,8 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
     PReaction *r =0 ;
 
     if(type.CompareTo("lambda")   == 0){
-	T1 = 0.090;
+        T1 = 0.090;
+	//T1 = 0.100; // test
 	PFireball *source = new PFireball("Lambda",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
 	source->setTrueThermal(kTRUE);
 	source->Print();
@@ -77,7 +90,8 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  **cc = new PChannel* [1];
 	cc[0] = K0Sc ;
 
-	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
+
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // two particles in the final state
     }
 
     if(type.CompareTo("Xi-")   == 0){
@@ -97,12 +111,13 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  **cc = new PChannel* [1];
 	cc[0] = K0Sc ;
 
-	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // two particles in the final state
     }
 
 
     if(type.CompareTo("K0S") == 0){
 	T1 = 0.080;
+	//T1 = 0.100; // test
 	PFireball *source = new PFireball("K0S",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
 	source->setTrueThermal(kTRUE);
 	source->Print();
@@ -118,7 +133,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  **cc = new PChannel* [1];
 	cc[0] = K0Sc ;
 
-	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // two particles in the final state
     }
      //
     if(type.CompareTo("K-")   == 0){
@@ -139,7 +154,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  **cc = new PChannel* [1];
 	cc[0] = K0Sc ;
 
-	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // two particles in the final state
     }
 
     if(type.CompareTo("K+")   == 0){
@@ -160,7 +175,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  **cc = new PChannel* [1];
 	cc[0] = K0Sc ;
 
-	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // two particles in the final state
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // two particles in the final state
     }
 
     if(type.CompareTo("phiKK") == 0)
@@ -191,7 +206,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	cc[0]  = c1;
 	cc[1]  = c2;
 
-	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),2,0,0,0,1);
+	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),2,rootOut,0,calcVertex,asciiOut);
     }
 
     if(type.CompareTo("p")   == 0){
@@ -201,6 +216,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	anisoA2    = 0.;
 	anisoA4    = 0.;
 	blast      = 0.3;
+
 	PFireball *source = new PFireball("p",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
 	source->setTrueThermal(kTRUE);
 	source->Print();
@@ -216,7 +232,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  **cc = new PChannel* [1];
 	cc[0] = K0Sc ;
 
-	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // 1 particle in the final state
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
     }
 
     if(type.CompareTo("d")   == 0){
@@ -241,7 +257,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  **cc = new PChannel* [1];
 	cc[0] = K0Sc ;
 
-	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // 1 particle in the final state
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
     }
 
     if(type.CompareTo("pi-")   == 0){
@@ -265,16 +281,18 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  **cc = new PChannel* [1];
 	cc[0] = K0Sc ;
 
-	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // 1 particle in the final state
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
     }
 
     if(type.CompareTo("pi+")   == 0){
+
 	T1 = 0.049;
 	T2 = 0.089;
 	fractionT1 = 0.89;
 	anisoA2    = 0.;
 	anisoA4    = 0.;
-	PFireball *source = new PFireball("pi+",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
+
+ 	PFireball *source = new PFireball("pi+",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
 	source->setTrueThermal(kTRUE);
 	source->Print();
 
@@ -289,7 +307,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	PChannel  **cc = new PChannel* [1];
 	cc[0] = K0Sc ;
 
-	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,0,0,0,1); // 1 particle in the final state
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
     }
 
     if(type.CompareTo("w")   == 0 ||      //   vector meson -> e+ + e-
@@ -321,7 +339,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	cc[0] = c1;
 	cc[1] = c2;
 
-	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),2,0,0,0,1);
+	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),2,rootOut,0,calcVertex,asciiOut);
     }
 
     if(type.CompareTo("pi0")==0 ) {          // pi0 -> g + e- + e+
@@ -368,7 +386,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	cc[1] = c2;
 	cc[2] = c3;
 
-	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,0,0,0,1);
+	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,rootOut,0,calcVertex,asciiOut);
     }
 
     if(type.CompareTo("eta")==0 ) {          // eta -> g + e- + e+
@@ -414,7 +432,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	cc[1] = c2;
 	cc[2] = c3;
 
-	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,0,0,0,1);
+	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,rootOut,0,calcVertex,asciiOut);
     }
 
     if(type.CompareTo("D+")==0 ) {    // delta -> p + e+ + e-
@@ -456,7 +474,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	cc[1] = c2;
 	cc[2] = c3;
 
-	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,0,0,0,1);
+	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,rootOut,0,calcVertex,asciiOut);
 
     }
     if(type.CompareTo("wdalitz")==0 ) {  // w -> pi0 + e- + e+
@@ -496,15 +514,29 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	cc[1] = c2;
 	cc[2] = c3;
 
-	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,0,0,0,1);
+	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),3,rootOut,0,calcVertex,asciiOut);
     }
-    /*
-    PHGeantOutput* output;
-    output = new PHGeantOutput();
-    output->SetWriteSeqNumber(1);
-    output->OpenFile(Form("%s/%s.evt",outdir.Data(),outfile.Data()));
-    r->AddFileOutput(output);
-    */
+
+    r->SetWriteIndex(writeIndex);
+
+    if(useVertex){
+	//Construct the vertex container:
+	PVertexFile *vertex = new PVertexFile();
+	vertex->OpenFile(vertexntuple);
+
+	//add to prologue action
+	r->AddPrologueBulk(vertex);
+    }
+
+    if(!asciiOut){
+	PHGeantOutput* output;
+	output = new PHGeantOutput();
+	output->SetWriteSeqNumber(writeSeqNumber);
+	output->OpenFile(Form("%s/%s.evt",outdir.Data(),outfile.Data()));
+	r->AddFileOutput(output);
+    }
+
+
     if(doFilter){
 	if(type.CompareTo("lambda")   != 0 &&
 	   type.CompareTo("Xi-")      != 0 &&
@@ -534,7 +566,25 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
     }
 
     r->setHGeant(0);   // set to 1, if PLUTO run from HGeant prompt
-    //r->Preheating(10000);
+    r->Preheating(10000);
+
+    if(calcVertex) {
+	TFile *f = new TFile(vertexntuple.Data());
+	if(f==NULL)
+	{
+	    cout << "file not found" << endl;
+	    exit(1);
+
+	}
+	TNtuple *vertexnt = (TNtuple*)(f->Get("vertex"));
+	if(vertexnt==NULL)
+	{
+	    cout << "NULL pointer to ntuple" << endl;
+	    exit(1);
+	}
+	nEvents=vertexnt->GetEntries();
+    }
+
     r->loop(nEvents);
 //    output->CloseFile();
     return 0;

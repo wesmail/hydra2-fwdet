@@ -43,11 +43,13 @@ SimulRefRunId: 0
 //      TOFMAX time of flight cut in seconds /GCCUTS/ 10e10
 //      GCUTS 5 user words /GCCUTS/ 0
 //
+// SWIT 0 0 0 0 0 1 1 1   // standard urqmd evtplane+gcalor+neutrocut
+// SWIT 0 0 0 0 0 0 1 1   // standard pluto gcalor+neutrocut
 // switch GCALOR      SWIT 0 0 0 0 0 0 1 1   neutron<10MeV cut
 // switch GCALOR      SWIT 0 0 0 0 0 0 1 
 // switch eventplane  SWIT 0 0 0 0 0 1 0 
-// JVER 2 2 0         random vertex segmented target 
-// JVER 0 0 0         vertex from eventfile 
+// JVER 2 2 0        standard random vertex segmented target
+// JVER 0 0 0        vertex from eventfile 
 
 GEOMPATH/cave.geo
 GEOMPATH/coils.geo
@@ -89,4 +91,4 @@ INPUT_FILE1
 OUTPUT_FILE
 
 
-//  /cvmfs/hades.gsi.de/install/5.34.01/hgeant2-3.8/hgeant -b -c -f au123au.dat
+//  /cvmfs/hades.gsi.de/install/5.34.01/hgeant2-4.9f/hgeant -b -c -f au123au.dat
