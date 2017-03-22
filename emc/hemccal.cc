@@ -1,6 +1,6 @@
 //*-- Author  : K. Lapidus
-//*-- Created : 
-//*-- Modified: 
+//*-- Created :
+//*-- Modified: V.Pechenov
 
 //_HADES_CLASS_DESCRIPTION
 /////////////////////////////////////////////////////
@@ -16,7 +16,19 @@
 ClassImp(HEmcCal)
 
 void HEmcCal::clear(void) {
-  nHits=cell=0;
-  sector=row=column=-1;
-  time1=time2=energy=-999.F;
+  nHits        = 0;
+  cell         = 0;
+  sector       = -1;
+  row          = -1;
+  column       = -1;
+  time1        = -999.F;
+  time2        = -999.F;
+  energy       = -999.F;
+  sigmaEnergy  = 0.F;
+  sigmaTime1   = 0.F;
+  sigmaTime2   = 0.F;
+  isRpcMatch   = kFALSE;
+  statusTime1  = 0;
+  statusTime2  = 0;
+  clusterIndex = -1;
 }

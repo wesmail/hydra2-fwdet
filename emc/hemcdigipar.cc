@@ -9,7 +9,7 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////
 //
 //  HEmcDigiPar:
-//  Container for the RPC digitization parameters
+//  Container for the EMC digitization parameters
 //
 //  (Condition Style)
 //
@@ -26,15 +26,17 @@ HEmcDigiPar::HEmcDigiPar(const char* name,const char* title,const char* context)
 
 void HEmcDigiPar::clear(void) {
   // clears the container
-  sigmaT = phot2E = sigmaEIntern = sigmaEReal = 0.F;
+  sigmaT = phot2E = phot2E2 = sigmaEIntern = sigmaEReal = sigmaEReal2 = 0.F;
 }
 
-void HEmcDigiPar::fill(Float_t sT, Float_t p2e, Float_t seI, Float_t seR) {
+void HEmcDigiPar::fill(Float_t sT, Float_t p2e, Float_t p2e2, Float_t seI, Float_t seR, Float_t seR2) {
   // sets the parameters
   sigmaT       = sT;
   phot2E       = p2e; 
+  phot2E2      = p2e2;
   sigmaEIntern = seI;
   sigmaEReal   = seR;
+  sigmaEReal2  = seR2;
 }
 
 void HEmcDigiPar::putParams(HParamList* l) {
@@ -42,8 +44,10 @@ void HEmcDigiPar::putParams(HParamList* l) {
   if (!l) return;
   l->add("sigmaT",      sigmaT);
   l->add("phot2E",      phot2E);
+  l->add("phot2E2",     phot2E2);
   l->add("sigmaEIntern",sigmaEIntern);
   l->add("sigmaEReal",  sigmaEReal);
+  l->add("sigmaEReal2", sigmaEReal2);
 }
 
 Bool_t HEmcDigiPar::getParams(HParamList* l) {
@@ -51,7 +55,9 @@ Bool_t HEmcDigiPar::getParams(HParamList* l) {
   if (!l) return kFALSE;
   if (!(l->fill("sigmaT",      &sigmaT)))       return kFALSE;
   if (!(l->fill("phot2E",      &phot2E)))       return kFALSE;
+  if (!(l->fill ("phot2E2",    &phot2E2)))      return kFALSE;
   if (!(l->fill("sigmaEIntern",&sigmaEIntern))) return kFALSE;
   if (!(l->fill("sigmaEReal",  &sigmaEReal)))   return kFALSE;
+  if (!(l->fill("sigmaEReal2", &sigmaEReal2)))  return kFALSE;
   return kTRUE;
 }

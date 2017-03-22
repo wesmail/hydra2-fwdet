@@ -1,5 +1,6 @@
 //*-- AUTHOR :  Kirill Lapidus
 //*-- Created :
+//*-- modified : 20/02/2017 by Vladimir Pechenov
 
 //_HADES_CLASS_DESCRIPTION
 /////////////////////////////////////////////////////////////
@@ -36,9 +37,7 @@ HEmcDetector::HEmcDetector(void) : HDetector("Emc","The Emc detector") {
   fName="Emc";
   maxSectors=6;
   maxModules=1;
-  maxRows=15;
-  maxColumns=17;
-  maxComponents=maxRows*maxColumns; // including spares (needed for parameter containers)
+  maxComponents=emcMaxRows*emcMaxColumns; // including spares (needed for parameter containers)
   numCells=163;
   modules = new TArrayI(getMaxSectors());
 }
@@ -57,23 +56,24 @@ HCategory *HEmcDetector::buildMatrixCategory(const Text_t* classname, Float_t fi
   //making the categories for different types of data levels
   HMatrixCategory* category = NULL;
   Int_t* sizes2  = new Int_t[2];
-  Int_t* sizes3  = new Int_t[3];
   if (strcmp(classname,"HGeantEmc")==0) {
     sizes2[0]= getMaxSectors();
     sizes2[1]= MAXTRKEMC;
     category = new HMatrixCategory(classname,2,sizes2,fillRate);   
-  } else if (strncmp(classname,"HEmcCal",strlen("HEmcCal"))==0) {
-    sizes3[0]=getMaxSectors();
-    sizes3[1]=maxRows;
-    sizes3[2]=maxColumns;
-    category = new HMatrixCategory(classname,3,sizes3,fillRate);
+  } else if (strcmp(classname,"HEmcCal")==0 || strcmp(classname,"HEmcCalSim")==0) {
+    sizes2[0]=getMaxSectors();
+    sizes2[1]=emcMaxRows*emcMaxColumns;
+    category = new HMatrixCategory(classname,2,sizes2,fillRate);
+  } else if (strcmp(classname,"HEmcCluster")==0 || strcmp(classname,"HEmcClusterSim")==0) {
+    sizes2[0]=getMaxSectors();
+    sizes2[1]=emcMaxRows*emcMaxColumns;
+    category = new HMatrixCategory(classname,2,sizes2,fillRate);
   } else {
     sizes2[0]=getMaxSectors();
     sizes2[1]=maxComponents;
     category = new HMatrixCategory(classname,2,sizes2,fillRate);
   }
   delete [] sizes2;
-  delete [] sizes3;
   return category;
 }
 
@@ -90,6 +90,10 @@ HCategory *HEmcDetector::buildCategory(Cat_t cat) {
       break;
     case catEmcCal :
       pcat = buildMatrixCategory("HEmcCal",0.5);
+      break;
+    case catEmcCluster :
+//      pcat = buildLinearCategory("HEmcCluster",0.5);
+      pcat = buildMatrixCategory("HEmcCluster",0.5);
       break;
     default :
       pcat = NULL;
@@ -123,15 +127,15 @@ Bool_t HEmcDetector::write(HParIo* output) {
 
 Int_t HEmcDetector::getCell(const Char_t row, const Char_t col) {
   // returns the cell index
-  if (row<0 || row>=maxRows || col<0 || col>=maxColumns) return -1;
-  else return row*maxColumns + col;
+  if (row<0 || row>=emcMaxRows || col<0 || col>=emcMaxColumns) return -1;
+  else return row*emcMaxColumns + col;
 }
 
 void HEmcDetector::getRowCol(const Int_t cell, Char_t& row, Char_t& col) {
   // returns the row and column indexes
-  if (cell>=0 && cell<maxComponents) {
-    row=(Char_t)(cell/maxColumns);
-    col=(Char_t)(cell - row*maxColumns);
+  if (cell>=0 && cell<emcMaxComponents) {
+    row=(Char_t)(cell/emcMaxColumns);
+    col=(Char_t)(cell%emcMaxColumns);
   } else row=col=-1;
 } 
 

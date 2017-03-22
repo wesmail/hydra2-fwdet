@@ -8,6 +8,8 @@
 
 #pragma link C++ class HEmcRaw;
 #pragma link C++ class HEmcCal;
+#pragma link C++ class HEmcCluster;
+#pragma link C++ class HEmcClusterSim;
 
 #pragma link C++ class HEmcCalSim;
 
@@ -29,10 +31,12 @@
 #pragma link C++ class HEmcTrb3Unpacker;
 #pragma link C++ class HEmcCalibrater;
 #pragma link C++ class HEmcDigitizer;
+#pragma link C++ class HEmcClusterF;
 
 
 #pragma link C++ global catEmcRaw;
 #pragma link C++ global catEmcCal;
+#pragma link C++ global catEmcCluster;
 
 #endif
 

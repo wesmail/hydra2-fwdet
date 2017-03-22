@@ -6,12 +6,14 @@
 //  Calibrates all fired cells in EmcRaw category and fills
 //  the EmcCal category
 //
+//  embedding = 0 no embedding
+//            = 1 embedding
 ////////////////////////////////////////////////////////////////
 
 #include "hemccalibrater.h"
 #include "emcdef.h"
 #include "hemcraw.h"
-#include "hemccal.h"
+#include "hemccalsim.h"
 #include "hemcdetector.h"
 #include "hemccalpar.h"
 #include "hades.h"
@@ -34,8 +36,9 @@ HEmcCalibrater::HEmcCalibrater(void) {
   // default constructor
   pRawCat = NULL;
   pCalCat = NULL;
-  iter   = NULL;
+  iter    = NULL;
   pCalpar = NULL;
+  embedding = 0;
 }
 
 HEmcCalibrater::HEmcCalibrater(const Text_t *name, const Text_t *title)
@@ -43,8 +46,9 @@ HEmcCalibrater::HEmcCalibrater(const Text_t *name, const Text_t *title)
   // constructor
   pRawCat = NULL;
   pCalCat = NULL;
-  iter   = NULL;
+  iter    = NULL;
   pCalpar = NULL;
+  embedding = 0;
 }
 
 HEmcCalibrater::~HEmcCalibrater(void) {
@@ -74,8 +78,15 @@ Bool_t HEmcCalibrater::init(void) {
     return kFALSE;
   }
 
-  pCalCat = pDet->buildCategory(catEmcCal);
-  if (!pCalCat) return kFALSE;
+  if(gHades->getEmbeddingMode()>0) embedding = 1;
+
+  pCalCat = (HCategory*)(((HEvent*)(gHades->getCurrentEvent()))->getCategory(catEmcCal));
+  if(pCalCat == NULL) {
+    if (embedding == 0) pCalCat = pDet->buildMatrixCategory("HEmcCal",0.5); 
+    else                pCalCat = pDet->buildMatrixCategory("HEmcCalSim",0.5);
+    if(pCalCat == NULL) return kFALSE;
+    gHades->getCurrentEvent()->addCategory(catEmcCal,pCalCat,"Emc");
+  }
 
   iter = (HIterator*)pRawCat->MakeIterator();
   loc.set(2, 0, 0);
@@ -115,7 +126,8 @@ Int_t HEmcCalibrater::execute(void) {
       if (!pCal) {
         pCal = (HEmcCal *)pCalCat->getSlot(loc);
         if (pCal) {
-          pCal = new(pCal) HEmcCal;
+          if(embedding == 0) pCal = new(pCal) HEmcCal;
+          else               pCal = new(pCal) HEmcCalSim;
           pDet->getRowCol(cell,row,col);
 	  pCal->setAddress((Char_t)sec, (UChar_t)cell, row, col);
         } else {
@@ -140,7 +152,7 @@ Int_t HEmcCalibrater::execute(void) {
       // fill cal hits
       pCal->setTime1(calTime);
       pCal->setEnergy(calCharge);
-      pCal->setNHits(1); 
+      pCal->setNHits(1);
     }
   }
   return 0;

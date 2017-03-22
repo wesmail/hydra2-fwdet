@@ -13,10 +13,13 @@ SOURCE_FILES := hemcdetector.cc         \
                 hemcraw.cc              \
                 hemccal.cc              \
                 hemccalsim.cc           \
+                hemccluster.cc          \
+                hemcclustersim.cc          \
                 hemctaskset.cc          \
 		hemctrb3unpacker.cc	\
 		hemccalibrater.cc	\
                 hemcdigitizer.cc        \
+                hemcclusterf.cc         \
 		hemccontfact.cc		\
 		hemcparrootfileio.cc	\
 		hemcparasciifileio.cc	\

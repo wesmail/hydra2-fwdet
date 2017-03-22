@@ -14,6 +14,7 @@ using namespace std;
 #include "hemctaskset.h"
 #include "hemccalibrater.h"
 #include "hemcdigitizer.h"
+#include "hemcclusterf.h"
 #include "hdebug.h"
 #include "haddef.h"
 #include <iostream> 
@@ -32,10 +33,12 @@ HTask* HEmcTaskSet::make(const Char_t* select, Option_t* option) {
   
   if(sel.CompareTo(simulation)==0){
     tasks->add(new HEmcDigitizer("emc.digi","emc.digi"));
+    tasks->add(new HEmcClusterF("emc.clusf","emc.clusf"));
   }
   
   if(sel.CompareTo(real)==0){  	 	
     tasks->add(new HEmcCalibrater("emc.cal", "Emc calibrater"));
+    tasks->add(new HEmcClusterF("emc.clusf","emc.clusf"));
   }
 
   return tasks;

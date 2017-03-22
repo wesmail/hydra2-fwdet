@@ -16,6 +16,7 @@ protected:
   HLocation loc;        // location for new cal object
   HEmcDetector *pDet;   // pointer to Emc detector
   HEmcCalPar *pCalpar;  // pointer to calibration parameters
+  Int_t embedding;      // flag is set if real data should be embedded into simulation data
 public:
   HEmcCalibrater(void);
   HEmcCalibrater(const Text_t* name, const Text_t* title);
