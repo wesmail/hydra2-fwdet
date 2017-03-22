@@ -140,13 +140,17 @@ void rootlogon(TString additional_libs           = "",
    // add a library from list of additional ones to common library list in
    // case it is not already a part of it - this check does not work if one
    // uses explicit paths for a library
+
    TString pluto_path = gSystem->Getenv( "PLUTODIR" );
    if (!pluto_path.IsNull()) {
 
        pluto_path = pluto_path + "/libPluto.so";
 
+#if ROOT_VERSION_CODE  > ROOT_VERSION(6,0,0)
+       pluto_path.ReplaceAll("//","/");
+#else
        pluto_path.ReplaceAll("\/\/","\/");
-
+#endif
        if(gSystem->AccessPathName(pluto_path.Data()) == 0) {
 
 	   if(additional_libs.CompareTo("") == 0 ){ additional_libs = pluto_path; }
@@ -195,12 +199,12 @@ void rootlogon(TString additional_libs           = "",
    load_from_second_location.Append( " " );
    cout << "\nList and Order of loaded DLLs and their Locations:" << endl;
 
-  ProcessLibs:
+   ProcessLibs:
 
    //----------------------------------------------------------------
    // get first library name
 
-   TObjArray* acommonlibs = common_libs.Tokenize(" ");
+   acommonlibs = common_libs.Tokenize(" ");
    if(acommonlibs){
        for(Int_t i = 0;i < acommonlibs->GetLast() + 1 ; i ++)
        {
