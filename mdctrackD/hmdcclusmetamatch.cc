@@ -84,7 +84,10 @@ Bool_t HMdcClusMetaMatch::init(void) {
   pCatTof = event->getCategory(catTofHit);
   if(pCatTof == NULL) Warning("init",
     "No catTofHit in input! \n Matching with TofHits will be skipped!");
-  else iterTof = (HIterator*)pCatTof->MakeIterator();
+  else {
+    iterTof = (HIterator*)pCatTof->MakeIterator();
+    pTofGeometry = (HTofGeomPar *)rtdb->getContainer("TofGeomPar");
+  }
   pCatTofCluster = event->getCategory(catTofCluster);
   if(pCatTofCluster == NULL) Warning("init",
     "NO catTofCluster in input! \n Matching with TofClusters will be skipped!");
@@ -93,7 +96,6 @@ Bool_t HMdcClusMetaMatch::init(void) {
     Error("init","No catTofHit and catTofCluster in input! Stop!");
     return kFALSE;
   }
-  pTofGeometry = (HTofGeomPar *)rtdb->getContainer("TofGeomPar");
 
 
   // RPC:
@@ -113,9 +115,10 @@ Bool_t HMdcClusMetaMatch::init(void) {
     Warning("init","No catShowerHit in input! Will be ignored!");
     iterShower = NULL;
   } else {
-      iterShower   = (HIterator*)pCatShower->MakeIterator();
+    iterShower   = (HIterator*)pCatShower->MakeIterator();
+    pShrGeometry = (HShowerGeometry*)rtdb->getContainer("ShowerGeometry");
   }
-  pShrGeometry = (HShowerGeometry*)rtdb->getContainer("ShowerGeometry");
+  
   pMatchPar    = (HMetaMatchPar*)rtdb->getContainer("MetaMatchPar");
   
   printf("HMdcClusMetaMatch is inited!\n");
@@ -140,22 +143,26 @@ Bool_t HMdcClusMetaMatch::reinit(void) {
     if(pGetCont->getMdcDetector()->isSectorActive(sec)) {
       const HGeomTransform& labSecTr = pGetCont->getLabTransSec(sec);
       if((&labSecTr) == NULL) return kFALSE;
-      for(Int_t tofMod=0;tofMod<8;tofMod++) {
-        HModGeomPar *pTofMod = pTofGeometry->getModule(sec,tofMod);
-        if(pTofMod==0) {
-          Error("reinit","Sec.%i Can't get tof module %i!",sec+1,tofMod+1);
-          return kFALSE;
+      if(pTofGeometry != NULL) {
+        for(Int_t tofMod=0;tofMod<8;tofMod++) {
+          HModGeomPar *pTofMod = pTofGeometry->getModule(sec,tofMod);
+          if(pTofMod==0) {
+            Error("reinit","Sec.%i Can't get tof module %i!",sec+1,tofMod+1);
+            return kFALSE;
+          }
+          HGeomTransform trans(pTofMod->getLabTransform());
+          HMdcSizesCells::copyTransfToArr(trans,tofLabModTrans[sec][tofMod]);
+          trans.transTo(labSecTr);
+          HMdcSizesCells::copyTransfToArr(trans,tofSecModTrans[sec][tofMod]);
         }
-        HGeomTransform trans(pTofMod->getLabTransform());
-        HMdcSizesCells::copyTransfToArr(trans,tofLabModTrans[sec][tofMod]);
-        trans.transTo(labSecTr);
-        HMdcSizesCells::copyTransfToArr(trans,tofSecModTrans[sec][tofMod]);
       }
       
       // Shower mod=0 is used only:
-      HGeomTransform transS(pShrGeometry->getTransform(sec));
-      transS.transTo(labSecTr);
-      HMdcSizesCells::copyTransfToArr(transS,shrSecModTrans[sec]);
+      if(pShrGeometry != NULL) {
+        HGeomTransform transS(pShrGeometry->getTransform(sec));
+        transS.transTo(labSecTr);
+        HMdcSizesCells::copyTransfToArr(transS,shrSecModTrans[sec]);
+      }
       
       // RPC:
       if(pCatRpc != NULL) {
