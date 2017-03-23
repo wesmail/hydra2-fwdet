@@ -15,6 +15,7 @@ public:
     HCategory* buildCategory(Cat_t cat, Bool_t simulation = kFALSE);
     HCategory* buildMatrixCategory(const Text_t *, Int_t, Int_t, Float_t fillRate = 0.5);
     HCategory* buildMatrixCategory(const Text_t *, Int_t, Int_t, Int_t, Int_t, Float_t fillRate = 0.5);
+    HCategory* buildMatrixCategory(const Text_t *, Int_t, Int_t, Int_t, Int_t, Int_t, Float_t fillRate = 0.5);
     HCategory* buildLinearCategory(const Text_t*, Int_t);
 
     Int_t getMaxModInSetup();

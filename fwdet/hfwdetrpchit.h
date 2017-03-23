@@ -1,6 +1,7 @@
 #ifndef HFWDETRPCHIT_H
 #define HFWDETRPCHIT_H
 
+#include "TMath.h"
 #include "TObject.h"
 
 class HFwDetRpcHit : public TObject
@@ -23,6 +24,7 @@ public:
     Float_t getTof() const { return fTof; }
     Float_t getP() const { return fP; }
     Int_t getTrack() const { return fTrack; }
+    Float_t getDistance() const { return TMath::Sqrt(fX*fX + fY*fY + fZ*fZ); }
 
     inline void setHit(Float_t x, Float_t y, Float_t z, Float_t tof);
     inline void getHit(Float_t & x, Float_t & y, Float_t & z, Float_t & tof) const;

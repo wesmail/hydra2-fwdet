@@ -53,7 +53,7 @@ Bool_t HFwDetRpcHitFinderPar::getParams(HParamList* l)
     return kTRUE;
 }
 
-void HFwDetRpcHitFinderPar::print() const
+void HFwDetRpcHitFinderPar::printParam() const
 {
     std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
     std::cout << "Radius matching:       " << fMatchRadius << std::endl;

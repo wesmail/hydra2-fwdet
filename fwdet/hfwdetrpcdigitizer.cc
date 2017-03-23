@@ -134,14 +134,19 @@ Int_t HFwDetRpcDigitizer::execute()
 
     HGeantFwDet* ghit = 0;
 
+    Char_t  geaModule;      // module number (0...8); straw: 0,1
+    Char_t  geaLayer;       // layer number (0..8): straw: 0-4
+    Int_t   geaCell;        // cell number
+    Char_t  geaSubCell;     // sub cell number
+
 #ifdef VERBOSE_MODE
-int cnt = 0;
 printf("<<--- RPC: VERBOSE_MODE ON ---------------------->>\n");
 #endif
 
-    c_tr = -1;      // current (tracked) variables
-    c_mod = -1;
-    c_lay = -1;
+
+    Int_t c_tr = -1;      // current (tracked) variables
+    Int_t c_mod = -1;
+    Int_t c_lay = -1;
 
     RpcTrackHits rpc_track_hit;
     rpc_track_hit.hits_num = 0;
@@ -152,61 +157,71 @@ printf("<<--- RPC: VERBOSE_MODE ON ---------------------->>\n");
         ghit = (HGeantFwDet*)pGeantFwDetCat->getObject(i);
         if (ghit)
         {
-            ghit->getAddress(geantModule, geantLayer, geantCell);
+            ghit->getAddress(geaModule, geaLayer, geaCell, geaSubCell);
 
-            if(geantModule < FWDET_RPC_MODULE_MIN or geantModule > FWDET_RPC_MODULE_MAX)
+            if(geaModule < FWDET_RPC_MODULE_MIN or geaModule > FWDET_RPC_MODULE_MAX)
                 continue; // skip the other detectors of the FwDet
 
+            Char_t module;  // rpc module number
+            Char_t layer;   // rpc layer number
+            GeantFields gf;
             // calculate rpc cell number and set location indexes
-            module = geantModule - FWDET_RPC_MODULE_MIN;
+            module = geaModule - FWDET_RPC_MODULE_MIN + (geaLayer >> 1);
+            layer = geaLayer & 0x1;
 
-            ghit->getHit(xHit, yHit, zHit, pxHit, pyHit, pzHit, tofHit, trackLength, eHit);
-            trackNumber = ghit->getTrackNumber();
+            ghit->getHit(gf.xHit, gf.yHit, gf.zHit, gf.pxHit, gf.pyHit, gf.pzHit, gf.tofHit, gf.trackLength, gf.eHit);
+            gf.trackNumber = ghit->getTrackNumber();
 
-            if (trackNumber != c_tr or geantModule != c_mod or geantLayer != c_lay)
+            if (gf.trackNumber != c_tr or module != c_mod or layer != c_lay)
             {
                 // new track, but do something with the old one
                 if (rpc_track_hit.hits_num > 0)
                     processHits(rpc_track_hit);
 
-                c_tr = trackNumber;
-                c_mod = geantModule;
-                c_lay = geantLayer;
+                c_tr = gf.trackNumber;
+                c_mod = module;
+                c_lay = layer;
 
                 rpc_track_hit.mod = module;
-                rpc_track_hit.lay = geantLayer;
+                rpc_track_hit.lay = layer;
                 rpc_track_hit.hits_num = 0;
+                rpc_track_hit.track = c_tr;
             }
 
             Int_t m = (Int_t)module;
-            Int_t l = (Int_t)geantLayer;
+            Int_t l = (Int_t)layer;
 
             Float_t offy = offset[m][l];
 
 #ifdef VERBOSE_MODE
+printf("(%d,%d,%d,%d) -> (%d,%d,%d,%d)\n",
+       geaModule, geaLayer, geaCell, geaSubCell, module, layer, geaCell, geaSubCell);
 printf("(%d,%d)  cosa=%f, sina=%f, off=%f   ", m, l, cosa[m], sina[m], offset[m][l]);
 #endif
 
-            Float_t xx = xHit;
-            Float_t yy = yHit + offy;
+            Float_t xx = gf.xHit;
+            Float_t yy = gf.yHit + offy;
 
             x = xx*cosa[m] - yy*sina[m];
             y = xx*sina[m] + yy*cosa[m];
 
 #ifdef VERBOSE_MODE
-printf("%f,%f -> %f,%f -> %f,%f\n", xHit, yHit, xx, yy, x, y);
+printf("%f,%f -> %f,%f -> %f,%f\n", gf.xHit, gf.yHit, xx, yy, x, y);
 #endif
 
 
-#ifdef VERBOSE_MODE
+// #ifdef VERBOSE_MODE
 // printf("(%2d) gm=%d  gl=%d  gc=%d tn=%d -> hit=(%f,%f,%f)  el=%f  tof=%f  p=%f (%f,%f,%f)\n", ++cnt, geantModule, geantLayer, geantCell, trackNumber, xHit, yHit, zHit, eHit, tofHit, sqrt(pxHit*pxHit + pyHit*pyHit + pzHit*pzHit), pxHit, pyHit, pzHit);
-#endif
+// #endif
 
             Int_t hn = rpc_track_hit.hits_num;
-            rpc_track_hit.cell[hn] = geantCell;
-            rpc_track_hit.x[hn] = xHit;
-            rpc_track_hit.y[hn] = yHit;
-            rpc_track_hit.tof[hn] = tofHit;
+            rpc_track_hit.cell[hn] = geaCell*FWDET_RPC_MAX_SUBCELLS + geaSubCell;
+            rpc_track_hit.x[hn] = gf.xHit;
+            rpc_track_hit.y[hn] = gf.yHit;
+            rpc_track_hit.strip[hn] = findStrip(gf.yHit);
+            rpc_track_hit.tof[hn] = gf.tofHit;
+            rpc_track_hit.lab_x[hn] = x;
+            rpc_track_hit.lab_y[hn] = y;
             ++rpc_track_hit.hits_num;
         }
     }
@@ -241,7 +256,7 @@ void HFwDetRpcDigitizer::processHits(const RpcTrackHits & rpc_track_hit)
     {
         // get current strip number (project hit coordinate to strip)
         // y (in local geometry) is used as a coordinate to reflect strip
-        current_strip = findStrip(rpc_track_hit.y[i]);
+        current_strip = rpc_track_hit.strip[i];
 
         // if another strip that before, process the strip's hit
         if (current_strip != tracked_strip)
@@ -251,7 +266,7 @@ void HFwDetRpcDigitizer::processHits(const RpcTrackHits & rpc_track_hit)
                 // calculate and save hit from strip
                 // avg_x is used to reflect position along strip
                 calculateHit(rpc_track_hit.mod, rpc_track_hit.lay,
-                    current_strip, avg_x / cnt_cells, avg_t / cnt_cells);
+                    current_strip, avg_x / cnt_cells, avg_t / cnt_cells, rpc_track_hit.track);
             }
 
             // reset variables
@@ -269,11 +284,11 @@ void HFwDetRpcDigitizer::processHits(const RpcTrackHits & rpc_track_hit)
     {
         // calculate and save hit from strip
         calculateHit(rpc_track_hit.mod, rpc_track_hit.lay,
-            current_strip, avg_y / cnt_cells, avg_t / cnt_cells);
+            current_strip, avg_y / cnt_cells, avg_t / cnt_cells, rpc_track_hit.track);
     }
 }
 
-bool HFwDetRpcDigitizer::calculateHit(Int_t mod, Int_t lay, Int_t s, Float_t a_y, Float_t a_tof)
+bool HFwDetRpcDigitizer::calculateHit(Int_t mod, Int_t lay, Int_t s, Float_t a_y, Float_t a_tof, Int_t track)
 {
     Float_t strip_length = 900.;    // should go to params
     Float_t dt_slope = 0.2;         // should go to params
@@ -291,13 +306,23 @@ bool HFwDetRpcDigitizer::calculateHit(Int_t mod, Int_t lay, Int_t s, Float_t a_y
 
     // save hit from strip
 
-    return fillHit(mod, lay, s, tl, tr, ql, qr);
+    ClusterFields cf;
+    cf.m = mod;
+    cf.l = lay;
+    cf.s = s;
+    cf.tl = tl;
+    cf.tr = tr;
+    cf.ql = ql;
+    cf.qr = qr;
+    cf.tof = a_tof;
+    cf.track = -1;
+    return fillHit(cf);
 }
 
 Int_t HFwDetRpcDigitizer::findStrip(Float_t x)
 {
     Int_t strips_num = 30;  // go to params
-    Float_t strip_gap = 1.0;    // go to params
+//     Float_t strip_gap = 0.0;    // go to params
     Float_t strip_width = 30.0;
 
     // quick estimations
@@ -308,29 +333,29 @@ Int_t HFwDetRpcDigitizer::findStrip(Float_t x)
     return strip;
 }
 
-bool HFwDetRpcDigitizer::fillHit(Int_t m, Int_t l, Int_t s, Float_t tl, Float_t tr, Float_t ql, Float_t qr)
+bool HFwDetRpcDigitizer::fillHit(const ClusterFields & cf)
 {
-    fLoc[0] = m;    // module
-    fLoc[1] = l;    // layer
+    fLoc[0] = cf.m;    // module
+    fLoc[1] = cf.l;    // layer
     fLoc[2] = 0;    // dummy
-    fLoc[3] = s;    // strip
+    fLoc[3] = cf.s;    // strip
 
     HFwDetRpcCalSim * cal = (HFwDetRpcCalSim*)pFwDetRpcCalCat->getObject(fLoc);
     if (cal == nullptr)
     {
         cal = (HFwDetRpcCalSim*)pFwDetRpcCalCat->getSlot(fLoc);
         cal = new(cal) HFwDetRpcCalSim;
-        cal->setAddress(m, l, s);
+        cal->setAddress(cf.m, cf.l, cf.s);
     }
 
     if (cal)
     {
-        Bool_t ret = cal->addHit(tl, tr, ql, qr);
+        Bool_t ret = cal->addHit(cf.tl, cf.tr, cf.ql, cf.qr);
         if (ret)
         {
             Int_t n = cal->getHitsNum();
-            cal->setTrack(n-1, c_tr);
-            cal->setHit(n-1, x, y, tofHit);
+            cal->setTrack(n-1, cf.track);
+            cal->setHit(n-1, x, y, cf.tof);
         }
 
 #ifdef VERBOSE_MODE

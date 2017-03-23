@@ -22,6 +22,7 @@ HFwDetStrawCal::HFwDetStrawCal()
     fLayer  = -1;
     fPlane  = -1;
     fStraw  = -1;
+    fUpDown = 0;
 
     fTime   = -100000.;
     fADC    = -100000.;

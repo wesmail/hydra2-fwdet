@@ -34,7 +34,7 @@ HFwDetRpcGeomPar::~HFwDetRpcGeomPar()
 {
 }
 
-void HFwDetRpcGeomPar::print() const
+void HFwDetRpcGeomPar::printParam() const
 {
     cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
     cout << "Number of detectors:   " << getModules() << endl;

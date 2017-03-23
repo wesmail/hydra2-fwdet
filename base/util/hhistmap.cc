@@ -33,7 +33,7 @@
 using namespace std;
 
 
-          //_HADES_CLASS_DESCRIPTION
+//_HADES_CLASS_DESCRIPTION
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
@@ -2338,7 +2338,7 @@ Bool_t HHistMap::cloneArray (TString source,TString name,TString mask,TString ti
                 TH1* h = (TH1*)src->At(i1);
                 const TString name = h->GetName();
 		getLabels(name,labels);
-                if(!labels[0].IsDigit()  && labels[0].Atoi()!=i1) isIndex = kFALSE;
+                if(!labels[0].IsDigit()  && !labels[0].Atoi()==i1) isIndex = kFALSE;
 		labelsdim[0] += labels[0];
                 if(i1!=max[0]-1)labelsdim[0] += ",";
 	    }
@@ -2352,7 +2352,7 @@ Bool_t HHistMap::cloneArray (TString source,TString name,TString mask,TString ti
 		TH1* h = (TH1*)src->At(i2);
 		const TString name = h->GetName();
 		getLabels(name,labels);
-		if(!labels[1].IsDigit()  && labels[1].Atoi()!=i2) isIndex = kFALSE;
+		if(!labels[1].IsDigit()  && !labels[1].Atoi()==i2) isIndex = kFALSE;
 		labelsdim[1] += labels[1];
 		if(i2!=max[1]-1)labelsdim[1] += ",";
 	    }
@@ -2365,7 +2365,7 @@ Bool_t HHistMap::cloneArray (TString source,TString name,TString mask,TString ti
 		TH1* h = (TH1*)src->At(i3);
 		const TString name = h->GetName();
 		getLabels(name,labels);
-		if(!labels[2].IsDigit()  && labels[2].Atoi()!=i3) isIndex = kFALSE;
+		if(!labels[2].IsDigit()  && !labels[2].Atoi()==i3) isIndex = kFALSE;
 		labelsdim[2] += labels[2];
 		if(i3!=max[2]-1)labelsdim[2] += ",";
 	    }
@@ -2378,7 +2378,7 @@ Bool_t HHistMap::cloneArray (TString source,TString name,TString mask,TString ti
 		TH1* h = (TH1*)src->At(i4);
 		const TString name = h->GetName();
 		getLabels(name,labels);
-		if(!labels[3].IsDigit()  && labels[3].Atoi()!=i4) isIndex = kFALSE;
+		if(!labels[3].IsDigit()  && !labels[3].Atoi()==i4) isIndex = kFALSE;
 		labelsdim[3] += labels[3];
 		if(i4!=max[3]-1)labelsdim[3] += ",";
 	    }
@@ -2391,7 +2391,7 @@ Bool_t HHistMap::cloneArray (TString source,TString name,TString mask,TString ti
 		TH1* h = (TH1*)src->At(i5);
 		const TString name = h->GetName();
 		getLabels(name,labels);
-		if(!labels[4].IsDigit()  && labels[4].Atoi()!=i5) isIndex = kFALSE;
+		if(!labels[4].IsDigit()  && !labels[4].Atoi()==i5) isIndex = kFALSE;
 		labelsdim[4] += labels[4];
 		if(i5!=max[4]-1)labelsdim[4] += ",";
 	    }

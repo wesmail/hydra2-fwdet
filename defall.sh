@@ -15,20 +15,23 @@
 hsc_checkContext
 
 # Root, and dependent packages
-export ROOTSYS=/cvmfs/hades.gsi.de/install/root-5.34.01
+export ROOTSYS=/cvmfs/hades.gsi.de/install/root-5.34.34
 
 # Global Hydra Location
-export HADDIR=/misc/kempter/projects/tmpSVN/hydra2/install/hydra2
+export HADDIR=/misc/kempter/svn/fwdetsvn/hydra2/install/hydra2-dev
 
 # Private Hydra Location - not used by default
 #export MYHADDIR=/e.g./somewhere/in/my/home/directory
 
 # Oracle
-export ORACLE_HOME=/cvmfs/it.gsi.de/oracle/product/11.2.0/client_x86_64_1
+export ORACLE_HOME=/cvmfs/it.gsi.de/oracle/product/12.1.2/client_x86_64_1
 export ORA_USER=hades_ana/hades@db-hades
 
 # CERNLIB - for HGeant
 export CERN_ROOT=/cvmfs/hades.gsi.de/install/cernlib_gfortran/2005
+
+# PLUTO
+export PLUTODIR=
 
 # RFIO support
 export ADSM_BASE_NEW=/misc/hadessoftware/etch32/install/gstore-may07

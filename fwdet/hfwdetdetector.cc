@@ -92,6 +92,20 @@ HCategory* HFwDetDetector::buildMatrixCategory(const Text_t* className, Int_t ma
     return category;
 }
 
+HCategory* HFwDetDetector::buildMatrixCategory(const Text_t* className, Int_t maxMod,
+                                               Int_t maxDbLay, Int_t nLays, Int_t maxCell, Int_t maxSubCell, Float_t fillRate)
+{
+    Int_t* sizes = new Int_t[5]; // 4 levels Module - DoubleLayer - Layer - Cell(straw tube)
+    sizes[0] = maxMod;
+    sizes[1] = maxDbLay; 
+    sizes[2] = nLays;
+    sizes[3] = maxCell;
+    sizes[4] = maxSubCell;
+    HMatrixCategory* category = new HMatrixCategory(className, 5, sizes, fillRate);
+    delete [] sizes;
+    return category;
+}
+
 HCategory* HFwDetDetector::buildLinearCategory(const Text_t* className, Int_t size)
 {
     if (size > 0)
@@ -117,9 +131,9 @@ HCategory* HFwDetDetector::buildCategory(Cat_t cat, Bool_t simulation)
     {
         case catFwDetStrawCal:
             if (simulation)
-                pcat = buildMatrixCategory("HFwDetStrawCalSim", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_LAYERS, FWDET_STRAW_MAX_PLANES, FWDET_STRAW_MAX_CELLS);
+                pcat = buildMatrixCategory("HFwDetStrawCalSim", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_LAYERS, FWDET_STRAW_MAX_PLANES, FWDET_STRAW_MAX_CELLS, FWDET_STRAW_MAX_SUBCELLS);
             else
-                pcat = buildMatrixCategory("HFwDetStrawCal", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_LAYERS, FWDET_STRAW_MAX_PLANES, FWDET_STRAW_MAX_CELLS);
+                pcat = buildMatrixCategory("HFwDetStrawCal", FWDET_STRAW_MAX_MODULES, FWDET_STRAW_MAX_LAYERS, FWDET_STRAW_MAX_PLANES, FWDET_STRAW_MAX_CELLS, FWDET_STRAW_MAX_SUBCELLS);
             break;
         case catFwDetScinCal:
             if (maxModInSetup >= 4)

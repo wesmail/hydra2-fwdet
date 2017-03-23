@@ -106,7 +106,7 @@ void HGeomTransform::clear() {
   rot.setUnitMatrix();
 }
 
-void HGeomTransform::print() {
+void HGeomTransform::print() const {
   rot.print();
   trans.print();
 }

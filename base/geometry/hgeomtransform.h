@@ -27,7 +27,7 @@ public:
   void transTo(const HGeomTransform&);
   void invert(void);
   void clear();
-  void print();
+  void print() const;
   inline void setTransform(const HGeomTransform& t);
   ClassDef(HGeomTransform,1) // basic geometry transformation class
 };

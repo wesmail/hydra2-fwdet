@@ -17,7 +17,6 @@
 #include "hspectrometer.h"
 #include "hfwdetdetector.h"
 #include "hfwdetgeompar.h"
-#include "hfwdetstrawgeompar.h"
 
 ClassImp(HFwDetParRootFileIo);
 

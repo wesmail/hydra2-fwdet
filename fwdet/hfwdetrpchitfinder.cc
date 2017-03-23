@@ -146,7 +146,7 @@ printf("<<--- RPC: VERBOSE_MODE ON ---------------------->>\n");
     std::vector<RpcHit> hits[FWDET_RPC_MAX_MODULES];
     Int_t has_pair[FWDET_RPC_MAX_MODULES][100];
 
-    Float_t x = 0.0, y = 0.0, tof = -1.0;      // for CalSim
+    Float_t x = 0.0, y = 0.0, z = 0.0, tof = -1.0;      // for CalSim
     Int_t track = -1;
 
     Int_t entries = pFwDetRpcCalCat->getEntries();
@@ -159,7 +159,7 @@ printf("<<--- RPC: VERBOSE_MODE ON ---------------------->>\n");
 
             Int_t hitsNum = cal->getHitsNum();
 
-            Float_t z = pFwDetRpcGeomPar->getModuleZ(module);
+            z = pFwDetRpcGeomPar->getModuleZ(module);
 
             for (Int_t h = 0; h < hitsNum; ++h)
             {
@@ -200,11 +200,11 @@ printf("<<--- RPC: VERBOSE_MODE ON ---------------------->>\n");
             Float_t radius = sqrt(dx*dx + dy*dy);
             Float_t dt = h2.tof - h1.tof;
 
-            if (radius < fMatchRadius and dt < fMatchTime)
+            if (radius < fMatchRadius*10. and dt < fMatchTime)
             {
                 Float_t n_x = (h1.x + h2.x)/2.0;
                 Float_t n_y = (h1.y + h2.y)/2.0;
-                Float_t n_z = avg_z;
+                Float_t n_z = (h1.z + h2.z)/2.0;//avg_z;
                 Float_t n_tof = (h1.tof + h2.tof)/2.0;
                 Int_t tr = (h1.track == h2.track) ? h1.track : -1;
 
@@ -223,7 +223,7 @@ printf("<<--- RPC: VERBOSE_MODE ON ---------------------->>\n");
             if (!has_pair[m][i])
             {
                 RpcHit h = hits[m][i];
-                fillHit(h.x, h.y, mod_z[m], h.tof, h.track);
+                fillHit(h.x, h.y, h.z, h.tof, h.track);
             }
         }
     }

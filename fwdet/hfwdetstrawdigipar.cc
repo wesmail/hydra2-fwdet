@@ -74,7 +74,7 @@ Bool_t HFwDetStrawDigiPar::getParams(HParamList* l)
     return kTRUE;
 }
 
-void HFwDetStrawDigiPar::print()
+void HFwDetStrawDigiPar::printParam()
 {
     printf(" --- Straws Digitizer parameters\n");
     printf("     fAnalogReso      = %f\n", fAnalogReso);

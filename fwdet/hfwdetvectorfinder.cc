@@ -420,7 +420,7 @@ void HFwDetVectorFinder::getHits()
     }
 
     Int_t nHits = pStrawHits->getEntries();
-    Char_t addr_module, addr_layer, addr_plane;
+    Char_t addr_module, addr_layer, addr_plane, addr_udconf;
     Int_t module, layer, plane, tube;
     HFwDetStrawCal * hit = nullptr;
 
@@ -430,7 +430,7 @@ void HFwDetVectorFinder::getHits()
 
         if (hit->GetUniqueID() != 0) continue; // already used
 
-        hit->getAddress(addr_module, addr_layer, addr_plane, tube);
+        hit->getAddress(addr_module, addr_layer, addr_plane, tube, addr_udconf);
         module = (Int_t) addr_module;
         layer = (Int_t) addr_layer;
         plane = (Int_t) addr_plane;
@@ -449,54 +449,193 @@ printf("(%3d)  m=%d l=%d p=%d -> vp=%d  t=%03d  p=%f\n", i, module, layer, plane
     // (to account for inefficiency)
     Int_t indx1 = 0, indx2 = 0, tube1 = 0, tube2 = 0;
 
-    for (Int_t m = 0; m < nModules; ++m)
+    HFwDetStrawCal * hit1;
+    HFwDetStrawCal * hit2;
+
+    for (Int_t pass = 0; pass < 2; ++pass)
     {
-        // Loop over stations
-        for (Int_t i1 = 0; i1 < nLayers[m]; ++i1)
+#ifdef VERBOSE_MODE
+printf("pass %d\n", pass);
+#endif
+        for (Int_t m = 0; m < nModules; ++m)
         {
-            // Loop over doublets
-            multimap<Int_t,Int_t>::iterator
-                it1 = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES].begin(),
-                it2 = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES+1].begin();
-
-            multimap<Int_t,Int_t>::iterator
-                it1end = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES].end(),
-                it2end = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES+1].end();
-
-            Bool_t tube1_has_partner = kFALSE;  // if tube1 was matched
-            Bool_t tube2_has_partner = kFALSE;  // if tube2 was matched
-
-            // straws in two planes are as following
-            //
-            //        \   |    / <-- tracks
-            // p=1    (1) (2) (3)... (n)  <-- tube number
-            // p=0  (1) (2) (3)... (n)
-            //           \| /
-            //
-            // possible pairs for [p=0,p=1] and for 1 < k < n
-            // are [k, k] and [k+1, k]
-            //
-            // Algorithm is as follow:
-            // 1. Iterate over p=0
-            // 2. check for partners in p=1
-            // 3. when all straws from p=0 are done
-            // 4. fill remaining straws from p=1
-
-            while(it1 != it1end)
+            // Loop over stations
+            for (Int_t i1 = 0; i1 < nLayers[m]; ++i1)
             {
-                indx1 = it1->second;
-                tube1 = it1->first;
+                // Loop over doublets
+                multimap<Int_t,Int_t>::iterator
+                    it1 = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES].begin(),
+                    it2 = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES+1].begin();
 
-                if (it2 == it2end)
+                multimap<Int_t,Int_t>::const_iterator
+                    it1end = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES].end(),
+                    it2end = fHitPl[m][i1*FWDET_STRAW_MAX_PLANES+1].end();
+
+                Bool_t tube1_has_partner = kFALSE;  // if tube1 was matched
+                Bool_t tube2_has_partner = kFALSE;  // if tube2 was matched
+
+                // straws in two planes are as following
+                //
+                //        \   |    / <-- tracks
+                // p=1    (1) (2) (3)... (n)  <-- tube number
+                // p=0  (1) (2) (3)... (n)
+                //           \| /
+                //
+                // possible pairs for [p=0,p=1] and for 1 < k < n
+                // are [k, k] and [k+1, k]
+                //
+                // Algorithm is as follow:
+                // 1. Iterate over p=0
+                // 2. check for partners in p=1
+                // 3. when all straws from p=0 are done
+                // 4. fill remaining straws from p=1
+
+                while(it1 != it1end)
                 {
-                    if (!tube1_has_partner)
-                    {
-                        fHit[m][i1].push_back(DoubletPair(indx1, -1));
-                    }
-                    ++it1;
-                    tube1_has_partner = kFALSE;
+                    indx1 = it1->second;
+                    tube1 = it1->first;
 
-                    continue;
+                    hit1 = (HFwDetStrawCal*) pStrawHits->getObject(indx1);
+                    Int_t ud1 = hit1->getUDconf();
+
+                    if (it2 == it2end)
+                    {
+                        if (!tube1_has_partner)
+                        {
+                            Bool_t badCond = ((pass == 0 and ud1 == 0x2) or
+                            (pass == 1 and ud1 != 0x2));
+                            if (!badCond)
+                                fHit[m][i1].push_back(DoubletPair(indx1, -1));
+                        }
+                        ++it1;
+                        tube1_has_partner = kFALSE;
+
+                        continue;
+                    }
+
+                    while (it2 != it2end)
+                    {
+                        indx2 = it2->second;
+                        tube2 = it2->first;
+
+                        hit2 = (HFwDetStrawCal*) pStrawHits->getObject(indx2);
+                        Int_t ud2 = hit2->getUDconf();
+
+                        Bool_t skipThisPair = kFALSE;
+
+                        if (pass == 0)
+                        {
+                            Bool_t doBreak = kFALSE;
+                            Bool_t doNext = kFALSE;
+
+                            // we dont want lower tubes here
+                            if (ud1 == 0x2)
+                            {
+                                ++it1;
+                                doBreak = kTRUE;
+                            }
+                            if (ud2 == 0x2)
+                            {
+                                ++it2;
+                                doNext = kTRUE;
+                            }
+                            if (doBreak)
+                                break;
+                            if (doNext)
+                                continue;
+                        }
+                        else if (pass == 1)
+                        {
+                            Bool_t doBreak = kFALSE;
+                            Bool_t doNext = kFALSE;
+
+                            // we dont want upper tubes here
+                            if (ud1 == 0x1)
+                            {
+                                ++it1;
+                                doBreak = kTRUE;
+                            }
+                            if (ud2 == 0x1)
+                            {
+                                ++it2;
+                                doNext = kTRUE;
+                            }
+
+                            if (doBreak)
+                                break;
+                            if (doNext)
+                                continue;
+
+                            if (ud1 == 0x3 && ud2 == 0x3)
+                                skipThisPair = kTRUE;
+                            if (ud1 == 0x3 && it2 == it2end)
+                                skipThisPair = kTRUE;
+                            if (ud2 == 0x3 && it1 == it1end)
+                                skipThisPair = kTRUE;
+                        }
+
+                        // difference between tubes
+                        Int_t tube_diff = tube1 - tube2;
+
+#ifdef VERBOSE_MODE
+if (skipThisPair)
+    printf("  skipped!  ");
+
+printf("Testing pair: (%d, %d, %d), (%d, %d, %d) dist=%d\n",
+        tube1, indx1, ud1, tube2, indx2, ud2, tube_diff);
+#endif
+                        if (tube_diff > 1)      // tube1 ahead of tube 2
+                        {
+                            if (!tube2_has_partner)
+                            {
+                                if (!skipThisPair)
+                                    fHit[m][i1].push_back(DoubletPair(-1, indx2));
+                            }
+
+                            ++it2;   // searching for [k, k] case
+                            tube2_has_partner = kFALSE;
+
+                            continue;
+                        }
+
+                        if (tube_diff == 1)     // we have first possible pair
+                        {
+                            if (!skipThisPair)
+                                fHit[m][i1].push_back(DoubletPair(indx1, indx2));
+
+                            tube1_has_partner = kTRUE;
+
+                            ++it2;   // searching for [k, k] case
+                            tube2_has_partner = kFALSE;
+
+                            continue;
+                        }
+
+                        if (tube_diff == 0)     // we have second possible pair
+                        {
+                            if (!skipThisPair)
+                                fHit[m][i1].push_back(DoubletPair(indx1, indx2));
+
+                            tube2_has_partner = kTRUE;
+
+                            ++it1;   // searching for [k+1, k] case
+                            tube1_has_partner = kFALSE;
+
+                            break;
+                        }
+
+                        if (tube_diff < 0)      // tube2 ahead of tube1
+                        {
+                            if (!tube1_has_partner)
+                            {
+                                if (!skipThisPair)
+                                    fHit[m][i1].push_back(DoubletPair(indx1, -1));
+                            }
+                            tube1_has_partner = kFALSE;
+                            ++it1;  // searching for [k, k] case
+                            break;
+                        }
+                    }
                 }
 
                 while (it2 != it2end)
@@ -504,83 +643,36 @@ printf("(%3d)  m=%d l=%d p=%d -> vp=%d  t=%03d  p=%f\n", i, module, layer, plane
                     indx2 = it2->second;
                     tube2 = it2->first;
 
-                    // difference between tubes
-                    Int_t tube_diff = tube1 - tube2;
+                    hit2 = (HFwDetStrawCal*) pStrawHits->getObject(indx2);
+                    Int_t ud2 = hit2->getUDconf();
 
-                    if (tube_diff > 1)      // tube1 ahead of tube 2
+                    if (!tube2_has_partner)
                     {
-                        if (!tube2_has_partner)
-                        {
+                        Bool_t badCond = ((pass == 0 and ud2 == 0x2) or
+                            (pass == 1 and ud2 != 0x2));
+                        if (!badCond)
                             fHit[m][i1].push_back(DoubletPair(-1, indx2));
-                        }
-
-                        ++it2;   // searching for [k, k] case
-                        tube2_has_partner = kFALSE;
-
-                        continue;
                     }
 
-                    if (tube_diff == 1)     // we have first possible pair
-                    {
-                        fHit[m][i1].push_back(DoubletPair(indx1, indx2));
-
-                        tube1_has_partner = kTRUE;
-
-                        ++it2;   // searching for [k, k] case
-                        tube2_has_partner = kFALSE;
-
-                        continue;
-                    }
-
-                    if (tube_diff == 0)     // we have second possible pair
-                    {
-                        fHit[m][i1].push_back(DoubletPair(indx1, indx2));
-
-                        tube2_has_partner = kTRUE;
-
-                        ++it1;   // searching for [k+1, k] case
-                        tube1_has_partner = kFALSE;
-
-                        break;
-                    }
-
-                    if (tube_diff < 0)      // tube2 ahead of tube1
-                    {
-                        if (!tube1_has_partner)
-                        {
-                            fHit[m][i1].push_back(DoubletPair(indx1, -1));
-                        }
-                        tube1_has_partner = kFALSE;
-                        ++it1;  // searching for [k, k] case
-                        break;
-                    }
+                    ++it2;
+                    tube2_has_partner = kFALSE;
                 }
-            }
-
-            while (it2 != it2end)
-            {
-                indx2 = it2->second;
-                tube2 = it2->first;
-
-                if (!tube2_has_partner)
-                {
-                    fHit[m][i1].push_back(DoubletPair(-1, indx2));
-                }
-
-                ++it2;
-                tube2_has_partner = kFALSE;
             }
         }
+    }
+
 #ifdef VERBOSE_MODE
-printf("mod=%2d\n", m);
-for (Int_t l = 0; l < nLayers[m]; ++l)
+for (Int_t m = 0; m < nModules; ++m)
 {
-    for (UInt_t d = 0; d < fHit[m][l].size(); ++d)
-    printf("d=%d/%ld m=%d 2d=%d   f=%d  s=%d\n", d+1, fHit[m][l].size(),
-            m, l, fHit[m][l][d].first, fHit[m][l][d].second);
+    printf("mod=%2d\n", m);
+    for (Int_t l = 0; l < nLayers[m]; ++l)
+    {
+        for (UInt_t d = 0; d < fHit[m][l].size(); ++d)
+        printf("d=%d/%ld m=%d 2d=%d   f=%d  s=%d\n", d+1, fHit[m][l].size(),
+                m, l, fHit[m][l][d].first, fHit[m][l][d].second);
+    }
 }
 #endif
-    }
 }
 
 void HFwDetVectorFinder::makeVectors()
@@ -932,7 +1024,7 @@ void HFwDetVectorFinder::highRes()
                 rpchit = (HFwDetRpcHit*) pRpcHits->getObject(hitno);
                 tof_grad = rpchit->getTof() / rpchit->getZ();
                 vec->setTof(rpchit->getTof());
-                vec->setDistance(rpchit->getZ());
+                vec->setDistance(rpchit->getDistance());
                 if (isSimulation)
                     ((HVectorCandSim*) vec)->setRpcTrack(rpchit->getTrack());
             }

@@ -22,26 +22,18 @@ HFwDetStrawGeomPar::~HFwDetStrawGeomPar()
 {
 }
 
-void HFwDetStrawGeomPar::print() const
+void HFwDetStrawGeomPar::printParam() const
 {
-    cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
+    cout << "@@@@@@@@@@@@@@@@@@@@@@@" << endl;
     cout << "Number of detectors:    " << getModules() << endl;
     for (Int_t m = 0; m < nModules; ++m)
     {
-        cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
+        cout << "@@@@@@@@@@@@@@@@@@@@@@@" << endl;
         cout << "Detector number:       " << m << endl;
         // prints the geometry parameters of a single detector
         cout << "Number of layers:      " << getLayers(m) << endl;
-        cout << "Number of panels:      ";
-        for (Int_t i = 0; i < getLayers(m); ++i)
-        {
-            cout << " " << getPanels(m, i);
-        }
-        cout << endl;
-        cout << "Number of blocks:      " << getBlocks(m) << endl;
         cout << "Number of straws:      " << getStraws(m) << endl;
-
-        cout << "Layer offset Z:        " << endl;
+        cout << "Layer offset Z:       " << endl;
         for (Int_t i = 0; i < getLayers(m); ++i)
         {
             for (Int_t p = 0; p < FWDET_STRAW_MAX_PLANES; ++p)
@@ -49,8 +41,7 @@ void HFwDetStrawGeomPar::print() const
             cout << "   ";
         }
         cout << endl;
-
-        cout << "Layer offset X:        " << endl;
+        cout << "Layer offset X:       " << endl;
         for (Int_t i = 0; i < getLayers(m); ++i)
         {
             for (Int_t p = 0; p < FWDET_STRAW_MAX_PLANES; ++p)
@@ -58,8 +49,7 @@ void HFwDetStrawGeomPar::print() const
             cout << "   ";
         }
         cout << endl;
-
-        cout << "Layer rotations:       " << endl;
+        cout << "Layer rotations:       " << endl; 
         for (Int_t i = 0; i < getLayers(m); ++i)
         {
             cout << " " << getLayerRotation(m, i);
@@ -74,8 +64,6 @@ void HFwDetStrawGeomPar::clear()
     {
         // clear all variables
         sm_mods[i].nLayers = 0;
-        sm_mods[i].nPanels = 0;
-        sm_mods[i].nBlocks = 0;
         sm_mods[i].nStraws = 0;
         sm_mods[i].fStrawRadius = 0.0;
         sm_mods[i].fStrawPitch = 0.0;
@@ -97,26 +85,6 @@ Int_t HFwDetStrawGeomPar::getLayers(Int_t m) const
     // m -- module number
     if (m < getModules())
         return sm_mods[m].nLayers;
-    else
-        return -1;
-}
-
-Int_t HFwDetStrawGeomPar::getPanels(Int_t m, Int_t l) const
-{
-    // return number of planes in layer 'l'
-    // l -- layer number
-    if (m < getModules() && l < getLayers(m))
-        return sm_mods[m].nPanels[l];
-    else
-        return -1;
-}
-
-Int_t HFwDetStrawGeomPar::getBlocks(Int_t m) const
-{
-    // return number of straws in single layer of module 'm'
-    // m -- module number
-    if (m < getModules())
-        return sm_mods[m].nBlocks;
     else
         return -1;
 }
@@ -157,7 +125,7 @@ Float_t HFwDetStrawGeomPar::getOffsetZ(Int_t m, Int_t l, Int_t p) const
     // m --module number
     // l -- layer number
     // s -- sublayer number
-    if (m < getModules() && l < getLayers(m) && p < getPanels(m, l))
+    if (m < getModules() && l < getLayers(m) && p < FWDET_STRAW_MAX_PLANES)
         return sm_mods[m].fOffsetZ[l][p];
     else
         return -1;
@@ -169,7 +137,7 @@ Float_t HFwDetStrawGeomPar::getOffsetX(Int_t m, Int_t l, Int_t p) const
     // m -- module number
     // l -- layer number
     // s -- sublayer number
-    if (m < getModules() && l < getLayers(m) && p < getPanels(m, l))
+    if (m < getModules() && l < getLayers(m) && p < FWDET_STRAW_MAX_PLANES)
         return sm_mods[m].fOffsetX[l][p];
     else
         return -1;
@@ -196,41 +164,11 @@ void HFwDetStrawGeomPar::setLayers(Int_t m, Int_t l)
     // set number of layers, this function automatically
     // resizes all depending arrays
     sm_mods[m].nLayers = l;
-    sm_mods[m].nPanels.Set(l);
     sm_mods[m].fStrawRadius.Set(l * FWDET_STRAW_MAX_PLANES);
     sm_mods[m].fStrawPitch.Set(l * FWDET_STRAW_MAX_PLANES);
     sm_mods[m].fLayerRotation.Set(l);
-}
-
-void HFwDetStrawGeomPar::setPanels(Int_t m, Int_t l, Int_t d)
-{
-    // set number of panels for layer 'l', resizes all depending arrays
-    // l -- layer number
-    // s -- number of panels
-    if (m < getModules() && l < getLayers(m))
-    {
-        sm_mods[m].nPanels[l] = d;
-
-        Int_t max_panels = 0;
-        for (Int_t i = 0; i < getLayers(m); ++i)
-        {
-            sm_mods[m].nPanels[i] > max_panels ? max_panels = sm_mods[m].nPanels[l] : max_panels;
-        }
-
-        sm_mods[m].fOffsetZ.ResizeTo(getLayers(m), FWDET_STRAW_MAX_PLANES);
-        sm_mods[m].fOffsetX.ResizeTo(getLayers(m), FWDET_STRAW_MAX_PLANES);
-    }
-}
-
-void HFwDetStrawGeomPar::setBlocks(Int_t m, Int_t b)
-{
-    // set number of blocks for module 'm'
-    // m -- module number
-    // b -- number of blocks
-    if (m < getModules())
-    {
-        sm_mods[m].nBlocks = b;
-    }
+    sm_mods[m].fOffsetZ.ResizeTo(getLayers(m), FWDET_STRAW_MAX_PLANES);
+    sm_mods[m].fOffsetX.ResizeTo(getLayers(m), FWDET_STRAW_MAX_PLANES);
 }
 
 void HFwDetStrawGeomPar::setStraws(Int_t m, Int_t s)
@@ -315,8 +253,6 @@ void HFwDetStrawGeomPar::putParams(HParamList* l)
     }
 
     TArrayI par_layers(nModules);
-    TArrayI par_panels(total_layers);
-    TArrayI par_blocks(nModules);
     TArrayI par_straws(nModules);
 
     TArrayF par_offsetX(total_layers * FWDET_STRAW_MAX_PLANES);
@@ -340,11 +276,6 @@ void HFwDetStrawGeomPar::putParams(HParamList* l)
         // iterate over layers
         for (Int_t l = 0; l < layers; ++l)
         {
-            Int_t panels = getPanels(i, l);
-
-            // set number of panels
-            par_panels.SetAt(panels, cnt_layers + l);
-
             par_strawR.SetAt(getStrawRadius(i, l), cnt_layers + l);
             par_strawP.SetAt(getStrawPitch(i,l), cnt_layers + l);
 
@@ -357,19 +288,14 @@ void HFwDetStrawGeomPar::putParams(HParamList* l)
             par_layerRotation.SetAt(getLayerRotation(i, l), cnt_layers + l);
         }
 
-        // set number of blocks in each panel
-        par_blocks.SetAt(getBlocks(i), i);
-
         // set number of straws in each block
         par_straws.SetAt(getStraws(i), i);
 
         cnt_layers += layers;
     }
 
-
     l->add("nModules",       nModules);
     l->add("nLayers",        par_layers);
-    l->add("nPanels",        par_panels);
     l->add("nStraws",        par_straws);
     l->add("fOffsetZ",       par_offsetZ);
     l->add("fOffsetX",       par_offsetX);
@@ -402,28 +328,6 @@ Bool_t HFwDetStrawGeomPar::getParams(HParamList* l)
     for (Int_t d = 0; d < par_modules; ++d)
     {
         total_layers += par_layers[d];
-    }
-
-    TArrayI par_panels(total_layers);
-    if (!l->fill("nPanels", &par_panels))
-        return kFALSE;
-
-    if (par_panels.GetSize() != total_layers)
-    {
-        Error("HFwDetStrawGeomPar::getParams(HParamList* l)",
-              "Array size of panels=%d does not fit to number of layers=%d", par_layers.GetSize(), total_layers);
-        return kFALSE;
-    }
-
-    TArrayI par_blocks;
-    if (!l->fill("nBlocks", &par_blocks))
-        return kFALSE;
-
-    if (par_blocks.GetSize() != par_modules)
-    {
-        Error("HFwDetStrawGeomPar::getParams(HParamList* l)",
-              "Array size of blocks does not fit to number of detectors");
-        return kFALSE;
     }
 
     TArrayI par_straws;
@@ -514,11 +418,6 @@ Bool_t HFwDetStrawGeomPar::getParams(HParamList* l)
         // iterate over layers
         for (Int_t l = 0; l < layers; ++l)
         {
-            Int_t panels = par_panels[cnt_layers + l];
-
-            // set number of planes
-            setPanels(i, l, panels);
-
             setStrawRadius(i, l, par_strawRadius[cnt_layers + l]);
             setStrawPitch(i, l, par_strawPitch[cnt_layers + l]);
 
@@ -527,12 +426,8 @@ Bool_t HFwDetStrawGeomPar::getParams(HParamList* l)
                 setOffsetZ(i, l, s, par_offsetZ[2*(cnt_layers + l) + s]);
                 setOffsetX(i, l, s, par_offsetX[2*(cnt_layers + l) + s]);
             }
-
             setLayerRotation(i, l, par_layerRotation[cnt_layers + l]);
         }
-
-        // set number of blocks in each double layer
-        setBlocks(i, par_blocks[i]);
 
         // set number of straws in each block
         setStraws(i, par_straws[i]);

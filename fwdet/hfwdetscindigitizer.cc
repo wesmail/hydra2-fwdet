@@ -109,21 +109,31 @@ Int_t HFwDetScinDigitizer::execute()
         ghit = (HGeantFwDet*)fGeantFwDetCat->getObject(i);
         if (ghit)
         {
-            ghit->getAddress(geantModule, geantLayer, geantCell);
+            Char_t  geantModule;  // GEANT FwDet module number (0...8)
+            Char_t  geantLayer;   // GEANT FwDet layer number (0...8)
+            Int_t   geantCell;    // GEANT cell number inside module (0...8)
+            Char_t  geantSubCell;
+
+            ghit->getAddress(geantModule, geantLayer, geantCell, geantSubCell);
             if(geantModule < 4 || geantModule > 5) continue; // skip the other detectors of the FwDet
 
-            ghit->getHit(xHit, yHit,  zHit, pxHit, pyHit, pxHit, tofHit, trackLength, eHit);
-            trackNumber = ghit->getTrackNumber();
+            DigiFields df;
+            GeantFields gf;
+
+            ghit->getHit(gf.xHit, gf.yHit,  gf.zHit,
+                         gf.pxHit, gf.pyHit, gf.pxHit,
+                         gf.tofHit, gf.trackLength, gf.eHit);
+            gf.trackNumber = ghit->getTrackNumber();
 
             // calculate scintillator cell number and set location indexes
-            module = geantModule - 4;
-            scinNum = geantCell;  // preliminary!!!!!!!!!
+            df.mod = geantModule - 4;
+            df.cell = geantCell;  // preliminary!!!!!!!!!
 
-            if (module >= FWDET_SCIN_MAX_MODULES || scinNum >= FWDET_SCIN_MAX_CELLS)
+            if (df.mod >= FWDET_SCIN_MAX_MODULES || df.cell >= FWDET_SCIN_MAX_CELLS)
                 continue;
 
-            fLoc[0] = module;
-            fLoc[1] = scinNum;
+            fLoc[0] = df.mod;
+            fLoc[1] = df.cell;
 
             // do something with the Geant hit...
             //
@@ -134,9 +144,9 @@ Int_t HFwDetScinDigitizer::execute()
             if (cal)
             {
                 cal = new(cal) HFwDetScinCalSim;
-                cal->setAddress(module, geantCell, scinNum);
-                cal->setHit(tofHit, eHit);
-                cal->setTrack(trackNumber);
+                cal->setAddress(df.mod, 0, df.cell);
+                cal->setHit(gf.tofHit, gf.eHit);
+                cal->setTrack(gf.trackNumber);
             }
         }
     }

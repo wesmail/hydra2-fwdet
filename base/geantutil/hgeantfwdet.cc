@@ -29,6 +29,7 @@ HGeantFwDet::HGeantFwDet(void) {
   module      = -1;
   layer       = -1;
   cell        = -1;
+  subcell     = -1;
   xHit        = 0.0F;
   yHit        = 0.0F;
   zHit        = 0.0F;
@@ -46,6 +47,7 @@ HGeantFwDet::HGeantFwDet(HGeantFwDet &aFwDet) {
   module      = aFwDet.module;
   layer       = aFwDet.layer;
   cell        = aFwDet.cell;
+  subcell     = aFwDet.subcell;
   xHit        = aFwDet.xHit;
   yHit        = aFwDet.yHit;
   zHit        = aFwDet.zHit;
@@ -83,4 +85,4 @@ void HGeantFwDet::getHit(Float_t& aX, Float_t& aY, Float_t& aZ, Float_t& aPx, Fl
   aTof = tofHit;
   aLen = trackLength;
   aE   = eHit;
-}  
+}

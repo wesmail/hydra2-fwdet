@@ -62,7 +62,7 @@ Int_t analysisDST(TString inFile="tmp1", Int_t nEvents=1000, Int_t startEvt=0)
 
     // ----------- Build TASK SETS (using H***TaskSet::make) -------------
     HFwDetTaskSet* fwdetTaskSet = new HFwDetTaskSet("FwDetStrawTaskSet","FwDetStrawTaskSet");
-    HTask* fwdetTasks = fwdetTaskSet->make("simulation","straw,scin,rpc");
+    HTask* fwdetTasks = fwdetTaskSet->make("simulation","strawcal,rpccal,rpchitf,vf");
 
     //------------------------ Master task set ---------------------------
     HTaskSet *masterTaskSet = gHades->getTaskSet("simulation");

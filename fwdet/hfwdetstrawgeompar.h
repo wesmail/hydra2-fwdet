@@ -20,17 +20,15 @@ private:
     struct SingleModule
     {
         Int_t    nLayers;        // number of layers per module
-        TArrayI  nPanels;        // number of panels in each layer
-        Int_t    nBlocks;        // number of blocks in each panel
         Int_t    nStraws;        // number of straws in each block of a panel
 
         TArrayF  fStrawRadius;   // [layer:sublayer]
         TArrayF  fStrawPitch;    // [layer:sublayer]
 
         TMatrixF fOffsetZ;       // [layer:sublayer] offset of the plane center
-                                // from the layer center in local z-direction
+                                 // from the layer center in local z-direction
         TMatrixF fOffsetX;       // [layer:sublayer] offset of the plane center
-                                // from the layer center in local x-direction
+                                 // from the layer center in local x-direction
 
         TArrayF fLayerRotation;  // rotation of the layer (planes are binded)
     } sm_mods[FWDET_STRAW_MAX_MODULES]; //!
@@ -41,15 +39,13 @@ public:
                      const Char_t* context = "FwDetStrawGeometry");
     virtual ~HFwDetStrawGeomPar();
 
-    void   print() const;
+    void   printParam() const;
     void   clear();
     void   putParams(HParamList*);
     Bool_t getParams(HParamList*);
 
     Int_t getModules() const;
     Int_t getLayers(Int_t m) const;
-    Int_t getPanels(Int_t m, Int_t l) const;
-    Int_t getBlocks(Int_t m) const;
     Int_t getStraws(Int_t m) const;
     Float_t getStrawRadius(Int_t m, Int_t l) const;
     Float_t getStrawPitch(Int_t m, Int_t l) const;
@@ -59,8 +55,6 @@ public:
 
     void setModules(Int_t m);
     void setLayers(Int_t m, Int_t l);
-    void setPanels(Int_t m, Int_t l, Int_t p);
-    void setBlocks(Int_t m, Int_t b);
     void setStraws(Int_t m, Int_t s);
     void setStrawRadius(Int_t m, Int_t l, Float_t r);
     void setStrawPitch(Int_t m, Int_t l, Float_t p);

@@ -26,7 +26,7 @@ public:
     void   putParams(HParamList*);
     Bool_t getParams(HParamList*);
     void   clear();
-    void   print() const;
+    void   printParam() const;
 
     ClassDef(HFwDetRpcHitFinderPar, 1); // Container for the Forward Rpc Detector digitization
 };
