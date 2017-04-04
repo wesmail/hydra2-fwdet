@@ -54,7 +54,6 @@ public:
     void   putParams(HParamList*);
     Bool_t getParams(HParamList*);
     void   clear();
-    void   printParam();
 
 private:
     static const Int_t dt_pars_num = 5;

@@ -13,13 +13,14 @@ struct RpcTrackHits {
     Int_t hits_num;
     Int_t mod;
     Int_t lay;
-    Int_t cell[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS];
-    Float_t x[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS];
-    Float_t y[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS];
-    Int_t strip[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS];
-    Float_t tof[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS];
-    Float_t lab_x[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS];
-    Float_t lab_y[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS];
+    // factor 4 for cases of mult scatt.
+    Int_t cell[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
+    Float_t x[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
+    Float_t y[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
+    Int_t strip[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
+    Float_t tof[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
+    Float_t lab_x[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
+    Float_t lab_y[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
     Int_t track;
 
     void print() const

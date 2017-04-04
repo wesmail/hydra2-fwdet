@@ -163,9 +163,9 @@ Bool_t HFwDetStrawDigitizer::reinit()
         }
 
 #ifdef VERBOSE_MODE
-    pStrawDigiPar->print();
+    pStrawGeomPar->printParams();
+    pStrawDigiPar->printParams();
 #endif
-
     return kTRUE;
 }
 
@@ -291,7 +291,7 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             df.adc = gf.eHit*eloss_slope + eloss_offset;
 
 #ifdef VERBOSE_MODE
-printf("     g (m=%d l=%d c=%03d ud=%d) -> p=%d s=%03d  u=%f  el=%.4f tof=%.3f dr=%f  adc=%.2f time=%f  p=%f (%f,%f) loc=(%f,%f,%f)\n", geaModule, geaLayer, geaCell, geaSubCell, df.plane, df.straw, cell_x, gf.eHit, gf.tofHit, df.radius, df.adc, df.time, sqrt(gf.pxHit*gf.pxHit + gf.pyHit*gf.pyHit + gf.pzHit*gf.pzHit), gf.pxHit/gf.pzHit, gf.pyHit/gf.pzHit, gf.lab_x, gf.lab_y, gf.lab_z);
+printf("     g (m=%d l=%d c=%03d ud=%d, tr=%d) -> p=%d s=%03d  u=%f  el=%.4f tof=%.3f dr=%f  adc=%.2f time=%f  p=%f (%f,%f) loc=(%f,%f,%f)\n", geaModule, geaLayer, geaCell, geaSubCell, gf.trackNumber, df.plane, df.straw, cell_x, gf.eHit, gf.tofHit, df.radius, df.adc, df.time, sqrt(gf.pxHit*gf.pxHit + gf.pyHit*gf.pyHit + gf.pzHit*gf.pzHit), gf.pxHit/gf.pzHit, gf.pyHit/gf.pzHit, gf.lab_x, gf.lab_y, gf.lab_z);
 #endif
 
             if (adc_reso > 0.0)
@@ -346,7 +346,7 @@ Bool_t HFwDetStrawDigitizer::fillStrawCalSim(const DigiFields & df, const GeantF
     {
         if (cal->getDrift() <= df.radius)
         {
-            cal->setTrack(gf.trackNumber);
+//             cal->setTrack(gf.trackNumber);   // FIXME should we have multiple track numbers?
             return kFALSE;
         }
         first = 0;

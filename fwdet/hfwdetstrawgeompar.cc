@@ -22,42 +22,6 @@ HFwDetStrawGeomPar::~HFwDetStrawGeomPar()
 {
 }
 
-void HFwDetStrawGeomPar::printParam() const
-{
-    cout << "@@@@@@@@@@@@@@@@@@@@@@@" << endl;
-    cout << "Number of detectors:    " << getModules() << endl;
-    for (Int_t m = 0; m < nModules; ++m)
-    {
-        cout << "@@@@@@@@@@@@@@@@@@@@@@@" << endl;
-        cout << "Detector number:       " << m << endl;
-        // prints the geometry parameters of a single detector
-        cout << "Number of layers:      " << getLayers(m) << endl;
-        cout << "Number of straws:      " << getStraws(m) << endl;
-        cout << "Layer offset Z:       " << endl;
-        for (Int_t i = 0; i < getLayers(m); ++i)
-        {
-            for (Int_t p = 0; p < FWDET_STRAW_MAX_PLANES; ++p)
-                cout << " " << getOffsetZ(m, i, p);
-            cout << "   ";
-        }
-        cout << endl;
-        cout << "Layer offset X:       " << endl;
-        for (Int_t i = 0; i < getLayers(m); ++i)
-        {
-            for (Int_t p = 0; p < FWDET_STRAW_MAX_PLANES; ++p)
-                cout << " " << getOffsetX(m, i, p);
-            cout << "   ";
-        }
-        cout << endl;
-        cout << "Layer rotations:       " << endl; 
-        for (Int_t i = 0; i < getLayers(m); ++i)
-        {
-            cout << " " << getLayerRotation(m, i);
-        }
-        cout << endl;
-    }
-}
-
 void HFwDetStrawGeomPar::clear()
 {
     for (Int_t i = 0; i < FWDET_STRAW_MAX_MODULES; ++i)
@@ -164,11 +128,11 @@ void HFwDetStrawGeomPar::setLayers(Int_t m, Int_t l)
     // set number of layers, this function automatically
     // resizes all depending arrays
     sm_mods[m].nLayers = l;
-    sm_mods[m].fStrawRadius.Set(l * FWDET_STRAW_MAX_PLANES);
-    sm_mods[m].fStrawPitch.Set(l * FWDET_STRAW_MAX_PLANES);
+    sm_mods[m].fStrawRadius.Set(l);
+    sm_mods[m].fStrawPitch.Set(l);
     sm_mods[m].fLayerRotation.Set(l);
-    sm_mods[m].fOffsetZ.ResizeTo(getLayers(m), FWDET_STRAW_MAX_PLANES);
-    sm_mods[m].fOffsetX.ResizeTo(getLayers(m), FWDET_STRAW_MAX_PLANES);
+    sm_mods[m].fOffsetZ.ResizeTo(l, FWDET_STRAW_MAX_PLANES);
+    sm_mods[m].fOffsetX.ResizeTo(l, FWDET_STRAW_MAX_PLANES);
 }
 
 void HFwDetStrawGeomPar::setStraws(Int_t m, Int_t s)
@@ -281,8 +245,8 @@ void HFwDetStrawGeomPar::putParams(HParamList* l)
 
             for (Int_t s = 0; s < FWDET_STRAW_MAX_PLANES; ++s)
             {
-                par_offsetZ.SetAt(getOffsetZ(i, l, s), 2*cnt_layers + s);
-                par_offsetX.SetAt(getOffsetX(i, l, s), 2*cnt_layers + s);
+                par_offsetZ.SetAt(getOffsetZ(i, l, s), 2*(cnt_layers+l) + s);
+                par_offsetX.SetAt(getOffsetX(i, l, s), 2*(cnt_layers+l) + s);
             }
 
             par_layerRotation.SetAt(getLayerRotation(i, l), cnt_layers + l);

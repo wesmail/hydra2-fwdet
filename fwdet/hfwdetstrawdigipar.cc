@@ -74,24 +74,6 @@ Bool_t HFwDetStrawDigiPar::getParams(HParamList* l)
     return kTRUE;
 }
 
-void HFwDetStrawDigiPar::printParam()
-{
-    printf(" --- Straws Digitizer parameters\n");
-    printf("     fAnalogReso      = %f\n", fAnalogReso);
-    printf("     fElossSlope      = %f\n", fElossSlope);
-    printf("     fElossOffset     = %f\n", fElossOffset);
-    printf("     fTimeReso        = %f\n", fTimeReso);
-    printf("     fDriftRadiusPars = %g  %g  %g  %g  %g\n",
-           fDriftRadiusPars[0], fDriftRadiusPars[1], fDriftRadiusPars[2],
-           fDriftRadiusPars[3], fDriftRadiusPars[4]);
-    printf("     fDriftTimePars   = %g  %g  %g  %g  %g\n",
-           fDriftTimePars[0], fDriftTimePars[1], fDriftTimePars[2],
-           fDriftTimePars[3], fDriftTimePars[4]);
-    printf("     fStartOffset     = %f\n", fStartOffset);
-    printf("     fThreshold       = %f\n", fThreshold);
-    printf("     fEfficiency      = %f\n", fEfficiency);
-}
-
 void HFwDetStrawDigiPar::setDriftTimePar(Int_t idx, Float_t p)
 {
     if (idx < dt_pars_num)

@@ -39,7 +39,6 @@ public:
                      const Char_t* context = "FwDetStrawGeometry");
     virtual ~HFwDetStrawGeomPar();
 
-    void   printParam() const;
     void   clear();
     void   putParams(HParamList*);
     Bool_t getParams(HParamList*);

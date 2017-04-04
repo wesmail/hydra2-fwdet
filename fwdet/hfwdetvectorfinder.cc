@@ -218,6 +218,11 @@ Bool_t HFwDetVectorFinder::reinit()
     }
 
     computeMatrix(); // compute system matrices
+
+#ifdef VERBOSE_MODE
+    pStrawVFPar->printParams();
+#endif
+
     return kTRUE;
 }
 
@@ -440,7 +445,7 @@ void HFwDetVectorFinder::getHits()
         fHitPl[module][vplane].insert(HitPair(tube, i));
 
 #ifdef VERBOSE_MODE
-printf("(%3d)  m=%d l=%d p=%d -> vp=%d  t=%03d  p=%f\n", i, module, layer, plane, vplane, tube, isSimulation ? ((HFwDetStrawCalSim*) hit)->getP() : -100.0);
+printf("(%3d)  m=%d l=%d p=%d -> vp=%d  t=%03d  p=%f    tr=%d\n", i, module, layer, plane, vplane, tube, isSimulation ? ((HFwDetStrawCalSim*) hit)->getP() : -100.0, isSimulation ? ((HFwDetStrawCalSim*) hit)->getTrack() : -1);
 #endif
     }
 
@@ -984,7 +989,7 @@ void HFwDetVectorFinder::checkParams()
             }
         }
 #ifdef VERBOSE_MODE
-    printf(" Vectors after parameter check: m=%d, inp=%d, out=%d\n",
+    printf(" Vectors after parameter check: m=%d, inp=%d, out=%lu\n",
            m, nvec, fVectors[m].size());
 #endif
     }
@@ -1181,6 +1186,10 @@ void HFwDetVectorFinder::storeVectors(Int_t isel)
     HLocation loc;
     loc.set(1,0);
 
+#ifdef VERBOSE_MODE
+Int_t vec_cnt = 0;
+#endif
+
     //for (Int_t ist = 0; ist <= nModules; ++ist) {
     for (Int_t ist = ibeg[isel]; ist <= iend[isel]; ++ist)
     {
@@ -1208,11 +1217,15 @@ void HFwDetVectorFinder::storeVectors(Int_t isel)
                         ((HVectorCandSim*)cal)->print();
                     else
                         cal->print();
+                    ++vec_cnt;
                 }
 #endif
             }
         }
     }
+#ifdef VERBOSE_MODE
+printf("Found %d vectors.\n", vec_cnt);
+#endif
 }
 
 void HFwDetVectorFinder::mergeVectors()
@@ -1709,10 +1722,10 @@ Int_t HFwDetVectorFinder::matchRpcHit(Double_t* params, Double_t z)
         {
             min_dist = dist;
             sel_hit = i;
-        }
 #ifdef VERBOSE_MODE
-printf(" (%02d/%02d) RPCHIT   x=%f y=%f z=%f tof=%f    for %f,%f (%f,%f) -> %f,%f at %f=%f+%f  with %f\n", i, nHits, x_rpc, y_rpc, z_rpc, tof_rpc, params[0], params[1], params[2], params[3], x_atz_rpc, y_atz_rpc, z_rpc, z, dd, dist);
+printf(" (%02d/%02d) RPCHIT   x=%f y=%f z=%.3f tof=%f    for %f,%f (%f,%f) -> %f,%f at %f=%f+%f  with %f\n", i, nHits, x_rpc, y_rpc, z_rpc, tof_rpc, params[0], params[1], params[2], params[3], x_atz_rpc, y_atz_rpc, z_rpc, z, dd, dist);
 #endif
+        }
     }
 
     return sel_hit;
