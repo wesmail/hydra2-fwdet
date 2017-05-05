@@ -1,4 +1,4 @@
-#ifndef HEMCELLGEOMPAR_H
+#ifndef HEMCCELLGEOMPAR_H
 #define HEMCCELLGEOMPAR_H
 
 #include "hparset.h"
