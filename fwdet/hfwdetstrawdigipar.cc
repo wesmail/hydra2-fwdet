@@ -31,10 +31,11 @@ void HFwDetStrawDigiPar::clear()
     fAnalogReso = 0.0;
     fElossSlope = 0.0;
     fElossOffset = 0.0;
-    fTimeReso = 0.0;
+    fDriftTimeReso = 0.0;
     fDriftRadiusPars = 0.0;
     fDriftTimePars = 0.0;
     fStartOffset = 0.0;
+    fStartReso = 0.0;
     fThreshold = 0.0;
     fEfficiency = 0.0;
 
@@ -50,10 +51,11 @@ void HFwDetStrawDigiPar::putParams(HParamList* l)
     l->add("fAnalogReso", fAnalogReso);
     l->add("fElossSlope", fElossSlope);
     l->add("fElossOffset", fElossOffset);
-    l->add("fTimeReso", fTimeReso);
+    l->add("fDriftTimeReso", fDriftTimeReso);
     l->add("fDriftRadiusPars", fDriftRadiusPars);
     l->add("fDriftTimePars", fDriftTimePars);
     l->add("fStartOffset", fStartOffset);
+    l->add("fStartReso", fStartReso);
     l->add("fThreshold", fThreshold);
     l->add("fEfficiency", fEfficiency);
 }
@@ -65,10 +67,11 @@ Bool_t HFwDetStrawDigiPar::getParams(HParamList* l)
     if (!( l->fill("fAnalogReso", &fAnalogReso) )) return kFALSE;
     if (!( l->fill("fElossSlope", &fElossSlope) )) return kFALSE;
     if (!( l->fill("fElossOffset", &fElossOffset) )) return kFALSE;
-    if (!( l->fill("fTimeReso", &fTimeReso) )) return kFALSE;
+    if (!( l->fill("fDriftTimeReso", &fDriftTimeReso) )) return kFALSE;
     if (!( l->fill("fDriftRadiusPars", &fDriftRadiusPars) )) return kFALSE;
     if (!( l->fill("fDriftTimePars", &fDriftTimePars) )) return kFALSE;
     if (!( l->fill("fStartOffset", &fStartOffset) )) return kFALSE;
+    if (!( l->fill("fStartReso", &fStartReso) )) return kFALSE;
     if (!( l->fill("fThreshold", &fThreshold) )) return kFALSE;
     if (!( l->fill("fEfficiency", &fEfficiency) )) return kFALSE;
     return kTRUE;

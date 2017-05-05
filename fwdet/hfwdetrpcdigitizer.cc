@@ -139,11 +139,6 @@ Int_t HFwDetRpcDigitizer::execute()
     Int_t   geaCell;        // cell number
     Char_t  geaSubCell;     // sub cell number
 
-#ifdef VERBOSE_MODE
-printf("<<--- RPC: VERBOSE_MODE ON ---------------------->>\n");
-#endif
-
-
     Int_t c_tr = -1;      // current (tracked) variables
     Int_t c_mod = -1;
     Int_t c_lay = -1;
@@ -152,6 +147,11 @@ printf("<<--- RPC: VERBOSE_MODE ON ---------------------->>\n");
     rpc_track_hit.hits_num = 0;
 
     Int_t entries = pGeantFwDetCat->getEntries();
+
+#ifdef VERBOSE_MODE
+printf("<<-- RPC: VERBOSE_MODE ON - process %3d entries ->>\n", entries);
+#endif
+
     for(int i = 0; i < entries; ++i)
     {
         ghit = (HGeantFwDet*)pGeantFwDetCat->getObject(i);

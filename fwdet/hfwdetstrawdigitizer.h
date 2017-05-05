@@ -58,9 +58,10 @@ private:
         Float_t radius;
         Float_t posU;
         Float_t posZ;
+        Int_t hitnr;
     };
 
-    Bool_t fillStrawCalSim(const DigiFields & df, const GeantFields & gf);
+    Int_t fillStrawCalSim(const DigiFields & df, const GeantFields & gf);
     Float_t calcDriftTime(Float_t x) const;
 
 //     Float_t adc_reso;

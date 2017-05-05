@@ -13,7 +13,7 @@ fStrawRadius:  Float_t \
   5.05 5.05 5.05 5.05 \
   5.05 5.05 5.05 5.05
 fStrawPitch:  Float_t \
-  10.1 10.1 10.1 10.1 \
+  10.14 10.14 10.14 10.14 \
   10.1 10.1 10.1 10.1
 fOffsetZ:  Float_t \
   3153.048 3161.800 \
@@ -25,10 +25,10 @@ fOffsetZ:  Float_t \
   5225.388 5234.140 \
   5284.238 5292.990
 fOffsetX:  Float_t \
-  -401.475 -396.425 \
-  -401.475 -396.425 \
-  -401.475 -396.425 \
-  -401.475 -396.425 \
+  -403.065 -397.995 \
+  -403.065 -397.995 \
+  -403.065 -397.995 \
+  -403.065 -397.995 \
   -563.075 -558.025 \
   -563.075 -558.025 \
   -563.075 -558.025 \
@@ -46,7 +46,7 @@ fLayerRotation:  Float_t \
 fAnalogReso: Float_t  0.0
 fElossSlope: Float_t  100.0
 fElossOffset: Float_t  0.0
-fTimeReso:  Float_t  0.0
+fDriftTimeReso:  Float_t  2.0
 fDriftRadiusPars:  Float_t \
     0.0034801 0.0534479  \
     -6.32247e-05  -1.11069e-06  \
@@ -56,8 +56,9 @@ fDriftTimePars:  Float_t \
     1.88352  -0.576198;  \
     0.135932
 fStartOffset: Float_t  0.0
+fStartReso: Float_t  0.1
 fThreshold: Float_t  0.0
-fEfficiency: Float_t  1.95
+fEfficiency: Float_t  0.95
 ##############################################################################
 ##############################################################################
 # Class:   HFwDetScinDigiPar
@@ -106,13 +107,16 @@ fMatchTime:  Float_t 5.0
 ##############################################################################
 [FwDetVectorFinderPar]
 //----------------------------------------------------------------------------
-fCutX: Float_t 0.6
-fCutY: Float_t 0.7
-fLRCutChi2: Float_t 24.0
-fHRCutChi2: Float_t 1.2
-fLRErrU: Float_t 10.0
+fMatchR: Float_t 100.0
+fMatchCross: Float_t 0.25
+fCutX: Float_t 0.5
+fCutY: Float_t 0.5
+fLRCutChi2: Float_t 12.0
+fHRCutChi2: Float_t 240.0
+fTanCut: Float_t 1.4
+fTxyCut: Float_t 0.05
+fLRErrU: Float_t 3.0
 fHRErrU: Float_t 0.2
-fTubesD: Float_t 30.0
 nMaxBest: Int_t 10
 nPass: Int_t 1
 ##############################################################################

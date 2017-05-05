@@ -53,6 +53,8 @@ public:
     inline Float_t getSimTx() const;
     inline Float_t getSimTy() const;
 
+    inline Int_t addHitTrack(Int_t track);
+
     void print() const;
 
 private:
@@ -75,6 +77,8 @@ private:
     Double_t fY2;
     Double_t fZ2;
 
+    Int_t fTrackInds[FWDET_STRAW_MAX_VPLANES];  // hit indices in planes
+
     ClassDef(HVectorCandSim, 1);
 };
 
@@ -92,6 +96,16 @@ Float_t HVectorCandSim::getSimTy() const
     Float_t dz = fZ2 - fZ1;
     Float_t dy = fY2 - fY1;
     return dy/dz;
+}
+
+Int_t HVectorCandSim::addHitTrack(Int_t track)
+{
+    Int_t fNhits = getNofHits();
+    if (!fNhits)
+        return 0;
+
+    fTrackInds[fNhits-1] = track;
+    return fNhits;
 }
 
 #endif

@@ -13,11 +13,12 @@ protected:
     Float_t fElossSlope;    // slope and offset fo drif time conversion
     Float_t fElossOffset;
 
-    Float_t fTimeReso;          // time measurement resolution
+    Float_t fDriftTimeReso;     // time measurement resolution
     TArrayF fDriftRadiusPars;   // params for time->radius conversion
     TArrayF fDriftTimePars;     // params for radius->time conversion
 
     Float_t fStartOffset;   // start derector offset
+    Float_t fStartReso;     // start derector resolution
     Float_t fThreshold;     // detection threshold
     Float_t fEfficiency;    // detection efficiency
 
@@ -31,11 +32,12 @@ public:
     Float_t getElossSlope() const { return fElossSlope; }
     Float_t getElossOffset() const { return fElossOffset; }
 
-    Float_t getTimeReso() const { return fTimeReso; }
+    Float_t getDriftTimeReso() const { return fDriftTimeReso; }
     Float_t getDriftTimePar(Int_t idx) const;
     Float_t getDriftRadiusPar(Int_t idx) const;
 
     Float_t getStartOffset() const { return fStartOffset; }
+    Float_t getStartReso() const { return fStartReso; }
     Float_t getThreshold() const { return fThreshold; }
     Float_t getEfficiency() const { return fEfficiency; }
 
@@ -43,11 +45,12 @@ public:
     void setElossSlope(Float_t s) { fElossSlope = s; }
     void setElossOffset(Float_t o) { fElossOffset = o; }
 
-    void setTimeReso(Float_t t) { fTimeReso = t; }
+    void setDriftTimeReso(Float_t t) { fDriftTimeReso = t; }
     void setDriftTimePar(Int_t idx, Float_t p);
     void setDriftRadiusPar(Int_t idx, Float_t p);
 
     void setStartOffset(Float_t o) { fStartOffset = o; }
+    void setStartReso(Float_t r) { fStartReso = r; }
     void setThreshold(Float_t t) { fThreshold = t; }
     void setEfficiency(Float_t e) { fEfficiency = e; }
 

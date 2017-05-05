@@ -26,11 +26,15 @@ void HVectorCandSim::print() const
 {
     // Print vector simulation parameters
     HVectorCand::print();
-    printf("----- VECTOR -----\n");
+    printf("  SIM VECTOR -----\n");
     printf("   track=%d   rpc track=%d\n", fTrack, fRpcTrack);
     printf("   Entry vector=%f,%f,%f at %f,%f,%f\n", fPx1, fPy1, fPz1, fX1, fY1, fZ1);
     printf("   Exit vector=%f,%f,%f at %f,%f,%f\n", fPx2, fPy2, fPz2, fX2, fY2, fZ2);
     printf("   Direction vector=%f,%f at %f,%f,%f\n", getSimTx(), getSimTy(), fX1, fY1, fZ1);
+    printf("                       tracks= ");
+    for (Int_t i = 0; i < getNofHits(); ++i)
+        printf("%2d,", fTrackInds[i]);
+    printf("\n");
 }
 
 ClassImp(HVectorCandSim);

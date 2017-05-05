@@ -10,7 +10,7 @@ class HFwDetStrawCalSim : public HFwDetStrawCal
 private:
     Int_t   fTrack;         // geant track contributing to the hit
     Float_t fToF;           // ToF to the straw
-    Float_t fDriftRad;      // drifta radius
+    Float_t fDriftRadius;   // drifta radius
     Float_t fEloss;         // Eloss in the straw
     Float_t fPx;
     Float_t fPy;
@@ -18,6 +18,7 @@ private:
     Float_t fXhit;
     Float_t fYhit;
     Float_t fZhit;
+    Int_t   fHitNumber;
 
 public:
     HFwDetStrawCalSim();
@@ -25,15 +26,20 @@ public:
 
     Int_t getTrack() const { return fTrack; }
     Double_t getToF() const { return fToF; }
-    Double_t getDrift() const { return fDriftRad; }
+    Double_t getDriftRadius() const { return fDriftRadius; }
     Double_t getEloss() const { return fEloss; }
+    Int_t getHitNumber() const { return fHitNumber; }
 
     void setTrack(Int_t num) { fTrack = num; }
     void setToF(Double_t tof) { fToF = tof; }
-    void setDrift(Double_t drift) { fDriftRad = drift; }
+    void setDriftRadius(Double_t drift) { fDriftRadius = drift; }
     void setEloss(Double_t eloss) { fEloss = eloss; }
+    void setHitNumber(Int_t num) { fHitNumber = num; }
 
-    inline Float_t getP();
+    inline Float_t getP() const;
+    inline Float_t getPx() const { return fPx; }
+    inline Float_t getPy() const { return fPy; }
+    inline Float_t getPz() const { return fPz; }
     inline void getP(Float_t & x, Float_t & y, Float_t & z) const;
     inline void setP(Float_t x, Float_t y, Float_t z);
 
@@ -43,7 +49,7 @@ public:
     ClassDef(HFwDetStrawCalSim, 1);
 };
 
-Float_t HFwDetStrawCalSim::getP()
+Float_t HFwDetStrawCalSim::getP() const
 {
     return TMath::Sqrt(fPx*fPx + fPy*fPy + fPz*fPz);
 }

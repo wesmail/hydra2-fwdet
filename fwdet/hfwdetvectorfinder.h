@@ -73,9 +73,10 @@ private:
 
     // vector finder helper vectors
     Double_t fUz[FWDET_STRAW_MAX_VPLANES];      // hit position
-    Double_t fUzHit[FWDET_STRAW_MAX_VPLANES];   // hit no.
-    Double_t fUzTube[FWDET_STRAW_MAX_VPLANES];  // tube no.
-    Double_t fDz[FWDET_STRAW_MAX_VPLANES];      // Z-dist. from the first layer
+    Int_t fUzHit[FWDET_STRAW_MAX_VPLANES];   // hit no.
+    Int_t fUzTube[FWDET_STRAW_MAX_VPLANES];  // tube no.
+    Double_t fDz[FWDET_STRAW_MAX_VPLANES];      // Z-dist. from the first module layer
+    Double_t fZ[FWDET_STRAW_MAX_VPLANES];       // absoult Z-distance
     Double_t fCosa[FWDET_STRAW_MAX_VPLANES];    // cos of the stereo angle
     Double_t fSina[FWDET_STRAW_MAX_VPLANES];    // sin of the stereo angle
     Double_t fDrift[FWDET_STRAW_MAX_VPLANES];   // drift time
@@ -87,9 +88,12 @@ private:
     Float_t fErrU;          // hit meas. error
     Float_t fLRCutChi2;     // Chi2-cut
     Float_t fHRCutChi2;     // Chi2-cut
-    Float_t fTubesD;        // distances between tubes
+    Float_t fTanCut;        // Tan-cut
+    Float_t fTxyCut;        // Tx,y-cut
     Float_t fCutX;
     Float_t fCutY;
+    Float_t fMatchR;
+    Float_t fMatchCross;
     Int_t fMinHits;         // Min. number of hits on track to do fit
 
     // system matrices
@@ -115,13 +119,14 @@ private:
     void findLine(Int_t patt, Double_t *pars);
     Double_t findChi2(Int_t patt, Double_t *pars);
     void checkParams();
+    void matchVectors();
     void highRes();
     void processSingleHigh(Int_t ista, Int_t plane, Int_t plane_limit, Int_t patt, Int_t flag, Int_t nok, Double_t uu[FWDET_STRAW_MAX_VPLANES][3]);
     void moveVectors();
     void storeVectors(Int_t sel);
     void mergeVectors();
     void selectTracks(Int_t ipass);
-    Double_t refit(Int_t patt, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr, Double_t tof, Double_t tofl);
+    Double_t refit(Int_t patt, HVectorCand *track, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr);
     void addTrack(Int_t ista0, HVectorCand *tr1, HVectorCand *tr2,
             Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2);
 

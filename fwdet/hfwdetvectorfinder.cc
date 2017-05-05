@@ -39,7 +39,9 @@
 #include "TMatrixFLazy.h"
 #include "TVectorD.h"
 
-// #define VERBOSE_MODE 1
+// #define VERBOSE_MODE1
+// #define VERBOSE_MODE2
+// #define VERBOSE_MODE3
 
 HFwDetVectorFinder::HFwDetVectorFinder() : HReconstructor()
 {
@@ -166,14 +168,17 @@ Bool_t HFwDetVectorFinder::reinit()
 {
     fLRCutChi2 = pStrawVFPar->getLRCutChi2();
     fHRCutChi2 = pStrawVFPar->getHRCutChi2();
+    fTxyCut = pStrawVFPar->getTxyCut();
+    fTanCut = pStrawVFPar->getTanCut();
 
-    fLRErrU = pStrawVFPar->getLRErrU() / TMath::Sqrt(12.0);
-    fHRErrU = pStrawVFPar->getLRErrU();
-
-    fTubesD = pStrawVFPar->getTubesD();
+    fLRErrU = pStrawVFPar->getLRErrU();
+    fHRErrU = pStrawVFPar->getHRErrU();
 
     fCutX = pStrawVFPar->getCutX();
     fCutY = pStrawVFPar->getCutY();
+
+    fMatchR = pStrawVFPar->getMatchR();
+    fMatchCross = pStrawVFPar->getMatchCross();
 
     fErrU = fLRErrU;
 
@@ -192,6 +197,9 @@ Bool_t HFwDetVectorFinder::reinit()
     for (Int_t m = 0; m < nModules; ++m)
     {
         nLayers[m] = pStrawGeomPar->getLayers(m);
+
+        fZ0[m] = pStrawGeomPar->getOffsetZ(m, 0, 0);
+
         // Loop over layers
         for (Int_t l = 0; l < nLayers[m]; ++l)
         {
@@ -200,7 +208,8 @@ Bool_t HFwDetVectorFinder::reinit()
             for (Int_t p = 0; p < FWDET_STRAW_MAX_PLANES; ++p)
             {
                 plane = HFwDetStrawCal::getVPlane(m, l, p);
-                fDz[plane] = pStrawGeomPar->getOffsetZ(m, l, p);
+                fZ[plane] = pStrawGeomPar->getOffsetZ(m, l, p);
+                fDz[plane] = fZ[plane] - fZ0[0];
                 fCosa[plane] = cos(a);
                 fSina[plane] = sin(a);
 
@@ -208,18 +217,11 @@ Bool_t HFwDetVectorFinder::reinit()
                 fDrift[plane] = 2.5;
             }
         }
-
-        fZ0[m] = pStrawGeomPar->getOffsetZ(m, 0, 0);
-    }
-
-    for (Int_t i = FWDET_STRAW_MAX_VPLANES-1; i >= 0; --i)
-    {
-        fDz[i] = fDz[i] - fDz[0];
     }
 
     computeMatrix(); // compute system matrices
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
     pStrawVFPar->printParams();
 #endif
 
@@ -263,8 +265,10 @@ Int_t HFwDetVectorFinder::execute()
         makeVectors();
 
         // Remove vectors with wrong orientation
-        // (using empirical cuts for omega muons at 8 GeV)
         checkParams();
+
+        // match vectors from firdst and second station
+        matchVectors();
 
         // Go to the high resolution mode processing
         fErrU = fHRErrU;
@@ -444,8 +448,16 @@ void HFwDetVectorFinder::getHits()
 
         fHitPl[module][vplane].insert(HitPair(tube, i));
 
-#ifdef VERBOSE_MODE
-printf("(%3d)  m=%d l=%d p=%d -> vp=%d  t=%03d  p=%f    tr=%d\n", i, module, layer, plane, vplane, tube, isSimulation ? ((HFwDetStrawCalSim*) hit)->getP() : -100.0, isSimulation ? ((HFwDetStrawCalSim*) hit)->getTrack() : -1);
+#ifdef VERBOSE_MODE1
+printf("(%3d)  m=%d l=%d p=%d -> vp=%d  t=%03d  u=%7.3f p=%12f (%12f,%12f,%12f || %+f,%+f)   tr=%d\n",
+       i, module, layer, plane, vplane, tube, hit->getU(),
+       isSimulation ? ((HFwDetStrawCalSim*) hit)->getP() : -100.0,
+       isSimulation ? ((HFwDetStrawCalSim*) hit)->getPx() : -100.0,
+       isSimulation ? ((HFwDetStrawCalSim*) hit)->getPy() : -100.0,
+       isSimulation ? ((HFwDetStrawCalSim*) hit)->getPz() : -100.0,
+       isSimulation ? ((HFwDetStrawCalSim*) hit)->getPx()/((HFwDetStrawCalSim*) hit)->getPz() : -100.0,
+       isSimulation ? ((HFwDetStrawCalSim*) hit)->getPy()/((HFwDetStrawCalSim*) hit)->getPz() : -100.0,
+       isSimulation ? ((HFwDetStrawCalSim*) hit)->getTrack() : -1);
 #endif
     }
 
@@ -459,7 +471,7 @@ printf("(%3d)  m=%d l=%d p=%d -> vp=%d  t=%03d  p=%f    tr=%d\n", i, module, lay
 
     for (Int_t pass = 0; pass < 2; ++pass)
     {
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE2
 printf("pass %d\n", pass);
 #endif
         for (Int_t m = 0; m < nModules; ++m)
@@ -582,7 +594,7 @@ printf("pass %d\n", pass);
                         // difference between tubes
                         Int_t tube_diff = tube1 - tube2;
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE2
 if (skipThisPair)
     printf("  skipped!  ");
 
@@ -666,7 +678,7 @@ printf("Testing pair: (%d, %d, %d), (%d, %d, %d) dist=%d\n",
         }
     }
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
 for (Int_t m = 0; m < nModules; ++m)
 {
     printf("mod=%2d\n", m);
@@ -713,7 +725,7 @@ void HFwDetVectorFinder::makeVectors()
             patt = ind1;
             patt |= (ind2 << 1);
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE2
 printf("makeVectors(): m=%d  l=%d  id=%d  patt=%x  idx=%d,%d\n", m, 0, id, patt, indx1, indx2);
 #endif
             processDouble(m, 1, patt);
@@ -736,40 +748,42 @@ void HFwDetVectorFinder::processDouble(Int_t m, Int_t l, Int_t patt)
         Int_t indx1 = fHit[m][l][id].first;
         Int_t indx2 = fHit[m][l][id].second;
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE2
 for (Int_t i = 0; i < l; ++i) printf(" ");
 printf("processDouble(): m=%d  l=%d  id=%d  patt=%x  pl=%d  idx=%d,%d\n", m, l, id, patt, pl, indx1, indx2);
 #endif
 
         HFwDetStrawCal *hit = (HFwDetStrawCal*) pStrawHits->getObject(TMath::Max(indx1,indx2));
-        Int_t tube = hit->getStraw();
+        Double_t uHit = hit->getU();
+        Double_t zHit = fDz[pl];            // z of the tracked tube
 
         // Check the same views
         Int_t ok = 1;
 
-        for (Int_t ipl = ipl_init; ipl < pl; ++++ipl)
+        for (Int_t i = ipl_init; i < pl; ++++i)
         {
+            Int_t ipl = i;
+            // if no hit at ipl then check ipl+1
+            if (!(patt & (1 << ipl)))
+                ++ipl;
+
             if (TMath::Abs(fSina[pl]-fSina[ipl]) < 0.01)
             {
                 // Check tube difference
-                Double_t z = fDz[ipl];
-                Int_t tu = fUzTube[ipl];
-                if (!(patt & (1 << pl)))
-                {
-                    z = fDz[ipl+1];
-                    tu = fUzTube[ipl+1];
-                }
-                z += fZ0[m];
+                Double_t z = fDz[ipl];      // z of the checked tube at plane
 
-                Double_t zHit = fDz[pl] + fZ0[m];
-                Double_t dzz = (zHit - z) / z;
-
-                Float_t dist = TMath::Abs(tube - tu - dzz * tu);
-#ifdef VERBOSE_MODE
-for (Int_t i = 0; i < l; ++i) printf(" ");
-printf("[%d,%d] -> [(%d,%.1f),(%d,%.1f)] dtub = %f < %f\n", ipl, pl, tube, zHit, tu, z, dist, fTubesD);
+                Float_t du12 = abs(uHit - fUz[ipl]);
+                Float_t dz12 = zHit - z;
+                Float_t tan = du12/dz12;
+#ifdef VERBOSE_MODE2
+Int_t tube = hit->getStraw();
+Int_t tu = fUzTube[ipl];    // tracked tube
+if (!(patt & (1 << ipl)))   // if no hit at ipl then check ipl+1
+    tu = fUzTube[ipl+1];
+for (Int_t i = 0; i < l; ++i) printf(" ");  // just spacer
+printf("[%d,%d] -> [(%d,%f,%.1f),(%d,%f,%.1f)] | %f < %f = TanCut\n", ipl, pl, tu, fUz[ipl], z, tube, uHit, zHit, tan, fTanCut);
 #endif
-                if (dist > fTubesD)
+                if (tan > fTanCut)
                 {
                     ok = 0;
                     break;
@@ -824,9 +838,9 @@ printf("[%d,%d] -> [(%d,%.1f),(%d,%.1f)] dtub = %f < %f\n", ipl, pl, tube, zHit,
 HVectorCand * HFwDetVectorFinder::addVector(Int_t m, Int_t patt, Double_t chi2, Double_t *pars, Bool_t lowRes)
 {
     // Add vector to the temporary container (as HVectorCand)
-#ifdef VERBOSE_MODE
-// printf("      + addVector(): m=%d  patt=%x  chi2=%f  LR=%d\n", m, patt, chi2, lowRes);
-// printf("        pars=%f %f %f %f\n", pars[0], pars[1], pars[2], pars[3]);
+#ifdef VERBOSE_MODE3
+printf("      + addVector(): m=%d  patt=%x  chi2=%f  LR=%d\n", m, patt, chi2, lowRes);
+printf("        pars=%f %f %f %f\n", pars[0], pars[1], pars[2], pars[3]);
 #endif
 
     HVectorCand *track;
@@ -837,7 +851,7 @@ HVectorCand * HFwDetVectorFinder::addVector(Int_t m, Int_t patt, Double_t chi2, 
 
     track->setChi2(chi2);
     track->setParams(pars);
-    track->setZ(fZ0[m]);
+    track->setZ(fZ0[0]);
     TMatrixDSym cov(*fMatr[patt]);
     cov *= (fErrU * fErrU);
     track->setCovar(cov);
@@ -846,6 +860,11 @@ HVectorCand * HFwDetVectorFinder::addVector(Int_t m, Int_t patt, Double_t chi2, 
     {
         if (!(patt & (1 << ipl))) continue;
         track->addHit(fUzHit[ipl]);
+        if (isSimulation)
+        {
+            HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) pStrawHits->getObject(fUzHit[ipl]);
+            ((HVectorCandSim*)track)->addHitTrack(hit->getTrack());
+        }
 
         if (lowRes) continue;
 
@@ -954,7 +973,6 @@ Double_t HFwDetVectorFinder::findChi2(Int_t patt, Double_t *pars)
 void HFwDetVectorFinder::checkParams()
 {
     // Remove vectors with wrong orientation
-    // using empirical cuts for omega muons at 8 Gev
 
     Double_t pars[4];
 
@@ -968,15 +986,18 @@ void HFwDetVectorFinder::checkParams()
             HVectorCand *vec = fVectors[m][iv];
             if (!vec) continue;
 
-            vec->getParams(pars);
-            Double_t x = pars[0], y = pars[1], tx = pars[2], ty = pars[3], z = vec->getZ();
-            Double_t dTx = tx - x / z;
-            Double_t dTy = ty - y / z;
-
-            if (TMath::Abs(dTx) > fCutX || TMath::Abs(dTy) > fCutY)
-                vec->setChi2(-1.0);
+//             vec->getParams(pars);
+//             Double_t x = pars[0], y = pars[1], tx = pars[2], ty = pars[3], z = vec->getZ();
+//             Double_t dTx = tx - x / z;
+//             Double_t dTy = ty - y / z;
+// 
+//             if (TMath::Abs(dTx) > fCutX || TMath::Abs(dTy) > fCutY)
+//                 vec->setChi2(-1.0);
         }
 
+#ifdef VERBOSE_MODE1
+Int_t cnt = fVectors[m].size();
+#endif
         for (Int_t iv = nvec-1; iv >= fIndx0[m]; --iv)
         {
             HVectorCand *vec = fVectors[m][iv];
@@ -986,11 +1007,105 @@ void HFwDetVectorFinder::checkParams()
             {
                 delete fVectors[m][iv];
                 fVectors[m][iv] = nullptr;
+#ifdef VERBOSE_MODE1
+--cnt;
+#endif
             }
         }
-#ifdef VERBOSE_MODE
-    printf(" Vectors after parameter check: m=%d, inp=%d, out=%lu\n",
-           m, nvec, fVectors[m].size());
+#ifdef VERBOSE_MODE1
+printf(" Vectors after parameter check: m=%d, inp=%d, out=%d\n", m, nvec, cnt);
+#endif
+    }
+}
+
+void HFwDetVectorFinder::matchVectors()
+{
+    // Remove vectors with wrong orientation
+
+    std::vector<Bool_t> fMatchedVectors[FWDET_STRAW_MAX_MODULES];
+    for (Int_t m = 0; m < FWDET_STRAW_MAX_MODULES; ++m)
+        fMatchedVectors[m].resize(fVectors[m].size());
+
+    Double_t pars[4];
+
+    for (Int_t m = nModules-1; m > 0; --m)
+    {
+        Int_t nvec2 = fVectors[m].size();
+        Int_t nvec1 = fVectors[m-1].size();
+
+        for (Int_t iv2 = 0; iv2 < nvec2; ++iv2)
+        {
+            HVectorCand *vec2 = fVectors[m][iv2];
+            if (!vec2) continue;
+
+            vec2->getParams(pars);
+            Double_t x2 = pars[0], y2 = pars[1], tx2 = pars[2], ty2 = pars[3], z2 = vec2->getZ();
+
+            for (Int_t iv1 = 0; iv1 < nvec1; ++iv1)
+            {
+                HVectorCand *vec1 = fVectors[m-1][iv1];
+                if (!vec1) continue;
+
+                vec1->getParams(pars);
+                Double_t x1 = pars[0], y1 = pars[1], tx1 = pars[2], ty1 = pars[3], z1 = vec1->getZ();
+
+                Float_t x2_proj = x1 + tx1 * (z2-z1);
+                Float_t y2_proj = y1 + ty1 * (z2-z1);
+
+                Float_t dx = x2-x2_proj;
+                Float_t dy = y2-y2_proj;
+
+                Float_t dr = sqrt(dx*dx + dy*dy);
+
+                TVector3 v2(tx2, ty2, 1.0);   // track vector dir.  n
+                v2 = v2.Unit();
+                TVector3 p2(x2, y2, z2);      // track hit position a
+                TVector3 v1(tx1, ty1, 1.0);   // track vector dir.  n
+                v1 = v1.Unit();
+                TVector3 p1(x1, y1, z1);         // track hit position a
+
+                TVector3 v_cross = v1.Cross(v2);
+                Float_t v_cross_mag = v_cross.Mag();
+
+                if (dr < fMatchR and v_cross_mag < fMatchCross)
+                {
+                    fMatchedVectors[m][iv2] = kTRUE;
+                    fMatchedVectors[m-1][iv1] = kTRUE;
+                }
+            }
+        }
+    }
+
+#ifdef VERBOSE_MODE1
+printf("MATCHING STATS\n");
+#endif
+    for (Int_t m = 0; m < nModules; ++m)
+    {
+        Int_t nvec = fVectors[m].size();
+        Int_t was = 0, acc = 0;
+
+        for (Int_t iv = 0; iv < nvec; ++iv)
+        {
+            if (fVectors[m][iv])
+            {
+                ++was;
+                if (fMatchedVectors[m][iv])
+                {
+                    ++acc;
+#ifdef VERBOSE_MODE3
+fVectors[m][iv]->print();
+#endif
+                }
+                else
+                {
+                    delete fVectors[m][iv];
+                    fVectors[m][iv] = NULL;
+                }
+            }
+        }
+
+#ifdef VERBOSE_MODE1
+printf("m=%d  was=%d   acc=%d\n", m, was, acc);
 #endif
     }
 }
@@ -1016,7 +1131,7 @@ void HFwDetVectorFinder::highRes()
             if (!vec) continue;
 
             Int_t nhits = vec->getNofHits(), patt = 0;
-            Double_t uu[FWDET_STRAW_MAX_VPLANES][3] = { 0.0 };
+            Double_t uu[FWDET_STRAW_MAX_VPLANES][3] = { { 0.0 } };
 
             Double_t params[4];
             vec->getParams(params);
@@ -1055,12 +1170,17 @@ void HFwDetVectorFinder::highRes()
                 {
                     fDrift[plane] = 2.5;
                 }
+                // Uncomment this line if you want to use perfect drift radius
+                // from the simulation. Works only for simulations!
+                // fDrift[plane] = ((HFwDetStrawCalSim*) hit)->getDriftRadius();
 
 #ifdef VERBOSE_MODE
 // printf("LR dt: %f -> %f (%f), grad=%f, z=%f\n", time,  drift_time, fDrift[plane], tof_grad, fDz[plane]);
 #endif
-                uu[plane][1] = fDrift[plane];
 
+                Float_t T = vec->getTx() * fCosa[plane] + vec->getTy() * fSina[plane];
+                Float_t b = fDrift[plane]/cos(atan(T));
+                uu[plane][1] = b;
                 patt |= (1 << plane);
                 fUzHit[plane] = hi;
             }
@@ -1103,7 +1223,7 @@ void HFwDetVectorFinder::highRes()
         }
     }
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
 printf("High res vectors:\n");
 for (Int_t m = 0; m < nModules; ++m)
     printf(" m=%d  vecs=%lu\n", m, fVectorsHigh[m].size());
@@ -1186,7 +1306,7 @@ void HFwDetVectorFinder::storeVectors(Int_t isel)
     HLocation loc;
     loc.set(1,0);
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
 Int_t vec_cnt = 0;
 #endif
 
@@ -1210,7 +1330,7 @@ Int_t vec_cnt = 0;
                     cal = new(cal) HVectorCand(*(fVectors[ist][iv]));
                 cal->SetUniqueID(ist);
                 setTrackId(cal);
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
                 if (isel)
                 {
                     if (isSimulation)
@@ -1223,7 +1343,7 @@ Int_t vec_cnt = 0;
             }
         }
     }
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
 printf("Found %d vectors.\n", vec_cnt);
 #endif
 }
@@ -1238,6 +1358,7 @@ void HFwDetVectorFinder::mergeVectors()
     for (Int_t m = 0; m < FWDET_STRAW_MAX_MODULES; ++m)
         zMed += fZ0[m];
     zMed /= FWDET_STRAW_MAX_MODULES;
+    zMed = fZ0[0];
 
     for (Int_t m = 0; m < FWDET_STRAW_MAX_MODULES; ++m)
     {
@@ -1314,6 +1435,12 @@ void HFwDetVectorFinder::mergeVectors()
             HVectorCand *tr2 = fVectors[m2][iv2];
             if (!tr2) continue;
 
+            Float_t dtx = fabs(tr1->getTx() - tr2->getTx());
+            Float_t dty = fabs(tr1->getTy() - tr2->getTy());
+
+            if (dtx > fTxyCut or dty > fTxyCut)
+                continue;
+
             TMatrixD wp = *wp_m1[iv1] + *wp_m2[iv2];
             TMatrixDSym w = *w_m1[iv1] + *w_m2[iv2];
             w.Invert();
@@ -1334,7 +1461,7 @@ void HFwDetVectorFinder::mergeVectors()
             Double_t c2 = chi21(0,0) + chi22(0,0);
             Info("MergeVectors"," Chi2: %f %f %f", chi21(0,0), chi22(0,0), c2);
 
-            if (c2 < 0 || c2 > fLRCutChi2) continue;
+            if (c2 < 0 || c2 > fHRCutChi2*2) continue;
 
             // Merged track parameters
             pars[0] = pMerge(0,0);
@@ -1382,12 +1509,18 @@ void HFwDetVectorFinder::addTrack(Int_t m0, HVectorCand *tr1, HVectorCand *tr2, 
     track->setParams(parOk);
     track->setChi2(c2 + tr1->getChi2() + tr2->getChi2());
     track->setNDF(4 + tr1->getNDF() + tr2->getNDF());  // FIXME why 4?
+    track->setZ((tr1->getZ() + tr2->getZ())/2.0);
 
     TBits b = fVectors[0][indx1]->getLR();
     Int_t lim1 = fVectors[0][indx1]->getNofHits();
     for (Int_t i = 0; i < lim1; ++i)
     {
         track->addHit(fVectors[0][indx1]->getHitIndex(i));
+        if (isSimulation)
+        {
+            HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) pStrawHits->getObject(fVectors[0][indx1]->getHitIndex(i));
+            ((HVectorCandSim*)track)->addHitTrack(hit->getTrack());
+        }
         if (b[i]) track->setLRbit(i);
     }
 
@@ -1396,6 +1529,11 @@ void HFwDetVectorFinder::addTrack(Int_t m0, HVectorCand *tr1, HVectorCand *tr2, 
     for (Int_t i = 0; i < lim2; ++i)
     {
         track->addHit(fVectors[1][indx2]->getHitIndex(i));
+        if (isSimulation)
+        {
+            HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) pStrawHits->getObject(fVectors[1][indx2]->getHitIndex(i));
+            ((HVectorCandSim*)track)->addHitTrack(hit->getTrack());
+        }
         if (b[i]) track->setLRbit(lim1 + i);
     }
 
@@ -1454,66 +1592,58 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
         // Refit whole line
         Double_t pars[4], chi2;
         TMatrixDSym cov(4);
-        chi2 = refit(patt, hinds, pars, &cov, lr, tr->getTof(), tr->getDistance());
-        if (chi2 < fHRCutChi2)
-        {
-            cov *= (fErrU * fErrU);
-            Info("Select tracks", "Track chi2: %f",chi2);
-            tr->setChi2(chi2);
-            tr->setParams(pars);
-            tr->setCovar(cov);
-            tr->setZ(fZ0[0]);
+        chi2 = refit(patt, tr, hinds, pars, &cov, lr);
 
+        cov *= (fErrU * fErrU);
+        Info("Select tracks", "Track chi2: %f",chi2);
+        tr->setChi2(chi2);
+        tr->setParams(pars);
+        tr->setCovar(cov);
+        tr->setZ(fZ0[0]);
+
+        if (isSimulation)
+        {
+            Int_t hidx = 0;
+            HFwDetStrawCalSim * hit = nullptr;
+            Float_t px, py, pz, x, y, z;
+
+            tr->getHitIndex(0);
+            hit = (HFwDetStrawCalSim*) pStrawHits->getObject(hidx);
+
+            hit->getP(px, py, pz);
+            hit->getHitPos(x, y, z);
             if (isSimulation)
             {
-                Int_t hidx = 0;
-                HFwDetStrawCalSim * hit = nullptr;
-                Float_t px, py, pz, x, y, z;
-
-                tr->getHitIndex(0);
-                hit = (HFwDetStrawCalSim*) pStrawHits->getObject(hidx);
-
-                hit->getP(px, py, pz);
-                hit->getHitPos(x, y, z);
-                if (isSimulation)
-                {
-                    HVectorCandSim* trs = (HVectorCandSim*)tr;
-                    trs->setPx1(px);
-                    trs->setPy1(py);
-                    trs->setPz1(pz);
-                    trs->setX1(x);
-                    trs->setY1(y);
-                    trs->setZ1(z);
-                }
-
-                hidx = tr->getHitIndex(tr->getNofHits()-1);
-                hit = (HFwDetStrawCalSim*) pStrawHits->getObject(hidx);
-                hit->getP(px, py, pz);
-                hit->getHitPos(x, y, z);
-                if (isSimulation)
-                {
-                    HVectorCandSim* trs = (HVectorCandSim*)tr;
-                    trs->setPx2(px);
-                    trs->setPy2(py);
-                    trs->setPz2(pz);
-                    trs->setX2(x);
-                    trs->setY2(y);
-                    trs->setZ2(z);
-                }
+                HVectorCandSim* trs = (HVectorCandSim*)tr;
+                trs->setPx1(px);
+                trs->setPy1(py);
+                trs->setPz1(pz);
+                trs->setX1(x);
+                trs->setY1(y);
+                trs->setZ1(z);
             }
 
-            if (tr->getTof() != -1.0)
-                tr->calc4vectorProperties(0.0);
-            else
-                tr->calc4vectorProperties(1.0, 0.0);
-            ++nSel;
+            hidx = tr->getHitIndex(tr->getNofHits()-1);
+            hit = (HFwDetStrawCalSim*) pStrawHits->getObject(hidx);
+            hit->getP(px, py, pz);
+            hit->getHitPos(x, y, z);
+            if (isSimulation)
+            {
+                HVectorCandSim* trs = (HVectorCandSim*)tr;
+                trs->setPx2(px);
+                trs->setPy2(py);
+                trs->setPz2(pz);
+                trs->setX2(x);
+                trs->setY2(y);
+                trs->setZ2(z);
+            }
         }
+
+        if (tr->getTof() != -1.0)
+            tr->calc4vectorProperties(0.0);
         else
-        {
-            delete tr;
-            tr = nullptr;
-            fVectors[nModules][it->second] = nullptr;
-        }
+            tr->calc4vectorProperties(1.0, 0.0);
+        ++nSel;
     }
 
     for (it = c2merge.begin(); it != c2merge.end(); ++it)
@@ -1556,16 +1686,8 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
                     {
                         Info("Select tracks", "Track quality: qual1 %f, qual2 %f, overlaps: %i", it->first,it1->first,nover);
 
-                        if (tr1->getChi2() < tr2->getChi2())
-                        {
-                            delete fVectors[nModules][it1->second];
-                            fVectors[nModules][it1->second] = nullptr;
-                        }
-                        else
-                        {
-                            delete fVectors[nModules][it->second];
-                            fVectors[nModules][it->second] = nullptr;
-                        }
+                        delete fVectors[nModules][it1->second];
+                        fVectors[nModules][it1->second] = nullptr;
                         over = kTRUE;
                         break;
                     }
@@ -1583,7 +1705,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
             HVectorCand *tr = fVectors[nModules][i];
             if (!tr) continue;
 
-            if (tr->getChi2() / tr->getNDF() <= 3.0)
+            if (tr->getChi2() / tr->getNDF() <= fHRCutChi2) // 3.0
             {
                 // Flag used hits
                 Int_t nvecs1 = tr->getNofHits();
@@ -1610,7 +1732,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
     }
 }
 
-Double_t HFwDetVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr, Double_t tof, Double_t tofl)
+Double_t HFwDetVectorFinder::refit(Int_t patt, HVectorCand *track, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr)
 {
     // Fit of hits to the straight line
 
@@ -1618,6 +1740,9 @@ Double_t HFwDetVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars, TMa
     Bool_t ok = kFALSE, onoff;
     TVectorD b(4);
 
+    Double_t plane = track->getZ();
+    Double_t tof = track->getTof();
+    Double_t tofl = track->getDistance();
 
     Double_t tof_grad = 0.0;
 
@@ -1637,8 +1762,8 @@ Double_t HFwDetVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars, TMa
 
         if (tof != -1.0)
         {
-            Float_t drift_time = time - tof_grad * fDz[i];
-            fDrift[i] =  calcDriftRadius(drift_time);
+            Float_t drift_time = time - tof_grad * fZ[i];
+            fDrift[i] = calcDriftRadius(drift_time);
         }
         else
         {
@@ -1648,9 +1773,11 @@ Double_t HFwDetVectorFinder::refit(Int_t patt, Int_t *hinds, Double_t *pars, TMa
 #ifdef VERBOSE_MODE
 // printf("HR/* dt*/: %f -> %f (%f), grad=%f, z=%f\n", time,  drift_time, fDrift[i], tof_grad, fDz[i]);
 #endif
+        Float_t T = track->getTx() * fCosa[i] + track->getTy() * fSina[i];
+        Float_t bb = fDrift[i]/cos(atan(T));
 
-        Double_t uc = (hit->getU() + lr[i] * fDrift[i]) * fCosa[i]; // resolved ambiguity !!!
-        Double_t us = (hit->getU() + lr[i] * fDrift[i]) * fSina[i]; // resolved ambiguity !!!
+        Double_t uc = (hit->getU() + lr[i] * bb) * fCosa[i]; // resolved ambiguity !!!
+        Double_t us = (hit->getU() + lr[i] * bb) * fSina[i]; // resolved ambiguity !!!
         b[0] += uc;
         b[1] += us;
         b[2] += uc * fDz[i];
@@ -1722,7 +1849,7 @@ Int_t HFwDetVectorFinder::matchRpcHit(Double_t* params, Double_t z)
         {
             min_dist = dist;
             sel_hit = i;
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE2
 printf(" (%02d/%02d) RPCHIT   x=%f y=%f z=%.3f tof=%f    for %f,%f (%f,%f) -> %f,%f at %f=%f+%f  with %f\n", i, nHits, x_rpc, y_rpc, z_rpc, tof_rpc, params[0], params[1], params[2], params[3], x_atz_rpc, y_atz_rpc, z_rpc, z, dd, dist);
 #endif
         }

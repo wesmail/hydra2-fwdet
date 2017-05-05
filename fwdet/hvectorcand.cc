@@ -92,7 +92,7 @@ void HVectorCand::print() const
     printf("   ref=(%f,%f)   dir=(%f,%f)   z=%f   tof=%f\n",
            refVec.X(), refVec.Y(), dirVec.X(), dirVec.Y(), refVec.z(), fTof);
 //     Double32_t fCovar[10];    // covar. matrix
-    printf("   QA chi2=%f\n", fChi2);
+    printf("   QA chi2=%f   chi2/ndf=%f\n", fChi2, fChi2/fNDF);
 }
 
 void HVectorCand::getParams(Double_t* pars) const

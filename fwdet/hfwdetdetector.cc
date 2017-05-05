@@ -156,7 +156,7 @@ HCategory* HFwDetDetector::buildCategory(Cat_t cat, Bool_t simulation)
         case catFwDetRpcHit:
             if (maxModInSetup >= FWDET_RPC_MODULE_MIN)
             {
-                pcat = buildLinearCategory("HFwDetRpcHit", 100);
+                pcat = buildLinearCategory("HFwDetRpcHit", 128);
             }
             break;
     default:

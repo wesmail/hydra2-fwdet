@@ -63,7 +63,8 @@
 #include <cstring>
 using namespace std;
 
-// #define VERBOSE_MODE 1
+// #define VERBOSE_MODE1
+// #define VERBOSE_MODE2
 
 ClassImp(HFwDetStrawDigitizer);
 
@@ -162,7 +163,7 @@ Bool_t HFwDetStrawDigitizer::reinit()
             sina[m][l] = TMath::Sin(a);
         }
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
     pStrawGeomPar->printParams();
     pStrawDigiPar->printParams();
 #endif
@@ -183,16 +184,20 @@ Int_t HFwDetStrawDigitizer::execute(void)
     Float_t eloss_slope = pStrawDigiPar->getElossSlope();
     Float_t eloss_offset = pStrawDigiPar->getElossOffset();
 
-    Float_t time_reso = pStrawDigiPar->getTimeReso();
+    Float_t dtime_reso = pStrawDigiPar->getDriftTimeReso();
 
     Float_t start_offset = pStrawDigiPar->getStartOffset();
+    Float_t start_reso = pStrawDigiPar->getStartReso();
+
     Float_t threshold = pStrawDigiPar->getThreshold();
     Float_t efficiency = pStrawDigiPar->getEfficiency();
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
 int cnt = -1;
 printf("<<----------------------------------------------->>\n");
 #endif
+
+    std::map<Int_t, Int_t> track_hit_cnt;
 
     Int_t entries = pGeantFwDetCat->getEntries();
     for(Int_t i = 0; i < entries; ++i)
@@ -200,7 +205,7 @@ printf("<<----------------------------------------------->>\n");
         HGeantFwDet* ghit = (HGeantFwDet*)pGeantFwDetCat->getObject(i);
         if (ghit)
         {
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
 ++cnt;
 #endif
             ghit->getAddress(geaModule, geaLayer, geaCell, geaSubCell);
@@ -210,7 +215,7 @@ printf("<<----------------------------------------------->>\n");
 
             // detection efficiency
             Float_t rnd = gRandom->Rndm();
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
 printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
 #endif
             if (rnd > efficiency)
@@ -275,22 +280,22 @@ printf("(%2d) det eff: rand=%.2f  <?<  eff=%.2f\n", cnt, rnd, efficiency);
             gf.lab_y = hit_x*sina[df.mod][df.lay] + hit_y*cosa[df.mod][df.lay];
             gf.lab_z = hit_z;
 
-            TVector2 v_n(gf.pzHit, gf.pxHit);                 // track vector dir.  n
+            TVector2 v_n(gf.pzHit, gf.pxHit);   // track vector dir.  n
             v_n = v_n/v_n.Mod();
-            TVector2 p_a(hit_z, hit_x); // track hit position a
-            TVector2 p_p(cell_z, cell_x);               // wire position      p
+            TVector2 p_a(hit_z, hit_x);         // track hit position a
+            TVector2 p_p(cell_z, cell_x);       // wire position      p
 
             // calculations:
             // dist = | (a-p) - ((a-p)*n)n|
             TVector2 a_p_diff = p_a - p_p;
             TVector2 v_proj_n_diff = (a_p_diff * v_n) * v_n;
             TVector2 v_dist = a_p_diff - v_proj_n_diff;
-            Float_t radius = v_dist.Mod();
+            df.radius = v_dist.Mod();
 
-            df.time = gf.tofHit + calcDriftTime(radius);
+            df.time = gf.tofHit + calcDriftTime(df.radius);
             df.adc = gf.eHit*eloss_slope + eloss_offset;
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
 printf("     g (m=%d l=%d c=%03d ud=%d, tr=%d) -> p=%d s=%03d  u=%f  el=%.4f tof=%.3f dr=%f  adc=%.2f time=%f  p=%f (%f,%f) loc=(%f,%f,%f)\n", geaModule, geaLayer, geaCell, geaSubCell, gf.trackNumber, df.plane, df.straw, cell_x, gf.eHit, gf.tofHit, df.radius, df.adc, df.time, sqrt(gf.pxHit*gf.pxHit + gf.pyHit*gf.pyHit + gf.pzHit*gf.pzHit), gf.pxHit/gf.pzHit, gf.pyHit/gf.pzHit, gf.lab_x, gf.lab_y, gf.lab_z);
 #endif
 
@@ -303,36 +308,60 @@ printf("     g (m=%d l=%d c=%03d ud=%d, tr=%d) -> p=%d s=%03d  u=%f  el=%.4f tof
             if (df.adc < threshold)
                 continue;
 
-            if (time_reso > 0.0)
+            // resolution of the ToT in the PASTREC
+            if (dtime_reso > 0.0)
             {
-                df.time += gRandom->Gaus() * time_reso;
+                df.time += gRandom->Gaus() * dtime_reso;
+                df.time = TMath::Max(Float_t(0), df.time);
+            }
+
+            // resolution of the start detector
+            if (start_reso > 0.0)
+            {
+                df.time += gRandom->Gaus() * start_reso;
                 df.time = TMath::Max(Float_t(0), df.time);
             }
 
             df.time += start_offset;
 
-#ifdef VERBOSE_MODE
+#ifdef VERBOSE_MODE1
 printf("     resolution effects                                                             adc=%.2f time=%f\n", df.adc, df.time);
 #endif
 
             df.posU = cell_x;
 
-            Bool_t res = fillStrawCalSim(df, gf);
-            if (!res)
+            df.hitnr = ++track_hit_cnt[gf.trackNumber];
+
+            Int_t res = fillStrawCalSim(df, gf);
+            if (res == 1)
             {
                 Error("HFwDetStrawDigitizer::execute()",
                 "Can't fill from %d for m=%d l=%d p=%d s=%d ud=%d", geaCell, df.mod, df.lay, df.plane, df.straw, df.udconf);
 //                 return kFALSE;
             }
+//             if (res == 2)
+//             {
+//                 Error("HFwDetStrawDigitizer::execute()",
+//                 "Overwrite fill from %d for m=%d l=%d p=%d s=%d ud=%d", geaCell, df.mod, df.lay, df.plane, df.straw, df.udconf);
+// //                 return kFALSE;
+//             }
         }
     }
+
+#ifdef VERBOSE_MODE1
+printf("<<- done ---------------------------------------->>\n");
+#endif
+
     return 0;
 }
 
-Bool_t HFwDetStrawDigitizer::fillStrawCalSim(const DigiFields & df, const GeantFields & gf)
+Int_t HFwDetStrawDigitizer::fillStrawCalSim(const DigiFields & df, const GeantFields & gf)
 {
     // Function creat and fill object HFwDetStrawCalSim
-    // return kFALSE if data was not stored to the category
+    // return:
+    //  0 - if stored properly
+    //  1 - if data was not stored to the category
+    //  2 - if multiple hit, and data were not owerwritten
     fLoc[0] = df.mod;
     fLoc[1] = df.lay;
     fLoc[2] = df.plane;
@@ -344,10 +373,10 @@ Bool_t HFwDetStrawDigitizer::fillStrawCalSim(const DigiFields & df, const GeantF
     HFwDetStrawCalSim * cal = (HFwDetStrawCalSim*)pStrawCalCat->getObject(fLoc);
     if (cal != nullptr)    // straw tube ocuppied by another track
     {
-        if (cal->getDrift() <= df.radius)
+        if (cal->getTime() < df.time)
         {
 //             cal->setTrack(gf.trackNumber);   // FIXME should we have multiple track numbers?
-            return kFALSE;
+            return 2;
         }
         first = 0;
     }
@@ -361,18 +390,20 @@ Bool_t HFwDetStrawDigitizer::fillStrawCalSim(const DigiFields & df, const GeantF
         cal->setAddress(fLoc[0], fLoc[1], fLoc[2], fLoc[3], fLoc[4]);
 
         cal->setHit(df.time, df.adc, df.posU, df.posZ);
-        cal->setDrift(df.radius);
+        cal->setDriftRadius(df.radius);
 
         cal->setToF(gf.tofHit);
         cal->setEloss(gf.eHit);
         cal->setTrack(gf.trackNumber);
         cal->setP(gf.pxHit, gf.pyHit, gf.pzHit);
         cal->setHitPos(gf.lab_x, gf.lab_y, gf.lab_z);
+
+        cal->setHitNumber(df.hitnr);
     }
     else
-        return kFALSE;
+        return 1;
 
-    return kTRUE;
+    return 0;
 }
 
 Float_t HFwDetStrawDigitizer::calcDriftTime(Float_t x) const
