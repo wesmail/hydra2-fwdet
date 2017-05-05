@@ -12,6 +12,7 @@
 #include "showerdef.h"
 #include "richdef.h"
 #include "rpcdef.h"
+#include "emcdef.h"
 //---------- hades etc -------------
 #include "hades.h"
 #include "hiterator.h"
@@ -148,6 +149,7 @@ void HParticleCandFiller::initVars ()
     fCatMdcSeg       = NULL;
     fCatTofHit       = NULL;
     fCatTofCluster   = NULL;
+    fCatEmcCluster   = NULL;
     fCatShowerHit    = NULL;
     fCatRichHit      = NULL;
     fCatRpcCluster   = NULL;
@@ -221,6 +223,7 @@ Bool_t HParticleCandFiller::init (void)
 	if(fmomSwitch==Particle::kMomKalman)fCatKalman     = HCategoryManager::getCategory(catKalTrack    ,kTRUE,"catKalTrack");
 
 	fCatShowerHit = HCategoryManager::getCategory(catShowerHit,kTRUE,"catShowerHit");
+	fCatEmcCluster= HCategoryManager::getCategory(catEmcCluster,kTRUE,"catEmcCluster");
 
 	if (fbIsSimulation) {
 	    fCatParticleCand = HCategoryManager::addCategory(catParticleCand,"HParticleCandSim",5000,"Particle");
@@ -381,6 +384,7 @@ void HParticleCandFiller::fillCandNoMeta(Bool_t rkSuccess,HMetaMatch2* meta,cand
     HTofHit*      tofHit1    = 0;
     HTofHit*      tofHit2    = 0;
     HShowerHit*   showerHit  = 0;
+    HEmcCluster*  emcClst    = 0;
     HRpcCluster*  rpcClst    = 0;
     HRichHit*     richHit    = 0;
     HSplineTrack* spline     = 0;
@@ -434,6 +438,7 @@ void HParticleCandFiller::fillCandNoMeta(Bool_t rkSuccess,HMetaMatch2* meta,cand
     cand.objects.pTofHit2   = (HTofHitSim*)     tofHit2;
     cand.objects.pRpcClst   = (HRpcClusterSim*) rpcClst;
     cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+    cand.objects.pEmcClst   = (HEmcClusterSim*) emcClst;
     cand.objects.pSpline    = spline;
 
     if     (fmomSwitch == Particle::kMomRK    ) {
@@ -461,6 +466,7 @@ void  HParticleCandFiller::fillCandTof(Bool_t rkSuccess,HMetaMatch2* meta,candid
     HTofHit*      tofHit1    = 0;
     HTofHit*      tofHit2    = 0;
     HShowerHit*   showerHit  = 0;
+    HEmcCluster*  emcClst    = 0;
     HRpcCluster*  rpcClst    = 0;
     HRichHit*     richHit    = 0;
     HSplineTrack* spline     = 0;
@@ -557,6 +563,7 @@ void  HParticleCandFiller::fillCandTof(Bool_t rkSuccess,HMetaMatch2* meta,candid
     cand.objects.pTofHit2   = (HTofHitSim*)     tofHit2;
     cand.objects.pRpcClst   = (HRpcClusterSim*) rpcClst;
     cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+    cand.objects.pEmcClst   = (HEmcClusterSim*) emcClst;
     cand.objects.pSpline    = spline;
 
     //--------------------------------------------------------------------
@@ -696,6 +703,7 @@ void  HParticleCandFiller::fillCandRpc(Bool_t rkSuccess,HMetaMatch2* meta,candid
     HTofHit*      tofHit1    = 0;
     HTofHit*      tofHit2    = 0;
     HShowerHit*   showerHit  = 0;
+    HEmcCluster*  emcClst    = 0;
     HRpcCluster*  rpcClst    = 0;
     HRichHit*     richHit    = 0;
     HSplineTrack* spline     = 0;
@@ -774,6 +782,7 @@ void  HParticleCandFiller::fillCandRpc(Bool_t rkSuccess,HMetaMatch2* meta,candid
     cand.objects.pTofHit2   = (HTofHitSim*)     tofHit2;
     cand.objects.pRpcClst   = (HRpcClusterSim*) rpcClst;
     cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+    cand.objects.pEmcClst   = (HEmcClusterSim*) emcClst;
     cand.objects.pSpline    = spline;
 
     if(fmomSwitch == Particle::kMomRK)
@@ -804,6 +813,7 @@ void  HParticleCandFiller::fillCandShower(Bool_t rkSuccess,HMetaMatch2* meta,can
     HTofHit*      tofHit1    = 0;
     HTofHit*      tofHit2    = 0;
     HShowerHit*   showerHit  = 0;
+    HEmcCluster*  emcClst    = 0;
     HRpcCluster*  rpcClst    = 0;
     HRichHit*     richHit    = 0;
     HSplineTrack* spline     = 0;
@@ -882,6 +892,117 @@ void  HParticleCandFiller::fillCandShower(Bool_t rkSuccess,HMetaMatch2* meta,can
     cand.objects.pTofHit2   = (HTofHitSim*)     tofHit2;
     cand.objects.pRpcClst   = (HRpcClusterSim*) rpcClst;
     cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+    cand.objects.pEmcClst   = (HEmcClusterSim*) emcClst;
+    cand.objects.pSpline    = spline;
+
+    if(fmomSwitch == Particle::kMomRK)
+    {
+	//--------------------------------------------------------------------
+	rk = HCategoryManager::getObject(rk,fCatRK,cand.rk.ind);
+	cand.rk.fill(rk);
+	cand.objects.pRk    = rk;
+	//--------------------------------------------------------------------
+    }    else if(fmomSwitch == Particle::kMomKalman) {
+	//--------------------------------------------------------------------
+	kal = HCategoryManager::getObject(kal,fCatKalman,cand.kal.ind);
+	cand.kal.fill(kal);
+	cand.objects.pKalman = kal;
+	//--------------------------------------------------------------------
+    } else   {
+	Error("fillCandRpc","Unknown momentum option");
+    }
+
+}
+
+void  HParticleCandFiller::fillCandEmc(Bool_t rkSuccess,HMetaMatch2* meta,candidate& cand,Int_t num, Int_t n)
+{
+    HMdcTrkCand*  mdcTrkCand = 0;
+    HMdcSeg*      mdcSeg1    = 0;
+    HMdcSeg*      mdcSeg2    = 0;
+    HTofCluster*  tofClst    = 0;
+    HTofHit*      tofHit1    = 0;
+    HTofHit*      tofHit2    = 0;
+    HShowerHit*   showerHit  = 0;
+    HEmcCluster*  emcClst    = 0;
+    HRpcCluster*  rpcClst    = 0;
+    HRichHit*     richHit    = 0;
+    HSplineTrack* spline     = 0;
+    HRKTrackB*    rk         = 0;
+    HKalTrack*    kal        = 0;
+
+    cand.rkSuccess = rkSuccess;
+    cand.nCand     = num;
+    //--------------------------------------------------------------------
+    // fill common info
+    cand           .fillMeta(meta);
+    cand.mdctrk    .fillMeta(meta);
+    cand.spline    .fillMeta(meta);
+
+    mdcTrkCand = HCategoryManager::getObject(mdcTrkCand,fCatMdcTrkCand,cand.mdctrk.ind);
+    if(mdcTrkCand){
+	cand.seg1.ind  = mdcTrkCand->getSeg1Ind();
+	cand.seg2.ind  = mdcTrkCand->getSeg2Ind();
+    }
+    mdcSeg1    = HCategoryManager::getObject(mdcSeg1   ,fCatMdcSeg    ,cand.seg1.ind);
+    mdcSeg2    = HCategoryManager::getObject(mdcSeg2   ,fCatMdcSeg    ,cand.seg2.ind);
+    spline     = HCategoryManager::getObject(spline    ,fCatSpline    ,cand.spline.ind);
+
+    Int_t slot = findBestRich(meta,mdcSeg1);
+    cand.richhit.fillMeta(meta,slot);    // set richindex : only best matched rich ?
+    richHit    = HCategoryManager::getObject(richHit   ,fCatRichHit   ,cand.richhit.ind);
+
+
+    cand.mdctrk    .fill(mdcTrkCand);
+    cand.seg1      .fill(mdcSeg1);
+    cand.seg2      .fill(mdcSeg2);
+    cand.spline    .fill(spline);
+    cand.richhit   .fill(richHit);    // get all rich vars
+    //--------------------------------------------------------------------
+
+    //--------------------------------------------------------------------
+    // fill META hits
+    cand.emcclst    .fillMeta(meta,n);
+    emcClst = HCategoryManager::getObject(emcClst ,fCatEmcCluster ,cand.emcclst.ind);
+    cand.emcclst    .fill(emcClst);
+    //--------------------------------------------------------------------
+
+
+    //--------------------------------------------------------------------
+    // define system for this candidate
+    cand.system = 0;
+    cand.selectTof    = kEmcClst;
+    cand.usedMeta     = kEmcClst;
+
+    if(rkSuccess) {
+	cand.rk.usedMeta  = kEmcClst;
+	cand.rk.selectTof = kEmcClst;
+	cand.rk.ind       = meta->getRungeKuttaIndEmcCluster(n);
+	cand.kal.usedMeta  = kShowerHit;
+	cand.kal.selectTof = kShowerHit;
+	cand.kal.ind       = meta->getKalmanFilterIndEmcCluster(n);
+
+    } else {
+	cand.rk.usedMeta  = kNoUse;
+	cand.rk.selectTof = kNoUse;
+	cand.rk.ind       = meta->getRungeKuttaInd();
+	cand.kal.usedMeta  = kNoUse;
+	cand.kal.selectTof = kNoUse;
+	cand.kal.ind       = meta->getKalmanFilterInd();
+    }
+    //--------------------------------------------------------------------
+
+    cand.objects.reset();
+
+    cand.objects.pMdcTrk    =  mdcTrkCand;
+    cand.objects.pSeg1      = (HMdcSegSim* )    mdcSeg1;
+    cand.objects.pSeg2      = (HMdcSegSim* )    mdcSeg2;
+    cand.objects.pRichHit   = (HRichHitSim*)    richHit;
+    cand.objects.pTofClst   = (HTofClusterSim*) tofClst;
+    cand.objects.pTofHit1   = (HTofHitSim*)     tofHit1;
+    cand.objects.pTofHit2   = (HTofHitSim*)     tofHit2;
+    cand.objects.pRpcClst   = (HRpcClusterSim*) rpcClst;
+    cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+    cand.objects.pEmcClst   = (HEmcClusterSim*) emcClst;
     cand.objects.pSpline    = spline;
 
     if(fmomSwitch == Particle::kMomRK)
@@ -913,6 +1034,8 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
 
     if(fbnoFake) if(meta->isFake()) { return; }
 
+    Bool_t isEMC = meta->isEmcCluster();
+
     //--------------------------------------------------------------------
     // was rk succesful ?  (rk indedx has to taken from another place ....)
     // also quality parameters ...
@@ -942,57 +1065,110 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
     }
     //--------------------------------------------------------------------
 
-
-    //--------------------------------------------------------------------
-    // find best ShowerHit match
     Int_t       bestShrInd  = -1;
     HShowerHit* bestShr     = 0;
-    Float_t     shrQA       = 10000.;
     HRKTrackB*  bestRKShr   = 0;
     HKalTrack*  bestKalShr  = 0;
-    HShowerHit* hit =0;
-    Float_t qa      =-1;
-    for(UInt_t i=0; i < meta->getNShrHits();i++){
-	Int_t ind = meta->getShowerHitInd (i);
-	hit = HCategoryManager::getObject(hit,fCatShowerHit,ind);
-	if(hit){
-	    if(!rkSuccess){
-		qa=meta->getShowerHitQuality(i);
-		if(qa>=0 && qa < shrQA) {
-		    shrQA      = qa;
-		    bestShr    = hit;
-		    bestShrInd = i;
-		}
-	    } else {
-		HRKTrackB* rkShr=0;
-		HKalTrack* kalShr=0;
-		if     (fmomSwitch == Particle::kMomRK)     {
-		    rkShr  = HCategoryManager::getObject(rkShr ,fCatRK    ,meta->getRungeKuttaIndShowerHit(i));
-                    if     (fsortSwitch==0)qa=rkShr->getQualityShower();
-		    else if(fsortSwitch==1)qa=rkShr->getMetaRadius();
-                    else   { Error("fillCand","Unknown sort option");}
-		}
-		else if(fmomSwitch == Particle::kMomKalman) {
-		    kalShr = HCategoryManager::getObject(kalShr,fCatKalman,meta->getKalmanFilterIndShowerHit(i));
-                    if     (fsortSwitch==0)qa=kalShr->getQualityShower();
-		    else if(fsortSwitch==1)qa=kalShr->getMetaRadius();
-                    else   { Error("fillCand","Unknown sort option");}
-		}
-		else   { Error("fillCand","Unknown momentum option");}
 
-		if(qa>=0 && qa < shrQA) {
-		    shrQA      = qa;
-		    bestShr    = hit;
-		    bestShrInd = i;
-		    bestRKShr  = rkShr;
-	            bestKalShr = kalShr;
-	        }
+    Int_t       bestEmcInd  = -1;
+    HEmcCluster* bestEmc    = 0;
+    HRKTrackB*  bestRKEmc   = 0;
+    HKalTrack*  bestKalEmc  = 0;
+ 
+    if(isEMC){
+	//--------------------------------------------------------------------
+	// find best EmcCluster match
+	Float_t     emcQA       = 10000.;
+	HEmcCluster* hit =0;
+	Float_t qa      =-1;
+	for(UInt_t i=0; i < meta->getNEmcClusters();i++){
+	    Int_t ind = meta->getEmcClusterInd (i);
+	    hit = HCategoryManager::getObject(hit,fCatEmcCluster,ind);
+	    if(hit){
+		if(!rkSuccess){
+		    qa=meta->getEmcClusterQuality(i);
+		    if(qa>=0 && qa < emcQA) {
+			emcQA      = qa;
+			bestEmc    = hit;
+			bestEmcInd = i;
+		    }
+		} else {
+		    HRKTrackB* rkEmc=0;
+		    HKalTrack* kalEmc=0;
+		    if     (fmomSwitch == Particle::kMomRK)     {
+			rkEmc  = HCategoryManager::getObject(rkEmc ,fCatRK    ,meta->getRungeKuttaIndEmcCluster(i));
+			if     (fsortSwitch==0)qa=rkEmc->getQualityEmc();
+			else if(fsortSwitch==1)qa=rkEmc->getMetaRadius();
+			else   { Error("fillCand","Unknown sort option");}
+		    }
+		    else if(fmomSwitch == Particle::kMomKalman) {
+			kalEmc = HCategoryManager::getObject(kalEmc,fCatKalman,meta->getKalmanFilterIndEmcCluster(i));
+			if     (fsortSwitch==0)qa=kalEmc->getQualityEmc();
+			else if(fsortSwitch==1)qa=kalEmc->getMetaRadius();
+			else   { Error("fillCand","Unknown sort option");}
+		    }
+		    else   { Error("fillCand","Unknown momentum option");}
+
+		    if(qa>=0 && qa < emcQA) {
+			emcQA      = qa;
+			bestEmc    = hit;
+			bestEmcInd = i;
+			bestRKEmc  = rkEmc;
+			bestKalEmc = kalEmc;
+		    }
+		}
 	    }
 	}
+	//--------------------------------------------------------------------
+    } else {
+	//--------------------------------------------------------------------
+	// find best ShowerHit match
+	Float_t     shrQA       = 10000.;
+	HShowerHit* hit =0;
+	Float_t qa      =-1;
+	for(UInt_t i=0; i < meta->getNShrHits();i++){
+	    Int_t ind = meta->getShowerHitInd (i);
+	    hit = HCategoryManager::getObject(hit,fCatShowerHit,ind);
+	    if(hit){
+		if(!rkSuccess){
+		    qa=meta->getShowerHitQuality(i);
+		    if(qa>=0 && qa < shrQA) {
+			shrQA      = qa;
+			bestShr    = hit;
+			bestShrInd = i;
+		    }
+		} else {
+		    HRKTrackB* rkShr=0;
+		    HKalTrack* kalShr=0;
+		    if     (fmomSwitch == Particle::kMomRK)     {
+			rkShr  = HCategoryManager::getObject(rkShr ,fCatRK    ,meta->getRungeKuttaIndShowerHit(i));
+			if     (fsortSwitch==0)qa=rkShr->getQualityShower();
+			else if(fsortSwitch==1)qa=rkShr->getMetaRadius();
+			else   { Error("fillCand","Unknown sort option");}
+		    }
+		    else if(fmomSwitch == Particle::kMomKalman) {
+			kalShr = HCategoryManager::getObject(kalShr,fCatKalman,meta->getKalmanFilterIndShowerHit(i));
+			if     (fsortSwitch==0)qa=kalShr->getQualityShower();
+			else if(fsortSwitch==1)qa=kalShr->getMetaRadius();
+			else   { Error("fillCand","Unknown sort option");}
+		    }
+		    else   { Error("fillCand","Unknown momentum option");}
+
+		    if(qa>=0 && qa < shrQA) {
+			shrQA      = qa;
+			bestShr    = hit;
+			bestShrInd = i;
+			bestRKShr  = rkShr;
+			bestKalShr = kalShr;
+		    }
+		}
+	    }
+	}
+	//--------------------------------------------------------------------
     }
-    //--------------------------------------------------------------------
- 
+
     HShowerHit*   showerHit  = 0;
+    HEmcCluster*  emcClst    = 0;
 
     //--------------------------------------------------------------------
     if(meta->getSystem()==-1)    // nothing to do for TOF,RPC,SHOWER
@@ -1000,6 +1176,7 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
 	Int_t num = 1;
 	candidate& cand = *(new candidate);
 	cand.reset();
+	cand.isEMC = isEMC;
 
 	fillCandNoMeta(rkSuccess,meta,cand,num);
 
@@ -1023,6 +1200,7 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
 	{
 	    candidate& cand = *(new candidate);
 	    cand.reset();
+	    cand.isEMC = isEMC;
 
 	    fillCandTof(rkSuccess,meta,cand,numTof,n);
 
@@ -1039,7 +1217,7 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
 
     }
     //####################################################################
-    else if(meta->getSystem()==0)  // RPC + SHOWER
+    else if(meta->getSystem()==0)  // RPC + SHOWER/EMC
     {
 	Int_t numRpc = meta->getNRpcClusters();
 
@@ -1049,15 +1227,27 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
 	{
 	    candidate& cand = *(new candidate);
 	    cand.reset();
+	    cand.isEMC = isEMC;
 
 	    fillCandRpc(rkSuccess,meta,cand,numRpc,n);
-	    if(bestShr){
-		if     (fmomSwitch == Particle::kMomRK)     cand.showerhit    .fillMeta(meta,bestShrInd,bestRKShr);
-                else if(fmomSwitch == Particle::kMomKalman) cand.showerhit    .fillMetaKal(meta,bestShrInd,bestKalShr);
-                else   { Error("fillCand","Unknown momentum option");}
-		showerHit = HCategoryManager::getObject(showerHit ,fCatShowerHit ,cand.showerhit.ind);
-		cand.showerhit    .fill(showerHit);
-		cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+	    if(isEMC){
+		if(bestEmc){
+		    if     (fmomSwitch == Particle::kMomRK)     cand.emcclst     .fillMeta(meta,bestEmcInd,bestRKEmc);
+		    else if(fmomSwitch == Particle::kMomKalman) cand.emcclst     .fillMetaKal(meta,bestEmcInd,bestKalEmc);
+		    else   { Error("fillCand","Unknown momentum option");}
+		    emcClst = HCategoryManager::getObject(emcClst ,fCatEmcCluster ,cand.emcclst.ind);
+		    cand.emcclst    .fill(emcClst);
+		    cand.objects.pEmcClst = (HEmcClusterSim*)  emcClst;
+		}
+	    } else {
+		if(bestShr){
+		    if     (fmomSwitch == Particle::kMomRK)     cand.showerhit    .fillMeta(meta,bestShrInd,bestRKShr);
+		    else if(fmomSwitch == Particle::kMomKalman) cand.showerhit    .fillMetaKal(meta,bestShrInd,bestKalShr);
+		    else   { Error("fillCand","Unknown momentum option");}
+		    showerHit = HCategoryManager::getObject(showerHit ,fCatShowerHit ,cand.showerhit.ind);
+		    cand.showerhit    .fill(showerHit);
+		    cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+		}
 	    }
 	    //--------------------------------------------------------------------
 	    // simulation part
@@ -1072,19 +1262,27 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
 	//--------------------------------------------------------------------
 
 	//--------------------------------------------------------------------
-	if(numRpc <= 0 && bestShr){ // if there was no RPC : fill best showerHit
-	    Int_t numShr=meta->getNShrHits();
+	if(numRpc <= 0 && (bestShr||bestEmc)){ // if there was no RPC : fill best showerHit/emcClst
 	    //--------------------------------------------------------------------
 	    // fill the different candiates for each selected RPC row
 
 	    candidate& cand = *(new candidate);
 	    cand.reset();
+	    cand.isEMC = isEMC;
 
-	    fillCandShower(rkSuccess,meta,cand,numShr,bestShrInd );  // RKSHOWER ?????
-	    if     (fmomSwitch == Particle::kMomRK)     cand.showerhit    .fillMeta(meta,bestShrInd,bestRKShr);
-	    else if(fmomSwitch == Particle::kMomKalman) cand.showerhit    .fillMetaKal(meta,bestShrInd,bestKalShr);
-	    else   { Error("fillCand","Unknown momentum option");}
-
+	    if(isEMC){
+		Int_t numEmc=meta->getNEmcClusters();
+		fillCandEmc(rkSuccess,meta,cand,numEmc,bestEmcInd );  // RKSHOWER ?????
+		if     (fmomSwitch == Particle::kMomRK)     cand.emcclst    .fillMeta(meta,bestEmcInd,bestRKEmc);
+		else if(fmomSwitch == Particle::kMomKalman) cand.emcclst    .fillMetaKal(meta,bestEmcInd,bestKalEmc);
+		else   { Error("fillCand","Unknown momentum option");}
+	    } else {
+		Int_t numShr=meta->getNShrHits();
+		fillCandShower(rkSuccess,meta,cand,numShr,bestShrInd );  // RKSHOWER ?????
+		if     (fmomSwitch == Particle::kMomRK)     cand.showerhit    .fillMeta(meta,bestShrInd,bestRKShr);
+		else if(fmomSwitch == Particle::kMomKalman) cand.showerhit    .fillMetaKal(meta,bestShrInd,bestKalShr);
+		else   { Error("fillCand","Unknown momentum option");}
+	    }
 	    //--------------------------------------------------------------------
 	    // simulation part
 	    if(fbIsSimulation){
@@ -1100,7 +1298,7 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
 
     }
     //####################################################################
-    else if(meta->getSystem()==2)  //  RPC/SHOWER + TOF
+    else if(meta->getSystem()==2)  //  RPC/SHOWER/EMC + TOF
     {
 	Int_t numTof = meta->getNTofHits();
         Int_t numRpc = meta->getNRpcClusters();
@@ -1112,17 +1310,29 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
 	{
 	    candidate& cand = *(new candidate);
 	    cand.reset();
+	    cand.isEMC = isEMC;
 
 	    fillCandTof(rkSuccess,meta,cand,numTof+numRpc,n);
-	    cand.system=2;
+	    cand.system = 2;
 
-	    if(bestShr){
-		if     (fmomSwitch == Particle::kMomRK)     cand.showerhit    .fillMeta(meta,bestShrInd,bestRKShr);
-                else if(fmomSwitch == Particle::kMomKalman) cand.showerhit    .fillMetaKal(meta,bestShrInd,bestKalShr);
-                else   { Error("fillCand","Unknown momentum option");}
-		showerHit = HCategoryManager::getObject(showerHit ,fCatShowerHit ,cand.showerhit.ind);
-		cand.showerhit    .fill(showerHit);
-		cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+	    if(isEMC){
+		if(bestEmc){
+		    if     (fmomSwitch == Particle::kMomRK)     cand.emcclst   .fillMeta(meta,bestEmcInd,bestRKEmc);
+		    else if(fmomSwitch == Particle::kMomKalman) cand.emcclst   .fillMetaKal(meta,bestEmcInd,bestKalEmc);
+		    else   { Error("fillCand","Unknown momentum option");}
+		    emcClst = HCategoryManager::getObject(emcClst ,fCatEmcCluster ,cand.emcclst.ind);
+		    cand.emcclst    .fill(emcClst);
+		    cand.objects.pEmcClst = (HEmcClusterSim*)  emcClst;
+		}
+	    } else {
+		if(bestShr){
+		    if     (fmomSwitch == Particle::kMomRK)     cand.showerhit    .fillMeta(meta,bestShrInd,bestRKShr);
+		    else if(fmomSwitch == Particle::kMomKalman) cand.showerhit    .fillMetaKal(meta,bestShrInd,bestKalShr);
+		    else   { Error("fillCand","Unknown momentum option");}
+		    showerHit = HCategoryManager::getObject(showerHit ,fCatShowerHit ,cand.showerhit.ind);
+		    cand.showerhit    .fill(showerHit);
+		    cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+		}
 	    }
 	    //--------------------------------------------------------------------
 	    // simulation part
@@ -1142,16 +1352,29 @@ void HParticleCandFiller::fillCand(HMetaMatch2* meta){
 	{
 	    candidate& cand = *(new candidate);
 	    cand.reset();
+	    cand.isEMC = isEMC;
 
 	    fillCandRpc(rkSuccess,meta,cand,numTof+numRpc,n);
 	    cand.system=2;
-            if(bestShr){
-		if     (fmomSwitch == Particle::kMomRK)     cand.showerhit    .fillMeta(meta,bestShrInd,bestRKShr);
-                else if(fmomSwitch == Particle::kMomKalman) cand.showerhit    .fillMetaKal(meta,bestShrInd,bestKalShr);
-                else   { Error("fillCand","Unknown momentum option");}
-		showerHit = HCategoryManager::getObject(showerHit ,fCatShowerHit ,cand.showerhit.ind);
-		cand.showerhit    .fill(showerHit);
-		cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+
+	    if(isEMC){
+		if(bestEmc){
+		    if     (fmomSwitch == Particle::kMomRK)     cand.emcclst    .fillMeta(meta,bestEmcInd,bestRKEmc);
+		    else if(fmomSwitch == Particle::kMomKalman) cand.emcclst    .fillMetaKal(meta,bestEmcInd,bestKalEmc);
+		    else   { Error("fillCand","Unknown momentum option");}
+		    emcClst = HCategoryManager::getObject(emcClst ,fCatEmcCluster ,cand.emcclst.ind);
+		    cand.emcclst    .fill(emcClst);
+		    cand.objects.pEmcClst = (HEmcClusterSim*) emcClst;
+		}
+	    } else {
+		if(bestShr){
+		    if     (fmomSwitch == Particle::kMomRK)     cand.showerhit    .fillMeta(meta,bestShrInd,bestRKShr);
+		    else if(fmomSwitch == Particle::kMomKalman) cand.showerhit    .fillMetaKal(meta,bestShrInd,bestKalShr);
+		    else   { Error("fillCand","Unknown momentum option");}
+		    showerHit = HCategoryManager::getObject(showerHit ,fCatShowerHit ,cand.showerhit.ind);
+		    cand.showerhit    .fill(showerHit);
+		    cand.objects.pShowerHit = (HShowerHitSim*)  showerHit;
+		}
 	    }
 	    //--------------------------------------------------------------------
 	    // simulation part
@@ -1413,14 +1636,31 @@ void HParticleCandFiller::fillCandSim(candidate& cand)
 	//--------------------------------------------------------------------
         // if there is Shower fill it
 	if((cand.system == 0 || cand.system == 2) && objects.pShowerHit) {
-	    Int_t nTr = objects.pShowerHit->getNTracks();
-	    for(Int_t i = 0; i < nTr; i ++) {
-		tr = objects.pShowerHit->getTrack(i);
-		if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
-		    cand.showerTracks.addTrack(tr,1,kIsInSHOWER|kIsInMETA);
+
+	    if(cand.isEMC){
+		if(objects.pEmcClst){
+		    Int_t nTr = objects.pEmcClst->getNTracks();
+		    for(Int_t i = 0; i < nTr; i ++) {
+			tr = objects.pEmcClst->getTrack(i);
+			if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
+			    cand.emcTracks.addTrack(tr,1,kIsInEMC|kIsInMETA);
+			}
+		    }
+		    cand.emcTracks.calcWeights();
+		}
+	    } else {
+
+		if(objects.pShowerHit){
+		    Int_t nTr = objects.pShowerHit->getNTracks();
+		    for(Int_t i = 0; i < nTr; i ++) {
+			tr = objects.pShowerHit->getTrack(i);
+			if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
+			    cand.showerTracks.addTrack(tr,1,kIsInSHOWER|kIsInMETA);
+			}
+		    }
+		    cand.showerTracks.calcWeights();
 		}
 	    }
-	    cand.showerTracks.calcWeights();
 	}
 	//--------------------------------------------------------------------
 
@@ -1443,6 +1683,20 @@ void HParticleCandFiller::fillCandSim(candidate& cand)
 	}
 
 	//--------------------------------------------------------------------
+    } else if(selMetaHit  == kEmcClst){
+
+	if(objects.pEmcClst) {
+	    Int_t nTr = objects.pEmcClst->getNTracks();
+	    for(Int_t i = 0; i < nTr; i ++) {
+		tr = objects.pEmcClst->getTrack(i);
+		if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
+		    cand.emcTracks.addTrack(tr,1,kIsInEMC|kIsInMETA);
+		}
+	    }
+	    cand.emcTracks.calcWeights();
+	}
+	//--------------------------------------------------------------------
+
     } else { ; }  // NO META
     //--------------------------------------------------------------------
 
@@ -1455,10 +1709,11 @@ void HParticleCandFiller::fillCandSim(candidate& cand)
     cand.commonTracks.addTrackWeight(cand.richTracks);
     cand.commonTracks.addTrackWeight(cand.tofTracks);
     cand.commonTracks.addTrackWeight(cand.rpcTracks);
-    cand.commonTracks.addTrackWeight(cand.showerTracks);
+    if(cand.isEMC)cand.commonTracks.addTrackWeight(cand.emcTracks);
+    else          cand.commonTracks.addTrackWeight(cand.showerTracks);
     cand.commonTracks.sortWeightNdet();
 
-    if(cand.commonTracks.tracks.size()>0)cand.commonTracks.tracks[0]->flag |= ghostFlag; // make sure MDC decicion is transported
+    if(cand.commonTracks.tracks.size()>0)cand.commonTracks.tracks[0]->flag |= ghostFlag; // make sure MDC decision is transported
     //--------------------------------------------------------------------
 
 }

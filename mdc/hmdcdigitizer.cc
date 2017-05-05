@@ -600,7 +600,7 @@ void HMdcDigitizer::initVariables()
     setSigmaOffsets(2.0);
     setScaleTime(1.0);
     vLayEff.reserve(500);
-    setDeltaElectronUse(kTRUE,kFALSE,109,-950.,400.,20.);
+    setDeltaElectronUse(kTRUE,kFALSE,109,-950.,400.,20.,2.);
     setDeltaElectronMinMomCut(2.,2.,4.5,2.,2.,4.5);
 }
 void HMdcDigitizer::setParContainers() {
@@ -1077,7 +1077,9 @@ Int_t HMdcDigitizer::execute(void) {
                        primary->print();
 		  }
 		  if(mom < momMinDeltaCut[loc[0]]) continue;
-
+		  if(fProbDeltaAccepted<1){
+                      if(gRandom->Rndm() < fProbDeltaAccepted) continue; // adjust yield of delta electrons
+		  }
 		  tof+=t0offset;
 		  fGeant->setHit(xcoord, ycoord, tof, ptot);  // change also TOF in of geant object to allow matching by tof with cal1 in tracking later
 	      }

@@ -129,7 +129,7 @@ void HKalFilterTask::fillData(HMetaMatch2* const pMetaMatch, const TObjArray &al
     if(bFillSites) fillDataSites(iCatSiteFirst, iCatSiteLast, allhitsGeantMdc);
 
     if(metaMatcher.getIsMatched()) {
-        for(Int_t sys = 0; sys < 3; sys++) {
+        for(Int_t sys = 0; sys < 4; sys++) {
             for(Int_t tab = 0; tab < metaMatcher.getNmetaTabs(); tab++) {
                 for(Int_t clstr = 0; clstr < metaMatcher.getClstrSize(sys); clstr++) {
                     const HKalMetaMatch& kalMatch = metaMatcher.getMatch(sys, tab, clstr);
@@ -160,6 +160,10 @@ void HKalFilterTask::fillData(HMetaMatch2* const pMetaMatch, const TObjArray &al
                                 pKalTrack->setTofClustInd(kalMatch.getIndex());
                                 break;
                             }
+                            break;
+                        case 3:
+                            pMetaMatch->setKalmanFilterIndEmcCluster((UChar_t)tab, (Short_t)iKalTrack);
+                            pKalTrack->setEmcClustInd(kalMatch.getIndex());
                             break;
                         }
                     }
@@ -272,6 +276,9 @@ HKalTrack* HKalFilterTask::fillDataTrack(Int_t &iKalTrack, HMetaMatch2* const pM
                 break;
             case 2:
                 pKalTrack->setQualityTof(kalMatch.getQuality());
+                break;
+            case 3:
+                pKalTrack->setQualityEmc(kalMatch.getQuality());
                 break;
             }
 
@@ -884,6 +891,8 @@ Bool_t HKalFilterTask::getIniSvRungeKutta(TVectorD &inisv, TMatrixD &iniC, Int_t
         idx = pMetaMatch->getRungeKuttaIndTofClst(n);
         if(idx >= 0) break;
         idx = pMetaMatch->getRungeKuttaIndShowerHit(n);
+        if(idx >= 0) break;
+        idx = pMetaMatch->getRungeKuttaIndEmcCluster(n);
         if(idx >= 0) break;
     }
     if(idx < 0) idx = pMetaMatch->getRungeKuttaInd();

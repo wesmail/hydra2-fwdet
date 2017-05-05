@@ -148,7 +148,8 @@ protected:
     vector < Int_t > index_TOFHit;         //!
     vector < Int_t > index_TOFClst;        //!
     vector < Int_t > index_RPC;            //!
-    vector < Int_t > old_flags;            //! remember the old flags of HPidTrackCand for restoring
+    vector < Int_t > old_flags;            //! remember the old flags of HParticleCand for restoring
+    vector < Int_t > old_flags_emc;        //! remember the old flags of HEmcCluster for restoring
 
     TString*   nameIndex  ;                //!
     TString*   nameQuality;                //!
@@ -157,6 +158,7 @@ protected:
     TFile*     fout;                       //!
     TNtuple*   nt;                         //!
     HCategory* pParticleCandCat;           //! HParticleCand category
+    HCategory* pEmcClusterCat;             //! HEmcCluster category
     HIterator* iterParticleCandCat;        //! iterator on HParticleCand
 
 
@@ -174,6 +176,8 @@ protected:
     Int_t  fillInput        (vector<candidateSort*>&);
     void   selection(Bool_t (*function)(HParticleCand* ));
     Int_t  fillAndSetFlags  ();
+    Bool_t flagEmcClusters();
+
     void   clear(void);
 public:
     HParticleTrackSorter(void);

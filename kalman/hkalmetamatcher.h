@@ -11,6 +11,7 @@ class HGeomVector;
 class HMetaMatchPar;
 class HRpcGeomPar;
 class HShowerGeometry;
+class HEmcGeomPar;
 class HTofGeomPar;
 #include "hgeomtransform.h"
 #include "hmetamatch2.h"
@@ -27,27 +28,32 @@ private:
     Bool_t           bIsMatched;
 
     HCategory*       fCatShower;      // pointer to the Shower category
+    HCategory*       fCatEmcCluster;  // pointer to the Emc cluster category
     HCategory*       fCatTof;         // pointer to the Tof hit category
     HCategory*       fCatTofCluster;  // pointer to the Tof cluster category
     HCategory*       fCatRpcCluster;  // pointer to the Rpc cluster category.
 
     HRpcGeomPar*     fRpcGeometry;    // Rpc geometry
     HShowerGeometry* fShowerGeometry; // Shower geometry
+    HEmcGeomPar*     fEmcGeometry;    // Emc geometry
     HTofGeomPar*     fTofGeometry;    // TOF geometry
 
     HMetaMatchPar*   fMatchPar;
 
     HKalMetaMatch    matchesRpc   [nMetaTabs];
     HKalMetaMatch    matchesShower[nMetaTabs];
+    HKalMetaMatch    matchesEmc   [nMetaTabs];
     HKalMetaMatch    matchesTof   [nMetaTabs][tofClusterSize];
 
     HGeomTransform   labSecTrans[6];       //
     HGeomTransform   modSecTransRpc[6];    //
     HGeomTransform   modSecTransShower[6]; //
+    HGeomTransform   modSecTransEmc[6]; //
     HGeomTransform   modSecTransTof[6][8]; //
 
     TVector3         normVecRpc[6];    // normal vector on the RPC module in the sector coordinate system
     TVector3         normVecShower[6]; // normal vector on the Shower module in the sector coordinate system
+    TVector3         normVecEmc[6];    // normal vector on the Emc module in the sector coordinate system
     TVector3         normVecTof[6][8]; // normal vector on each Tof module in the sector coordinate system
 
     HKalIFilt*       pKalsys;         // Pointer to Kalman filter.
@@ -79,6 +85,8 @@ public:
     virtual void    matchWithRpc   (HMetaMatch2 const* const pMetaMatch);
 
     virtual void    matchWithShower(HMetaMatch2 const* const pMetaMatch);
+
+    virtual void    matchWithEmc   (HMetaMatch2 const* const pMetaMatch);
 
     virtual void    matchWithTof   (HMetaMatch2 const* const pMetaMatch);
 

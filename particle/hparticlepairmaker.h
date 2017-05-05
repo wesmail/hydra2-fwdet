@@ -36,6 +36,7 @@ private:
     map<Int_t, vector<HParticleCand*> > mTofClsttoCand;      //!  TOF cluster lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mRpcClsttoCand;      //!  RPC cluster lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mShowertoCand;       //!  SHOWER hit  lookup   detector hit ind -> list of candidates using this hit
+    map<Int_t, vector<HParticleCand*> > mEmctoCand;          //!  EMC Cluster lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mInnerMdctoCand;     //!  inner Seg   lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mOuterMdctoCand;     //!  outer Seg   lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mRichtoCand;         //!  RICH hit    lookup   detector hit ind -> list of candidates using this hit

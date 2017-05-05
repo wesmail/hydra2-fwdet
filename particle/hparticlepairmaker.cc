@@ -313,6 +313,14 @@ void HParticlePairMaker::bookHits(HParticleCand* cand1)
 	    } else {
 		mShowertoCand[meta].push_back(cand1);
 	    }
+	} else if (cand1->isEmcUsed()){
+	    if(mEmctoCand.find(meta) == mEmctoCand.end()){
+		vector<HParticleCand*> v;
+		v.push_back(cand1);
+		mEmctoCand[meta] = v;
+	    } else {
+		mEmctoCand[meta].push_back(cand1);
+	    }
 	}
     }
 }
@@ -662,6 +670,7 @@ void HParticlePairMaker::clearVectors()
     mTofClsttoCand .clear();
     mRpcClsttoCand .clear();
     mShowertoCand  .clear();
+    mEmctoCand     .clear();
     mInnerMdctoCand.clear();
     mOuterMdctoCand.clear();
     mRichtoCand    .clear();
@@ -867,6 +876,7 @@ Int_t HParticlePairMaker::getSameMeta(HParticleCand* cand,vector<HParticleCand*>
         else if(sel == kTofHit1||sel==kTofHit2) mp = &mTofHittoCand;
         else if(sel == kRpcClst)           mp = &mRpcClsttoCand;
         else if(sel == kShowerHit)         mp = &mShowertoCand;
+        else if(sel == kEmcClst)           mp = &mEmctoCand;
 	else  {
 	    Error("getSameMeta()","unknown Meta case!"); return 0;
 	}

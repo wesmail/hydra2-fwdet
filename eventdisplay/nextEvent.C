@@ -21,6 +21,7 @@
 #include "tofdef.h"
 #include "walldef.h"
 #include "showerdef.h"
+#include "emcdef.h"
 #include "rpcdef.h"
 #include "hparticledef.h"
 //--------- data objects -----------
@@ -32,6 +33,7 @@
 #include "hsplinetrack.h"
 #include "hrktrackB.h"
 #include "hshowerhitsim.h"
+#include "hemcclustersim.h"
 #include "hwallhit.h"
 #include "hwallhitsim.h"
 #include "htofhit.h"
@@ -152,6 +154,7 @@ public:
     HEDGroup*            tofClusters;
     HEDGroup*            rpcClusters;
     HEDGroup*            showerHits;
+    HEDGroup*            emcClusters;
     HEDGroup*            mdcSegments;
     TEveElementList*     wallHits;
     TEveElementList*     wallPlane;
@@ -190,19 +193,20 @@ private:
 
 
 	vertexlist              = new TEveElementList("vertex","vertex");
-	sectors                 = new HEDGroup     ("sectors"          ,"sectors"          ,6,"Sector");
-	particlecandNoLep       = new HEDGroup     ("particlecandNoLep","particlecandNoLep",6,"particlecandNoLep");
-	particlecandLep         = new HEDGroup     ("particlecandLep"  ,"particlecandLep"  ,6,"particlecandLep");
-	particlecandHad         = new HEDGroup     ("particlecandHad"  ,"particlecandHad"  ,6,"particlecandHad");
-        richpadplane            = new HEDGroup     ("richpadplane"     ,"richpadplane"     ,6,"richpadplane");
-        richpadplanecleaned     = new HEDGroup     ("richpadplanecleaned","richpadplanecleaned",6,"richpadplanecleaned");
-        richhitpadplane         = new HEDGroup     ("richhitpadplane"  ,"richhitpadplane"  ,6,"richhitpadplane");
-	allMdcWires             = new HEDGroup2D   ("allMdcwires"      ,"allMdcwires"      ,6,4,"Sector","Module");
-        allMdcWiresNotUsed      = new HEDGroup2D ("allMdcwiresNotUsed","allMdcwiresNotUsed",6,4,"Sector","Module");
+	sectors                 = new HEDGroup     ("sectors"            ,"sectors"            ,6  ,"Sector");
+	particlecandNoLep       = new HEDGroup     ("particlecandNoLep"  ,"particlecandNoLep"  ,6  ,"particlecandNoLep");
+	particlecandLep         = new HEDGroup     ("particlecandLep"    ,"particlecandLep"    ,6  ,"particlecandLep");
+	particlecandHad         = new HEDGroup     ("particlecandHad"    ,"particlecandHad"    ,6  ,"particlecandHad");
+        richpadplane            = new HEDGroup     ("richpadplane"       ,"richpadplane"       ,6  ,"richpadplane");
+        richpadplanecleaned     = new HEDGroup     ("richpadplanecleaned","richpadplanecleaned",6  ,"richpadplanecleaned");
+        richhitpadplane         = new HEDGroup     ("richhitpadplane"    ,"richhitpadplane"    ,6  ,"richhitpadplane");
+	allMdcWires             = new HEDGroup2D   ("allMdcwires"        ,"allMdcwires"        ,6,4,"Sector","Module");
+        allMdcWiresNotUsed      = new HEDGroup2D   ("allMdcwiresNotUsed" ,"allMdcwiresNotUsed" ,6,4,"Sector","Module");
 
 	tofClusters  = new HEDGroup     ("tofclusters"  ,"tofclusters"  ,6,"tofclusters");
 	rpcClusters  = new HEDGroup     ("rpcclusters"  ,"rpcclusters"  ,6,"rpcclusters");
 	showerHits   = new HEDGroup     ("showerHits"   ,"showerHits"   ,6,"showerHits");
+	emcClusters  = new HEDGroup     ("emcClusters"  ,"emcClusters"  ,6,"emcClusters");
 	mdcSegments  = new HEDGroup     ("mdcSegments"  ,"mdcSegments"  ,6,"mdcSegments");
         wallHits     = new TEveElementList("wallHits"   ,"wallHits");
 	wallPlane    = new TEveElementList("wallPane"   ,"wallPlane");
@@ -328,13 +332,15 @@ private:
 
         gEve->AddElement(tofClusters      ,eveEv);
         gEve->AddElement(rpcClusters      ,eveEv);
-        gEve->AddElement(showerHits       ,eveEv);
+	if(!HEDTransform::isEmc()) gEve->AddElement(showerHits       ,eveEv);
+        else                       gEve->AddElement(emcClusters      ,eveEv);
         gEve->AddElement(mdcSegments      ,eveEv);
         gEve->AddElement(wallHits         ,eveEv);
         gEve->AddElement(wallPlane        ,eveEv);
 	tofClusters->SetRnrSelfChildren(kFALSE,kFALSE); // do not show by default
         rpcClusters->SetRnrSelfChildren(kFALSE,kFALSE); // do not show by default
         showerHits->SetRnrSelfChildren(kFALSE,kFALSE); // do not show by default
+        emcClusters->SetRnrSelfChildren(kFALSE,kFALSE); // do not show by default
         mdcSegments->SetRnrSelfChildren(kFALSE,kFALSE); // do not show by default
         //wallHits->SetRnrSelfChildren(kFALSE,kFALSE); // do not show by default
 
@@ -420,6 +426,7 @@ public:
 	Bool_t drawTofClusters = kTRUE;
         Bool_t drawRpcClusters = kTRUE;
         Bool_t drawShowerHits  = kTRUE;
+        Bool_t drawEmcClusters = kTRUE;
         Bool_t drawMdcSegments = kTRUE;
         Bool_t drawWallHits    = kTRUE;
         Bool_t drawWallPlane   = kTRUE;
@@ -451,6 +458,7 @@ public:
             tofClusters        ->DestroyElements();
             rpcClusters        ->DestroyElements();
             showerHits         ->DestroyElements();
+            emcClusters        ->DestroyElements();
             mdcSegments        ->DestroyElements();
             wallHits           ->DestroyElements();
             wallPlane          ->DestroyElements();
@@ -523,6 +531,7 @@ public:
 	    HCategory* tofHitCat          = (HCategory*) gHades->getCurrentEvent()->getCategory(catTofHit);
 	    HCategory* tofClustCat        = (HCategory*) gHades->getCurrentEvent()->getCategory(catTofCluster);
 	    HCategory* rpcClustCat        = (HCategory*) gHades->getCurrentEvent()->getCategory(catRpcCluster);
+	    HCategory* emcClusterCat      = (HCategory*) gHades->getCurrentEvent()->getCategory(catEmcCluster);
 	    HCategory* showerHitCat       = (HCategory*) gHades->getCurrentEvent()->getCategory(catShowerHit);
 	    HCategory* richHitCat         = (HCategory*) gHades->getCurrentEvent()->getCategory(catRichHit);
             HCategory* richTrackCat       = (HCategory*) gHades->getCurrentEvent()->getCategory(catRichTrack);
@@ -681,6 +690,23 @@ public:
  	    //---------------------------------------------------------
 
 	    //---------------------------------------------------------
+	    if(drawEmcClusters && emcClusterCat){
+		HEmcClusterSim* hit;
+		HEDEmcCluster* edemccluster;
+		Int_t size = emcClusterCat->getEntries();
+
+		for(Int_t i = 0; i < size; i ++){
+		    hit = HCategoryManager::getObject(hit,emcClusterCat,i);
+		    if(hit){
+			edemccluster = new HEDEmcCluster(hit);
+			//edemccluster ->SetMarkerColor(kRed-2);
+			emcClusters->AddElement(hit->getSector(),edemccluster);
+		    }
+		}
+	    }
+ 	    //---------------------------------------------------------
+
+	    //---------------------------------------------------------
 	    if(drawWallHits && wallHitCat){
 		HWallHitSim* hit;
 		HEDWallHit* edwallhit;
@@ -785,7 +811,12 @@ public:
 	    } // end particlecand
 	    //---------------------------------------------------------
 
+
+
 	    //---------------------------------------------------------
+            Bool_t doSelectSecondaries=kFALSE;
+            Float_t vertexDistCat = 500;
+            Float_t pzCut         = 0;
 	    if(drawKine && kineCat){
 		HGeantKine* kine;
 		Int_t size = kineCat->getEntries();
@@ -793,6 +824,18 @@ public:
 		    kine = HCategoryManager::getObject(kine,kineCat,i);
 		    if(kine){
 			Int_t  id =  kine->getID();
+
+			if(doSelectSecondaries&&kine->getParentTrack()>0){
+			    Float_t vx,vy,vz;
+			    Float_t px,py,pz;
+			    kine->getVertex(vx,vy,vz);
+
+			    if(sqrt(vx*vx+vy*vy+vz*vz)>vertexDistCat) continue;
+
+			    kine->getMomentum(px,py,pz);
+
+			    if(pz<pzCut) continue;
+			}
 
 			TEveTrack* track = HEDTransform::createKineParticle(kine,simTrackList->GetPropagator());
 
@@ -875,6 +918,7 @@ public:
 	    if(tofClustCat) { cout<<setw(5)<<tofClustCat->getEntries() <<" TOF CLUSTER " <<endl; }
 	    if(rpcClustCat) { cout<<setw(5)<<rpcClustCat->getEntries() <<" RPC CLUSTER " <<endl; }
 	    if(showerHitCat){ cout<<setw(5)<<showerHitCat->getEntries()<<" SHOWER HITS " <<endl; }
+	    if(emcClusterCat){ cout<<setw(5)<<emcClusterCat->getEntries()<<" EMC CLUSTERS " <<endl; }
 	    if(wallHitCat)  { cout<<setw(5)<<wallHitCat->getEntries()  <<" WALL HITS " <<endl; }
 	    cout<<"nCandLep     = "<<nCandLep
 		<<"\nnCandLepBest = "<<nCandLepBest

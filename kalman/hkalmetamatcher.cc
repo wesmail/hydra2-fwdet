@@ -11,13 +11,16 @@
 #include "hrpcgeompar.h"
 #include "hruntimedb.h"
 #include "hshowerhit.h"
+#include "hemccluster.h"
 #include "hshowergeometry.h"
+#include "hemcgeompar.h"
 #include "hspectrometer.h"
 #include "htofgeompar.h"
 #include "htofhit.h"
 
 #include "rpcdef.h"
 #include "showerdef.h"
+#include "emcdef.h"
 #include "tofdef.h"
 
 #include "hkalmetamatch.h"
@@ -42,12 +45,14 @@ HKalMetaMatcher::HKalMetaMatcher() {
 
     fCatRpcCluster  = NULL;
     fCatShower      = NULL;
+    fCatEmcCluster  = NULL;
     fCatTofCluster  = NULL;
     fCatTof         = NULL;
 
     fMatchPar       = NULL;
     fRpcGeometry    = NULL;
     fShowerGeometry = NULL;
+    fEmcGeometry    = NULL;
     fTofGeometry    = NULL;
 
     pKalsys         = NULL;
@@ -118,8 +123,10 @@ void HKalMetaMatcher::clearMatches() {
     for(Int_t tab = 0; tab < nMetaTabs; tab++) {
         matchesRpc   [tab].clear();
         matchesShower[tab].clear();
+        matchesEmc   [tab].clear();
         matchesRpc   [tab].setSystem(0);
         matchesShower[tab].setSystem(1);
+        matchesEmc   [tab].setSystem(3);
         for(Int_t clstr = 0; clstr < tofClusterSize; clstr++) {
             matchesTof[tab][clstr].clear();
             matchesTof[tab][clstr].setSystem(2);
@@ -147,11 +154,12 @@ void HKalMetaMatcher::init() {
     
     fCatRpcCluster  = HCategoryManager::getCategory(catRpcCluster);
     fCatShower      = HCategoryManager::getCategory(catShowerHit);
+    fCatEmcCluster  = HCategoryManager::getCategory(catEmcCluster);
     fCatTofCluster  = HCategoryManager::getCategory(catTofCluster);
     fCatTof         = HCategoryManager::getCategory(catTof);
 
+    if(!fCatShower && !fCatEmcCluster) Warning("init()", "Category catShower and catEmcCluster not found.");
     if(!fCatRpcCluster) Warning("init()", "Category catRpcCluster not found.");
-    if(!fCatShower)     Warning("init()", "Category catShower not found.");
     if(!fCatTofCluster) Warning("init()", "Category catTofCluster not found.");
     if(!fCatTof)        Warning("init()", "Category catTof not found.");
 
@@ -164,8 +172,11 @@ void HKalMetaMatcher::init() {
     // Shower-geometry-for-metaEnergy loss calculation
     if(spec->getDetector("Shower")) {
         fShowerGeometry = (HShowerGeometry *)rtdb->getContainer("ShowerGeometry");
+    } else if (spec->getDetector("Emc")) {
+    // Emc-geometry
+      fEmcGeometry = (HEmcGeomPar *)rtdb->getContainer("EmcGeomPar");
     }
- 
+     
     // TOF-geometry-for-metaEnergy loss calculation
     if(spec->getDetector("Tof")) { // has the user set up a TOF?
         fTofGeometry = (HTofGeomPar *)rtdb->getContainer("TofGeomPar");
@@ -221,6 +232,20 @@ void HKalMetaMatcher::reinit() {
             normVecShower[iSec].SetXYZ(nShower.getX(), nShower.getY(), nShower.getZ());
         }
 
+        if (fEmcGeometry) {
+          HModGeomPar *pmodgeom = fEmcGeometry->getModule(iSec);
+          HGeomTransform modTrans(pmodgeom->getLabTransform());
+
+          modTrans.transTo(labSecTrans[iSec]);
+
+          modSecTransEmc[iSec] = modTrans;
+
+          HGeomVector r0_mod(0.0, 0.0, 0.);
+          HGeomVector rz_mod(0.0, 0.0, 1.);
+          HGeomVector nEmc = modTrans.transFrom(rz_mod) - modTrans.transFrom(r0_mod);
+          normVecEmc[iSec].SetXYZ(nEmc.getX(), nEmc.getY(), nEmc.getZ()) ;
+        }
+    
         if (fTofGeometry) {
             for(Int_t iTofMod = 0; iTofMod < 8; iTofMod++) {
                 HModGeomPar *module = fTofGeometry->getModule(iSec,iTofMod);
@@ -246,7 +271,8 @@ Bool_t HKalMetaMatcher::matchWithMeta(const HMetaMatch2 *pMetaMatch, HKalIFilt* 
     cout<<"***** Matching with Meta. *****"<<endl;
     cout<<"System "<<pMetaMatch->getSystem()<<" with "
         <<(Int_t)pMetaMatch->getNRpcClusters()<<" Rpc clusters, "
-        <<(Int_t)pMetaMatch->getNShrHits()<<" Shower hits and "
+        <<(Int_t)pMetaMatch->getNShrHits()<<" Shower hits or "
+        <<(Int_t)pMetaMatch->getNEmcClusters()<<" Emc Clusters and "
         <<(Int_t)pMetaMatch->getNTofHits()<<" Tof hits"<<endl;
 #endif
     clearMatches();
@@ -259,9 +285,16 @@ Bool_t HKalMetaMatcher::matchWithMeta(const HMetaMatch2 *pMetaMatch, HKalIFilt* 
         matchWithRpc(pMetaMatch);
     }
 
-    if(pMetaMatch->getNShrHits()) {
-        bIsMatched = kTRUE;
-        matchWithShower(pMetaMatch);
+    if(fCatShower != NULL) {
+      if(pMetaMatch->getNShrHits() > 0) {
+          bIsMatched = kTRUE;
+          matchWithShower(pMetaMatch);
+      }
+    } else {
+      if(pMetaMatch->getNEmcClusters() > 0) {
+          bIsMatched = kTRUE;
+          matchWithEmc(pMetaMatch);
+      }
     }
 
     if(pMetaMatch->getNTofHits()) {
@@ -453,6 +486,97 @@ void HKalMetaMatcher::matchWithShower(HMetaMatch2 const* const pMetaMatch) {
     }
 }
 
+void HKalMetaMatcher::matchWithEmc(HMetaMatch2 const* const pMetaMatch) {
+
+    if(!fCatEmcCluster) return;
+    
+    for(Int_t n = 0; n < (Int_t)pMetaMatch->getNEmcClusters(); ++n) {
+        Int_t ind = (Int_t)pMetaMatch->getEmcClusterInd(n);
+
+        if(ind < 0) {
+            Warning("matchWithEmc()","Index of emc is < 0, DISASTER!");
+            continue;
+        }
+
+        HEmcCluster *pEmcCluster = (HEmcCluster*)fCatEmcCluster->getObject(ind);
+
+        if(!pEmcCluster) {
+            Warning("matchWithEmc()","Pointer to EmcCluster is NULL, DISASTER!");
+            continue;
+        }
+
+        Int_t s = (Int_t)pMetaMatch->getSector();
+        if(s < 0 || s > 5) {
+#if metaDebug > 0
+            Warning("matchWithEmc()", Form("Sector in HEmcCluster is %i.", s));
+#endif
+            continue;
+        }
+
+#if metaDebug > 1
+        cout<<"---- Matching with Emc hit "<<n<<" ----"<<endl;
+#endif
+
+        matchesEmc[n].setIndex(ind);
+        matchesEmc[n].setTof(pEmcCluster->getTime());
+        matchesEmc[n].setMetaEloss(pEmcCluster->getEnergy());
+
+        // Store emc hit in sector coordinates.
+        HGeomVector metaHit(pEmcCluster->getXLab(), pEmcCluster->getYLab(), pEmcCluster->getZLab());
+
+        metaHit = labSecTrans[s].transTo(metaHit);
+        matchesEmc[n].setMetaHit(metaHit.getX(), metaHit.getY(), metaHit.getZ());
+
+        // Matching quality.
+        // -----------------
+
+        // Propagate track to META.
+        traceToMeta(matchesEmc[n].getMetaHit(), normVecEmc[s]);
+
+        Float_t xReco, yReco, zReco;
+        getMetaRecoPos(xReco, yReco, zReco);
+        matchesEmc[n].setMetaReco(xReco, yReco, zReco);
+
+        // Transform to module coordinates to determine matching quality.
+        HGeomVector localMetaReco(xReco, yReco, zReco);
+        localMetaReco = modSecTransEmc[s].transTo(localMetaReco);
+        matchesEmc[n].setMetaRecoLocal(localMetaReco.getX(), localMetaReco.getY(), localMetaReco.getZ());
+
+        Float_t xHit, yHit, zHit;
+        matchesEmc[n].getMetaHit(xHit, yHit, zHit);
+        HGeomVector localMetaHit(xHit, yHit, zHit);
+        localMetaHit  = modSecTransEmc[s].transTo(localMetaHit);
+        //?
+        //localMetaHit -= HGeomVector(0., 0., pEmcCluster->getZ());
+        matchesEmc[n].setMetaHitLocal(localMetaHit.getX(), localMetaHit.getY(), localMetaHit.getZ());
+
+#if metaDebug > 2
+        cout<<"Meta hit in sector coords: \n"
+            <<"  x = "<<matchesEmc[n].getMetaHit().X()
+            <<", y = "<<matchesEmc[n].getMetaHit().Y()
+            <<", z = "<<matchesEmc[n].getMetaHit().Z()
+            <<"\n in module coords: \n"
+            <<"  x = "<<localMetaHit.getX()<<", y = "<<localMetaHit.getY()
+            <<endl;
+        cout<<"Reconstructed meta hit in sector coords: \n"
+            <<"  x = "<<matchesEmc[n].getMetaReco().X()
+            <<", y = "<<matchesEmc[n].getMetaReco().Y()
+            <<", z = "<<matchesEmc[n].getMetaReco().Z()
+            <<"\n in module coords: \n"
+            <<"  x = "<<localMetaReco.getX()<<", y = "<<localMetaReco.getY()
+            <<"\n"<<endl;
+#endif
+
+        //? why subtract SigmaOffset?
+        Float_t dX     = localMetaReco.getX() - localMetaHit.getX() - fMatchPar->getEmcSigmaXOffset(s);
+        Float_t dY     = localMetaReco.getY() - localMetaHit.getY() - fMatchPar->getEmcSigmaYOffset(s);
+        Float_t dXsig2 = TMath::Power(pEmcCluster->getSigmaXMod(), 2.F);
+        Float_t dYsig2 = TMath::Power(pEmcCluster->getSigmaYMod(), 2.F);
+        matchesEmc[n].setQuality(calcQuality(dX, dY, dXsig2, dYsig2));
+        // -----------------
+    }
+}
+
 void HKalMetaMatcher::matchWithTof(HMetaMatch2 const* const pMetaMatch) {
     for(Int_t n = 0; n < (Int_t)pMetaMatch->getNTofHits(); ++n) {
         // A TOF cluster may consist of up to two hits from different
@@ -562,7 +686,7 @@ void HKalMetaMatcher::matchWithTof(HMetaMatch2 const* const pMetaMatch) {
 
 Int_t HKalMetaMatcher::getClstrSize(Int_t sys) const {
 
-    if(sys == 0 || sys == 1) return 1; // Rpc or Shower
+    if(sys == 0 || sys == 1 || sys == 3) return 1; // Rpc or Shower or Emc
     if(sys == 2) return tofClusterSize; // Tof
     return 0; // Unknown.
 }
@@ -588,6 +712,9 @@ const HKalMetaMatch& HKalMetaMatcher::getMatch(Int_t sys, Int_t tab, Int_t clstr
             Error("getMatch()", Form("Invalid Tof cluster: %i", clstr));
             return matchesRpc[0];
         }
+        break;
+    case 3:
+        return matchesEmc[tab];
         break;
     default:
         Error("getMatch()", Form("Invalid Meta detector: %i", sys));

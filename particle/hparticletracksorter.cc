@@ -6,8 +6,9 @@
 #include "hruntimedb.h"
 #include "hevent.h"
 #include "hparticlecand.h"
-#include "hparticlecandsim.h"
+#include "hemccluster.h"
 #include "hparticledef.h"
+#include "emcdef.h"
 #include "htool.h"
 
 #include <algorithm>
@@ -24,7 +25,9 @@ using namespace std;
 // HParticleTrackSorter
 //
 // This Class loops over the HParticleCand category and
-// analyze the objects. Purpose of the procedure is to categorize
+// analyze the objects. If the ECAL detector is used a loop over
+// HEmcCluster is performed too to mark the clusters used by selected
+// candidates. The Purpose of the procedure is to categorize
 // the objects in the case of multiple usage of the single detector
 // hits (RICH, InnerMDC, OuterMDC, META) as Double_t hit and to provide
 // a hint which of the candidates is the best with respect to certain
@@ -208,6 +211,11 @@ using namespace std;
 //        //------------------------------------------------------------------------
 //        // run your selection and set all flags
 //
+//        //------------------------------------------------------------------------
+//        // clean vectors and index arrays
+//        sorter.cleanUp();
+//        //------------------------------------------------------------------------
+//
 //        // if you do not want to modify the flags
 //        // for the following tasks etc (needs call of
 //        // restoreFlags() at the end of the eventloop)
@@ -224,7 +232,7 @@ using namespace std;
 //        // analylize marked tracks (kIsUsed) ....
 //    	  iter->Reset();
 //        HParticleCand* pcand;
-//        while((pcand = (HParticleCandSim*)iter->Next()) != NULL)
+//        while((pcand = (HParticleCand*)iter->Next()) != NULL)
 //	  {
 //           // accept only objects marked as good
 //	     if(!pcand->isFlagBit(HParticleCand::kIsUsed) ) continue;
@@ -239,10 +247,6 @@ using namespace std;
 //        // sorter.restoreFlags();
 //
 //
-//        //------------------------------------------------------------------------
-//        // celan vectors and index arrays
-//        sorter.cleanUp();
-//        //------------------------------------------------------------------------
 //    }
 //    //------------------------------------------------------------------------
 //    //At the end of program
@@ -305,6 +309,7 @@ void HParticleTrackSorter::clear()
     nameIndex            = 0;
     nameQuality          = 0;
     pParticleCandCat     =  NULL;
+    pEmcClusterCat       =  NULL;
     iterParticleCandCat  =  NULL;
     fill_Iteration       =  0;
     selectBest_Iteration =  0;
@@ -321,6 +326,8 @@ Bool_t HParticleTrackSorter::init(void)
 	Error("HParticleTrackSorter::init()"," No HParticleCand Input -> Switching HParticleTrackSorter OFF");
     }
     else iterParticleCandCat = (HIterator *) pParticleCandCat->MakeIterator();
+
+    pEmcClusterCat   = gHades->getCurrentEvent()->getCategory(catEmcCluster);
 
     HCategory* catKine = gHades->getCurrentEvent()->getCategory(catGeantKine);
     if(catKine) isSimulation = kTRUE;
@@ -724,6 +731,38 @@ Int_t HParticleTrackSorter::setFlagsDouble(vector<candidateSort*>& daughter, HPa
 
     return 0;
 }
+
+Bool_t HParticleTrackSorter::flagEmcClusters()
+{
+    // loop over EmcCluster cat and reset IsUsedInParticleCand.
+    // loop over all candidates and flag emc clusters used in
+    // selected candidates only
+    if(pEmcClusterCat&&pParticleCandCat)
+    {
+        HEmcCluster* emc = 0;
+	Int_t n = pEmcClusterCat->getEntries();
+	for(Int_t i = 0; i < n; i ++){
+            emc = (HEmcCluster*) pEmcClusterCat->getObject(i);
+            if(emc) emc -> unsetIsUsedInParticleCand();
+	}
+
+        HParticleCand* cand = 0;
+	n = pParticleCandCat->getEntries();
+	for(Int_t i = 0; i < n; i ++){
+	    cand = (HParticleCand*) pParticleCandCat->getObject(i);
+	    if(cand->isFlagBit(Particle::kIsUsed) ){
+		Int_t ind = cand->getEmcInd();
+		if(ind>=0){
+		    emc = (HEmcCluster*) pEmcClusterCat->getObject(ind);
+                    if(emc)  emc->setIsUsedInParticleCand();
+		}
+	    }
+	}
+    }
+     return kTRUE;
+}
+
+
 Int_t HParticleTrackSorter::fillInput(vector < candidateSort* >& all_candidates)
 {
     // loop over HParticleCand category and fill a vector of temporary objects
@@ -1063,6 +1102,7 @@ void  HParticleTrackSorter::backupFlags(Bool_t onlyFlags)
 
     }
     old_flags.clear();
+    old_flags_emc.clear();
 
     if(!iterParticleCandCat) return;
 
@@ -1073,6 +1113,18 @@ void  HParticleTrackSorter::backupFlags(Bool_t onlyFlags)
     {
          old_flags.push_back(pCand->getFlagField());
     }
+    if(pEmcClusterCat){
+	HEmcCluster* emc = 0;
+	Int_t n = pEmcClusterCat->getEntries();
+	for(Int_t i = 0; i < n; i ++){
+	    emc = (HEmcCluster*) pEmcClusterCat->getObject(i);
+	    if(emc) {
+		Int_t fl = emc -> isUsedInParticleCand();
+		old_flags_emc.push_back(fl);
+	    }
+	}
+    }
+
 }
 
 Bool_t  HParticleTrackSorter::restoreFlags(Bool_t onlyFlags)
@@ -1122,6 +1174,19 @@ Bool_t  HParticleTrackSorter::restoreFlags(Bool_t onlyFlags)
 	    return kFALSE;
 	}
     }
+
+    if(pEmcClusterCat){
+	HEmcCluster* emc = 0;
+	Int_t n = pEmcClusterCat->getEntries();
+	for(Int_t i = 0; i < n; i ++){
+	    emc = (HEmcCluster*) pEmcClusterCat->getObject(i);
+	    if(emc) {
+		emc -> unsetIsUsedInParticleCand();
+                if(old_flags_emc[i] == 1 ) emc -> isUsedInParticleCand();
+	    }
+	}
+    }
+
     return kTRUE;
 }
 void  HParticleTrackSorter::backupSetup()
@@ -1420,7 +1485,7 @@ Int_t HParticleTrackSorter::selectBest(HParticleTrackSorter::ESwitch byQuality, 
 	    <<endl;
     }
     fill_Iteration = 0;
-
+    flagEmcClusters();
   return ct;
 }
 

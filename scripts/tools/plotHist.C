@@ -49,7 +49,7 @@ Bool_t findMinMaxGraph(Double_t& xmin,Double_t& xmax,Double_t& ymin,Double_t& ym
 	g->GetPoint(i,x,y);
 	if(x<xmin || xmin==0) xmin = x;
 	if(x>xmax || xmax==0) xmax = x;
-        if(y<ymin || ymin==0) ymin = y;
+	if(y<ymin || ymin==0) ymin = y;
 	if(y>ymax || ymax==0) ymax = y;
 
     }
@@ -92,8 +92,8 @@ void addToLegend(TLegend* l,map<TString,TGraph*>& mymap)
 
 void divideUser(Int_t joblimit,
 		map<TString,TGraph*>& mymap,
-	        map<TString,TGraph*>& mymapPend,
-	        map<TString,TGraph*>& mymapBig,
+		map<TString,TGraph*>& mymapPend,
+		map<TString,TGraph*>& mymapBig,
 		map<TString,TGraph*>& mymapSmall,
 		map<TString,TGraph*>& mymapBigPend,
 		map<TString,TGraph*>& mymapSmallPend
@@ -120,7 +120,7 @@ void draw(map<TString,TGraph*>& mymap)
     for(map< TString, TGraph*>::iterator iter = mymap.begin(); iter != mymap.end(); ++iter ) {
 	TGraph* g  = iter->second;
 	g->Draw("L");
-        g->Draw("Psame");
+	g->Draw("Psame");
     }
 }
 
@@ -144,13 +144,34 @@ void  addUserPoint(TString user,
     }
 }
 
+void  addLoadPoint(TString cluster,
+		   Float_t njobs,time_t timeStamp,time_t toffset,
+		   map<TString,TGraph*>& mymap,Int_t col=4,Int_t marker=8,Int_t style=1)
+{
+    if(mymap.find(cluster) == mymap.end()){ // new user
+	TGraph* g = new TGraph;
+	g->SetName(cluster.Data());
+	g->SetPoint(0,timeStamp-toffset,njobs);
+	g->SetLineColor(col);
+	g->SetMarkerColor(col);
+	g->SetMarkerStyle(marker);
+	g->SetLineStyle(style);
+	mymap[cluster] = g;
+
+    } else {
+	TGraph* g = mymap[cluster];
+	g->SetPoint(g->GetN(),timeStamp-toffset,njobs);
+    }
+}
+
 void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.dat",
 	      TString groupDat="/misc/kempter/GE_mon_log_dev/logGroup_2014-01-20.dat",
+	      TString loadDat="/misc/kempter/GE_mon_log_dev/logLoad_2014-01-20.dat",
 	      TString outdir="/misc/kempter/GE_mon_log_dev",
 	      TString stampDate="",
 	      TString stampTime="",
-              UInt_t range1=0,
-              UInt_t range2=0
+	      UInt_t range1=0,
+	      UInt_t range2=0
 	     )
 {
 
@@ -189,6 +210,41 @@ void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.d
     map<TString,TGraph* > mGroupPend;
 
 
+    TString cluster;
+    Int_t njobsRun;
+    Int_t njobsAvail;
+    Int_t njobsMaximum;
+    Float_t loadAvail;
+    Float_t loadMaximum;
+
+    map<TString,TGraph* > mLoadRun;
+    map<TString,TGraph* > mLoadnAvail;
+    map<TString,TGraph* > mLoadnMaximum;
+    map<TString,TGraph* > mLoadAvail;
+    map<TString,TGraph* > mLoadMaximum;
+
+
+    Int_t colorLoadnRun    = kRed;
+    Int_t colorLoadnAvail  = kBlue;
+    Int_t colorLoadnMaximum= kBlack;
+    Int_t colorLoadAvail   = kRed;
+    Int_t colorLoadMaximum = kBlue;
+
+    Int_t markerLoadnRun    = 20;
+    Int_t markerLoadnAvail  = 20;
+    Int_t markerLoadnMaximum= 20;
+    Int_t markerLoadAvail   = 20;
+    Int_t markerLoadMaximum = 20;
+
+    Int_t styleLoadnRun    = 1;
+    Int_t styleLoadnAvail  = 2;
+    Int_t styleLoadnMaximum= 2;
+    Int_t styleLoadAvail   = 1;
+    Int_t styleLoadMaximum = 1;
+
+
+
+
     Int_t jobLimit=1100;
 
 
@@ -196,10 +252,10 @@ void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.d
     if(gSystem->AccessPathName(userDat.Data())==0){
 	ifstream in;
 	in.open(userDat.Data());
-        Char_t line[5000];
-        TString l="";
+	Char_t line[5000];
+	TString l="";
 
-        
+
 	while(in.good() && !in.eof())
 	{
 	    in.getline(line,5000);
@@ -218,20 +274,19 @@ void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.d
 			timeStamp = word.Atoi();
 			continue;
 		    }
-                    if(timeStamp<range1) continue;
+		    if(timeStamp<range1) continue;
 		    //-----------------------------------------------------------
-                    // get user and number of jobs
+		    // get user and number of jobs
 		    TObjArray* a2 = word.Tokenize(":");
-		    if(a2->GetEntries()==5){
+		    if(a2->GetEntries()==4){
 			user = ((TObjString*)a2->At(0))->GetString();
 			njobs= ((TObjString*)a2->At(1))->GetString().Atoi();
-                        njobsTotal= ((TObjString*)a2->At(2))->GetString().Atoi();
-                        njobsTotal= ((TObjString*)a2->At(2))->GetString().Atoi();
+			njobsTotal= ((TObjString*)a2->At(2))->GetString().Atoi();
 			groupname= ((TObjString*)a2->At(3))->GetString();
-                        projectname= ((TObjString*)a2->At(4))->GetString();
+			//projectname= ((TObjString*)a2->At(4))->GetString();
 
 			addUserPoint(user,njobs,timeStamp,toffset,mUser);
-                        addUserPoint(user,njobsTotal-njobs,timeStamp,toffset,mUserPend);
+			addUserPoint(user,njobsTotal-njobs,timeStamp,toffset,mUserPend);
 
 		    } else {
 			cout<<"wrong : "<<word.Data()<<endl;
@@ -246,17 +301,17 @@ void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.d
 
 	    }
 	}
-        in.close();
+	in.close();
 
     } else {
 	cout<<"userfile not found : "<<userDat.Data()<<endl;
     }
     //-----------------------------------------------------------
- 
+
 
     //-----------------------------------------------------------
     if(gSystem->AccessPathName(groupDat.Data())==0){
-	
+
 
 	ifstream in;
 	in.open(groupDat.Data());
@@ -290,11 +345,11 @@ void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.d
 		    if(a2->GetEntries()==3){
 			user = ((TObjString*)a2->At(0))->GetString();
 			njobs= ((TObjString*)a2->At(1))->GetString().Atoi();
-                        njobsTotal= ((TObjString*)a2->At(2))->GetString().Atoi();
+			njobsTotal= ((TObjString*)a2->At(2))->GetString().Atoi();
 
-                        //if(njobs == 0) continue;
-                        addUserPoint(user,njobs,timeStamp,toffset,mGroup);
-                        addUserPoint(user,njobsTotal-njobs,timeStamp,toffset,mGroupPend);
+			//if(njobs == 0) continue;
+			addUserPoint(user,njobs,timeStamp,toffset,mGroup);
+			addUserPoint(user,njobsTotal-njobs,timeStamp,toffset,mGroupPend);
 
 		    } else {
 			cout<<"wrong : "<<word.Data()<<endl;
@@ -314,6 +369,79 @@ void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.d
 
     }   else {
 	cout<<"groupfile not found : "<<groupDat.Data()<<endl;
+    }
+    //-----------------------------------------------------------
+
+
+    //-----------------------------------------------------------
+    if(gSystem->AccessPathName(loadDat.Data())==0){
+
+
+	ifstream in;
+	in.open(loadDat.Data());
+	Char_t line[5000];
+	TString l="";
+
+
+	while(in.good() && !in.eof())
+	{
+	    in.getline(line,5000);
+	    l=line;
+	    TString word;
+	    if(l != "" ){
+		timeStamp=0;
+
+
+		//-----------------------------------------------------------
+		// tokenize the line: format "timestamp mainCluster:njobsRun:njobsAvail:njobsMaximum:loadAvail:loadMaximum  lcscCluster:njobsRun:njobsAvail:njobsMaximum:loadAvail:loadMaximum "
+		TObjArray* a = l.Tokenize(" ");
+		for(Int_t i=0; i<a->GetEntries();i++){
+		    word = ((TObjString*)a->At(i))->GetString();
+		    if(i==0) {
+			timeStamp = word.Atoi();
+			continue;
+		    }
+		    if(timeStamp<range1) continue;
+
+		    //-----------------------------------------------------------
+		    // get user and number of jobs
+		    TObjArray* a2 = word.Tokenize(":");
+		    if(a2->GetEntries()==6){
+			cluster      = ((TObjString*)a2->At(0))->GetString();
+			njobsRun     = ((TObjString*)a2->At(1))->GetString().Atoi();
+			njobsAvail   = ((TObjString*)a2->At(2))->GetString().Atoi();
+			njobsMaximum = ((TObjString*)a2->At(3))->GetString().Atoi();
+			loadAvail    = ((TObjString*)a2->At(4))->GetString().Atof();
+			loadMaximum  = ((TObjString*)a2->At(5))->GetString().Atof();
+
+			if(cluster != "mainCluster") continue;
+
+
+			//if(njobs == 0) continue;
+			addLoadPoint("Run"  ,njobsRun    ,timeStamp,toffset,mLoadRun     ,colorLoadnRun    ,markerLoadnRun    ,styleLoadnRun);
+			addLoadPoint("Avail",njobsAvail  ,timeStamp,toffset,mLoadnAvail  ,colorLoadnAvail  ,markerLoadnAvail  ,styleLoadnAvail);
+			addLoadPoint("Max"  ,njobsMaximum,timeStamp,toffset,mLoadnMaximum,colorLoadnMaximum,markerLoadnMaximum,styleLoadnMaximum);
+			addLoadPoint("Avail",loadAvail   ,timeStamp,toffset,mLoadAvail   ,colorLoadAvail   ,markerLoadAvail   ,styleLoadAvail);
+			addLoadPoint("Max"  ,loadMaximum ,timeStamp,toffset,mLoadMaximum ,colorLoadMaximum ,markerLoadMaximum ,styleLoadMaximum);
+
+		    } else {
+			cout<<"wrong : "<<word.Data()<<endl;
+		    }
+		    a2->Delete();
+		    delete a2;
+		    //-----------------------------------------------------------
+		}
+		a->Delete();
+		delete a;
+		//-----------------------------------------------------------
+
+	    }
+	}
+	in.close();
+
+
+    }   else {
+	cout<<"loadfile not found : "<<loadDat.Data()<<endl;
     }
     //-----------------------------------------------------------
 
@@ -520,6 +648,72 @@ void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.d
     //-----------------------------------------------------------
 
 
+    //###########################################################
+    //####### LOAD ##############################################
+    //###########################################################
+
+
+    //-----------------------------------------------------------
+    TCanvas* cLoadnJobs = new TCanvas("cLoadnJobs","number of running jobs",1000,800);
+    gPad->SetGridy();
+    gPad->SetGridx();
+    xmax = 0;
+    xmin = 0;
+    ymax = 0;
+    ymin = 0;
+
+    findMinMax(xmin,xmax,ymin,ymax,mLoadnMaximum);
+    ymin = 0;
+
+    TH2F* hloadNJobs = new TH2F("hloadNJobs",Form("number of running jobs : %s %s",stampDate.Data(),stampTime.Data()),1000,xmin,xmax,10,ymin == 0 ? 0 : ymin*.9,ymax*1.1);
+    hloadNJobs->GetXaxis()->SetTimeDisplay(1);
+    hloadNJobs->GetXaxis()->SetTimeFormat("%H:%M");
+    hloadNJobs->GetXaxis()->SetLabelSize(0.02);
+    hloadNJobs->GetXaxis()->LabelsOption("v");
+    hloadNJobs->GetXaxis()->SetTickLength(0);
+    hloadNJobs->SetYTitle("running jobs");
+    hloadNJobs->GetYaxis()->SetTitleOffset(2);
+
+    hloadNJobs->Draw();
+    TLegend* lloadNJobs = new TLegend(0.9,0.9,0.995,0.1,"","brNDC");
+    addToLegend(lloadNJobs,mLoadnMaximum);
+    addToLegend(lloadNJobs,mLoadnAvail);
+    addToLegend(lloadNJobs,mLoadRun);
+
+    draw(mLoadnMaximum);
+    draw(mLoadnAvail);
+    draw(mLoadRun);
+    lloadNJobs->Draw();
+    //-----------------------------------------------------------
+
+    //-----------------------------------------------------------
+    TCanvas* cLoad = new TCanvas("cLoad","cluster load",1000,800);
+    gPad->SetGridy();
+    gPad->SetGridx();
+
+    findMinMax(xmin,xmax,ymin,ymax,mLoadAvail);
+    ymin = 0;
+
+    TH2F* hload = new TH2F("hload",Form("cluster load : %s %s",stampDate.Data(),stampTime.Data()),1000,xmin,xmax,10,ymin == 0 ? 0 : ymin*.9,ymax*1.1);
+    hload->GetXaxis()->SetTimeDisplay(1);
+    hload->GetXaxis()->SetTimeFormat("%H:%M");
+    hload->GetXaxis()->SetLabelSize(0.02);
+    hload->GetXaxis()->LabelsOption("v");
+    hload->GetXaxis()->SetTickLength(0);
+    hload->SetYTitle("Load");
+    hload->GetYaxis()->SetTitleOffset(2);
+
+    hload->Draw();
+    TLegend* lload = new TLegend(0.9,0.9,0.995,0.1,"","brNDC");
+    addToLegend(lload,mLoadMaximum);
+    addToLegend(lload,mLoadAvail);
+
+    draw(mLoadMaximum);
+    draw(mLoadAvail);
+    lload->Draw();
+    //-----------------------------------------------------------
+
+
 
 
     //-----------------------------------------------------------
@@ -535,13 +729,24 @@ void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.d
     cuserBigPend   ->SaveAs(Form("%s/%s_Big_pend.png"  ,outdir.Data(),pictureName.Data()));
 
 
-    huser->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
-    huserSmall->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
-    huserBig->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
-    huserPend->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
-    huserSmallPend->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
-    huserBigPend->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
+    pictureName=gSystem->BaseName(loadDat.Data());
+    pictureName.ReplaceAll(".dat","");
+    cLoad     ->SaveAs(Form("%s/%s_Load.png"       ,outdir.Data(),pictureName.Data()));
+    cLoadnJobs->SaveAs(Form("%s/%s_LoadnJobs.png"  ,outdir.Data(),pictureName.Data()));
 
+
+    huser         ->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
+    huserSmall    ->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
+    huserBig      ->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
+    huserPend     ->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
+    huserSmallPend->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
+    huserBigPend  ->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
+
+    hloadNJobs    ->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
+    hload         ->GetXaxis()->SetRangeUser(tnow-toffset-3600*zoom,tnow-toffset);
+
+    pictureName=gSystem->BaseName(userDat.Data());
+    pictureName.ReplaceAll(".dat","");
     cuser          ->SaveAs(Form("%s/%s_run_%ih.png"       ,outdir.Data(),pictureName.Data(),zoom));
     cuserSmall     ->SaveAs(Form("%s/%s_Small_run_%ih.png" ,outdir.Data(),pictureName.Data(),zoom));
     cuserBig       ->SaveAs(Form("%s/%s_Big_run_%ih.png"   ,outdir.Data(),pictureName.Data(),zoom));
@@ -560,6 +765,10 @@ void plotHist(TString userDat="/misc/kempter/GE_mon_log_dev/logUser_2014-01-20.d
     cgroup    ->SaveAs(Form("%s/%s_run_%ih.png" ,outdir.Data(),pictureName.Data(),zoom));
     cgroupPend->SaveAs(Form("%s/%s_pend_%ih.png",outdir.Data(),pictureName.Data(),zoom));
 
+    pictureName=gSystem->BaseName(loadDat.Data());
+    pictureName.ReplaceAll(".dat","");
+    cLoad     ->SaveAs(Form("%s/%s_Load_%ih.png"       ,outdir.Data(),pictureName.Data(),zoom));
+    cLoadnJobs->SaveAs(Form("%s/%s_LoadnJobs_%ih.png"  ,outdir.Data(),pictureName.Data(),zoom));
 
     //-----------------------------------------------------------
 

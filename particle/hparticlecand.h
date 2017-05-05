@@ -73,19 +73,21 @@ protected:
     SmallFloat  fMomentumOrg;           // particle's momentum [MeV]  before correction
     SmallFloat  fDistanceToMetaHitOrg;  // track's distance to meta hit [mm]  before correction
 
-    //properties of shower hits
-    SmallFloat  fShowerSum0;          // charge sum of PreShower cluster (0)
-    SmallFloat  fShowerSum1;          // charge sum of PreShower cluster (1)
+    //properties of shower hits | EMC cluster
+    SmallFloat  fShowerSum0;          // charge sum of PreShower cluster (0)  | EMC:energy
+    SmallFloat  fShowerSum1;          // charge sum of PreShower cluster (1)  | EMC:time
     SmallFloat  fShowerSum2;          // charge sum of PreShower cluster (2)
+    UShort_t    fEmcFlags;            // |16|15|14|13|12|11|10|9|8|7|6|5|4|3|2|1|
+                                      //                        |s|m| ncells  |u|    s=rpc ind is same, m=cluster is matched in time with rpc, u=isEMC
 
-    Char_t      fSelectedMeta;        // which Metahit has been used  kNoUse,kTofClst,kTofHit1,kTofHit2,kRpcClst,kShowerHit
+    Char_t      fSelectedMeta;        // which Metahit has been used  kNoUse,kTofClst,kTofHit1,kTofHit2,kRpcClst,kShowerHit,kEmcClst
     Short_t     fMetaInd;             // index of Metamatch
     Short_t     fRichInd;             // index of RICH hit
     Short_t     fRichBTInd;           // index of RICH BT hit
     Short_t     fInnerSegInd;         // index of inner MDC Segment
     Short_t     fOuterSegInd;         // index of outer MDC Segment
     Short_t     fRpcInd;              // index of RPC Hit
-    Short_t     fShowerInd;           // index of SHOWER hit
+    Short_t     fShowerInd;           // index of SHOWER hit | EMC cluster
     Short_t     fTofHitInd;           // index of TOF hit
     Short_t     fTofClstInd;          // index of TOF cluster
     UInt_t      fLayers;              // bit array for fired MDC layers  (1-24 bit layers + 31-29 bit fake reject + 28,27,26 bit clusOffvertex,vertex,primary)
@@ -139,6 +141,7 @@ public:
  	,fShowerSum0 (-1)
 	,fShowerSum1(-1)
 	,fShowerSum2(-1)
+	,fEmcFlags(0)
 	,fSelectedMeta(-1)
 	,fMetaInd(-1)
 	,fRichInd(-1)
@@ -215,8 +218,10 @@ public:
 	void    setRichTheta(Float_t p)                   { fRichTheta = p;             }
 	void    setMetaMatchQuality(Float_t q)            { fMetaMatchQuality = q;      }
 	void    setMetaMatchQualityShower(Float_t q)      { fMetaMatchQualityShower = q;}
+	void    setMetaMatchQualityEmc(Float_t q)         { fMetaMatchQualityShower = q;} // share with shower
 	void    setMetaMatchRadius(Float_t q)             { fMetaMatchRadius = q;       }
 	void    setMetaMatchRadiusShower(Float_t q)       { fMetaMatchRadiusShower = q; }
+	void    setMetaMatchRadiusEmc(Float_t q)          { fMetaMatchRadiusShower = q; } // share with shower
 	void    setRkMetaDx(Float_t q)                    { fRkMetaDx   = q;            }
 	void    setRkMetaDy(Float_t q)                    { fRkMetaDy   = q;            }
 	void    setBetaOrg(Float_t b)                     { fBetaOrg = b;               }
@@ -225,6 +230,16 @@ public:
 	void    setShowerSum0(Float_t q)                  { fShowerSum0 = q;            }
 	void    setShowerSum1(Float_t q)                  { fShowerSum1 = q;            }
 	void    setShowerSum2(Float_t q)                  { fShowerSum2 = q;            }
+	void    setEmcEnergy(Float_t e)                   { fShowerSum0 = e;            } // share with shower
+	void    setEmcTime(Float_t t)                     { fShowerSum1 = t;            } // share with shower
+        void    setIsEmc()                                { fEmcFlags |= 0x01; }
+        void    setIsEmcMatchedToRpc()                    { fEmcFlags |= (0x01 << 6); }
+        void    setIsEmcMatchedToSameRpc()                { fEmcFlags |= (0x01 << 7); }
+        void    setEmcNCells(UChar_t n)                   { if( n>31) n=31; fEmcFlags |= (((n&(0x1F))<<1)); }
+	void    unsetIsEmc()                              { fEmcFlags &= ~( 0x01 << 0 ); }
+	void    unsetIsEmcMatchedToRpc()                  { fEmcFlags &= ~( 0x01 << 6 ); }
+	void    unsetIsEmcMatchedToSameRpc()              { fEmcFlags &= ~( 0x01 << 7 ); }
+	void    unsetEmcNCells()                          { fEmcFlags &= ~( 0x1F << 1 ); }
 
 	void    setSelectedMeta(Int_t flag)               { fSelectedMeta = (Char_t)flag;}
 	void    setMetaInd(Int_t ind)                     { fMetaInd    = ind;          }
@@ -234,6 +249,7 @@ public:
 	void    setOuterSegInd(Int_t ind)                 { fOuterSegInd= ind;          }
         void    setRpcInd(Int_t ind)                      { fRpcInd     = ind;          }
 	void    setShowerInd(Int_t ind)                   { fShowerInd  = ind;          }
+	void    setEmcInd(Int_t ind)                      { fShowerInd  = ind;          }  // share with shower
 	void    setTofHitInd(Int_t ind)                   { fTofHitInd  = ind;          }
 	void    setTofClstInd(Int_t ind)                  { fTofClstInd = ind;          }
 
@@ -279,8 +295,10 @@ public:
 	Float_t getRichTheta()                  const     { return fRichTheta;          }
 	Float_t getMetaMatchQuality()           const     { return fMetaMatchQuality;   }
 	Float_t getMetaMatchQualityShower()     const     { return fMetaMatchQualityShower;}
+	Float_t getMetaMatchQualityEmc()        const     { return fMetaMatchQualityShower;} // share with shower
 	Float_t getMetaMatchRadius()            const     { return fMetaMatchRadius;   }
 	Float_t getMetaMatchRadiusShower()      const     { return fMetaMatchRadiusShower;}
+	Float_t getMetaMatchRadiusEmc()         const     { return fMetaMatchRadiusShower;}  // share with shower
 	Float_t getRkMetaDx()                   const     { return fRkMetaDx;           }
 	Float_t getRkMetaDy()                   const     { return fRkMetaDy;           }
 	Float_t getBetaOrg()                    const     { return fBetaOrg;            }
@@ -292,12 +310,19 @@ public:
 	Float_t getShowerSum1()                 const     { return fShowerSum1;         }
 	Float_t getShowerSum2()                 const     { return fShowerSum2;         }
         Float_t getShowerDeltaSum()             const     { return fShowerSum0 ==-1 && fShowerSum1 == -1 ? -1 : fShowerSum1+fShowerSum2-fShowerSum0; }
+        Float_t getEmcEnergy()                  const     { return fShowerSum0;         }  // share with shower
+	Float_t getEmcTime()                    const     { return fShowerSum1;         }  // share with shower
+        Bool_t  isEmc()                                   { return fEmcFlags & 0x01;}
+        Bool_t  isEmcMatchedToRpc()                       { return (fEmcFlags>>6) & 0x01;}
+        Bool_t  isEmcMatchedToSameRpc()                   { return (fEmcFlags>>7) & 0x01;}
+        UChar_t getEmcNCells()                            { return (fEmcFlags>>1) & 0x1F;}
 
-	Int_t   getSelectedMeta()               const     { return (Int_t)fSelectedMeta;}  // find the defined enum in hparticledef.h
+        Int_t   getSelectedMeta()               const     { return (Int_t)fSelectedMeta;}  // find the defined enum in hparticledef.h
 	Bool_t  isTofHitUsed()                  const     { return (fSelectedMeta == Particle::kTofHit1 || fSelectedMeta == Particle::kTofHit2) ? kTRUE : kFALSE; }
         Bool_t  isTofClstUsed()                 const     { return (fSelectedMeta == Particle::kTofClst)   ? kTRUE : kFALSE; }
         Bool_t  isRpcClstUsed()                 const     { return (fSelectedMeta == Particle::kRpcClst)   ? kTRUE : kFALSE; }
         Bool_t  isShowerUsed()                  const     { return (fSelectedMeta == Particle::kShowerHit) ? kTRUE : kFALSE; }
+        Bool_t  isEmcUsed()                     const     { return (fSelectedMeta == Particle::kEmcClst)   ? kTRUE : kFALSE; }
         Bool_t  isMetaUsed()                    const     { return (fSelectedMeta != Particle::kNoUse)     ? kTRUE : kFALSE; }
 
 	Int_t   getMetaInd()                    const     { return fMetaInd;            }
@@ -307,6 +332,7 @@ public:
 	Int_t   getOuterSegInd()                const     { return fOuterSegInd;        }
 	Int_t   getRpcInd()                     const     { return fRpcInd;             }
 	Int_t   getShowerInd()                  const     { return fShowerInd;          }
+	Int_t   getEmcInd()                     const     { return fShowerInd;          } // share with shower
 	Int_t   getTofHitInd()                  const     { return fTofHitInd;          }
 	Int_t   getTofClstInd()                 const     { return fTofClstInd;         }
         Int_t   getMetaHitInd()                 const     {
@@ -315,6 +341,7 @@ public:
             else if (fSelectedMeta == Particle::kTofClst)   return fTofClstInd;
 	    else if (fSelectedMeta == Particle::kRpcClst)   return fRpcInd;
             else if (fSelectedMeta == Particle::kShowerHit) return fShowerInd;
+            else if (fSelectedMeta == Particle::kEmcClst)   return fShowerInd;   // share with shower
             return -1;
 	}
 
@@ -453,7 +480,7 @@ public:
 	Int_t getMetaModule(UInt_t hit) {  if(hit<2){ return (fmetaAddress>>(hit*11+7)&(0xF))-1; } else return -1; }
 	Int_t getMetaCell  (UInt_t hit) {  if(hit<2){ return (fmetaAddress>>(hit*11)&(0x7F))-1;  } else return -1; }
 
-	ClassDef(HParticleCand,9)  // A simple track of a particle
+	ClassDef(HParticleCand,10)  // A simple track of a particle
 };
 
 

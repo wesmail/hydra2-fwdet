@@ -10,6 +10,7 @@ class HIterator;
 class HTofGeomPar;
 class HRpcGeomPar;
 class HShowerGeometry;
+class HEmcGeomPar;
 class HMetaMatchPar;
 class TH2F;
 
@@ -29,8 +30,9 @@ class HMdcClusMetaMatch : public TObject {
     HCategory       *pCatShower;
     HIterator       *iterShower;
   
-    Bool_t           isGeant;
-    
+    HEmcGeomPar     *fEmcGeometry;    // Emc geometry
+    HCategory       *fCatEmc;         // pointer to the Emc category
+
     // Matching cut parameters (for 6 sectors):
     HMetaMatchPar   *pMatchPar;
     Float_t          qualityMulp2;        // Incr.qual.cut by sqrt(qualityMulp2)
@@ -51,6 +53,12 @@ class HMdcClusMetaMatch : public TObject {
     Float_t          offsetShrX[6];
     Float_t          offsetShrY[6];
     Float_t          quality2ShrCut[6];
+    
+    Float_t          sigma2EmcX[6];
+    Float_t          sigma2EmcY[6];
+    Float_t          offsetEmcX[6];
+    Float_t          offsetEmcY[6];
+    Float_t          quality2EmcCut[6];
     
     Double_t         rpcSecModTrans[6][12];      // One module is used only
     Double_t         shrSecModTrans[6][12];      // One module is used only
@@ -80,8 +88,8 @@ class HMdcClusMetaMatch : public TObject {
 
     UInt_t           nRpcHits[6];    
     RpcHit           rpcHitArr[6][200];
-    UInt_t           nShowerHits[6];    
-    ShowerHit        shrHitArr[6][200];
+    UInt_t           nShowerHits[6];     // It is used for EMC also 
+    ShowerHit        shrHitArr[6][200];  // It is used for EMC also 
     UInt_t           nTofHits[6];
     TofHit           tofHitArr[6][100];
     
@@ -110,6 +118,7 @@ class HMdcClusMetaMatch : public TObject {
     void   setInitParam(void);
     void   collectRpcClusters(void);
     void   collectShowerHits(void);
+    void   collectEmcClusters(void);
     void   collectTofHits(void);
     void   addTofHit(HTofHit* pTofHit);
     Bool_t testAndFill(Int_t sec,const HGeomVector& targ,

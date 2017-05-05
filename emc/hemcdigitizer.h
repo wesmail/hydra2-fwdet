@@ -15,17 +15,18 @@ class HEmcCal;
 class HEmcDetector;
 class HEmcGeomPar;
 class HEmcDigiPar;
+class HEmcSimulPar;
 class HGeantEmc;
 
 class HEmcDigitizer : public HReconstructor {
 protected:
 
   //---------------------------------------------------------------
-  // define some auxiliary strutures
+  // define some auxiliary structures
   typedef struct celltrack { // stores all needed infos per cell
     Float_t gtime;           // GEANT time (used for sorting)
     Int_t   gtrack;          // GEANT track number
-    Float_t trackEn;         // number  of photo electrons
+    Float_t trackEn;         // number of photo electrons
 
     // Reset initial values
     void reset() {
@@ -44,13 +45,13 @@ protected:
     }
   } celltrack;
 
-  typedef struct {  // collection of all tracks per cell
+  typedef struct {  // collects all tracks per cell
     Float_t            energy;         // number of photo electrons
-    Bool_t             isEmbeddedReal; // kTRUE - real data cell 
-    vector<celltrack*> ctracks;        // all cell tracks
-    vector<Int_t>      inputTracks;    // tracks in the cell. "inputTracks" not always eq. "ctracks"
+    Bool_t             isEmbeddedReal; // kTRUE - real data cell
+    vector<celltrack*> ctracks;        // all tracks in the cell
+    vector<Int_t>      inputTracks;    // tracks in the cell ("inputTracks" is not always equal to "ctracks")
 
-    void reset() { // Reset initial values. deletes vector
+    void reset() { // Resets initial values, deletes vector
       energy         = 0.;
       isEmbeddedReal = kFALSE;
       for (UInt_t i=0;i<ctracks.size();i++) { delete ctracks[i]; }
@@ -58,7 +59,7 @@ protected:
       ctracks.clear();
     }
 
-    // Sort by increasing GEANT time
+    // Sorts by increasing GEANT time
     void sortTime(void) {
       std::sort(ctracks.begin(),ctracks.end(),celltrack::cmpTime);
     }
@@ -77,24 +78,25 @@ protected:
   Int_t            embeddingmode;    //  switch for keeping geant hits / realistic embedding
 
   HLocation        fLoc;             // Location for new object
-  HCategory*       fGeantEmcCat;     // Pointer to Emc Geant data category
-  HLinearCategory* fGeantKineCat;    // Pointer to GeantKine data category
-  HCategory*       fCalCat;          // Pointer to Cal  data category  
-  HCategory*       fStartHitCat;     // Pointer to the Start Hit data        
-  HEmcDetector*    fEmcDet;          // Pointer to EmcDetector                 
-  HEmcGeomPar*     fGeomPar;         // Geometry parameters                    
-  HEmcDigiPar*     fDigiPar;         // Digitization parameters                
-  HIterator*       iterGeantEmc;     // Iterator over catEmcGeantRaw category  
-  HGeomTransform   labTrans[6];      // Transfomation lad. <-> emc_module
+  HCategory*       fGeantEmcCat;     // GeantEmc data category
+  HLinearCategory* fGeantKineCat;    // GeantKine data category
+  HCategory*       fCalCat;          // Cal data category
+  HCategory*       fStartHitCat;     // StartHit data category
+  HEmcDetector*    fEmcDet;          // EmcDetector
+  HEmcGeomPar*     fGeomPar;         // Geometry parameters
+  HEmcDigiPar*     fDigiPar;         // Digitization parameters
+  HEmcSimulPar*    fSimulPar;        // Simulation parameter: lookup table for PMT types
+  HIterator*       iterGeantEmc;     // Iterator over catEmcGeantRaw category
+  HGeomTransform   labTrans[6];      // Transfomation lab. <-> emc_module
   
-  Int_t            maxCell;          // maximum number of cells (including spares)
+  Int_t            maxCell;          // maximal number of cells (including spares)
   Float_t          sigmaT;           // time resolution
-  Float_t          phot2Energy[6];   // mean energy deposition PMT per photon electron (1000./1306.) in MeV for 6 sectors
-  Float_t          facEnergSmear[6]; // factor for energy smearing for 6 sectors
-  Double_t         zVertBorder;      // tracks without HGeantEmc hit but with vertex in region zVertBorder (coor.sys. om emc module) 
-                                     //  will be analysed as track with HGeantEmc hit 
-                                     //  Input plane of EMC module correspond zVertBorder=0.
-  Float_t          energyDepositCut; // Cut for the minimal energy deposit in cell. It is used for time1 determination
+  Float_t          phot2Energy[3];   // mean energy deposit per photo electron for different types of PMT (1000./1306.) [MeV]
+  Float_t          facEnergSmear[3]; // factor for energy smearing for different types of PMT
+  Double_t         zVertBorder;      // tracks without HGeantEmc hit but with vertex in region zVertBorder (coor.sys. of emc module) 
+                                     //  will be analysed as track with HGeantEmc hit
+                                     //  Input plane of EMC module corresponds to zVertBorder=0.
+  Float_t          energyDepositCut; // Cut for the minimal energy deposit in the cell. It is used for time1 determination.
   Float_t          signalVelocity;   // Velocity of the signal propagation along cell (default: speed of light in the vacuum)
   Float_t          halfOfCellLength; // It is needed because HGeanEmc hits now are shifted by half of cell relative coor.system of EMC !
   

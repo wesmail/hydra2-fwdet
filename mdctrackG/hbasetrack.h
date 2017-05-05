@@ -13,7 +13,7 @@ class HBaseTrack:public TObject
    Float_t phi;          // From HMdcSeg
    Short_t tofHitInd;    // Index of HTofHit
    Short_t tofClustInd;  // Index of HTofCluster
-   Short_t showerHitInd; // Index of HShowerHitTof
+   Short_t showerHitInd; // Index of HShowerHit or HEmcCluster
    Short_t rpcClustInd;  // Index of HRpcCluster
    Float_t p;            // Momentum of particle
    Float_t beta;         // speed of paricle
@@ -39,6 +39,7 @@ class HBaseTrack:public TObject
   void     setTofHitInd   (Short_t tof)                 { tofHitInd    = tof;}
   void     setTofClustInd (Short_t tof)                 { tofClustInd  = tof;}
   void     setShowerHitInd(Short_t shower)              { showerHitInd = shower;}
+  void     setEmcClustInd (Short_t emc)                 { showerHitInd = emc;}
   void     setRpcClustInd (Short_t rpc)                 { rpcClustInd  = rpc;}
   void     setMass2       (Float_t MASS2,Float_t err)   { mass2 = MASS2; cov.setErr(5,err);}
   void     setTof         (Float_t TOF)                 { tof = TOF;}
@@ -61,6 +62,7 @@ class HBaseTrack:public TObject
   Bool_t   isOverlap      (void) const                  { return ((showerHitInd>-1 || rpcClustInd>-1) && (tofHitInd>-1 || tofClustInd>-1) ) ? kTRUE:kFALSE; }
   Int_t    getSystem      (void) const                  { return ( tofHitInd>-1 || tofClustInd>-1 ) ? 1 : ((showerHitInd>-1 || rpcClustInd>-1) ? 0:-1); } //???
   Short_t  getShowerHitInd(void) const                  { return showerHitInd;}
+  Short_t  getEmcClustInd (void) const                  { return showerHitInd;}
   Short_t  getTofHitInd   (void) const                  { return tofHitInd;}
   Short_t  getTofClustInd (void) const                  { return tofClustInd;}
   Short_t  getRpcClustInd (void) const                  { return rpcClustInd;}

@@ -137,6 +137,7 @@ private:
   Bool_t   useDeltaElectrons;      //! switch for use/not use delta electron time smearing
   Bool_t   useDeltaMomSelection;   //! switch for use/not use momentum below momMaxDeltaElecCut for primary electrons to identify delta electrons
   Int_t    ionID;                  //! beam ion (au ==109)
+  Float_t  fProbDeltaAccepted;     //! 0 - 1 probability to accept a delta electron (yield adjustment)
   Float_t  t1minDeltaElec;         //! delta electron smearing lower time range for t1 [ns]
   Float_t  t1maxDeltaElec;         //! delta electron smearing upper time range for t1 [ns]
   Float_t  momMaxDeltaElecCut;     //! delta electron smearing : primary electrons below this mom are considdered to be delta electrons  [MeV/c]
@@ -273,7 +274,7 @@ public:
 
 
   //----------- using delta electrons -----------------
-  void   setDeltaElectronUse(Bool_t use, Bool_t useDeltaMomSel=kFALSE, Int_t ionId=109,Float_t t1min=-950.,Float_t t1max=400.,Float_t momCut=20.){  useDeltaElectrons = use;useDeltaMomSelection = useDeltaMomSel; ionID=ionId; t1minDeltaElec = t1min;  t1maxDeltaElec = t1max; momMaxDeltaElecCut = momCut; }
+  void   setDeltaElectronUse(Bool_t use, Bool_t useDeltaMomSel=kFALSE, Int_t ionId=109,Float_t t1min=-950.,Float_t t1max=400.,Float_t momCut=20.,Float_t probDelta=2.){  useDeltaElectrons = use;useDeltaMomSelection = useDeltaMomSel; ionID=ionId; t1minDeltaElec = t1min;  t1maxDeltaElec = t1max; momMaxDeltaElecCut = momCut; fProbDeltaAccepted = probDelta;}
   Bool_t getDeltaElectronUse() { return useDeltaElectrons;}
   void   setDeltaElectronMinMomCut(Float_t s0=2.,Float_t s1=2.,Float_t s2=4.5,Float_t s3=2.,Float_t s4=2.,Float_t s5=4.5) { momMinDeltaCut[0]=s0; momMinDeltaCut[1]=s1; momMinDeltaCut[2]=s2;  momMinDeltaCut[3]=s3;  momMinDeltaCut[4]=s4; momMinDeltaCut[5]=s5; }
   void   printStatus           ();

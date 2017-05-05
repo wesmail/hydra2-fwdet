@@ -171,14 +171,14 @@ Int_t HRich700DigiMapPar::getSector(Float_t x, Float_t y)
     return sectorPhi;
 }
 
-void HRich700DigiMapPar::getLocation(Int_t pmtId, Float_t x, Float_t y, Int_t *loc)
+void HRich700DigiMapPar::getLocation(Int_t pmtId, Float_t x, Float_t y, Int_t *loc, Bool_t silent)
 {
     UInt_t ufNofPixelsInRow = (UInt_t)fNofPixelsInRow;
 
     loc[0]=0; loc[1]=0; loc[2]=0;
     map<Int_t, HRich700PmtData>::iterator it = fPmtDataMapPmtId.find(pmtId);
     if (it == fPmtDataMapPmtId.end()){
-	Warning("getLocation","No PMT with id: %i!", pmtId);
+	if(!silent) Warning("getLocation","No PMT with id: %i!", pmtId);
 	return;
     }
 
@@ -209,7 +209,7 @@ void HRich700DigiMapPar::getLocation(Int_t pmtId, Float_t x, Float_t y, Int_t *l
 }
 
 
-pair<Double_t, Double_t> HRich700DigiMapPar::getXY(Int_t* loc)
+pair<Double_t, Double_t> HRich700DigiMapPar::getXY(Int_t* loc,Bool_t silent)
 {
     UInt_t ufNofPixelsInRow = (UInt_t)fNofPixelsInRow;
 
@@ -221,7 +221,7 @@ pair<Double_t, Double_t> HRich700DigiMapPar::getXY(Int_t* loc)
 
     map<pair<Int_t, Int_t>, HRich700PmtData>::iterator it = fPmtDataMapXY.find(make_pair(pmtIndX, pmtIndY));
     if (it == fPmtDataMapXY.end()){
-	Warning("getXY()","No PMT with XY: %i %i!",pmtIndX,pmtIndY);
+	if(!silent)Warning("getXY()","No PMT with XY: %i %i!",pmtIndX,pmtIndY);
 	return pair<Double_t, Double_t>(0., 0.);
     }
     HRich700PmtData pmtData = it->second;

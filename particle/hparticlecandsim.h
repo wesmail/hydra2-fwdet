@@ -30,7 +30,7 @@ private:
     Float_t fGeantgenweight;          // GEANT info on particle generation
     Int_t   fGeantTrackRich  [3];     // GEANT tracks in rich
     Int_t   fGeantTrackMeta  [4];     // GEANT tracks in tof or rpc
-    Int_t   fGeantTrackShower[4];     // GEANT tracks in Shower
+    Int_t   fGeantTrackShower[4];     // GEANT tracks in Shower | ECAL
     Int_t   fGeantTrackInnerMdc[2];   // GEANT tracks in inner MDC seg
     Int_t   fGeantTrackOuterMdc[2];   // GEANT tracks in outer MDC seg
     Char_t  fGeantTrackInnerMdcN[2];  // GEANT number of wires contributing for tracks in inner MDC seg
@@ -65,6 +65,7 @@ public:
 	void     setGeantTrackRich(Int_t a,Int_t i)   { if(i<3 && i>=0) fGeantTrackRich  [i] = a; }
 	void     setGeantTrackMeta(Int_t a,Int_t i)   { if(i<4 && i>=0) fGeantTrackMeta  [i] = a; }
 	void     setGeantTrackShower(Int_t a,Int_t i) { if(i<4 && i>=0) fGeantTrackShower[i] = a; }
+	void     setGeantTrackEmc   (Int_t a,Int_t i) { if(i<4 && i>=0) fGeantTrackShower[i] = a; }  // shared with shower
 	void     setGeantTrackInnerMdc(Int_t a,Int_t i,Int_t n) { if(i<2 && i>=0) { fGeantTrackInnerMdc[i] = a; fGeantTrackInnerMdcN[i] = n; }}
 	void     setGeantTrackOuterMdc(Int_t a,Int_t i,Int_t n) { if(i<2 && i>=0) { fGeantTrackOuterMdc[i] = a; fGeantTrackOuterMdcN[i] = n; }}
 	void     setGeantCorrTrackIds(UInt_t a)       { fGeantCorrTrackIds = a;          }
@@ -91,6 +92,7 @@ public:
 	Int_t    getGeantTrackRich(Int_t i)           { return (i<3 && i>=0)?  fGeantTrackRich  [i] :-1; }
 	Int_t    getGeantTrackMeta(Int_t i)           { return (i<4 && i>=0)?  fGeantTrackMeta  [i] :-1; }
 	Int_t    getGeantTrackShower(Int_t i)         { return (i<4 && i>=0)?  fGeantTrackShower[i] :-1; }
+	Int_t    getGeantTrackEmc   (Int_t i)         { return (i<4 && i>=0)?  fGeantTrackShower[i] :-1; }  // shared with shower
 	Int_t    getGeantTrackInnerMdc(Int_t i)       { return (i<2 && i>=0)?  fGeantTrackInnerMdc[i] :-1; }
         Int_t    getGeantTrackOuterMdc(Int_t i)       { return (i<2 && i>=0)?  fGeantTrackOuterMdc[i] :-1; }
 	Int_t    getGeantTrackInnerMdcN(Int_t i)      { return (i<2 && i>=0)?  fGeantTrackInnerMdcN[i] : 0; }
@@ -109,7 +111,7 @@ public:
              if(fGeantCorrTrackIds&kIsInOuterMDC)  n+=1;
              if(fGeantCorrTrackIds&kIsInTOF)       n+=1;
              if(fGeantCorrTrackIds&kIsInRPC)       n+=1;
-             if(fGeantCorrTrackIds&kIsInSHOWER)    n+=1;
+             if(fGeantCorrTrackIds&kIsInSHOWER||fGeantCorrTrackIds&kIsInEMC)    n+=1;
              return n;
         }
 	Bool_t   isGoodMDCWires (Int_t tr,Int_t   minInner=7  ,Int_t   minOuter=7  ,                                    Bool_t checkall=kFALSE,Bool_t requireOuter=kTRUE);

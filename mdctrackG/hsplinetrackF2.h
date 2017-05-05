@@ -20,6 +20,7 @@ class HGeomTransform;
 class HTofHit;
 class HMetaMatch2;
 class HShowerHit;
+class HEmcCluster;
 class HMagnetPar;
 class HMdcSizesCells;
 class HEventHeader;
@@ -68,12 +69,14 @@ private:
    HMetaMatch2 *pMetaMatch;
    HMdcTrkCand *pMdcTrkCand;      
    HCategory *fCatRpcCluster;     
-   HCategory *fCatShowerHit;
+   HCategory *fCatShowerHit;    
+   HCategory *fCatEmcCluster;
    HCategory *fCatMetaMatch;  
    HMdcGeomPar *fMdcGeometry;
    HSpecGeomPar *fSpecGeomPar;
    HTofHit *pTofHit[3];
-   HShowerHit *pShowerHit; 
+   HShowerHit  *pShowerHit; 
+   HEmcCluster *pEmcCluster;
    HMdcTrackGSpline *Spline;
    HIterator *fMetaMatchIter;
    HIterator *IterTof;
@@ -118,6 +121,7 @@ public:
    Short_t indRpc;
    Short_t indTof[3];
    Short_t indShower;
+   Short_t indEmc;
   
    
 private:   

@@ -23,11 +23,13 @@
 #include "hmdcgeompar.h"
 #include "htofgeompar.h"
 #include "hshowergeometry.h"
+#include "hemcgeompar.h"
 #include "hspecgeompar.h"
 #include "tofdef.h"
 #include "hmdcseg.h"
 #include "hmdchit.h"
 #include "showerdef.h"
+#include "emcdef.h"
 #include "hmdctrackgfieldpar.h"
 #include "hmatrixcategory.h"
 #include "hgeomtransform.h"
@@ -38,6 +40,7 @@
 #include "hsplinetrack.h"
 #include "hmagnetpar.h"
 #include "hshowerhitsim.h"
+#include "hemcclustersim.h"
 #include "hmdcsizescells.h"
 #include "hrpccluster.h"
 #include "rpcdef.h"
@@ -87,6 +90,7 @@ void HRKTrackBF2::clear()
   fTofGeometry    = NULL;
   fRpcGeometry    = NULL;
   fShowerGeometry = NULL;
+  fEmcGeometry    = NULL;
   fCatMetaMatch   = NULL;
   fMetaMatchIter  = NULL;
   fCatMdcTrkCand  = NULL;
@@ -96,6 +100,7 @@ void HRKTrackBF2::clear()
   fSplineTrack    = NULL;
   fCatKine        = NULL;
   fCatShower      = NULL;
+  fCatEmc         = NULL;
   fCatTof         = NULL;
   fCatTofCluster  = NULL;
   fCatRKTrack     = NULL;
@@ -104,6 +109,7 @@ void HRKTrackBF2::clear()
   pSplineTrack    = NULL;
   pTofCluster     = NULL;
   pShowerHit      = NULL;
+  pEmcCluster     = NULL;
   pRungeKutta     = NULL;
   pMdcSeg1        = NULL;
   pMdcSeg2        = NULL;
@@ -163,6 +169,11 @@ Bool_t HRKTrackBF2::init(){
       fShowerGeometry = (HShowerGeometry *)rtdb->getContainer("ShowerGeometry");
     }
  
+    // Emc-geometry
+    if (spec->getDetector("Emc")) {
+      fEmcGeometry = (HEmcGeomPar *)rtdb->getContainer("EmcGeomPar");
+    }
+    
     if (spec->getDetector("Rpc"))
     {
       fRpcGeometry   = (HRpcGeomPar*)rtdb->getContainer("RpcGeomPar");
@@ -203,8 +214,9 @@ Bool_t HRKTrackBF2::init(){
     if (!fCatTofCluster) Warning("init","No catTofCluster in input!");
 
     fCatShower = event->getCategory(catShowerHit);
-    if (!fCatShower) {
-	Warning("init","NO catShowerHit in input!");
+    fCatEmc    = event->getCategory(catEmcCluster);
+    if(fCatShower == NULL && fCatEmc == NULL) {
+	Warning("init","NO catShowerHit and catEmcCluster in input!");
     }
 
     //- Here we get category HRKTrackB to use it as an output in "execute()"
@@ -285,6 +297,19 @@ Bool_t HRKTrackBF2::reinit()
       normVecShower[is] = modTrans.transFrom(rz_mod) - modTrans.transFrom(r0_mod);
     }
     
+    if (fEmcGeometry) {
+      HModGeomPar *pmodgeom = fEmcGeometry->getModule(is);
+      HGeomTransform modTrans(pmodgeom->getLabTransform());
+      
+      modTrans.transTo(secTrans[is]);
+      
+      emcSM[is] = modTrans;
+      
+      HGeomVector r0_mod(0.0, 0.0, 0.);
+      HGeomVector rz_mod(0.0, 0.0, 1.);
+      normVecEmc[is] = modTrans.transFrom(rz_mod) - modTrans.transFrom(r0_mod);
+    }
+    
     if (fTofGeometry) {
       for(Int_t im=0; im<8; im++) {
         HModGeomPar *module = fTofGeometry->getModule(is,im);
@@ -323,6 +348,12 @@ void HRKTrackBF2::setMatchingParams(Int_t s)
   sShowerX[s]           = fMatchPar -> getShowerSigmaXOffset(s); //
   sShowerY[s]           = fMatchPar -> getShowerSigmaYOffset(s);
   quality2SHOWERCut[s]  = fMatchPar -> getShowerQualityCut(s)*fMatchPar -> getShowerQualityCut(s);
+  ////EMC 
+  sigma2MdcInEmcX[s]    = fMatchPar -> getEmcSigmaXMdc(s)*fMatchPar -> getEmcSigmaXMdc(s);
+  sigma2MdcInEmcY[s]    = fMatchPar -> getEmcSigmaYMdc(s)*fMatchPar -> getEmcSigmaYMdc(s);
+  sEmcX[s]              = fMatchPar -> getEmcSigmaXOffset(s); //
+  sEmcY[s]              = fMatchPar -> getEmcSigmaYOffset(s);
+  quality2EMCCut[s]     = fMatchPar -> getEmcQualityCut(s)*fMatchPar -> getEmcQualityCut(s);
   //TOF
   sigma2TofX[s]         = fMatchPar -> getTofSigmaX(s)*fMatchPar -> getTofSigmaX(s);
   sigma2TofY[s]         = fMatchPar -> getTofSigmaY(s)*fMatchPar -> getTofSigmaY(s);
@@ -486,10 +517,15 @@ Bool_t HRKTrackBF2::doMassStuff()
       isMatched = kTRUE;
       matchWithRpc();
     }
-  if( pMetaMatch -> getNShrHits() )
+  if( fShowerGeometry!=NULL && pMetaMatch -> getNShrHits() )
     {
       isMatched = kTRUE;
       matchWithShower();
+    }
+  else if(fEmcGeometry!=NULL && pMetaMatch -> getNEmcClusters() )
+    {
+      isMatched = kTRUE;
+      matchWithEmc();
     }
   if ( pMetaMatch -> getNTofHits() )
     {
@@ -579,6 +615,46 @@ void HRKTrackBF2::matchWithShower()
       }
   }
 
+void HRKTrackBF2::matchWithEmc()
+  {
+
+    if(!fCatEmc) return;
+
+    metaNormVec = normVecEmc[sector];
+    transMetaSM = emcSM[sector];
+
+    for(UChar_t n = 0; n < pMetaMatch -> getNEmcClusters(); ++n )
+      {
+	indEmc = pMetaMatch -> getEmcClusterInd(n);
+	if( indEmc < 0 )
+	  {
+	    Warning("matchWithEmc","Index of Emc is < 0, DISASTER!");
+	    continue;
+	  }
+	
+	pEmcCluster = (HEmcCluster*)fCatEmc -> getObject(indEmc);
+	
+	if(!pEmcCluster)
+	  {
+	    Warning("matchWithEmc","Pointer to Emc is NULL, DISASTER!");
+	    continue;
+	  }
+	 
+	tof          = pEmcCluster->getTime();
+        beta         = -1.0;
+        mass2        = -1.0;
+        metaeloss    = -1.0;
+	pEmcCluster -> getXYZLab(xTof,yTof,zTof);
+	pointMeta.setXYZ(xTof,yTof,zTof);
+	pointMeta = secTrans[sector].transTo(pointMeta);
+        zMod         =  0.; //pEmcCluster-> getZ();
+	calcBeta(zMod,3, kTRUE);   //kTRUE); -time will be used !!!!!!!!!!!!!!?????????????????
+	HRKTrackB* pRK = fillData(pMdcSeg1,pMdcSeg2,pSplineTrack,indexRK);
+        pRK->setShowerHitInd(indEmc);                 //setEmcClusterInd(indEmc);
+	pMetaMatch -> setRungeKuttaIndEmcCluster(n,(Short_t)indexRK);
+      }
+  }
+
 void HRKTrackBF2::calcBeta(Float_t zMod, Int_t mode, Bool_t option)
 { 
   pRungeKutta -> traceToMETA(pointMeta, metaNormVec);
@@ -624,7 +700,17 @@ void HRKTrackBF2::calcBeta(Float_t zMod, Int_t mode, Bool_t option)
    dY = localMeta.getY() - sTofY[sector];
    qualityTof =  getQuality(dX, dY, sigma2TofX[sector], sigma2TofY[sector]);
   }
-  
+    
+  else if (mode == 3) //emc
+  {
+   dXrms2  = pEmcCluster -> getSigmaXMod();
+   dYrms2  = pEmcCluster -> getSigmaYMod();
+   dX      = localMeta.getX() - sEmcX[sector];
+   dY      = localMeta.getY() - sEmcY[sector];
+   qualityEmc = getQuality(dX, dY,dXrms2*dXrms2 + sigma2MdcInEmcX[sector],dYrms2*dYrms2 + sigma2MdcInEmcY[sector]);
+     
+  }
+
   else 
   {
    Warning("calcBeta", "This option does not exist");
@@ -794,7 +880,8 @@ HRKTrackB* HRKTrackBF2::fillData(HMdcSeg* segment1,HMdcSeg* segment2,HSplineTrac
       rkt->setMETAdy(RKxyzMETA[1]);
       rkt->setMETAdz(RKxyzMETA[2]);
       rkt->setQualityRpc(qualityRpc);
-      rkt->setQualityShower(qualityShower);
+      if(fCatShower != NULL) rkt->setQualityShower(qualityShower);
+      else                   rkt->setQualityShower(qualityEmc);
       rkt->setQualityTof(qualityTof);
     } else {
       //something failed, or momentum reconstruction was not even called

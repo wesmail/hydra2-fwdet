@@ -1,8 +1,9 @@
-#ifndef HEMCCELLGEOMPAR_H
+#ifndef HEMCELLGEOMPAR_H
 #define HEMCCELLGEOMPAR_H
 
 #include "hparset.h"
 #include "TObjArray.h"
+#include "hgeomtransform.h"
 
 class HEmcDetector;
 class HEmcGeomPar;
@@ -14,6 +15,7 @@ protected:
   HEmcDetector* pDet;      // pointer to EMC detector
   HEmcGeomPar*  pGeomPar;  // pointer to EMC geometry detector
   Int_t         nMaxCells; // maximum number of cells in one module
+  HGeomTransform trMod2Lab[6]; // transformation lab.sys. <==> module sys. for 6 sectors 
 public:
   HEmcCellGeomPar(const Char_t* name="EmcCellGeomPar",
                   const Char_t* title="Emc cell geometry parameters",
@@ -27,6 +29,9 @@ public:
 
   const HGeomVector*  getLabPos(Int_t,Int_t) const ;
   const HGeomVector*  getLabPos(Int_t,Int_t,Int_t) const ;
+  
+  const HEmcDetector*   getEmcDetector(void) const     {return pDet;}
+  const HGeomTransform* getTransMod2Lab(Int_t s) const {return s>=0&&s<6 ? &trMod2Lab[s] : NULL;}
 
   ClassDef(HEmcCellGeomPar,0) // Class for EMC cell geometry
 };

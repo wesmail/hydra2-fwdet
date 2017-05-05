@@ -21,6 +21,7 @@
 #include "richdef.h"
 #include "rpcdef.h"
 #include "showerdef.h"
+#include "emcdef.h"
 #include "tofdef.h"
 #include "walldef.h"
 #include "hstartdef.h"
@@ -48,6 +49,8 @@
 #include "hrpchit.h"
 #include "hshowerhit.h"
 #include "hshowerhitsim.h"
+#include "hemccluster.h"
+#include "hemcclustersim.h"
 #include "hstart2hit.h"
 #include "hstart2cal.h"
 
@@ -1472,6 +1475,7 @@ Bool_t HParticleTool::normDX(HParticleCand* c,TString beamtime)
 
     if(!c) return kFALSE;
     if(c->getBeta()<0)   return kTRUE;   // no tof or rpc
+    if(c->isEmcUsed())   return kTRUE;   // beta from EMC
 
     Float_t metaDxnorm =  c->getRkMetaDx();
     if(metaDxnorm<-999) return kTRUE;  // no RK
@@ -1480,7 +1484,7 @@ Bool_t HParticleTool::normDX(HParticleCand* c,TString beamtime)
     Int_t module = c->getMetaModule(0);
     Int_t cell   = c->getMetaCell(0);
 
-    if(cell<0||module<0) {  cout<<"module or cell ==-1, should not happen"<<endl; return kFALSE; }
+    if(cell<0||module<0) { cout<<"module or cell ==-1, should not happen"<<endl; return kFALSE; }
 
     HParticleCandSim* csim = dynamic_cast<HParticleCandSim*> (c);
     if(c->isTofHitUsed()==1||c->isTofClstUsed()==1) {
@@ -1558,6 +1562,7 @@ Float_t HParticleTool::getNormDX(HParticleCand* c,TString beamtime)
 
     if(!c) return kFALSE;
     if(c->getBeta()<0)   return kTRUE;   // no tof or rpc
+    if(c->isEmcUsed())   return kTRUE;   // beta from EMC
 
     Float_t metaDxnorm =  c->getRkMetaDx();
     if(metaDxnorm<-999) return metaDxnorm;  // no RK
@@ -1566,7 +1571,7 @@ Float_t HParticleTool::getNormDX(HParticleCand* c,TString beamtime)
     Int_t module = c->getMetaModule(0);
     Int_t cell   = c->getMetaCell(0);
 
-    if(cell<0||module<0) {  cout<<"module or cell ==-1, should not happen"<<endl; return metaDxnorm; }
+    if(cell<0||module<0) { cout<<"module or cell ==-1, should not happen"<<endl; return metaDxnorm; }
     HParticleCandSim* csim = dynamic_cast<HParticleCandSim*> (c);
 
     if(c->isTofHitUsed()==1||c->isTofClstUsed()) {
@@ -1645,6 +1650,8 @@ Float_t HParticleTool::getSigmaDX(HParticleCand* c,TString beamtime)
 
     if(!c) return kFALSE;
     if(c->getBeta()<0)   return kTRUE;   // no tof or rpc
+    if(c->isEmcUsed())   return kTRUE;   // beta from EMC
+
     Float_t sigma = -1;
     Float_t metaDxnorm =  c->getRkMetaDx();
     if(metaDxnorm<-999) return sigma;  // no RK
@@ -1653,7 +1660,7 @@ Float_t HParticleTool::getSigmaDX(HParticleCand* c,TString beamtime)
     Int_t module = c->getMetaModule(0);
     Int_t cell   = c->getMetaCell(0);
 
-    if(cell<0||module<0) {  cout<<"module or cell ==-1, should not happen"<<endl; return sigma; }
+    if(cell<0||module<0) { cout<<"module or cell ==-1, should not happen"<<endl; return sigma; }
     HParticleCandSim* csim = dynamic_cast<HParticleCandSim*> (c);
     if(c->isTofHitUsed()==1||c->isTofClstUsed()) {
 
@@ -1693,6 +1700,7 @@ Bool_t HParticleTool::normDX(HParticleCand* c,HTofWalkPar* walkpar)
     if(!walkpar) return kFALSE;
     if(!c) return kFALSE;
     if(c->getBeta()<0)   return kTRUE;   // no tof or rpc
+    if(c->isEmcUsed())   return kTRUE;   // beta from EMC
 
     Float_t metaDxnorm =  c->getRkMetaDx();
     if(metaDxnorm<-999) return kTRUE;  // no RK
@@ -1701,7 +1709,7 @@ Bool_t HParticleTool::normDX(HParticleCand* c,HTofWalkPar* walkpar)
     Int_t module = c->getMetaModule(0);
     Int_t cell   = c->getMetaCell(0);
 
-    if(cell<0||module<0) {  cout<<"module or cell ==-1, should not happen"<<endl; return kFALSE; }
+    if(cell<0||module<0) { cout<<"module or cell ==-1, should not happen"<<endl; return kFALSE; }
 
     HParticleCandSim* csim = dynamic_cast<HParticleCandSim*> (c);
     if(c->isTofHitUsed()==1||c->isTofClstUsed()==1) {
@@ -1760,6 +1768,7 @@ Float_t HParticleTool::getNormDX(HParticleCand* c,HTofWalkPar* walkpar)
     if(!walkpar) return kFALSE;
     if(!c) return kFALSE;
     if(c->getBeta()<0)   return kTRUE;   // no tof or rpc
+    if(c->isEmcUsed())   return kTRUE;   // beta from EMC
 
     Float_t metaDxnorm =  c->getRkMetaDx();
     if(metaDxnorm<-999) return metaDxnorm;  // no RK
@@ -1768,7 +1777,7 @@ Float_t HParticleTool::getNormDX(HParticleCand* c,HTofWalkPar* walkpar)
     Int_t module = c->getMetaModule(0);
     Int_t cell   = c->getMetaCell(0);
 
-    if(cell<0||module<0) {  cout<<"module or cell ==-1, should not happen"<<endl; return metaDxnorm; }
+    if(cell<0||module<0) { cout<<"module or cell ==-1, should not happen"<<endl; return metaDxnorm; }
     HParticleCandSim* csim = dynamic_cast<HParticleCandSim*> (c);
 
     if(c->isTofHitUsed()==1||c->isTofClstUsed()) {
@@ -1826,6 +1835,7 @@ Float_t HParticleTool::getSigmaDX(HParticleCand* c,HTofWalkPar* walkpar)
     if(!walkpar) return kFALSE;
     if(!c) return kFALSE;
     if(c->getBeta()<0)   return kTRUE;   // no tof or rpc
+    if(c->isEmcUsed())   return kTRUE;   // beta from EMC
     Float_t sigma = -1;
     Float_t metaDxnorm =  c->getRkMetaDx();
     if(metaDxnorm<-999) return sigma;  // no RK
@@ -1834,7 +1844,7 @@ Float_t HParticleTool::getSigmaDX(HParticleCand* c,HTofWalkPar* walkpar)
     Int_t module = c->getMetaModule(0);
     Int_t cell   = c->getMetaCell(0);
 
-    if(cell<0||module<0) {  cout<<"module or cell ==-1, should not happen"<<endl; return sigma; }
+    if(cell<0||module<0) { cout<<"module or cell ==-1, should not happen"<<endl; return sigma; }
     HParticleCandSim* csim = dynamic_cast<HParticleCandSim*> (c);
     if(c->isTofHitUsed()==1||c->isTofClstUsed()) {
 
@@ -4204,6 +4214,16 @@ HShowerHit* HParticleTool::getShowerHit(Int_t showerind)
     return showerhit;
 }
 
+HEmcCluster* HParticleTool::getEmcCluster(Int_t emcind)
+{
+    // return HEmcCluster pointer from the object index
+    // in the category. In case of no success returns NULL
+
+    HEmcCluster* emcclst=0;
+    emcclst = HCategoryManager::getObject(emcclst,catEmcCluster,emcind,kTRUE);
+    return emcclst;
+}
+
 HMetaMatch2* HParticleTool::getMetaMatch(Int_t metaind)
 {
     // return HMetaMatch2 pointer from the object index
@@ -4586,7 +4606,7 @@ Int_t HParticleTool::getMdcCal1Cluster(Int_t segind, vector<HMdcCal1*>& v, Bool_
 
 Bool_t HParticleTool::getSimTracks(HParticleCandSim* cand,
 				 vector<Int_t>&tracksMeta,
-				 vector<Int_t>&tracksShower,
+				 vector<Int_t>&tracksShowerEcal,
 				 vector<Int_t>&tracksRich,
 				 vector<Int_t>&weightRich,
 				 vector<Int_t>&tracksInnerMdc,
@@ -4594,9 +4614,10 @@ Bool_t HParticleTool::getSimTracks(HParticleCandSim* cand,
 				 vector<Int_t>&tracksOuterMdc,
 				 vector<Int_t>&weightOuterMdc,
 				 Bool_t print
-				){
+				  )
+{
     tracksMeta.clear();
-    tracksShower.clear();
+    tracksShowerEcal.clear();
     tracksRich.clear();
     tracksInnerMdc.clear();
     tracksOuterMdc.clear();
@@ -4655,6 +4676,7 @@ Bool_t HParticleTool::getSimTracks(HParticleCandSim* cand,
 	} else ret = kFALSE;
     }
     HShowerHitSim* shower = 0;
+    HEmcClusterSim* emc   = 0;
     
     HTofHitSim*      tofhit = 0;
     HTofClusterSim* tofclst = 0;
@@ -4709,26 +4731,48 @@ Bool_t HParticleTool::getSimTracks(HParticleCandSim* cand,
 	    ret = kFALSE;
 	}
     }
-    if(cand->getShowerInd()>-1)
-    {
-	shower=(HShowerHitSim*)HParticleTool::getShowerHit(cand->getShowerInd());
-	if(shower){
-	    for(Int_t i=0;i<shower->getNTracks();i++){
-		tracksShower.push_back(shower->getTrack(i));
-		if(cand->isShowerUsed()) tracksMeta.push_back(shower->getTrack(i));
-	    }
 
-	    if(print) {
-		cout<<"ShowerHit : "<<endl;
-		cout<<"         "<<flush;
-		for(UInt_t i=0;i<tracksShower.size();i++){
-		    cout<<setw(6)<<shower->getTrack(i)<<" "<<flush;
+    if(cand->isEmc()){
+	if(cand->getEmcInd()>-1)
+	{
+	    emc=(HEmcClusterSim*)HParticleTool::getEmcCluster(cand->getEmcInd());
+	    if(emc){
+		for(Int_t i=0;i<emc->getNTracks();i++){
+		    tracksShowerEcal.push_back(emc->getTrack(i));
+		    if(cand->isEmcUsed()) tracksMeta.push_back(emc->getTrack(i));
 		}
-            cout<<endl;
-	    }
-	} else ret = kFALSE;
-    }
 
+		if(print) {
+		    cout<<"EmcCluster : "<<endl;
+		    cout<<"         "<<flush;
+		    for(UInt_t i=0;i<tracksShowerEcal.size();i++){
+			cout<<setw(6)<<emc->getTrack(i)<<" "<<flush;
+		    }
+		    cout<<endl;
+		}
+	    } else ret = kFALSE;
+	}
+    } else {
+	if(cand->getShowerInd()>-1)
+	{
+	    shower=(HShowerHitSim*)HParticleTool::getShowerHit(cand->getShowerInd());
+	    if(shower){
+		for(Int_t i=0;i<shower->getNTracks();i++){
+		    tracksShowerEcal.push_back(shower->getTrack(i));
+		    if(cand->isShowerUsed()) tracksMeta.push_back(shower->getTrack(i));
+		}
+
+		if(print) {
+		    cout<<"ShowerHit : "<<endl;
+		    cout<<"         "<<flush;
+		    for(UInt_t i=0;i<tracksShowerEcal.size();i++){
+			cout<<setw(6)<<shower->getTrack(i)<<" "<<flush;
+		    }
+		    cout<<endl;
+		}
+	    } else ret = kFALSE;
+	}
+    }
     return ret;
 }
 
@@ -4759,6 +4803,7 @@ Bool_t HParticleTool::printSimTracks(HParticleCandSim* cand)
 	} else ret = kFALSE;
     }
     HShowerHitSim* shower   = 0;
+    HEmcClusterSim* emc     = 0;
     HTofHitSim* tofhit      = 0;
     HTofClusterSim* tofclst = 0;
     HRpcClusterSim* rpcclst = 0;
@@ -4791,18 +4836,32 @@ Bool_t HParticleTool::printSimTracks(HParticleCandSim* cand)
 	    cout<<"         "<<setw(6)<<tracks[0]<<" "<<setw(6)<<tracks[1]<<" "<<setw(6)<<tracks[2]<<" "<<setw(6)<<tracks[3] <<endl;
 	} else ret = kFALSE;
     }
+    if(cand->isEmc()){
+	if(cand->getEmcInd()>-1){
+	    emc = (HEmcClusterSim*)HParticleTool::getEmcCluster(cand->getEmcInd());
+	    if(shower){
+		cout<<"EmcCluster : "<<endl;
+		cout<<"         "<<flush;
 
-    if(cand->getShowerInd()>-1){
-	shower = (HShowerHitSim*)HParticleTool::getShowerHit(cand->getShowerInd());
-	if(shower){
-	    cout<<"ShowerHit : "<<endl;
-	    cout<<"         "<<flush;
+		for(Int_t i=0;i<emc->getNTracks();i++){
+		    cout<<setw(6)<<emc->getTrack(i)<<" "<<flush;
+		}
+		cout<<endl;
+	    } else ret = kFALSE;
+	}
+    } else {
+	if(cand->getShowerInd()>-1){
+	    shower = (HShowerHitSim*)HParticleTool::getShowerHit(cand->getShowerInd());
+	    if(shower){
+		cout<<"ShowerHit : "<<endl;
+		cout<<"         "<<flush;
 
-	    for(Int_t i=0;i<shower->getNTracks();i++){
-		cout<<setw(6)<<shower->getTrack(i)<<" "<<flush;
-	    }
-	    cout<<endl;
-	} else ret = kFALSE;
+		for(Int_t i=0;i<shower->getNTracks();i++){
+		    cout<<setw(6)<<shower->getTrack(i)<<" "<<flush;
+		}
+		cout<<endl;
+	    } else ret = kFALSE;
+	}
     }
     return ret;
 }
@@ -4863,6 +4922,10 @@ Bool_t HParticleTool::setPairFlags(UInt_t& flag,HParticleCand* cand2,HParticleCa
 		if(cand1->getShowerInd()   == cand2->getShowerInd()  ) flag = flag|kSameMETA;
                 else                                                   flag = flag|kNoSameMETA;
 	    }
+	    else if(cand1->isEmcUsed()  && cand2->isEmcUsed()){
+		if(cand1->getEmcInd()   == cand2->getEmcInd()  )       flag = flag|kSameMETA;
+                else                                                   flag = flag|kNoSameMETA;
+	    }
 	    else {                                                     flag = flag|kNoSameMETA;}
 
 	}
@@ -4908,45 +4971,10 @@ Bool_t  HParticleTool::evalPairsFlags(UInt_t flag,UInt_t fl)
 {
     // evalutates the bitwise flags defined in flag (see eClosePairSelect + ePairCase (hparticledef.h)
     // against fl. return kTRUE if all set bit in flag are set in fl too.
-    /*
-    if( (flag&kSameRICH)        == kSameRICH        && (fl&kSameRICH)        != kSameRICH    )      return kFALSE;
-    if( (flag&kSameInnerMDC)    == kSameInnerMDC    && (fl&kSameInnerMDC)    != kSameInnerMDC)      return kFALSE;
-    if( (flag&kSameOuterMDC)    == kSameOuterMDC    && (fl&kSameOuterMDC)    != kSameOuterMDC)      return kFALSE;
-    if( (flag&kSameMETA)        == kSameMETA        && (fl&kSameMETA)        != kSameMETA    )      return kFALSE;
-    if( (flag&kSamePosPolarity) == kSamePosPolarity && (fl&kSamePosPolarity) != kSamePosPolarity )  return kFALSE;
-    if( (flag&kSameNegPolarity) == kSameNegPolarity && (fl&kSameNegPolarity) != kSameNegPolarity )  return kFALSE;
-    if( (flag&kSamePolarity)    == kSamePolarity    && (fl&kSamePolarity)    != kSamePolarity    )  return kFALSE;
-    if( (flag&kRICH2)           == kRICH2           && (fl&kRICH2)           != kRICH2           )  return kFALSE;
-    if( (flag&kFittedInnerMDC2) == kFittedInnerMDC2  && (fl&kFittedInnerMDC2) != kFittedInnerMDC2 )  return kFALSE;
-    if( (flag&kFittedOuterMDC2) == kFittedOuterMDC2  && (fl&kFittedOuterMDC2) != kFittedOuterMDC2 )  return kFALSE;
-    if( (flag&kOuterMDC2)       == kOuterMDC2        && (fl&kOuterMDC2)       != kOuterMDC2       )  return kFALSE;
-    if( (flag&kRK2)             == kRK2              && (fl&kRK2)             != kRK2             )  return kFALSE;
-    if( (flag&kMETA2)           == kMETA2            && (fl&kMETA2)           != kMETA2           )  return kFALSE;
-    if( (flag&kIsLepton2)       == kIsLepton2        && (fl&kIsLepton2)       != kIsLepton2       )  return kFALSE;
-    if( (flag&kIsUsed2)         == kIsUsed2          && (fl&kIsUsed2)         != kIsUsed2         )  return kFALSE;
-
-    if( (flag&kNoSameRICH)        == kNoSameRICH        && (fl&kNoSameRICH)        != kNoSameRICH    )      return kFALSE;
-    if( (flag&kNoSameInnerMDC)    == kNoSameInnerMDC    && (fl&kNoSameInnerMDC)    != kNoSameInnerMDC)      return kFALSE;
-    if( (flag&kNoSameOuterMDC)    == kNoSameOuterMDC    && (fl&kNoSameOuterMDC)    != kNoSameOuterMDC)      return kFALSE;
-    if( (flag&kNoSameMETA)        == kNoSameMETA        && (fl&kNoSameMETA)        != kNoSameMETA    )      return kFALSE;
-    if( (flag&kNoSamePosPolarity) == kNoSamePosPolarity && (fl&kNoSamePosPolarity) != kNoSamePosPolarity )  return kFALSE;
-    if( (flag&kNoSameNegPolarity) == kNoSameNegPolarity && (fl&kNoSameNegPolarity) != kNoSameNegPolarity )  return kFALSE;
-    if( (flag&kNoSamePolarity)    == kNoSamePolarity    && (fl&kNoSamePolarity)    != kNoSamePolarity    )  return kFALSE;
-    if( (flag&kNoRICH2)           == kNoRICH2           && (fl&kNoRICH2)           != kNoRICH2           )  return kFALSE;
-    if( (flag&kNoFittedInnerMDC2) == kNoFittedInnerMDC2 && (fl&kNoFittedInnerMDC2) != kNoFittedInnerMDC2 )  return kFALSE;
-    if( (flag&kNoFittedOuterMDC2) == kNoFittedOuterMDC2 && (fl&kNoFittedOuterMDC2) != kNoFittedOuterMDC2 )  return kFALSE;
-    if( (flag&kNoOuterMDC2)       == kNoOuterMDC2       && (fl&kNoOuterMDC2)       != kNoOuterMDC2       )  return kFALSE;
-    if( (flag&kNoRK2)             == kNoRK2             && (fl&kNoRK2)             != kNoRK2             )  return kFALSE;
-    if( (flag&kNoMETA2)           == kNoMETA2           && (fl&kNoMETA2)           != kNoMETA2           )  return kFALSE;
-    if( (flag&kNoIsLepton2)       == kNoIsLepton2       && (fl&kNoIsLepton2)       != kNoIsLepton2       )  return kFALSE;
-    if( (flag&kNoIsUsed2)         == kNoIsUsed2         && (fl&kNoIsUsed2)         != kNoIsUsed2         )  return kFALSE;
-    if( (flag&kNoUseRICH)         == kNoUseRICH         && (fl&kNoUseRICH)         != kNoUseRICH         )  return kFALSE;
-    */
     if ( (flag&fl) == flag ) return kTRUE;
     else                     return kFALSE;
-
-   // return kTRUE;
 }
+
 Bool_t HParticleTool::isPairsFlagsBit(UInt_t flag,UInt_t fl)
 {
     // evalutates the bitwise flags defined fl (see eClosePairSelect + ePairCase (hparticledef.h))

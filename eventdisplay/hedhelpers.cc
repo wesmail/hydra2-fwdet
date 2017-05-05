@@ -20,6 +20,7 @@
 #include "hwallhit.h"
 #include "htofhit.h"
 #include "hshowerhit.h"
+#include "hemccluster.h"
 #include "hrichhit.h"
 #include "hrpccluster.h"
 #include "hrichcal.h"
@@ -74,7 +75,10 @@ ClassImp(HEDMdcWireManager)
 HGeomTransform* HEDTransform::richSecTrans    = 0;
 HGeomTransform* HEDTransform::richMirrorTrans = 0;
 TGeoSphere*     HEDTransform::richMirror      = 0;
-Bool_t          HEDTransform::fisNewRich      = kFALSE;Float_t  HEDTransform::calcPhiToLab(Int_t sec)
+Bool_t          HEDTransform::fisNewRich      = kFALSE;
+Bool_t          HEDTransform::fisEmc          = kFALSE;
+
+Float_t  HEDTransform::calcPhiToLab(Int_t sec)
 {
     // returns the lower phi bound of the sector
     // in LAB [Deg].
@@ -326,6 +330,20 @@ Bool_t HEDTransform::calcShowerHitPointLab(HShowerHit* hit ,HGeomVector& p)
     if(hit) {
 	Float_t x,y,z;
 	hit->getLabXYZ(&x,&y,&z);
+	p.setXYZ(x,y,z);
+	p *= TO_CM;
+    } else {
+	return kFALSE;
+    }
+    return kTRUE;
+}
+
+Bool_t HEDTransform::calcEmcClusterPointLab(HEmcCluster* hit ,HGeomVector& p)
+{
+    // calc EMC Cluster point in LAB ccordinate sys (cm!)
+    if(hit) {
+	Float_t x,y,z;
+	hit->getXYZLab(x,y,z);
 	p.setXYZ(x,y,z);
 	p *= TO_CM;
     } else {
@@ -1346,7 +1364,7 @@ Bool_t HEDMakeContainers::init(void){
 	rtdb->getContainer("RichGeometryParameters");
     }
     rtdb->getContainer("RpcGeomPar");
-    rtdb->getContainer("ShowerGeometry");
+    if(!HEDTransform::isEmc())rtdb->getContainer("ShowerGeometry");
     rtdb->getContainer("TofGeomPar");
     rtdb->getContainer("WallGeomPar");
 

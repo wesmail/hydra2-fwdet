@@ -14,6 +14,7 @@ class HTofHit;
 class HTofCluster;
 class HRpcCluster;
 class HShowerHit;
+class HEmcCluster;
 class HMdcSeg;
 class HRichHit;
 
@@ -21,6 +22,7 @@ class HTofHitSim;
 class HTofClusterSim;
 class HRpcClusterSim;
 class HShowerHitSim;
+class HEmcClusterSim;
 class HMdcSegSim;
 class HRichHitSim;
 class HParticleCandSim;
@@ -40,6 +42,7 @@ private:
     map<Int_t, vector<HParticleCand*> > mTofClsttoCand;      //!  TOF cluster lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mRpcClsttoCand;      //!  RPC cluster lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mShowertoCand;       //!  SHOWER hit  lookup   detector hit ind -> list of candidates using this hit
+    map<Int_t, vector<HParticleCand*> > mEmctoCand;          //!  EMC cluster lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mInnerMdctoCand;     //!  inner Seg   lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mOuterMdctoCand;     //!  outer Seg   lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mRichtoCand;         //!  RICH hit    lookup   detector hit ind -> list of candidates using this hit
@@ -51,6 +54,7 @@ private:
     vector<Int_t> vTofClstInd;      //!
     vector<Int_t> vRpcClstInd;      //!
     vector<Int_t> vShowerInd;       //!
+    vector<Int_t> vEmcInd;          //!
     vector<Int_t> vInnerMdcInd;     //!
     vector<Int_t> vOuterMdcInd;     //!
     vector<Int_t> vRichInd;         //!
@@ -62,6 +66,7 @@ private:
     vector<HTofCluster*> vTofClst;  //!
     vector<HRpcCluster*> vRpcClst;  //!
     vector<HShowerHit*>  vShower;   //!
+    vector<HEmcCluster*> vEmc;      //!
     vector<HMdcSeg*>     vInnerMdc; //!
     vector<HMdcSeg*>     vOuterMdc; //!
     vector<HRichHit*>    vRich;     //!
@@ -73,6 +78,7 @@ private:
     vector<HTofCluster*> vTofClstAll;  //!
     vector<HRpcCluster*> vRpcClstAll;  //!
     vector<HShowerHit*>  vShowerAll;   //!
+    vector<HEmcCluster*> vEmcAll;      //!
     vector<HMdcSeg*>     vInnerMdcAll; //!
     vector<HMdcSeg*>     vOuterMdcAll; //!
     vector<HRichHit*>    vRichAll;     //!
@@ -91,6 +97,7 @@ private:
     map<Int_t, vector<HTofClusterSim*> >   mTracktoTofCluster; //!  Geant Track lookup   geant track -> list of TofCluster using this track
     map<Int_t, vector<HRpcClusterSim*> >   mTracktoRpcCluster; //!  Geant Track lookup   geant track -> list of RpcCluster using this track
     map<Int_t, vector<HShowerHitSim*> >    mTracktoShowerHit;  //!  Geant Track lookup   geant track -> list of ShowerHit using this track
+    map<Int_t, vector<HEmcClusterSim*> >   mTracktoEmcCluster; //!  Geant Track lookup   geant track -> list of EmcCluster using this track
     map<Int_t, vector<HMdcSegSim*> >       mTracktoInnerMdc;   //!  Geant Track lookup   geant track -> list of inner MdcSeg using this track
     map<Int_t, vector<HMdcSegSim*> >       mTracktoOuterMdc;   //!  Geant Track lookup   geant track -> list of outer MdcSeg using this track
     map<Int_t, vector<HRichHitSim*> >      mTracktoRichHit;    //!  Geant Track lookup   geant track -> list of RichHit using this track
@@ -101,6 +108,7 @@ private:
     map<Int_t, vector<Int_t> > mTracktoTofClusterInd; //!  Geant Track lookup   geant track -> list of TofCluster indices using this track
     map<Int_t, vector<Int_t> > mTracktoRpcClusterInd; //!  Geant Track lookup   geant track -> list of RpcCluster indices using this track
     map<Int_t, vector<Int_t> > mTracktoShowerHitInd;  //!  Geant Track lookup   geant track -> list of ShowerHit indices using this track
+    map<Int_t, vector<Int_t> > mTracktoEmcClusterInd; //!  Geant Track lookup   geant track -> list of EmcCluster indices using this track
     map<Int_t, vector<Int_t> > mTracktoInnerMdcInd;   //!  Geant Track lookup   geant track -> list of inner MdcSeg indices using this track
     map<Int_t, vector<Int_t> > mTracktoOuterMdcInd;   //!  Geant Track lookup   geant track -> list of outer MdcSeg indices using this track
     map<Int_t, vector<Int_t> > mTracktoRichHitInd;    //!  Geant Track lookup   geant track -> list of RichHit using indices this track
@@ -113,6 +121,7 @@ private:
     HCategory* tofclstCat;           //!
     HCategory* rpcclstCat;           //!
     HCategory* showerhitCat;         //!
+    HCategory* emcclusterCat;        //!
     HCategory* mdcsegCat;            //!
     HCategory* candCat;              //!
 
@@ -132,6 +141,7 @@ public:
     vector<Int_t>& getTofClstIndices()   { return  vTofClstInd; }
     vector<Int_t>& getRpcClstIndices()   { return  vRpcClstInd; }
     vector<Int_t>& getShowerIndices()    { return  vShowerInd; }
+    vector<Int_t>& getEmcIndices()       { return  vEmcInd; }
     vector<Int_t>& getInnerMdcIndices()  { return  vInnerMdcInd; }
     vector<Int_t>& getOuterMdcIndices()  { return  vOuterMdcInd; }
     vector<Int_t>& getRichIndices()      { return  vRichInd; }
@@ -141,6 +151,7 @@ public:
     map<Int_t, vector<HParticleCand*> >& getTofClstMap()  { return  mTofClsttoCand; }
     map<Int_t, vector<HParticleCand*> >& getRpcClstMap()  { return  mRpcClsttoCand; }
     map<Int_t, vector<HParticleCand*> >& getShowerHitMap(){ return  mShowertoCand; }
+    map<Int_t, vector<HParticleCand*> >& getEmcClusterMap(){ return  mEmctoCand; }
     map<Int_t, vector<HParticleCand*> >& getInnerMdcMap() { return  mInnerMdctoCand; }
     map<Int_t, vector<HParticleCand*> >& getOuterMdcMap() { return  mOuterMdctoCand; }
     map<Int_t, vector<HParticleCand*> >& getRichMap()     { return  mRichtoCand; }
@@ -150,6 +161,7 @@ public:
     Int_t getCandidatesForTofCluster(Int_t index,vector<HParticleCand*>& cands);
     Int_t getCandidatesForRpcCluster(Int_t index,vector<HParticleCand*>& cands);
     Int_t getCandidatesForShower    (Int_t index,vector<HParticleCand*>& cands);
+    Int_t getCandidatesForEmc       (Int_t index,vector<HParticleCand*>& cands);
     Int_t getCandidatesForInnerMdc  (Int_t index,vector<HParticleCand*>& cands);
     Int_t getCandidatesForOuterMdc  (Int_t index,vector<HParticleCand*>& cands);
     Int_t getCandidatesForRich      (Int_t index,vector<HParticleCand*>& cands);
@@ -160,6 +172,7 @@ public:
     Int_t getTofClusterForTrack           (Int_t track,vector<HTofClusterSim*>&   cands);
     Int_t getRpcClusterForTrack           (Int_t track,vector<HRpcClusterSim*>&   cands);
     Int_t getShowerHitForTrack            (Int_t track,vector<HShowerHitSim*>&    cands);
+    Int_t getEmcClusterForTrack           (Int_t track,vector<HEmcClusterSim*>&   cands);
     Int_t getInnerMdcSegForTrack          (Int_t track,vector<HMdcSegSim*>&       cands);
     Int_t getOuterMdcSegForTrack          (Int_t track,vector<HMdcSegSim*>&       cands);
     Int_t getRichHitForTrack              (Int_t track,vector<HRichHitSim*>&      cands);
@@ -170,6 +183,7 @@ public:
     Int_t getTofClusterIndForTrack           (Int_t track,vector<Int_t>& cands);
     Int_t getRpcClusterIndForTrack           (Int_t track,vector<Int_t>& cands);
     Int_t getShowerHitIndForTrack            (Int_t track,vector<Int_t>& cands);
+    Int_t getEmcClusterIndForTrack           (Int_t track,vector<Int_t>& cands);
     Int_t getInnerMdcSegIndForTrack          (Int_t track,vector<Int_t>& cands);
     Int_t getOuterMdcSegIndForTrack          (Int_t track,vector<Int_t>& cands);
     Int_t getRichHitIndForTrack              (Int_t track,vector<Int_t>& cands);
@@ -179,6 +193,7 @@ public:
     vector<HTofCluster*>& getTofClusters () { return vTofClst; }
     vector<HRpcCluster*>& getRpcClusters () { return vRpcClst; }
     vector<HShowerHit*>&  getShowerHits  () { return vShower;  }
+    vector<HEmcCluster*>& getEmcClusters () { return vEmc;  }
     vector<HMdcSeg*>&     getInnerMdcSegs() { return vInnerMdc;}
     vector<HMdcSeg*>&     getOuterMdcSegs() { return vOuterMdc;}
     vector<HRichHit*>&    getRichHits    () { return vRich;    }
@@ -187,6 +202,7 @@ public:
     vector<HTofCluster*>& getAllTofClusters () { return vTofClstAll; }
     vector<HRpcCluster*>& getAllRpcClusters () { return vRpcClstAll; }
     vector<HShowerHit*>&  getAllShowerHits  () { return vShowerAll;  }
+    vector<HEmcCluster*>& getAllEmcClusters () { return vEmcAll;  }
     vector<HMdcSeg*>&     getAllInnerMdcSegs() { return vInnerMdcAll;}
     vector<HMdcSeg*>&     getAllOuterMdcSegs() { return vOuterMdcAll;}
     vector<HRichHit*>&    getAllRichHits    () { return vRichAll;    }

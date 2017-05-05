@@ -27,6 +27,7 @@ protected:
 	HCategory              *fCatTofHit;    	           //!
 	HCategory              *fCatTofCluster;	           //!
 	HCategory              *fCatShowerHit;	           //!
+	HCategory              *fCatEmcCluster;	           //!
 	HCategory              *fCatRichHit;   	           //!
 	HCategory              *fCatRpcCluster;	           //!
 	HCategory              *fCatSpline;    	           //!
@@ -81,6 +82,7 @@ protected:
         void   fillCandTof   (Bool_t rkSuccess,HMetaMatch2* meta,candidate& cand,Int_t num,Int_t slot);
         void   fillCandRpc   (Bool_t rkSuccess,HMetaMatch2* meta,candidate& cand,Int_t num,Int_t slot);
         void   fillCandShower(Bool_t rkSuccess,HMetaMatch2* meta,candidate& cand,Int_t num,Int_t slot);
+        void   fillCandEmc   (Bool_t rkSuccess,HMetaMatch2* meta,candidate& cand,Int_t num,Int_t slot);
 
 	void   fillCand(HMetaMatch2* meta);
 	void   fillCandSim(candidate& cand);

@@ -1035,14 +1035,15 @@ Bool_t HGeantKine::isInAcceptance(Int_t m0,Int_t m1,Int_t m2,Int_t m3,Int_t sys0
     Int_t nMdc2   = getNMdcHits(2);
     Int_t nMdc3   = getNMdcHits(3);
     Int_t nShower = getNShowerHits();
+    Int_t nEmc    = getNEmcHits();
     Int_t nRpc    = getNRpcHits();
     Int_t nTof    = getNTofHits();
 
 
     if(nMdc0 >= m0 && nMdc1 >= m1  &&
        nMdc2 >= m2 && nMdc3 >= m3  &&
-       (nRpc >= sys0 || nShower >= sys0 || nTof >= sys1) ) return kTRUE;
-    else                                                   return kFALSE;
+       (nRpc >= sys0 || nShower >= sys0 || nEmc >= sys0 || nTof >= sys1) ) return kTRUE;
+    else                                                                   return kFALSE;
 }
 
 Bool_t HGeantKine::isInAcceptanceDecay(Int_t m0,Int_t m1,Int_t m2,Int_t m3,Int_t sys0,Int_t sys1)
@@ -1167,7 +1168,7 @@ void HGeantKine::fillAcceptanceBit() {
 	resetMdcIter();
     }
     if(firstTofHit > -1)                      setSys(1);
-    if(firstRpcHit!=-1 || firstShowerHit!=-1) setSys(0);
+    if(firstRpcHit!=-1 || firstShowerHit!=-1 || firstEmcHit!=-1) setSys(0);
     setAcceptanceFilled();
 }
 
@@ -1180,6 +1181,7 @@ void  HGeantKine::getNHits(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& sys0,I
     m2    = getNMdcHits(2);
     m3    = getNMdcHits(3);
     sys0  = getNShowerHits();
+    sys0 += getNEmcHits();
     sys0 += getNRpcHits();
     sys1  = getNTofHits();
 }
@@ -1194,6 +1196,7 @@ void  HGeantKine::getNHitsDecay(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& s
     m2    = getNMdcHits(2);
     m3    = getNMdcHits(3);
     sys0  = getNShowerHits();
+    sys0 += getNEmcHits();
     sys0 += getNRpcHits();
     sys1  = getNTofHits();
 
@@ -1207,6 +1210,7 @@ void  HGeantKine::getNHitsDecay(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& s
 	m2    += d->getNMdcHits(2);
 	m3    += d->getNMdcHits(3);
 	sys0  += d->getNShowerHits();
+	sys0  += d->getNEmcHits();
 	sys0  += d->getNRpcHits();
 	sys1  += d->getNTofHits();
     }
@@ -1233,7 +1237,7 @@ void  HGeantKine::getNHitsBit(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& sys
 void  HGeantKine::getNHitsDecayBit(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& sys0,Int_t& sys1)
 {
     // returns the number of hits in MDC modules 0-3,
-    // sys0 (shower+rpc) and sys1 (tof) of the track
+    // sys0 (shower+emc+rpc) and sys1 (tof) of the track
     // (and his decayed charged daughter it it exist).
     // number of hits for sys 0/1 can be only 0 or 1
     // this function works on prefilled acceptance bits and needs no
@@ -1275,7 +1279,7 @@ Int_t HGeantKine::getSystem(void)
    Int_t n0 = 0;
    Int_t n1 = 0;
    if(firstTofHit > -1) n1=1;
-   if(firstRpcHit!=-1 || firstShowerHit!=-1) n0=1;
+   if(firstRpcHit!=-1 || firstShowerHit!=-1 || firstEmcHit!=-1) n0=1;
 
 
    if ( n0 > 0 && n1 <= 0) n = 0; // hits in RPC, but no hits in TOF --> RPC

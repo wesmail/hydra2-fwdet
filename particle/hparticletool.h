@@ -19,6 +19,7 @@ class HTofHit;
 class HTofCluster;
 class HRpcCluster;
 class HShowerHit;
+class HEmcCluster;
 class HMetaMatch2;
 class HMdcTrkCand;
 class HMdcSeg;
@@ -186,6 +187,7 @@ public:
     static HTofCluster* getTofCluster(Int_t tofind);
     static HRpcCluster* getRpcCluster(Int_t rpcind);
     static HShowerHit*  getShowerHit (Int_t showerind);
+    static HEmcCluster* getEmcCluster(Int_t emcind);
 
     static HMetaMatch2* getMetaMatch (Int_t metaind);
     static HMdcTrkCand* getMdcTrkCand(Int_t metaind);
@@ -204,7 +206,7 @@ public:
     static Bool_t       printSimTracks(HParticleCandSim* c);
     static Bool_t       getSimTracks  (HParticleCandSim* c,
 				       vector<Int_t>&tracksMeta,
-				       vector<Int_t>&tracksShower,
+				       vector<Int_t>&tracksShowerEcal,
 				       vector<Int_t>&tracksRich,
 				       vector<Int_t>&weightRich,
 				       vector<Int_t>&tracksInnerMdc,

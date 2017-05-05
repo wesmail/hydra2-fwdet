@@ -8,14 +8,14 @@ class HKalMetaMatch : public TObject {
 
 private:
     Float_t  beta;          // Relativistic velocity.
-    Int_t    ind;           // Index of RPC hit, shower hit, tof hit or tof cluster.
+    Int_t    ind;           // Index of RPC hit, shower hit, emc hit or tof cluster.
     Float_t  mass2;         // Squared mass.
     Float_t  metaEloss;     // Energy loss from META detector.
     TVector3 metaHit;       // Hit in META detector in sector coordinates.
     TVector3 metaHitLocal;  // Hit in META detector in detector specific coordinates.
     TVector3 metaReco;      // Reconstructed META hit in sector coordinates.
     TVector3 metaRecoLocal; // Reconstructed META hit in detector specific coordinates.
-    Int_t    metaSys;       // 0 = Rpc, 1 = Shower, 2 = Tof
+    Int_t    metaSys;       // 0 = Rpc, 1 = Shower, 2 = Tof, 3 = Emc
     Float_t  quality;       // Quality of META match.
     Float_t  tof;           // Time-of-flight measurement for RPC/TOF hits in ns.
     Float_t  trackLength;   // Length of reconstructed track in mm.

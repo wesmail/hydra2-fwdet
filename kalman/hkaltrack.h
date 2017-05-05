@@ -70,6 +70,8 @@ public:
 
     virtual Float_t getQualityShower () const {return qualityShower;}
 
+    virtual Float_t getQualityEmc    () const {return qualityShower;}
+    
     virtual Float_t getQualityTof    () const {return qualityTof;}
 
     virtual Float_t getTxInput       () const { return txInput; }
@@ -108,6 +110,8 @@ public:
 
     virtual void    setQualityShower (Float_t qShower) {qualityShower = qShower;}
 
+    virtual void    setQualityEmc    (Float_t qEmc)    {qualityShower = qEmc;}
+    
     virtual void    setQualityTof    (Float_t qTof) {qualityTof = qTof;}
 
     virtual void    setTxInput       (Float_t tx)   { txInput = tx; }

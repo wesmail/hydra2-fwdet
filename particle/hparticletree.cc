@@ -19,6 +19,7 @@
 #include "hmdctrackgdef.h"
 #include "rpcdef.h"
 #include "tofdef.h"
+#include "emcdef.h"
 #include "showerdef.h"
 #include "walldef.h"
 #include "hpiontrackerdef.h"
@@ -48,6 +49,8 @@
 #include "hrpcclustersim.h"
 #include "hshowerhit.h"
 #include "hshowerhitsim.h"
+#include "hemccluster.h"
+#include "hemcclustersim.h"
 #include "hwallhit.h"
 #include "hwallhitsim.h"
 
@@ -159,9 +162,10 @@ ClassImp(HParticleTree)
 //       catTofCluster
 //       catRpcCluster
 //       catShowerHit
+//       catEmcCluster      (fullcopy)
 //       catRichHit
-//       catRichDirClus     (fullcopy
-//       catRichCal         (fullcopy
+//       catRichDirClus     (fullcopy)
+//       catRichCal         (fullcopy)
 //       catMdcSeg
 //       catMdcHit
 //       catMdcCal1
@@ -174,6 +178,7 @@ ClassImp(HParticleTree)
 //       catTofGeantRaw           (fullcopy)
 //       catRpcGeantRaw           (fullcopy)
 //       catShowerGeantRaw        (fullcopy)
+//       catEmcGeantRaw           (fullcopy)
 //       catWallGeantRaw          (fullcopy)
 //       catRichGeantRaw (+1,+2)  (fullcopy)
 //
@@ -285,6 +290,7 @@ ClassImp(HParticleTree)
 //    //catTofHit,
 //    //catTofCluster,
 //    //catRpcCluster,
+//    //catEmcCluster,
 //    //catShowerHit,
 //    //catRichHit,
 //    //catRichDirClus,
@@ -301,6 +307,7 @@ ClassImp(HParticleTree)
 //    //catTofGeantRaw,
 //    //catRpcGeantRaw,
 //    //catShowerGeantRaw,
+//    //catEmcGeantRaw,
 //    //catWallGeantRaw,
 //    //catRichGeantRaw,
 //    //catRichGeantRaw+1,
@@ -326,6 +333,7 @@ ClassImp(HParticleTree)
 //    //catTofCluster,
 //    //catRpcCluster,
 //    //catShowerHit,
+//    //catEmcCluster,
 //    //catRichHit,
 //    //catRichDirClus,
 //    //catRichCal,
@@ -334,6 +342,7 @@ ClassImp(HParticleTree)
 //    //catTofGeantRaw,
 //    //catRpcGeantRaw,
 //    //catShowerGeantRaw,
+//    //catEmcGeantRaw,
 //    //catWallGeantRaw,
 //    //catRichGeantRaw,
 //    //catRichGeantRaw+1,
@@ -390,6 +399,7 @@ ClassImp(HParticleTree)
 	catTofCluster,
 	catRpcCluster,
 	catShowerHit,
+	catEmcCluster,
 	catRichHit,
 	catRichDirClus,
 	catRichCal,
@@ -405,6 +415,7 @@ ClassImp(HParticleTree)
 	catTofGeantRaw,
 	catRpcGeantRaw,
 	catShowerGeantRaw,
+	catEmcGeantRaw,
 	catWallGeantRaw,
 	catRichGeantRaw,
 	catRichGeantRaw+1,
@@ -426,6 +437,7 @@ ClassImp(HParticleTree)
 	catTofGeantRaw,
 	catRpcGeantRaw,
 	catShowerGeantRaw,
+	catEmcGeantRaw,
 	catWallGeantRaw,
 	catRichGeantRaw,
 	catRichGeantRaw+1,
@@ -445,6 +457,7 @@ ClassImp(HParticleTree)
 	catRichDirClus,
 	catRichCal,
 	catShowerHit,
+	catEmcCluster,
 	catTofHit,
 	catTofCluster,
 	catRpcCluster
@@ -841,10 +854,11 @@ Int_t  HParticleTree::execute()
 		}
 		//-------------------------------------------
 
+
 		//-------------------------------------------
 		if(fCurrentEvent->getCategory(catEmcGeantRaw)) // matrix
 		{
-	            HCategory* catIn  = HCategoryManager::getCategory(catShowerGeantRaw);
+	            HCategory* catIn  = HCategoryManager::getCategory(catEmcGeantRaw);
 		    HLocation loc;
 		    loc.set(2,0,0); // 6,600
 
@@ -1447,6 +1461,37 @@ Int_t  HParticleTree::execute()
 		    }
 		}
 		//-------------------------------------------
+
+		//-------------------------------------------
+		if(fCurrentEvent->getCategory(catEmcCluster) && doFullCopy(catEmcCluster)){
+
+		    HCategory* catOut = fCurrentEvent->getCategory(catEmcCluster);
+		    HCategory* catIn  = HCategoryManager::getCategory(catEmcCluster);
+
+		    Int_t n = catIn->getEntries();
+                    Int_t index;
+
+		    for(Int_t i = 0; i < n; i++){
+			if(isSim)
+			{
+			    HEmcClusterSim* hit1 = 0;
+			    HEmcClusterSim* hit2 = 0;
+			    hit1 = HCategoryManager::getObject(hit1,catShowerHit,i);
+			    hit2 = HCategoryManager::newObjectCopy(hit2,hit1,catOut,index);
+
+			} else {
+
+			    HEmcCluster* hit1 = 0;
+			    HEmcCluster* hit2 = 0;
+			    hit1 = HCategoryManager::getObject(hit1,catEmcCluster,i);
+			    hit2 = HCategoryManager::newObjectCopy(hit2,hit1,catOut,index);
+			}
+		    }
+		}
+		//-------------------------------------------
+
+
+
 		//-------------------------------------------
 
 

@@ -16,6 +16,8 @@ class HWallHitSim;
 class HTofClusterSim;
 class HShowerHit;
 class HShowerHitSim;
+class HEmcCluster;
+class HEmcClusterSim;
 class HRichHitSim;
 class HRpcClusterSim;
 class HMetaMatch2;
@@ -163,6 +165,19 @@ public:
     void Print();
 
     ClassDef(HEDShowerHit,0)   // SHOWER hit
+};
+//----------------------------------------------------------------
+
+//----------------------------------------------------------------
+class HEDEmcCluster : public TEvePointSet {
+private:
+
+public:
+    HEDEmcCluster(HEmcClusterSim* hit = 0);
+    virtual ~HEDEmcCluster();
+    void Print();
+
+    ClassDef(HEDEmcCluster,0)   // EMC Cluster
 };
 //----------------------------------------------------------------
 

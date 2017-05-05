@@ -27,6 +27,7 @@ private:
   Float_t tofHit;       // time of flight of hit (in ns)
   Float_t trackLength;  // track length (in mm)
   Float_t eHit;         // energy deposited (in MeV)
+
 public:
   HGeantFwDet(void);
   HGeantFwDet(HGeantFwDet &aFwDet);
@@ -36,11 +37,12 @@ public:
   inline void setAddress (Char_t aMod, Char_t aLayer, Int_t aCell, Char_t aSubCell);
   void setHit(Float_t aX, Float_t aY, Float_t aZ, Float_t aPx, Float_t aPy, Float_t aPz,
               Float_t aTof, Float_t aLen, Float_t aE);
-  
+
   Int_t getTrackNumber(void) {return trackNumber;}
   inline void getAddress(Char_t& aMod, Char_t& alayer, Int_t& aCell, Char_t& aSubCell);
   void getHit(Float_t& aX, Float_t& aY, Float_t& aZ, Float_t& aPx, Float_t& aPy, Float_t& aPz,
-              Float_t& aTof, Float_t& aLen, Float_t& aE);  
+              Float_t& aTof, Float_t& aLen, Float_t& aE);
+
   Int_t getNLocationIndex(void) {return 3;}
   inline Int_t getLocationIndex(Int_t i);
 

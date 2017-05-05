@@ -34,10 +34,13 @@ my $dir;
 my $shell;
 my $expire;
 
-my $help = "usage : GE_mon.pl [ -u userlogfile ] [ -g grouplogfile ]
+my $help = "usage : SL_mon.pl [ -u userlogfile ] [ -g grouplogfile ] [ -l loadlogfile ]
            \t  -u userlogfile  : number of jobs per user will be logged
            \t  -g grouplogfile : number of jobs per group will be logged
-    \n";
+           \t  -l loadlogfile  : loaf of the cluster will be logged
+           \n";
+
+
 
 our %userjobs;      # hash  user => jobstates  (key for each statetype -> counter for that type)
 our %groups;        # hash  groupname ==> number of jobs
@@ -47,34 +50,118 @@ our %grouppart;     # hash  group => partition jobs)
 
 our $logfileUser;   # logfile for user history
 our $logfileGroup;  # logfile for group history
+our $logfileLoad;   # logfile for load  history
 
 our $wLogUser  = FileHandle->new;
 our $wLogGroup = FileHandle->new;
+our $wLogLoad  = FileHandle->new;
 
 my $NARGS = $#ARGV ; #  $#ARGV will be rest by getopt()!!!
 
 my %args;
-getopt('ug', \%args);
+getopt('ugl', \%args);
 
 
 $logfileUser  = $args{"u"} ? $args{"u"} : "" ;
 $logfileGroup = $args{"g"} ? $args{"g"} : "" ;
+$logfileLoad  = $args{"l"} ? $args{"l"} : "" ;
 
 my %parameters = ("logfileUser"  => $logfileUser,
-                  "logfileGroup" => $logfileGroup
+                  "logfileGroup" => $logfileGroup,
+                  "logfileLoad"  => $logfileLoad
                  );
 
-if($NARGS > 3){
+if($NARGS > 5){
     print $help;
     print $NARGS ,"\n";
     print STDERR Dumper \%parameters;
     exit(1);
 }
 
+#----------------------------------------------------------------
+# calculation of number of available cores + number of hosts etc
+my $numberOfTheoreticalCores=0;
+my $numberOfBrokenCores=0;
+my $numberOfCores=0;
 
+my $numberOfTheoreticalCoresLCSC=0;
+my $numberOfBrokenCoresLCSC=0;
+my $numberOfCoresLCSC=0;
+
+
+# main partition
+my $tmplist = `sinfo -h -p main --format="%n %c"`;
+my @arraytmp = split(/\n/,$tmplist);
+foreach my $n (@arraytmp){
+    my ($name,$core) = split(/ /,$n);
+    $numberOfTheoreticalCores+=$core;
+}
+$numberOfTheoreticalCores/=2;
+
+$tmplist = `sinfo -h -R -p main --format="%n %c"`;
+@arraytmp = split(/\n/,$tmplist);
+foreach my $n (@arraytmp){
+    my ($name,$core) = split(/ /,$n);
+    $numberOfBrokenCores+=$core;
+}  
+
+
+$tmplist = `sinfo -h -N -p main -t maint --format="%n %c"`;
+@arraytmp = split(/\n/,$tmplist);
+foreach my $n (@arraytmp){
+    my ($name,$core) = split(/ /,$n);
+    $numberOfBrokenCores+=$core;
+}  
+
+
+$numberOfBrokenCores/=2;
+$numberOfCores=$numberOfTheoreticalCores - $numberOfBrokenCores ;
+
+my $brokenHost = `sinfo -h -R -p main --format="%n %E"  | wc -l`;
+my $hostlist = `sinfo -h -p main --format="%n"`; 
+my @arrayhost = split(/\n/,$hostlist);
+my $nTheoreticalHosts=`sinfo -h -p main --format="%D"`;
+
+my $nHost=$nTheoreticalHosts-$brokenHost;
+
+
+
+
+# lcsc partition
+$tmplist = `sinfo -h -p lcsc --format="%n %c"`;
+@arraytmp = split(/\n/,$tmplist);
+foreach my $n (@arraytmp){
+    my ($name,$core) = split(/ /,$n);
+    $numberOfTheoreticalCoresLCSC+=$core;
+}
+$numberOfTheoreticalCoresLCSC/=2;
+
+$tmplist = `sinfo -h -R -p lcsc --format="%n %c"`;
+@arraytmp = split(/\n/,$tmplist);
+foreach my $n (@arraytmp){
+    my ($name,$core) = split(/ /,$n);
+    $numberOfBrokenCoresLCSC+=$core;
+}
+$numberOfBrokenCoresLCSC/=2;
+$numberOfCoresLCSC=$numberOfTheoreticalCoresLCSC - $numberOfBrokenCoresLCSC;
+
+my $hostlistLCSC = `sinfo -h -p lcsc --format="%n"`; 
+my @arrayhostLCSC = split(/\n/,$hostlistLCSC);
+my $nTheoreticalHostsLCSC=`sinfo -h -p lcsc --format="%D"`;
+my $nHostLCSC = scalar @arrayhostLCSC;
+#----------------------------------------------------------------
+
+
+#----------------------------------------------------------------
+# list of partitions
 my $partlist = `sinfo -h --format="%P"`; 
 $partlist=~s/\*//;
 my @ar_part = split(/\n/,$partlist);
+#----------------------------------------------------------------
+
+
+my $totalRun=0;
+my $totalRunLCSC=0;
 
 
 my $timestamp = time();
@@ -85,7 +172,7 @@ my @array = split(/\n/,$stat);
 if($logfileUser ne ""){
     $wLogUser->open(">>${logfileUser}");
     if ( ! defined $wLogUser){
-        print "Cannot open output file: ${logfileUser}!";
+        print "Cannot open output file: ${logfileUser}!";   
         undef $wLogUser;
         exit(1);
     }
@@ -101,6 +188,15 @@ if($logfileGroup ne ""){
         exit(1);
     }
 } else { undef $wLogGroup; }
+
+if($logfileLoad ne ""){
+    $wLogLoad->open(">>${logfileLoad}");
+    if ( ! defined $wLogLoad){
+        print "Cannot open output file: ${logfileLoad}!";
+        undef $wLogLoad;
+        exit(1);
+    }
+} else { undef $wLogLoad; }
 
 
 foreach my $line (@array)
@@ -175,11 +271,21 @@ foreach my $line (@array)
     }
     if($state eq "R"){
         $userpart{$user}{$partition}  += $nCPU;
+    
+        if( $partition ne "lcsc" &&  $partition ne "theory"  ){
+           $totalRun += $nCPU;
+        }
+        if( $partition eq "lcsc" ){
+           $totalRunLCSC += $nCPU;
+        }
+    
     }
     #--------------------------------------------------------------------------------
 
     #--------------------------------------------------------------------------------
     # get groupname
+    # REMARK: we take the linux first group of the user. In case of user submitting
+    # jobs with different accounts this will yield wrong results.
     if(not exists $ugroup{$user}){
         ($name, $pass, $uid, $gid, $quota, $comment, $gcos, $dir, $shell, $expire) = getpwnam($user);
 
@@ -226,7 +332,6 @@ for my $groupname (sort (keys(%groups))) {
 #--------------------------------------------------------------------------------
 # user jobs
 print "--------------------------------------------------------------------------------\n";
-#print "JOBS per USER :  run    total     array       group          \n";
 print "JOBS per USER :  run    total     array       group ";
 foreach my $p (@ar_part)
 {
@@ -260,7 +365,6 @@ printf "        SUM : %6i , %6i \n",$sumjobs,$sumjobstot;
 #--------------------------------------------------------------------------------
 # group jobs
 print "--------------------------------------------------------------------------------\n";
-#print "JOBS per GROUP : run    total     array  \n";
 print "JOBS per GROUP : run    total     array ";
 foreach my $p (@ar_part)
 {
@@ -290,15 +394,31 @@ printf "        SUM : %6i , %6i \n",$sumjobs,$sumjobstot;
 #--------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
-# cluster status
+# cluster load
+print "--------------------------------------------------------------------------------\n";
+printf "                Run     Avail   (  All )  \n";     
+printf "        LOAD: %6i , %6i , (%6i) = %6.2f%% (%6.2f%%)  Standard Cluster\n",$totalRun    ,$numberOfCores    ,$numberOfTheoreticalCores    , ($totalRun    /($numberOfCores    ))*100,($totalRun    /($numberOfTheoreticalCores    ))*100;
+#printf "        LOAD: %6i , %6i , (%6i) = %6.2f%% (%6.2f%%)  LCSC     Cluster\n",$totalRunLCSC,$numberOfCoresLCSC,$numberOfTheoreticalCoresLCSC, ($totalRunLCSC/($numberOfCoresLCSC))*100,($totalRunLCSC/($numberOfTheoreticalCoresLCSC))*100;
+
+if(defined $wLogLoad) {
+    printf $wLogLoad $timestamp, " "; 
+    printf $wLogLoad " mainCluster:%i:%i:%i:%.2f:%.2f"  ,$totalRun    ,$numberOfCores    ,$numberOfTheoreticalCores    , ($totalRun    /($numberOfCores    ))*100,($totalRun    /($numberOfTheoreticalCores    ))*100;  
+    printf $wLogLoad " lcscCluster:%i:%i:%i:%.2f:%.2f\n",$totalRunLCSC,$numberOfCoresLCSC,$numberOfTheoreticalCoresLCSC, ($totalRunLCSC/($numberOfCoresLCSC))*100,($totalRunLCSC/($numberOfTheoreticalCoresLCSC))*100;  
+}
+
+
+
+
+
+#--------------------------------------------------------------------------------
+# partition infos
 print "--------------------------------------------------------------------------------\n";
 print `sinfo -h --format="%10P max time %10l default time %10L mem %8m Mb number of nodes %D"`;
 
 
-#print `sinfo`;
 
-
-if(defined $wLogUser) { undef $wLogUser; }
-if(defined $wLogGroup){ undef$wLogGroup; }
+if(defined $wLogUser) { undef $wLogUser;  }
+if(defined $wLogGroup){ undef $wLogGroup; }
+if(defined $wLogLoad) { undef $wLogLoad;  }
 
 

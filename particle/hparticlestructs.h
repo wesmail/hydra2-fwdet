@@ -11,6 +11,8 @@
 #include "hrpcclustersim.h"
 #include "hshowerhit.h"
 #include "hshowerhitsim.h"
+#include "hemccluster.h"
+#include "hemcclustersim.h"
 #include "hrichhit.h"
 #include "hrichhitsim.h"
 #include "hmdctrkcand.h"
@@ -63,6 +65,7 @@ public:
     HTofHitSim*       pTofHit2;   //
     HRpcClusterSim*   pRpcClst;   //
     HShowerHitSim*    pShowerHit; //
+    HEmcClusterSim*   pEmcClst; //
     HRKTrackB*        pRk;        //
     HSplineTrack*     pSpline;    //
     HKalTrack*        pKalman;    //
@@ -78,6 +81,7 @@ public:
 	pTofHit2     = NULL;
 	pRpcClst     = NULL;
 	pShowerHit   = NULL;
+	pEmcClst     = NULL;
 	pRk          = NULL;
 	pSpline      = NULL;
 	pKalman      = NULL;
@@ -162,6 +166,7 @@ public:
 	    <<" oM "   <<isInDetector(Particle::kIsInOuterMDC)
 	    <<" RPC "  <<isInDetector(Particle::kIsInRPC)
 	    <<" S "    <<isInDetector(Particle::kIsInSHOWER)
+	    <<" E "    <<isInDetector(Particle::kIsInEMC)
 	    <<" T "    <<isInDetector(Particle::kIsInTOF)
 	    <<" iGhost "<<isInDetector(Particle::kIsInnerGhost)
 	    <<" oGhost "<<isInDetector(Particle::kIsOuterGhost)
@@ -622,6 +627,87 @@ public:
     ClassDef(shower_hit,1)
 };
 
+class emc_clst : public TObject {
+public:
+    emc_clst(){;}
+    ~emc_clst(){;}
+
+    Int_t   ind;         // Index of HEmcClst object
+    Int_t   indRpc;      // Index of HEmcClst object matched with RPC
+    Float_t quality;     // Matching quality
+    Float_t matchradius; // Matching quality
+    Float_t dx;          // Deviation in X-coordinate
+    Float_t dy;          // Deviation in Y-coordinate
+    Float_t energy;      // energy deposited in the cluster
+    Float_t time;        // mean time weighted by energy
+    Float_t sigmaEnergy; // error of "energy"
+    Float_t sigmaTime;   // error of "time"
+    Int_t   ncells;      // number of cells in the cluster
+    Bool_t  isMatchedRpc;// is the cluster matched to RPC (pos+time)
+
+    void reset(void){
+	ind         = -1;
+	indRpc      = -1;
+	quality     = -1;
+	matchradius = -1;
+	dx          = -1;
+	dy          = -1;
+	energy      = -1;
+	time        = -1;
+	sigmaEnergy = -1;
+	sigmaTime   = -1;
+	ncells      = -1;
+        isMatchedRpc =kFALSE;
+    }
+
+    void fillMeta(HMetaMatch2* meta,Int_t n = 0,HRKTrackB* rk=0){
+	if(meta){
+	    ind     = meta->getEmcClusterInd(n);
+	    if(rk==0){
+		quality = meta->getEmcClusterQuality(n);
+		dx      = meta->getEmcClusterDX(n);
+		dy      = meta->getEmcClusterDY(n);
+	    }
+	    else {
+		quality = rk->getQualityEmc();
+		dx      = rk->getMETAdx();
+		dy      = rk->getMETAdy();
+                matchradius = rk->getMetaRadius();
+	    }
+	}
+    }
+
+    void fillMetaKal(HMetaMatch2* meta,Int_t n = 0,HKalTrack*  rk=0){
+	if(meta){
+	    ind     = meta->getEmcClusterInd(n);
+	    if(rk==0){
+		quality = meta->getEmcClusterQuality(n);
+		dx      = meta->getEmcClusterDX(n);
+		dy      = meta->getEmcClusterDY(n);
+	    }
+	    else {
+		quality = rk->getQualityEmc();
+		dx      = rk->getMETAdx();
+		dy      = rk->getMETAdy();
+		matchradius = rk->getMetaRadius();
+	    }
+	}
+    }
+
+    void fill(HEmcCluster* hit){
+	if(hit){
+	    energy       = hit->getEnergy();
+	    time         = hit->getTime();
+	    sigmaEnergy  = hit->getSigmaEnergy();
+	    sigmaTime    = hit->getSigmaTime();
+	    ncells       = hit->getNCells();
+	    indRpc       = hit->getRpcIndex();
+	    isMatchedRpc = hit->getNMatchedCells() > 0 ? kTRUE: kFALSE;
+	}
+    }
+    ClassDef(emc_clst,1)
+};
+
 class rich_hit : public TObject {
 public:
     rich_hit(){;}
@@ -738,8 +824,8 @@ public:
     Int_t   pol;        // polarity
     Float_t quality;    // quality rk -Meta matching
     Float_t matchradius;// rk -Meta matching sqrt(dx2+dy2) [mm]
-    Float_t metadx;   // rk -Meta matching in x [mm]
-    Float_t metady;   // rk -Meta matching in y [mm]
+    Float_t metadx;     // rk -Meta matching in x [mm]
+    Float_t metady;     // rk -Meta matching in y [mm]
 
     void reset(void){
 	usedMeta  = -1;
@@ -780,6 +866,7 @@ public:
 	    if     (usedMeta >= 0 && usedMeta < 3) { quality = rk->getQualityTof();    matchradius = rk->getMetaRadius();  if(rk->getMETAdx()!=-10000)metadx=rk->getMETAdx();  if(rk->getMETAdy()!=-10000)metady=rk->getMETAdy();}
 	    else if(usedMeta == kRpcClst )         { quality = rk->getQualityRpc();    matchradius = rk->getMetaRadius();  if(rk->getMETAdx()!=-10000)metadx=rk->getMETAdx();  if(rk->getMETAdy()!=-10000)metady=rk->getMETAdy();}
 	    else if(usedMeta == kShowerHit )       { quality = rk->getQualityShower(); matchradius = rk->getMetaRadius();  if(rk->getMETAdx()!=-10000)metadx=rk->getMETAdx();  if(rk->getMETAdy()!=-10000)metady=rk->getMETAdy();}
+	    else if(usedMeta == kEmcClst )         { quality = rk->getQualityEmc();    matchradius = rk->getMetaRadius();  if(rk->getMETAdx()!=-10000)metadx=rk->getMETAdx();  if(rk->getMETAdy()!=-10000)metady=rk->getMETAdy();}
 	    else                                   { quality = -1; matchradius = -1; metadx = -1000; metady = -1000; }
 	}
     }
@@ -809,8 +896,8 @@ public:
     Int_t   pol;        // polarity
     Float_t quality;    // quality rk -Meta matching
     Float_t matchradius;// rk -Meta matching sqrt(dx2+dy2) [mm]
-    Float_t metadx;   // rk -Meta matching in x [mm]
-    Float_t metady;   // rk -Meta matching in y [mm]
+    Float_t metadx;     // rk -Meta matching in x [mm]
+    Float_t metady;     // rk -Meta matching in y [mm]
 
     void reset(void){
 	usedMeta  = -1;
@@ -850,6 +937,7 @@ public:
 	    if     (usedMeta >= 0 && usedMeta < 3) { quality = trk->getQualityTof();    matchradius = trk->getMetaRadius(); if(trk->getMETAdx()!=-10000.)metadx=trk->getMETAdx();  if(trk->getMETAdy()!=-10000.)metady=trk->getMETAdy(); }
 	    else if(usedMeta == kRpcClst )         { quality = trk->getQualityRpc();    matchradius = trk->getMetaRadius(); if(trk->getMETAdx()!=-10000.)metadx=trk->getMETAdx();  if(trk->getMETAdy()!=-10000.)metady=trk->getMETAdy(); }
 	    else if(usedMeta == kShowerHit )       { quality = trk->getQualityShower(); matchradius = trk->getMetaRadius(); if(trk->getMETAdx()!=-10000.)metadx=trk->getMETAdx();  if(trk->getMETAdy()!=-10000.)metady=trk->getMETAdy(); }
+	    else if(usedMeta == kEmcClst )         { quality = trk->getQualityEmc();    matchradius = trk->getMetaRadius(); if(trk->getMETAdx()!=-10000.)metadx=trk->getMETAdx();  if(trk->getMETAdy()!=-10000.)metady=trk->getMETAdy(); }
 	    else                                   { quality = -1;  matchradius = -1; metadx = -1000; metady = -1000;}
 	}
     }
@@ -865,6 +953,7 @@ public:
     pointers objects;          //!  keep pointers for this candidate
     //---------------------------
     // to be set by hand
+    Bool_t  isEMC;              // switch SHOWER/EMC
     Int_t   used;               // should this candidate be used ?
     Int_t   system;             // detector system
     Bool_t  rkSuccess;          // fitted ?
@@ -888,6 +977,7 @@ public:
     tracksVec tofTracks;    //  collected GEANT track number for TOF detector hit
     tracksVec rpcTracks;    //  collected GEANT track number for RPC detector hit
     tracksVec showerTracks; //  collected GEANT track number for SHOWER detector hit
+    tracksVec emcTracks;    //  collected GEANT track number for EMC detector cluster
     //---------------------------
 
     //---------------------------
@@ -908,6 +998,7 @@ public:
     tof_hit      tof[3];
     rpc_clst     rpcclst;
     shower_hit   showerhit;
+    emc_clst     emcclst;
     rich_hit     richhit;
     spline_track spline;
     rk_track     rk;
@@ -923,10 +1014,12 @@ public:
 	tofTracks   .reset();
 	rpcTracks   .reset();
 	showerTracks.reset();
+	emcTracks   .reset();
 
 	closeTracks .reset();
 	oAFitted           = -99;
         oANoFitted         = -99;
+	isEMC              =   kFALSE;
 	used               =   1;
 	system             =  -1;
 	rkSuccess          =   kFALSE;
@@ -948,6 +1041,7 @@ public:
 	for(Int_t i=0;i<3;i++) tof[i].reset();
 	rpcclst   .reset();
 	showerhit .reset();
+	emcclst   .reset();
 	richhit   .reset();
 	spline    .reset();
 	rk        .reset();
@@ -1019,6 +1113,7 @@ public:
 		    if     (selMeta >= 0 && selMeta < 3)  part-> setMetaMatchQuality(tof[selMeta].quality);
 		    else if(selMeta == kRpcClst )         part-> setMetaMatchQuality(rpcclst.quality);
 		    else if(selMeta == kShowerHit)        part-> setMetaMatchQuality(showerhit.quality);
+		    else if(selMeta == kEmcClst)          part-> setMetaMatchQuality(emcclst.quality);
 		    else                                  part-> setMetaMatchQuality(-1);
 		}
 		//------------------------------------------
@@ -1067,6 +1162,7 @@ public:
 		    if     (selMeta >= 0 && selMeta < 3)  { part-> setMetaMatchQuality(tof[selMeta].quality); }
 		    else if(selMeta == kRpcClst )         { part-> setMetaMatchQuality(rpcclst.quality);      }
 		    else if(selMeta == kShowerHit)        { part-> setMetaMatchQuality(showerhit.quality);    }
+		    else if(selMeta == kEmcClst)          { part-> setMetaMatchQuality(emcclst.quality);      }
 		    else                                  { part-> setMetaMatchQuality(-1);                   }
 		}
 		//------------------------------------------
@@ -1098,6 +1194,7 @@ public:
 		if     (selMeta >= 0 && selMeta < 3)  { part-> setRkMetaDx(tof[selMeta].dx); part-> setRkMetaDy(tof[selMeta].dy);  }
 		else if(selMeta == kRpcClst )         { part-> setRkMetaDx(rpcclst.dx)     ; part-> setRkMetaDy(rpcclst.dy);       }
 		else if(selMeta == kShowerHit)        { part-> setRkMetaDx(showerhit.dx);  ; part-> setRkMetaDy(showerhit.dy);     }
+		else if(selMeta == kEmcClst)          { part-> setRkMetaDx(emcclst.dx);    ; part-> setRkMetaDy(emcclst.dy);       }
 		else                                  { part-> setRkMetaDx(-1000)          ; part-> setRkMetaDy(-1000);            }
 	    }
             //------------------------------------------
@@ -1148,17 +1245,34 @@ public:
 	    part->setShowerSum0       (showerhit.showerSum0);
 	    part->setShowerSum1       (showerhit.showerSum1);
 	    part->setShowerSum2       (showerhit.showerSum2);
-            part->setMetaMatchQualityShower(showerhit.quality);
-            part->setMetaMatchRadiusShower (showerhit.matchradius);
 
+	    if(isEMC){
+		part->setMetaMatchQualityEmc(emcclst.quality);
+		part->setMetaMatchRadiusEmc (emcclst.matchradius);
+
+		part->setEmcEnergy(emcclst.energy);
+		part->setEmcTime(emcclst.time);
+		part->setIsEmc();
+		if(emcclst.isMatchedRpc) part->setIsEmcMatchedToRpc();
+		if(emcclst.indRpc==emcclst.ind && emcclst.ind>=0) part->setIsEmcMatchedToSameRpc();
+		part->setEmcNCells(emcclst.ncells);
+       
+
+	    } else {
+		part->setMetaMatchQualityShower(showerhit.quality);
+		part->setMetaMatchRadiusShower (showerhit.matchradius);
+	    }
 	    //------------------------------------------
 	    // set only indices of used META hits
 	    part->setMetaInd    (ind);
 	    part->setRichInd    (richhit.ind);
             part->setInnerSegInd(seg1.ind);
             part->setOuterSegInd(seg2.ind);
-
-            part->setShowerInd (showerhit.ind);
+            if(isEMC){
+		part->setEmcInd (emcclst.ind);
+	    } else {
+		part->setShowerInd (showerhit.ind);
+	    }
 
 	    if     (selMeta == kRpcClst ){
 		part->setRpcInd    (rpcclst.ind);
@@ -1294,12 +1408,27 @@ public:
 		    for(Int_t i = 0; i < ntr; i++){
 			part->setGeantTrackMeta(showerTracks.tracks[i]->tr,i);
 		    }
-		}
+		} else if (selMeta == kEmcClst){
 
-		ntr = showerTracks.tracks.size();
-		if(ntr > 4) ntr = 4;
-		for(Int_t i = 0; i < ntr; i++){
-		    part->setGeantTrackShower(showerTracks.tracks[i]->tr,i);
+		    ntr = emcTracks.tracks.size();
+		    if(ntr > 4) ntr = 4;
+		    for(Int_t i = 0; i < ntr; i++){
+			part->setGeantTrackMeta(emcTracks.tracks[i]->tr,i);
+		    }
+		}
+		if(isEMC)
+		{
+		    ntr = emcTracks.tracks.size();
+		    if(ntr > 4) ntr = 4;
+		    for(Int_t i = 0; i < ntr; i++){
+			part->setGeantTrackEmc(emcTracks.tracks[i]->tr,i);
+		    }
+		} else {
+		    ntr = showerTracks.tracks.size();
+		    if(ntr > 4) ntr = 4;
+		    for(Int_t i = 0; i < ntr; i++){
+			part->setGeantTrackShower(showerTracks.tracks[i]->tr,i);
+		    }
 		}
 
 		ntr = richTracks.tracks.size();

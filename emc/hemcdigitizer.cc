@@ -13,9 +13,8 @@ using namespace std;
 #include "hlinearcategory.h"
 #include "hemccalsim.h"
 #include "hemcgeompar.h"
-#include "hgeomvolume.h"
-#include "hgeomcompositevolume.h"
 #include "hemcdigipar.h"
+#include "hemcsimulpar.h"
 #include "hstartdef.h"
 #include "hstart2hit.h"
 
@@ -26,32 +25,28 @@ using namespace std;
 
 /////////////////////////////////////////////////////////////////////
 //
-//  HEmcDigitizer digitizes data, puts output values into
-//  cal data category
+//  HEmcDigitizer digitizes data, puts output values into cal data category
 //
 // Input data for digitization:
 // Two types of HGeantEmc objects:
 // 1. Hit which has track number = -777 keeps integrated number of photo electrons
-// 2. Hit which has track number > 0 keeps time of flight, momentum, track length
-//    and number of photo electrons
-// Parameters for recalculating of the photo electrons number to the energy deposit
-// Parameters for the time and energy deposit smearing
-// Value of start signal smearing
+// 2. Hit which has track number > 0 keeps a time of flight, momentum, track length and number of photo electrons
 //
-// Two modes of reconstruction: simulation or embedding
+// Parameters for recalculating of the number of photo electrons to the energy deposit
+// Parameters for the time and energy deposit smearings
+// Parameter for the start signal smearing
+//
+// Two modes of reconstruction: simulation and embedding
 //
 // HEmcDigitizer
 //  collects all tracks in the cell,
-//  corrects GEANT time of flight to the time on the input EMC plane,
-//  sorts tracks by corrected time and assigns the cell time to the fastest track 
-//     which has energy deposit above threshold,
-//  sorts tracks by energy and assigns the cell to the track which has 
-//     maximal energy deposit.
+//  corrects GEANT time of flight to the time in the input EMC plane,
+//  sorts tracks by corrected time and assigns the cell time to the fastest track which has energy deposit above threshold,
+//  sorts tracks by energy and assigns the cell to the track which has maximal energy deposit.
 //
-// Digitizer retrieves a particle from track history which crosses parallel 
-//    to EMC plane  on the distance zVertBorder in front of EMC.
-// zVertBorder >= 0 EMC front plane will be used
-// zVertBorder = -130. (default value) front plane of RPC
+// Digitizer retrieves a particle from track history which crosses parallel plane to EMC plane and distance to front of EMC is equal to zVertBorder.
+// zVertBorder >= 0    EMC front plane is used
+// zVertBorder = -130. RPC front plane is used (default value)
 //
 /////////////////////////////////////////////////////////////////////
 
@@ -139,24 +134,25 @@ Bool_t HEmcDigitizer::setParameterContainers(void) {
     Error("initParContainer","No EmcDigiPar parameter container");
     return kFALSE;
   }
+  fSimulPar    =(HEmcSimulPar *)gHades->getRuntimeDb()->getContainer("EmcSimulPar");
+  if (!fSimulPar){
+    Error("initParContainer","No EmcSimulPar parameter container");
+    return kFALSE;
+  }
   return kTRUE;
 }
 
 Bool_t HEmcDigitizer::reinit(void) {
   // sets some local variables read from initialized parameter container
   sigmaT               = fDigiPar->getSigmaT();
-  Float_t phot2E       = fDigiPar->getPhot2E();
-  Float_t phot2E2      = fDigiPar->getPhot2E2();
+  phot2Energy[0]       = fDigiPar->getPhot2E();        // for PMT type 1 (1.5inch)
+  phot2Energy[1]       = fDigiPar->getPhot2E2();       // for PMT type 2 (3.0inch)
   Float_t sigmaEIntern = fDigiPar->getSigmaEIntern();
-  Float_t sigmaEReal   = fDigiPar->getSigmaEReal();
-  Float_t sigmaEReal2  = fDigiPar->getSigmaEReal2();
-  Float_t facESmear    = 1000.*TMath::Sqrt(sigmaEReal*sigmaEReal - sigmaEIntern*sigmaEIntern);
-  Float_t facESmear2   = 1000.*TMath::Sqrt(sigmaEReal2*sigmaEReal2 - sigmaEIntern*sigmaEIntern);
-  for(Int_t s=0;s<6;s++) {
-    phot2Energy[s]     = (s&1)==0 ? phot2E : phot2E2;
-    facEnergSmear[s]   = (s&1)==0 ? facESmear : facESmear2;
-    labTrans[s]        = fGeomPar->getModule(s)->getLabTransform();
-  }
+  Float_t sigmaEReal   = fDigiPar->getSigmaEReal();    // for PMT type 1 (1.5inch)
+  Float_t sigmaEReal2  = fDigiPar->getSigmaEReal2();   // for PMT type 2 (3.0inch)
+  facEnergSmear[0]     = 1000.*TMath::Sqrt(sigmaEReal*sigmaEReal - sigmaEIntern*sigmaEIntern);
+  facEnergSmear[1]     = 1000.*TMath::Sqrt(sigmaEReal2*sigmaEReal2 - sigmaEIntern*sigmaEIntern);
+  for(Int_t s=0;s<6;s++) labTrans[s] = fGeomPar->getModule(s)->getLabTransform();
   return kTRUE;
 }
 
@@ -218,7 +214,9 @@ Int_t HEmcDigitizer::execute(void) {
     geantemc->getHit(peHit, xHit, yHit, zHit, tofHit, momHit, trackLength);
     if(peHit == 0.) continue;                             // Number of photo electrons must be > 0
 
-    Float_t energyHit = peHit * phot2Energy[sec];         // Convert to MeV
+    Int_t pmtType = fSimulPar->getPmtType(sec,cell);
+    if(pmtType < 1 || pmtType > 2) continue;    // never should happens
+    Float_t energyHit = peHit * phot2Energy[pmtType-1];         // Convert to MeV
     
     Int_t ind = cellObjectIndex(sec,cell);
     if(cellobjects[ind] == NULL) {
@@ -228,7 +226,7 @@ Int_t HEmcDigitizer::execute(void) {
     }
     celldata* cdata = cellobjects[ind];
     
-    if(trackNumber == -777) {          // -777: hits with integrated number of photoelectrons
+    if(trackNumber == -777) {          // -777: hits with integrated number of photo electrons
       cdata->energy += energyHit;
     } else {
       HGeantEmc* pFirstEmc = getInputHit(geantemc,trackNumber);
@@ -245,7 +243,8 @@ Int_t HEmcDigitizer::execute(void) {
       cdata->inputTracks.push_back(numInpTrack);
       Float_t tofHitD;
       pFirstEmc->getHit(peHit, xHit, yHit, zHit, tofHitD, momHit, trackLength);
-      energyHit = peHit * phot2Energy[sec];  // Convert to MeV
+      Int_t pmtType = fSimulPar->getPmtType(sec,cell);
+      energyHit = peHit * phot2Energy[pmtType-1];  // Convert to MeV
 
       // Is this track in the track list already:
       for(UInt_t i=0;i<cdata->ctracks.size();i++) {
@@ -274,6 +273,7 @@ Int_t HEmcDigitizer::execute(void) {
   for(UInt_t i = 0; i < cellobjects.size(); i ++) {
     celldata* cdata = cellobjects[i];
     if (cdata!=NULL && cdata->energy>0.) {
+      if(cdata->ctracks.size() == 0) continue;
       Int_t cell = cellFromIndex(i);
       fLoc[0] = sectorFromIndex(i);
       fLoc[1] = cell;
@@ -285,7 +285,8 @@ Int_t HEmcDigitizer::execute(void) {
       Float_t sigmaE = 0.;
       Float_t energy = 0.;
       if(cdata->energy > 0.) {
-        sigmaE = TMath::Sqrt(cdata->energy/1000.) * facEnergSmear[fLoc[0]];
+        Int_t pmtType = fSimulPar->getPmtType(fLoc[0],cell);
+        sigmaE = TMath::Sqrt(cdata->energy/1000.) * facEnergSmear[pmtType-1];
         energy = gRandom->Gaus(cdata->energy,sigmaE);
       }
       if(!cdata->isEmbeddedReal) {
@@ -303,8 +304,7 @@ Int_t HEmcDigitizer::execute(void) {
       // ------  energy -------------
       cal->setEnergy(energy);
       cal->setSigmaEnergy(sigmaE);
-      if(cal->getEnergy() > energyDepositCut) cal->setStatus1(1);  // Energy deposit > threshold in this cel
-      else                                    cal->setStatus1(-1);
+      if(cal->getEnergy() < energyDepositCut) cal->setStatus1(-1);  // Energy deposit < threshold in this cell
 
       // ------  time and track numbers ------
       // Take track number and time from track when sum. of energy deposit exceed threshold
@@ -339,8 +339,8 @@ Int_t HEmcDigitizer::execute(void) {
 }
 
 void  HEmcDigitizer::clearCellobjects(){
-  // deletes objects in working array and sets pointer to 0. 
-  // the vector is still not cleared.
+  // deletes objects in working array and sets pointer to 0
+  // the vector is still not cleared
   for(UInt_t i = 0; i < cellobjects.size(); i++) {
     if(cellobjects[i]) cellobjects[i]->reset();
   }
@@ -348,7 +348,7 @@ void  HEmcDigitizer::clearCellobjects(){
 
 HGeantEmc* HEmcDigitizer::getInputHit(HGeantEmc* pGeantEmc,Int_t &inputTrack) const {
   // Return pointer to the first HGeantEmc hit for track pGeantEmc->getTrack() or 
-  // parent track if it has HGeantEmc hit in this cell.
+  // parent track if it has HGeantEmc hit in this cell
   // Return inputTrack: geant track number of the parent track of pGeantEmc->getTrack() 
   // which first reach EMC(or RPC) in this sector first
   Int_t track = pGeantEmc->getTrack();
@@ -382,7 +382,7 @@ HGeantEmc* HEmcDigitizer::getInputHit(HGeantEmc* pGeantEmc,Int_t &inputTrack) co
   } while((kine = kine->getParent(track,fGeantKineCat)) != NULL);
   
   if(zVertBorder < 0.) {
-    // Test vertex inputTrack and if it was born in region RPC take parent track as inputTrack 
+    // Test vertex of inputTrack and if it was borned in RPC region take parent track as inputTrack 
     HGeomVector ver;
     kine = (HGeantKine*)fGeantKineCat->getObject(inputTrack-1);
     while(kTRUE) {

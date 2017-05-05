@@ -13,6 +13,7 @@ class HMdcSeg;
 class HTofHit;
 class HWallHit;
 class HShowerHit;
+class HEmcCluster;
 class HRichHit;
 class HRpcCluster;
 class HWallHit;
@@ -37,9 +38,12 @@ class HEDTransform : public TObject {
     static HGeomTransform* richMirrorTrans;
     static TGeoSphere*     richMirror;
     static Bool_t          fisNewRich;
+    static Bool_t          fisEmc;
 public:
     static void            setIsNewRich(Bool_t newrich=kTRUE) { fisNewRich = newrich;}
     static Bool_t          isNewRich()             { return fisNewRich;}
+    static void            setIsEmc(Bool_t is=kTRUE) { fisEmc = is;}
+    static Bool_t          isEmc()                   { return fisEmc;}
     static Float_t         calcPhiToLab            (Int_t sec);
     static void            setRichSecTrans         (Double_t x,Double_t y,Double_t z,Double_t rot1,Double_t rot2,Double_t rot3);
     static void            setRichMirrorTrans      (Double_t x,Double_t y,Double_t z,Double_t rot1,Double_t rot2,Double_t rot3);
@@ -53,6 +57,7 @@ public:
     static Bool_t          calcWallHitPointLab     (HWallHit* hit ,HGeomVector& p);
     static Bool_t          calcTofHitPointLab      (HTofHit* hit ,HGeomVector& p);
     static Bool_t          calcShowerHitPointLab   (HShowerHit* hit ,HGeomVector& p);
+    static Bool_t          calcEmcClusterPointLab  (HEmcCluster* hit ,HGeomVector& p);
     static Bool_t          calcRpcClustPointLab    (HRpcCluster* hit ,HGeomVector& p);
     static Bool_t          calcVertexPoint         (HGeomVector& p);
     static Bool_t          calcRichLinePointLab    (HRichHit* hit,HGeomVector& p1,HGeomVector& p2,HParticleCand* cand=0);

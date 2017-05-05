@@ -42,9 +42,10 @@ public:
   void setMETAdy(Float_t y)      { dyRkMeta= y;}
   void setMETAdz(Float_t z)      { dzRkMeta=z;}
   
-  void setQualityRpc(Float_t _qualityRpc) {qualityRpc = _qualityRpc;}
+  void setQualityRpc(Float_t _qualityRpc)       {qualityRpc = _qualityRpc;}
   void setQualityShower(Float_t _qualityShower) {qualityShower = _qualityShower;}
-  void setQualityTof(Float_t _qualityTof) {qualityTof = _qualityTof;}
+  void setQualityEmc(Float_t _qualityEmc)       {qualityShower = _qualityEmc;}
+  void setQualityTof(Float_t _qualityTof)       {qualityTof = _qualityTof;}
   
 
   //-get-functions--
@@ -63,6 +64,7 @@ public:
   
   Float_t getQualityRpc()      const   { return qualityRpc;}
   Float_t getQualityShower()   const   { return qualityShower;}
+  Float_t getQualityEmc()      const   { return qualityShower;}
   Float_t getQualityTof()      const   { return qualityTof;}
   Float_t getMetaRadius()              { return  (dxRkMeta == -10000)? -1: TMath::Sqrt(dxRkMeta*dxRkMeta+dyRkMeta*dyRkMeta);}
   

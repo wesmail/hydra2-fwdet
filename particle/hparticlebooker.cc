@@ -5,6 +5,7 @@
 #include "tofdef.h"
 #include "rpcdef.h"
 #include "showerdef.h"
+#include "emcdef.h"
 #include "hmdcdef.h"
 #include "richdef.h"
 
@@ -13,6 +14,7 @@
 #include "htofcluster.h"
 #include "hrpccluster.h"
 #include "hshowerhit.h"
+#include "hemccluster.h"
 #include "hmdcseg.h"
 #include "hrichhit.h"
 #include "hparticlecandsim.h"
@@ -20,6 +22,7 @@
 #include "htofclustersim.h"
 #include "hrpcclustersim.h"
 #include "hshowerhitsim.h"
+#include "hemcclustersim.h"
 #include "hmdcsegsim.h"
 #include "hrichhitsim.h"
 #include "hparticletool.h"
@@ -103,6 +106,7 @@ HParticleBooker::~HParticleBooker()
     mTofClsttoCand .clear();
     mRpcClsttoCand .clear();
     mShowertoCand  .clear();
+    mEmctoCand     .clear();
     mInnerMdctoCand.clear();
     mOuterMdctoCand.clear();
     mRichtoCand    .clear();
@@ -111,6 +115,7 @@ HParticleBooker::~HParticleBooker()
     vTofClstInd .clear();
     vRpcClstInd .clear();
     vShowerInd  .clear();
+    vEmcInd     .clear();
     vInnerMdcInd.clear();
     vOuterMdcInd.clear();
     vRichInd    .clear();
@@ -119,6 +124,7 @@ HParticleBooker::~HParticleBooker()
     vTofClst .clear();
     vRpcClst .clear();
     vShower  .clear();
+    vEmc     .clear();
     vInnerMdc.clear();
     vOuterMdc.clear();
     vRich    .clear();
@@ -127,6 +133,7 @@ HParticleBooker::~HParticleBooker()
     vTofClstAll .clear();
     vRpcClstAll .clear();
     vShowerAll  .clear();
+    vEmcAll     .clear();
     vInnerMdcAll.clear();
     vOuterMdcAll.clear();
     vRichAll    .clear();
@@ -137,6 +144,7 @@ HParticleBooker::~HParticleBooker()
     mTracktoTofCluster.clear();
     mTracktoRpcCluster.clear();
     mTracktoShowerHit .clear();
+    mTracktoEmcCluster.clear();
     mTracktoInnerMdc  .clear();
     mTracktoOuterMdc  .clear();
     mTracktoRichHit   .clear();
@@ -147,6 +155,7 @@ HParticleBooker::~HParticleBooker()
     mTracktoTofClusterInd.clear();
     mTracktoRpcClusterInd.clear();
     mTracktoShowerHitInd .clear();
+    mTracktoEmcClusterInd.clear();
     mTracktoInnerMdcInd  .clear();
     mTracktoOuterMdcInd  .clear();
     mTracktoRichHitInd   .clear();
@@ -339,6 +348,7 @@ void HParticleBooker::bookHits(HParticleCand* cand1)
     if(cand1->getSystemUsed() != -1){
 	Int_t meta = cand1->getMetaHitInd();
         Int_t showerInd = cand1->getShowerInd();
+        Int_t emcInd    = cand1->getEmcInd();
 	if(cand1->isTofHitUsed()){
 	    if(mTofHittoCand.find(meta) == mTofHittoCand.end()){
 		vector<HParticleCand*> v;
@@ -513,63 +523,128 @@ void HParticleBooker::bookHits(HParticleCand* cand1)
 		}
 	    }
 	}
-	if (showerInd!=-1){
-	    if(mShowertoCand.find(showerInd) == mShowertoCand.end()){
-		vector<HParticleCand*> v;
-		v.push_back(cand1);
-		mShowertoCand[showerInd] = v;
-		vShowerInd.push_back(showerInd);
-		HShowerHit* hit = HParticleTool::getShowerHit(showerInd);
-		if(hit) vShower.push_back(hit);
-	    } else {
-		mShowertoCand[showerInd].push_back(cand1);
-	    }
 
-	    if(candS)  // SIM ONLY
-	    {
-		for(Int_t i = 0; i < 4; i ++){
-		    Int_t tr = candS->getGeantTrackMeta(i);
-		    if(tr > 0)
-		    {
-			if(mTracktoShowerHitInd.find(tr) == mTracktoShowerHitInd.end()){    // new Track
-			    vector<Int_t> vI;
-			    vI.push_back(meta);
-			    mTracktoShowerHitInd[tr] = vI;
-			    if(showerhitCat){
-				HShowerHitSim* hitS;
-				hitS = HCategoryManager::getObject(hitS,showerhitCat,meta);
-				vector<HShowerHitSim*> v;
-				v.push_back(hitS);
-				mTracktoShowerHit[tr] = v;
-			    }
-			} else {
-			    if(find(mTracktoShowerHitInd[tr].begin(),mTracktoShowerHitInd[tr].end(),meta) == mTracktoShowerHitInd[tr].end()){
-				mTracktoShowerHitInd[tr].push_back(meta);
-				if(showerhitCat){
-				    HShowerHitSim* hitS;
-				    hitS = HCategoryManager::getObject(hitS,showerhitCat,meta);
-				    mTracktoShowerHit[tr].push_back(hitS);
+	if(cand1->isEmc())
+	{
+	    if (emcInd!=-1){
+		if(mEmctoCand.find(emcInd) == mEmctoCand.end()){
+		    vector<HParticleCand*> v;
+		    v.push_back(cand1);
+		    mEmctoCand[emcInd] = v;
+		    vEmcInd.push_back(emcInd);
+		    HEmcCluster* hit = HParticleTool::getEmcCluster(emcInd);
+		    if(hit) vEmc.push_back(hit);
+		} else {
+		    mEmctoCand[emcInd].push_back(cand1);
+		}
+
+		if(candS)  // SIM ONLY
+		{
+		    for(Int_t i = 0; i < 4; i ++){
+			Int_t tr = candS->getGeantTrackMeta(i);
+			if(tr > 0)
+			{
+			    if(mTracktoEmcClusterInd.find(tr) == mTracktoEmcClusterInd.end()){    // new Track
+				vector<Int_t> vI;
+				vI.push_back(meta);
+				mTracktoEmcClusterInd[tr] = vI;
+				if(emcclusterCat){
+				    HEmcClusterSim* hitS;
+				    hitS = HCategoryManager::getObject(hitS,emcclusterCat,meta);
+				    vector<HEmcClusterSim*> v;
+				    v.push_back(hitS);
+				    mTracktoEmcCluster[tr] = v;
+				}
+			    } else {
+				if(find(mTracktoEmcClusterInd[tr].begin(),mTracktoEmcClusterInd[tr].end(),meta) == mTracktoEmcClusterInd[tr].end()){
+				    mTracktoEmcClusterInd[tr].push_back(meta);
+				    if(emcclusterCat){
+					HEmcClusterSim* hitS;
+					hitS = HCategoryManager::getObject(hitS,emcclusterCat,meta);
+					mTracktoEmcCluster[tr].push_back(hitS);
+				    }
 				}
 			    }
-			}
 
-			// map all tracks of all hits to candidates
-			if(mTracktoAnyCandInd.find(tr) == mTracktoAnyCandInd.end()){      // new Track
-			    vector<Int_t> vI;
-			    vI.push_back(cand1->getIndex());
-			    mTracktoAnyCandInd[tr] = vI;
-			    vector<HParticleCandSim*> v;
-			    v.push_back(candS);
-			    mTracktoAnyCand[tr] = v;
-			} else {
-			    if(find(mTracktoAnyCandInd[tr].begin(),mTracktoAnyCandInd[tr].end(),cand1->getIndex()) == mTracktoAnyCandInd[tr].end()){
-				mTracktoAnyCandInd[tr].push_back(cand1->getIndex());
-				mTracktoAnyCand[tr].push_back(candS);
+			    // map all tracks of all hits to candidates
+			    if(mTracktoAnyCandInd.find(tr) == mTracktoAnyCandInd.end()){      // new Track
+				vector<Int_t> vI;
+				vI.push_back(cand1->getIndex());
+				mTracktoAnyCandInd[tr] = vI;
+				vector<HParticleCandSim*> v;
+				v.push_back(candS);
+				mTracktoAnyCand[tr] = v;
+			    } else {
+				if(find(mTracktoAnyCandInd[tr].begin(),mTracktoAnyCandInd[tr].end(),cand1->getIndex()) == mTracktoAnyCandInd[tr].end()){
+				    mTracktoAnyCandInd[tr].push_back(cand1->getIndex());
+				    mTracktoAnyCand[tr].push_back(candS);
+				}
 			    }
 			}
 		    }
 		}
 	    }
+
+	} else {
+	    if (showerInd!=-1){
+		if(mShowertoCand.find(showerInd) == mShowertoCand.end()){
+		    vector<HParticleCand*> v;
+		    v.push_back(cand1);
+		    mShowertoCand[showerInd] = v;
+		    vShowerInd.push_back(showerInd);
+		    HShowerHit* hit = HParticleTool::getShowerHit(showerInd);
+		    if(hit) vShower.push_back(hit);
+		} else {
+		    mShowertoCand[showerInd].push_back(cand1);
+		}
+
+		if(candS)  // SIM ONLY
+		{
+		    for(Int_t i = 0; i < 4; i ++){
+			Int_t tr = candS->getGeantTrackMeta(i);
+			if(tr > 0)
+			{
+			    if(mTracktoShowerHitInd.find(tr) == mTracktoShowerHitInd.end()){    // new Track
+				vector<Int_t> vI;
+				vI.push_back(meta);
+				mTracktoShowerHitInd[tr] = vI;
+				if(showerhitCat){
+				    HShowerHitSim* hitS;
+				    hitS = HCategoryManager::getObject(hitS,showerhitCat,meta);
+				    vector<HShowerHitSim*> v;
+				    v.push_back(hitS);
+				    mTracktoShowerHit[tr] = v;
+				}
+			    } else {
+				if(find(mTracktoShowerHitInd[tr].begin(),mTracktoShowerHitInd[tr].end(),meta) == mTracktoShowerHitInd[tr].end()){
+				    mTracktoShowerHitInd[tr].push_back(meta);
+				    if(showerhitCat){
+					HShowerHitSim* hitS;
+					hitS = HCategoryManager::getObject(hitS,showerhitCat,meta);
+					mTracktoShowerHit[tr].push_back(hitS);
+				    }
+				}
+			    }
+
+			    // map all tracks of all hits to candidates
+			    if(mTracktoAnyCandInd.find(tr) == mTracktoAnyCandInd.end()){      // new Track
+				vector<Int_t> vI;
+				vI.push_back(cand1->getIndex());
+				mTracktoAnyCandInd[tr] = vI;
+				vector<HParticleCandSim*> v;
+				v.push_back(candS);
+				mTracktoAnyCand[tr] = v;
+			    } else {
+				if(find(mTracktoAnyCandInd[tr].begin(),mTracktoAnyCandInd[tr].end(),cand1->getIndex()) == mTracktoAnyCandInd[tr].end()){
+				    mTracktoAnyCandInd[tr].push_back(cand1->getIndex());
+				    mTracktoAnyCand[tr].push_back(candS);
+				}
+			    }
+			}
+		    }
+		}
+	    }
+
 	}
     }
 
@@ -604,6 +679,7 @@ void HParticleBooker::nextEvent()
     mTofClsttoCand .clear();
     mRpcClsttoCand .clear();
     mShowertoCand  .clear();
+    mEmctoCand     .clear();
     mInnerMdctoCand.clear();
     mOuterMdctoCand.clear();
     mRichtoCand    .clear();
@@ -612,6 +688,7 @@ void HParticleBooker::nextEvent()
     vTofClstInd .clear();
     vRpcClstInd .clear();
     vShowerInd  .clear();
+    vEmcInd     .clear();
     vInnerMdcInd.clear();
     vOuterMdcInd.clear();
     vRichInd    .clear();
@@ -620,6 +697,7 @@ void HParticleBooker::nextEvent()
     vTofClst .clear();
     vRpcClst .clear();
     vShower  .clear();
+    vEmc     .clear();
     vInnerMdc.clear();
     vOuterMdc.clear();
     vRich    .clear();
@@ -628,6 +706,7 @@ void HParticleBooker::nextEvent()
     vTofClstAll .clear();
     vRpcClstAll .clear();
     vShowerAll  .clear();
+    vEmcAll     .clear();
     vInnerMdcAll.clear();
     vOuterMdcAll.clear();
     vRichAll    .clear();
@@ -638,6 +717,7 @@ void HParticleBooker::nextEvent()
     mTracktoTofCluster.clear();
     mTracktoRpcCluster.clear();
     mTracktoShowerHit .clear();
+    mTracktoEmcCluster.clear();
     mTracktoInnerMdc  .clear();
     mTracktoOuterMdc  .clear();
     mTracktoRichHit   .clear();
@@ -648,6 +728,7 @@ void HParticleBooker::nextEvent()
     mTracktoTofClusterInd.clear();
     mTracktoRpcClusterInd.clear();
     mTracktoShowerHitInd .clear();
+    mTracktoEmcClusterInd.clear();
     mTracktoInnerMdcInd  .clear();
     mTracktoOuterMdcInd  .clear();
     mTracktoRichHitInd   .clear();
@@ -829,6 +910,44 @@ void HParticleBooker::nextEvent()
 				if(find(mTracktoShowerHit[tr].begin(),mTracktoShowerHit[tr].end(),hitS) == mTracktoShowerHit[tr].end()){
 				    mTracktoShowerHit[tr].push_back(hitS);
 				    mTracktoShowerHitInd[tr].push_back(j);
+				}
+			    }
+			}
+		    }
+		}
+	    }
+	}
+    }
+
+    emcclusterCat = HCategoryManager::getCategory(catEmcCluster,2);
+    if(emcclusterCat)
+    {
+	Int_t size = emcclusterCat->getEntries();
+	HEmcCluster* hit = 0;
+	HEmcClusterSim* hitS = 0;
+	for(Int_t j = 0; j < size; j++) {
+	    hit = HCategoryManager::getObject(hit,emcclusterCat,j);
+	    if(hit)
+	    {
+		vEmcAll.push_back(hit);
+		hitS = dynamic_cast<HEmcClusterSim*>(hit);
+		if(hitS)
+		{
+		    for(Int_t i = 0; i <hitS->getNTracks() ; i ++)
+		    {
+			Int_t tr = hitS->getTrack(i);
+			if(tr > 0){
+			    if(mTracktoEmcCluster.find(tr) == mTracktoEmcCluster.end()){
+				vector<HEmcClusterSim*> v;
+				vector<Int_t> vI;
+				v.push_back(hitS);
+				vI.push_back(j);
+				mTracktoEmcCluster[tr] = v;
+				mTracktoEmcClusterInd[tr] = vI;
+			    } else {
+				if(find(mTracktoEmcCluster[tr].begin(),mTracktoEmcCluster[tr].end(),hitS) == mTracktoEmcCluster[tr].end()){
+				    mTracktoEmcCluster[tr].push_back(hitS);
+				    mTracktoEmcClusterInd[tr].push_back(j);
 				}
 			    }
 			}
@@ -1022,6 +1141,20 @@ Int_t HParticleBooker::getCandidatesForShower(Int_t index,vector<HParticleCand*>
     }
 }
 
+Int_t HParticleBooker::getCandidatesForEmc(Int_t index,vector<HParticleCand*>& hits)
+{
+    // fills vector of candidates using this hit index. returns the size of the vector
+    hits.clear();
+    map<Int_t,vector<HParticleCand*> > :: iterator it;
+    it = mEmctoCand.find(index);
+    if(it!=mEmctoCand.end()){
+	hits.assign(it->second.begin(),it->second.end());
+	return hits.size();
+    } else {
+	return 0;
+    }
+}
+
 Int_t HParticleBooker::getCandidatesForInnerMdc(Int_t index,vector<HParticleCand*>& hits)
 {
     // fills vector of candidates using this hit index. returns the size of the vector
@@ -1150,6 +1283,20 @@ Int_t HParticleBooker::getShowerHitForTrack      (Int_t track,vector<HShowerHitS
     }
 }
 
+Int_t HParticleBooker::getEmcClusterForTrack      (Int_t track,vector<HEmcClusterSim*>&    cands)
+{
+    // fills vector of hit using this track. returns the size of the vector
+    cands.clear();
+    map<Int_t,vector<HEmcClusterSim*> > :: iterator it;
+    it = mTracktoEmcCluster.find(track);
+    if(it!=mTracktoEmcCluster.end()){
+	cands.assign(it->second.begin(),it->second.end());
+	return cands.size();
+    } else {
+	return 0;
+    }
+}
+
 Int_t HParticleBooker::getInnerMdcSegForTrack    (Int_t track,vector<HMdcSegSim*>&       cands)
 {
     // fills vector of hit using this track. returns the size of the vector
@@ -1271,6 +1418,20 @@ Int_t HParticleBooker::getShowerHitIndForTrack      (Int_t track,vector<Int_t>& 
     map<Int_t,vector<Int_t> > :: iterator it;
     it = mTracktoShowerHitInd.find(track);
     if(it!=mTracktoShowerHitInd.end()){
+	cands.assign(it->second.begin(),it->second.end());
+	return cands.size();
+    } else {
+	return 0;
+    }
+}
+
+Int_t HParticleBooker::getEmcClusterIndForTrack      (Int_t track,vector<Int_t>&    cands)
+{
+    // fills vector of hit indices using this track. returns the size of the vector
+    cands.clear();
+    map<Int_t,vector<Int_t> > :: iterator it;
+    it = mTracktoEmcClusterInd.find(track);
+    if(it!=mTracktoEmcClusterInd.end()){
 	cands.assign(it->second.begin(),it->second.end());
 	return cands.size();
     } else {
@@ -1437,6 +1598,7 @@ Int_t HParticleBooker::getSameMeta(HParticleCand* cand,vector<HParticleCand*>& c
 	else if(sel == kTofHit1||sel==kTofHit2) mp = &mTofHittoCand;
 	else if(sel == kRpcClst)           mp = &mRpcClsttoCand;
 	else if(sel == kShowerHit)         mp = &mShowertoCand;
+	else if(sel == kEmcClst)           mp = &mEmctoCand;
 	else  {
 	    Error("getSameMeta()","unknown Meta case!"); return 0;
 	}

@@ -13,6 +13,7 @@
 #include "tofdef.h"
 #include "walldef.h"
 #include "showerdef.h"
+#include "emcdef.h"
 #include "rpcdef.h"
 #include "hparticledef.h"
 
@@ -28,6 +29,8 @@
 #include "htofclustersim.h"
 #include "hshowerhit.h"
 #include "hshowerhitsim.h"
+#include "hemccluster.h"
+#include "hemcclustersim.h"
 #include "hrichhit.h"
 #include "hrichhitsim.h"
 #include "hrichcal.h"
@@ -71,6 +74,7 @@ ClassImp(HEDTofHit)
 ClassImp(HEDTofCluster)
 ClassImp(HEDRpcCluster)
 ClassImp(HEDShowerHit)
+ClassImp(HEDEmcCluster)
 ClassImp(HEDParticleCand)
 ClassImp(HEDRichPadPlane)
 ClassImp(HEDRichRing)
@@ -758,6 +762,73 @@ void HEDShowerHit::Print(){
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
+HEDEmcCluster::HEDEmcCluster(HEmcClusterSim* hit):TEvePointSet(1)
+{
+    // creates a point at the position of the SHOWER hit.
+    // Works for real and sim objects. The object info
+    // will be displayed in TEve my mouse over events in
+    // the GL Viewer and the EveBrowser of the Event scene.
+    HGeomVector p;
+    HEDTransform::calcEmcClusterPointLab(hit,p);
+
+    TString cname = hit->ClassName();
+    Bool_t isSim  = kFALSE ;
+    if(cname.CompareTo("HEmcClusterSim") == 0) isSim = kTRUE;
+
+    HCategory* emcClusterCat = gHades->getCurrentEvent()->getCategory(catEmcCluster);
+
+    Int_t index = -1;
+    if(emcClusterCat) index = emcClusterCat->getIndex(hit);
+
+    TString title = "EDEmcCluster: \n";
+    title += Form(" ind   = %i\n"   ,index);
+    title += Form(" addr  = sec=%i,cell=%i\n",hit->getSector(),hit->getCell());
+    title += Form(" time  = %5.3f\n",hit->getTime());
+    title += Form(" energy= %5.3f\n",hit->getEnergy());
+    title += Form(" ncells= %i\n"   ,hit->getNCells());
+    title += Form(" active= %i\n"   ,hit->ifActive());
+    title += Form(" used  = %i\n"   ,hit->isUsedInParticleCand());
+    title += Form(" match = %i\n"   ,hit->getNMatchedCells()>0? 1: 0);
+    title += Form(" theta = %5.3f\n",hit->getTheta());
+    title += Form(" phi   = %5.3f\n",hit->getPhi());
+
+    if(isSim){
+
+	HCategory* kineCat = gHades->getCurrentEvent()->getCategory(catGeantKine);
+	for(Int_t i = 0; i < hit->getNTracks(); i ++){
+	    Int_t tr = hit->getTrack(i);
+	    Int_t parentTr = -1;
+	    Float_t mom    = -1;
+	    if(kineCat && tr > 0 ){
+		HGeantKine* kine = 0;
+		kine = HCategoryManager::getObject(kine,kineCat,tr-1);
+		mom      = kine->getTotalMomentum();
+		parentTr = kine->getParentTrack();
+		if(HPhysicsConstants::pid(kine->getID())){ cname = HPhysicsConstants::pid(kine->getID());}
+		else                                     { cname = "unknown"; }
+	    } else {
+		cname = "unknown";
+	    }
+	    title += Form("\t tr = %i (%s,%6.2f MeV/c, parent %i)\n",tr,cname.Data(),mom,parentTr);
+	}
+    }
+
+    title += Form(" p(%5.3f,%5.3f,%5.3f)\n",p.X(),p.Y(),p.Z());
+
+    SetElementName("EDEmcCluster");
+    SetTitle(title.Data());
+    SetPoint(0, p.X(),p.Y(),p.Z());
+    SetMarkerColor(kCyan);
+    SetPickable(kTRUE);
+}
+HEDEmcCluster::~HEDEmcCluster(){;}
+
+void HEDEmcCluster::Print(){
+    cout<<GetTitle()<<endl;
+}
+//-----------------------------------------------------------------
+
+//-----------------------------------------------------------------
 HEDParticleCand::HEDParticleCand(HParticleCandSim* cand)
 {
     // creates a compound object for a HParticleCand.
@@ -779,6 +850,7 @@ HEDParticleCand::HEDParticleCand(HParticleCandSim* cand)
     HCategory* rpcClusterCat  = HCategoryManager::getCategory(catRpcCluster,2);
 
     HCategory* showerHitCat = HCategoryManager::getCategory(catShowerHit,2);
+    HCategory* emcClusterCat= HCategoryManager::getCategory(catEmcCluster,2);
 
     Float_t x,y,z;
     TEveLine* track = new TEveLine();
@@ -922,6 +994,19 @@ HEDParticleCand::HEDParticleCand(HParticleCandSim* cand)
     }
     //-----------------------------------------------------------------
 
+    //-----------------------------------------------------------------
+    if(emcClusterCat && cand->getEmcInd() >= 0) {
+	HEmcClusterSim* hit     = 0;
+        HEDEmcCluster* edemccluster = 0;
+	hit = HCategoryManager::getObject(hit,emcClusterCat,cand->getEmcInd());
+	edemccluster = new HEDEmcCluster(hit);
+	edemccluster->SetMarkerColor(kCyan);
+	AddElement(edemccluster);
+	edemccluster->GetPoint(0,x,y,z);
+	track->SetNextPoint(x,y,z);
+    }
+    //-----------------------------------------------------------------
+
 
     //-----------------------------------------------------------------
     if(tofHitCat && cand->getTofHitInd() >= 0) {
@@ -977,19 +1062,39 @@ HEDParticleCand::HEDParticleCand(HParticleCandSim* cand)
     title += Form(" angToFit   = %5.3f\n",cand->getAngleToNearbyFittedInner());
     title += Form(" angToNoFit = %5.3f\n",cand->getAngleToNearbyUnfittedInner());
     title += Form(" metaQA     = %5.3f\n",cand->getMetaMatchQuality());
-    title += Form(" metaQAShr  = %5.3f\n",cand->getMetaMatchQualityShower());
+    if(!HEDTransform::isEmc()){
+	title += Form(" metaQAShr  = %5.3f\n",cand->getMetaMatchQualityShower());
+    } else {
+	title += Form(" metaQAEmc  = %5.3f\n",cand->getMetaMatchQualityEmc());
+	title += Form(" emcTime    = %5.3f\n",cand->getEmcTime());
+	title += Form(" emcEnergy  = %5.3f\n",cand->getEmcEnergy());
+    }
     title += Form(" sel meta   = %i\n"   ,cand->getSelectedMeta());
     title += Form(" ringQA     = %5.3f\n",cand->getRichInd() >= 0 ? cand->getRichMatchingQuality(): -1);
+    if(!HEDTransform::isEmc())
+    {
+	title += Form(" hit Ind    = rich %i, seg1 %i, seg2 %i, tofhit %i, tofClst %i, rpc %i, shower %i,\n"
+		      ,cand->getRichInd()
+		      ,cand->getInnerSegInd()
+		      ,cand->getOuterSegInd()
+		      ,cand->getTofHitInd()
+		      ,cand->getTofClstInd()
+		      ,cand->getRpcInd()
+		      ,cand->getShowerInd()
+		     );
+    } else {
+	title += Form(" hit Ind    = rich %i, seg1 %i, seg2 %i, tofhit %i, tofClst %i, rpc %i, ecal %i,\n"
+		      ,cand->getRichInd()
+		      ,cand->getInnerSegInd()
+		      ,cand->getOuterSegInd()
+		      ,cand->getTofHitInd()
+		      ,cand->getTofClstInd()
+		      ,cand->getRpcInd()
+		      ,cand->getEmcInd()
+		     );
+    }
 
-    title += Form(" hit Ind    = rich %i, seg1 %i, seg2 %i, tofhit %i, tofClst %i, rpc %i, shower %i,\n"
-		  ,cand->getRichInd()
-                  ,cand->getInnerSegInd()
-                  ,cand->getOuterSegInd()
-                  ,cand->getTofHitInd()
-                  ,cand->getTofClstInd()
-                  ,cand->getRpcInd()
-                  ,cand->getShowerInd()
-		 );
+
     if(isSim) {
 	title +="-------------------------------\n";
 	if(HPhysicsConstants::pid(cand->getGeantPID()) && cand->getGeantPID()>= 0){ cname = HPhysicsConstants::pid(cand->getGeantPID());}
@@ -1005,6 +1110,9 @@ HEDParticleCand::HEDParticleCand(HParticleCandSim* cand)
 		      ,mom
 		      ,cand->getGeantParentTrackNum()
 		      ,cand->getGeantGrandParentTrackNum() );
+
+    if(!HEDTransform::isEmc())
+    {
 	title += Form(" isInDet  = rich %i, seg1 %i, seg2 %i, tof %i rpc %i, shower %i\n"
 		      , (Int_t)cand->isInDetector(kIsInRICH)
                       , (Int_t)cand->isInDetector(kIsInInnerMDC)
@@ -1013,6 +1121,16 @@ HEDParticleCand::HEDParticleCand(HParticleCandSim* cand)
                       , (Int_t)cand->isInDetector(kIsInRPC)
                       , (Int_t)cand->isInDetector(kIsInSHOWER)
 		     );
+    } else {
+	title += Form(" isInDet  = rich %i, seg1 %i, seg2 %i, tof %i rpc %i, ecal %i\n"
+		      , (Int_t)cand->isInDetector(kIsInRICH)
+                      , (Int_t)cand->isInDetector(kIsInInnerMDC)
+                      , (Int_t)cand->isInDetector(kIsInOuterMDC)
+                      , (Int_t)cand->isInDetector(kIsInTOF)
+                      , (Int_t)cand->isInDetector(kIsInRPC)
+                      , (Int_t)cand->isInDetector(kIsInEMC)
+		     );
+    }
 	title += Form(" isGhost  = total %i seg1 %i seg2 %i\n"
 		      ,(Int_t)cand->isGhostTrack()
 		      ,(Int_t)cand->isInDetector(kIsInnerGhost)

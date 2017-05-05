@@ -18,6 +18,7 @@ using namespace std;
 #include "tofdef.h"
 #include "richdef.h"
 #include "rpcdef.h"
+#include "emcdef.h"
 #include "hmatrixcategory.h"
 #include "hshowergeometry.h"
 #include "hgeomtransform.h"
@@ -28,11 +29,15 @@ using namespace std;
 #include "hmdctrackgspline.h"
 #include "hmdctrackgcorrpar.h"
 #include "hshowerhitsim.h"
+#include "hemccal.h"
+#include "hemccluster.h"
 #include "hmdcgetcontainers.h"
 #include "htofhit.h"
 #include "htofcluster.h"
 #include "htofgeompar.h"
 #include "hrpcgeompar.h"
+#include "hemcgeompar.h"
+#include "hgeomcompositevolume.h"
 #include "hrichhit.h"
 #include "hmetamatchpar.h"
 #include "hmdcsizescells.h"
@@ -44,9 +49,11 @@ ClassImp(HMetaMatchF2)
 Float_t HMetaMatchF2::scaleRpcRMS   [2] = {1.0,1.0};
 Float_t HMetaMatchF2::scaleShowerRMS[2] = {1.0,1.0};
 Float_t HMetaMatchF2::scaleTofRMS   [2] = {1.0,1.0};
+Float_t HMetaMatchF2::scaleEmcRMS   [2] = {1.0,1.0};
 Float_t HMetaMatchF2::scaleRpcCut   =1.0;
 Float_t HMetaMatchF2::scaleShowerCut=1.0;
 Float_t HMetaMatchF2::scaleTofCut   =1.0;
+Float_t HMetaMatchF2::scaleEmcCut   =1.0;
 
 HMetaMatchF2::HMetaMatchF2() {
   setInitParam();
@@ -73,11 +80,16 @@ void HMetaMatchF2::setInitParam(void) {
   fTrkCandIter   = NULL;
   fCatShower     = NULL;
   iterShower     = NULL;
+  fCatEmc        = NULL;
+  fCatEmcCluster = NULL;
   fShrGeometry   = NULL;
   fRpcGeometry   = NULL;
+  fEmcGeometry   = NULL;
   fCatRpcCluster = NULL;
   iterRpcCluster = NULL;
   stNotMatTracks = kFALSE;
+  sigmaEmc       = 0.;
+  
   
   for(Int_t s=0;s<6;s++) labTrans[s]  = NULL;
   for(Int_t i=0;i<9;i++) qual2TofC[i] = 0.f;
@@ -151,12 +163,22 @@ Bool_t HMetaMatchF2::init() {
 
   // Shower:
   fCatShower = event->getCategory(catShowerHit);
-  if(!fCatShower) {
+  if(fCatShower == NULL) {
     Warning("init","NO catShowerHit in input! \n Matching with Shower will be skipped!");
   } else {
     iterShower   = (HIterator*)fCatShower->MakeIterator("native");
     fShrGeometry = (HShowerGeometry*)rtdb->getContainer("ShowerGeometry");
   }
+  
+  // Emc:
+  if(fCatShower == NULL) {
+    fCatEmc        = event->getCategory(catEmcCal);
+    fCatEmcCluster = event->getCategory(catEmcCluster);
+    if(fCatEmc == NULL)        Warning("init","No catEmcCal in input! \n Matching with EmcCal will be skipped!");
+    if(fCatEmcCluster == NULL) Warning("init","NO catEmcCluster in input! \n Matching with EmcCluster will be skipped!");
+    if(fCatEmc!=NULL || fCatEmcCluster!=NULL) fEmcGeometry = (HEmcGeomPar *)rtdb->getContainer("EmcGeomPar");
+  }
+  
  
   // RPC:
   fCatRpcCluster = event->getCategory(catRpcCluster);
@@ -211,6 +233,7 @@ Bool_t HMetaMatchF2::reinit() {
   if(fTofGeometry && !HMdcGetContainers::isInited(fTofGeometry)) return kFALSE;
   if(fShrGeometry && !HMdcGetContainers::isInited(fShrGeometry)) return kFALSE;
   if(fRpcGeometry && !HMdcGetContainers::isInited(fRpcGeometry)) return kFALSE;
+  if(fEmcGeometry && !HMdcGetContainers::isInited(fEmcGeometry)) return kFALSE;
 
   if(fMatchPar==0 || !HMdcGetContainers::isInited(fMatchPar)) {
     Error("reinit","no parameters for matching!");
@@ -248,6 +271,16 @@ void HMetaMatchF2::setMatchingParam(void) {
     quality2TOFCut[s]     = fMatchPar->getTofQualityCut(s)*fMatchPar->getTofQualityCut(s)*scaleTofCut*scaleTofCut;
     richThetaMinCut[s]    = fMatchPar->getRichThetaMinCut(s);
     richThetaMaxCut[s]    = fMatchPar->getRichThetaMaxCut(s);
+    
+    sigma2MdcInEmcX[s]    = fMatchPar->getEmcSigmaXMdc(s)*fMatchPar->getEmcSigmaXMdc(s);
+    sigma2MdcInEmcY[s]    = fMatchPar->getEmcSigmaYMdc(s)*fMatchPar->getEmcSigmaYMdc(s);
+    sEmcX[s]              = fMatchPar->getEmcSigmaXOffset(s);
+    sEmcY[s]              = fMatchPar->getEmcSigmaYOffset(s);
+    quality2EMCCut[s]     = fMatchPar->getEmcQualityCut(s)*fMatchPar->getEmcQualityCut(s)*scaleEmcCut*scaleEmcCut;
+    
+    nShowerHits[s]        = 0;
+    nEmcHits[s]           = 0;
+    sigmaEmc              = 92./TMath::Sqrt(12.);   // 92 mm - size of one cell in X and Y
   }
 }
 
@@ -259,7 +292,11 @@ Int_t HMetaMatchF2::execute() {
   if(fCatTrkCand->getEntries()<=0) return 0;
 
   collectRpcClusters();
-  collectShowerHits();
+  if(fCatShower != NULL) collectShowerHits();
+  else {
+    collectEmcHits();
+    collectEmcClusters();
+  }
   collectTofHits();
 
   fTrkCandIter->Reset();
@@ -344,12 +381,36 @@ void HMetaMatchF2::makeOuterSegMatch(HMdcTrkCand* pTrkCand) {
         insertQual(qual2,indexShrHitSec[nSh],nShrMatched,qual2ShrAr,shrInd);
       }
     }
+    
+    nEmcMatched     = 0;
+    nEmcClusMatched = 0;
+    if(fEmcGeometry != NULL) {
+      HModGeomPar *pmodgeom = fEmcGeometry->getModule(sector);
+      transMdcToMeta(pmodgeom->getLabTransform()); // Module 0 only!
+      Double_t zp1    = p1SegInMod.getZ(); //-zEmc;  zEmc=0
+      Double_t zp2    = p2SegInMod.getZ(); //-zEmc;  zEmc=0
+      Double_t xSegCr = (zp1*p2SegInMod.getX()-p1SegInMod.getX()*zp2)*invDZ; // invDZ = 1./(zp1-zp2);
+      Double_t ySegCr = (zp1*p2SegInMod.getY()-p1SegInMod.getY()*zp2)*invDZ;
+      for(Int_t nEmc=0; nEmc<nEmcHitsSec;nEmc++) {
+        Float_t qual2 = quality2Emc(fEmcHitsSec[nEmc],pmodgeom,xSegCr,ySegCr);
+        if(qual2>quality2EMCCut[sector]) continue; //??????????????????????????????
+        insertQual(qual2,indexEmcHitSec[nEmc],nEmcMatched,qual2EmcAr,emcInd);
+        Short_t status = fEmcHitsSec[nEmc]->getStatus1();
+        if(status >= 0) fEmcHitsSec[nEmc]->setStatus1(++status);
+      }
+      for(Int_t nEmc=0; nEmc<nEmcClusSec;nEmc++) {
+        Float_t qual2 = quality2EmcClus(fEmcClusSec[nEmc],xSegCr,ySegCr);
+        if(qual2>quality2EMCCut[sector]) continue; //??????????????????????????????
+        insertQual(qual2,indexEmcClusSec[nEmc],nEmcClusMatched,qual2EmcClusAr,emcClusInd);
+      }
+    }
 
-    if(nRpcMatched>0 || nShrMatched>0 || nTofMatched>0) {  // Is matching:
+    if(nRpcMatched>0 || nShrMatched>0 || nTofMatched>0 || nEmcClusMatched>0) {  // Is matching:
 	isMMatch = kTRUE;
       if(getMetaMatchSlot(trkCandIndex)) {
         if(nRpcMatched>0) meta->setRpcClstMMF(nRpcMatched,rpcInd,qual2RpcAr);
         if(nShrMatched>0) meta->setShrHitMMF(nShrMatched,shrInd,qual2ShrAr);
+        else if(nEmcClusMatched>0) meta->setEmcClstMMF(nEmcClusMatched,emcClusInd,qual2EmcClusAr);
         if(nTofMatched>0) meta->setTofClstMMF(nTofMatched,tofInd,qual2TofAr);
       }
     } else if(stNotMatTracks) {                            // No matching:
@@ -596,6 +657,32 @@ Float_t HMetaMatchF2::quality2Shower(HShowerHit* pShrHit)  {
   return dX*dX/dXsig2 + dY*dY/dYsig2;
 }
 
+Float_t HMetaMatchF2::quality2Emc(HEmcCal* pEmcHit,HModGeomPar *pmodgeom,Double_t xSegCr,Double_t ySegCr)  {
+  HGeomVolume* fVol = pmodgeom->getRefVolume()->getComponent(pEmcHit->getCell());
+  const HGeomVector& pos  = fVol->getTransform().getTransVector();
+  Double_t xEmc   = pos.getX();
+  Double_t yEmc   = pos.getY();
+  dX              = xEmc-xSegCr-sEmcX[sector];
+  dY              = yEmc-ySegCr-sEmcY[sector];
+  Float_t  dXsig2 = sigmaEmc * scaleEmcRMS[0];
+  dXsig2          = dXsig2*dXsig2 + sigma2MdcInEmcX[sector];
+  Float_t  dYsig2 = sigmaEmc * scaleShowerRMS[1];
+  dYsig2          = dYsig2*dYsig2 + sigma2MdcInEmcY[sector];
+  return dX*dX/dXsig2 + dY*dY/dYsig2;
+}
+
+Float_t HMetaMatchF2::quality2EmcClus(HEmcCluster* pEmcClus,Double_t xSegCr,Double_t ySegCr)  {
+  Double_t xEmc   = pEmcClus->getXMod();
+  Double_t yEmc   = pEmcClus->getYMod();
+  dX              = xEmc-xSegCr-sEmcX[sector];
+  dY              = yEmc-ySegCr-sEmcY[sector];
+  Float_t  dXsig2 = sigmaEmc * scaleEmcRMS[0];
+  dXsig2          = pEmcClus->getSigmaXMod()*pEmcClus->getSigmaXMod() + sigma2MdcInEmcX[sector];
+  Float_t  dYsig2 = sigmaEmc * scaleShowerRMS[1];
+  dYsig2          = pEmcClus->getSigmaYMod()*pEmcClus->getSigmaYMod() + sigma2MdcInEmcY[sector];
+  return dX*dX/dXsig2 + dY*dY/dYsig2;
+}
+
 void HMetaMatchF2::collectTofHits(void) {
   if(fCatTof) iterTof->Reset();
   HTofHit *pTofHit;
@@ -690,7 +777,7 @@ void HMetaMatchF2::collectRpcClusters(void) {
 
 void HMetaMatchF2::collectShowerHits(void) {
   for(Int_t s=0;s<6;s++) nShowerHits[s]=0;
-  if(!fCatShower) return;
+  if(fCatShower == NULL) return;
   iterShower->Reset();
   HShowerHit *pShowerHit;
   while((pShowerHit = (HShowerHit*)(iterShower->Next()))!=0) {
@@ -703,6 +790,34 @@ void HMetaMatchF2::collectShowerHits(void) {
     fShowerHits[sec][nShowerHits[sec]] = pShowerHit;
     indexShrHit[sec][nShowerHits[sec]] = fCatShower->getIndex(pShowerHit);
     nShowerHits[sec]++;
+  }
+}
+
+void HMetaMatchF2::collectEmcHits(void) {
+  for(Int_t s=0;s<6;s++) nEmcHits[s]=0;
+  if(fCatEmc == NULL) return;
+  Int_t ncals = fCatEmc->getEntries();
+  for(Int_t ind=0;ind<ncals;ind++) {
+    HEmcCal *pEmcCal = (HEmcCal*)fCatEmc->getObject(ind);
+    if(pEmcCal->getStatus1() < 0) continue;              // Energy < energyCut for sim.data
+    Int_t sec = pEmcCal->getSector();
+    fEmcHits[sec][nEmcHits[sec]]        = pEmcCal;
+    indexEmcHit[sec][nEmcHits[sec]]     = ind;
+    nEmcHits[sec]++;
+  }
+}
+
+void HMetaMatchF2::collectEmcClusters(void) {
+  for(Int_t s=0;s<6;s++) nEmcClusters[s]=0;
+  if(fCatEmcCluster == NULL) return;
+  Int_t nclus = fCatEmcCluster->getEntries();
+  for(Int_t ind=0;ind<nclus;ind++) {
+    HEmcCluster *pEmcCluster = (HEmcCluster*)fCatEmcCluster->getObject(ind);
+    if( !pEmcCluster->ifActive() ) continue;              // Bad cluster
+    Int_t sec = pEmcCluster->getSector();
+    fEmcCluster[sec][nEmcClusters[sec]]     = pEmcCluster;
+    indexEmcCluster[sec][nEmcClusters[sec]] = ind;
+    nEmcClusters[sec]++;
   }
 }
 
@@ -765,6 +880,13 @@ void HMetaMatchF2::setCurrentSector(Int_t sec) {
   nShowerHitsSec  = nShowerHits[sector];
   indexShrHitSec  = indexShrHit[sector];
   fShowerHitsSec  = fShowerHits[sector];
+  
+  nEmcHitsSec     = nEmcHits[sector];
+  indexEmcHitSec  = indexEmcHit[sector];
+  fEmcHitsSec     = fEmcHits[sector];
+  nEmcClusSec     = nEmcClusters[sector];
+  indexEmcClusSec = indexEmcCluster[sector];
+  fEmcClusSec     = fEmcCluster[sector];
   
   nTofHitsSec     = nTofHits[sector];
   tofHitsSec      = tofHits[sector];

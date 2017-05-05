@@ -21,6 +21,7 @@
 #pragma link C++ class HEDTofCluster;
 #pragma link C++ class HEDRpcCluster;
 #pragma link C++ class HEDShowerHit;
+#pragma link C++ class HEDEmcCluster;
 #pragma link C++ class HEDParticleCand;
 #pragma link C++ class HEDRichPadPlane;
 #pragma link C++ class HEDRich700PadPlane;

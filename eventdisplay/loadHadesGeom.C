@@ -101,6 +101,8 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
     TRegexp regTOFMOTHER   ("T[12345678].F_");
     TRegexp regSHOWER      ("SH[123]M");
     TRegexp regSHOWERMOTHER("SHK[123456]");
+    TRegexp regEMC         ("GLEA");
+    TRegexp regEMCMOTHER   ("GMOM_[123456]");
 
     TString patternrich;
     if(!HEDTransform::isNewRich()) patternrich="RPAD";
@@ -117,6 +119,8 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
     TObjArray* allnodes = node->GetNodes();
     TString sector="";
     TString result="";
+
+
     //------------------------------------------------------------
     // loop volumes to define color + visability
     // sector,RICH,FRAMES and COILS are switched
@@ -160,6 +164,15 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
 	}
 
 	result = name(regSHOWER);
+	if(result != ""){
+	    vol->SetLineColor(colorDef->colSHOWER);
+	    if(drawSHOWER)vol->SetVisibility(kTRUE);
+	    vol->SetVisDaughters(kFALSE);
+	    vol->SetTransparency(colorDef->transSHOWER);
+	    colorDef->volSHOWER.AddLast(vol);
+	}
+
+	result = name(regEMC);
 	if(result != ""){
 	    vol->SetLineColor(colorDef->colSHOWER);
 	    if(drawSHOWER)vol->SetVisibility(kTRUE);
@@ -224,7 +237,6 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
 	    colorDef->volCOILS.AddLast(vol);
 	}
     }
-
     //------------------------------------------------------------
 
 
@@ -267,6 +279,10 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
 		    colorDef->nodesRPC.AddLast(nsec);
 		}
                 result = namesec(regSHOWERMOTHER);
+		if(result != "") {
+		    colorDef->nodesSHOWER.AddLast(nsec);
+		}
+                result = namesec(regEMCMOTHER);
 		if(result != "") {
 		    colorDef->nodesSHOWER.AddLast(nsec);
 		}
@@ -344,9 +360,18 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
 		const Double_t* shift = matrix->GetTranslation();
 		matrix->SetDz(shift[2]+rpcshift);
 	    }
+
+            if(!HEDTransform::isEmc())
 	    {
 		// SHOWER
 		gGeoManager->cd(Form("CAVE_1/SEC%i_1/SHK%i_1",s,s));
+		node = gGeoManager->GetCurrentNode();
+		matrix = node->GetMatrix();
+		const Double_t* shift = matrix->GetTranslation();
+		matrix->SetDz(shift[2]+showershift);
+	    } else {
+		// EMC
+		gGeoManager->cd(Form("CAVE_1/SEC%i_1/GMOM_%i",s,s));
 		node = gGeoManager->GetCurrentNode();
 		matrix = node->GetMatrix();
 		const Double_t* shift = matrix->GetTranslation();
@@ -422,13 +447,15 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
     }
 
     {
-	gGeoManager->cd("CAVE_1/RICH_1/RMET_1/RDET_1/RPAD_1"); // make GeoManager update transformations
-	Double_t local [3]={0,0,0};
-	Double_t master[3]={0,0,0};
-	gGeoManager->LocalToMaster(local,master);
-	cout<<"RICH PAD LAB="<<master[0]<<","<<master[1]<<","<<master[2] <<endl;
-	HEDTransform::setRichSecTrans(master[0],master[1],master[2],-20,0,0);
 
+	if(!HEDTransform::isNewRich()) {
+	    gGeoManager->cd("CAVE_1/RICH_1/RMET_1/RDET_1/RPAD_1"); // make GeoManager update transformations
+	    Double_t local [3]={0,0,0};
+	    Double_t master[3]={0,0,0};
+	    gGeoManager->LocalToMaster(local,master);
+	    cout<<"RICH PAD LAB="<<master[0]<<","<<master[1]<<","<<master[2] <<endl;
+	    HEDTransform::setRichSecTrans(master[0],master[1],master[2],-20,0,0);
+	}
     }
     //------------------------------------------------------------
 

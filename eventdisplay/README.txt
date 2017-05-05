@@ -11,6 +11,8 @@
 //                   -switch real sim data here.
 //                   -set B-Field settings
 // loadHadesGeom.C : NO USER ACTION required here.
+//                   Loads the need volums for the display from
+//                   root file reading TGeoManager.
 // make_GUI.C      : NO USER ACTION required here.
 //
 // createHades.C   : USER ACTION required here.
@@ -20,6 +22,8 @@
 //                   Basically a DST macro. Put 
 //                   HEDTransform::setIsNewRich(kTRUE); in the top
 //                   of the macro, if you want to run new Rich.
+//                   Put HEDTransform::setIsEmc(kTRUE); in the top
+//                   of the macro, if you want to run ECAL instead of SHOWER.
 //                   HEDTranform functions , HED objects 
 //                   nextEvent.C and loadHadesGeom.C will use the 
 //                   flag to perform the proper action
@@ -126,8 +130,9 @@
 // HEDTofCluster      : public TEvePointSet ==> HEDTofCluster(HTofClusterSim*)
 // HEDRpcCluster      : public TEvePointSet ==> HEDRpcCluster(HRpcClusterSim*)
 // HEDWallHit         : public TEvePointSet ==> HEDWallHit(HWallHitSim*)
-// HEDWallPlane       : public TEveQuadSet  ==> HEDWallPlane()                   // fires WALL cells
+// HEDWallPlane       : public TEveQuadSet  ==> HEDWallPlane()                   // fired WALL cells
 // HEDShowerHit       : public TEvePointSet ==> HEDShowerHit(HShowerHitSim*)
+// HEDEmcCluster      : public TEvePointSet ==> HEDEmcCluster(HEmcClusterSim*)
 //----------------------------------------------------------------
 // HEDParticleCand : public TEveCompound ==> HEDParticleCand(HParticleCandSim*);
 //    consist out of all detector hits contributing to

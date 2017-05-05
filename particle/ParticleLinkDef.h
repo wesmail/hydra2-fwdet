@@ -102,6 +102,7 @@
 #pragma link C++ class rich_hit;
 #pragma link C++ class tof_hit;
 #pragma link C++ class shower_hit;
+#pragma link C++ class emc_clst;
 #pragma link C++ class rpc_clst;
 #pragma link C++ class spline_track;
 #pragma link C++ class rk_track;

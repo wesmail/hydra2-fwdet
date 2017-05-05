@@ -12,6 +12,8 @@ class HTofCluster;
 class HTofHit;
 class HRpcCluster;
 class HShowerHit;
+class HEmcCal;
+class HEmcCluster;
 class HIterator;
 class HMdcTrkCand;
 class HMdcTrackGSpline;
@@ -21,6 +23,8 @@ class HMdcGetContainers;
 class HRichHit;
 class HTofGeomPar;
 class HRpcGeomPar;
+class HEmcGeomPar;
+class HModGeomPar;
 class HShowerGeometry;
 class HMetaMatchPar;
 class HMdcSizesCells;
@@ -42,18 +46,24 @@ class HMetaMatchF2 : public HReconstructor {
     Float_t            sigma2MdcInRpcY[6];
     Float_t            sigma2MdcInShrX[6];
     Float_t            sigma2MdcInShrY[6];
+    Float_t            sigma2MdcInEmcX[6];
+    Float_t            sigma2MdcInEmcY[6];
     Float_t            sShowerX[6];
     Float_t            sShowerY[6];
     Float_t            sRpcX[6];
     Float_t            sRpcY[6];
+    Float_t            sEmcX[6];
+    Float_t            sEmcY[6];
     Float_t            quality2RPCCut[6];
     Float_t            quality2SHOWERCut[6];
+    Float_t            quality2EMCCut[6];
     Float_t            dThRich[6];              // matching window for 6 sectors
     Float_t            dPhRich[6];              // ...
     Float_t            dPhRichOff[6];           // ...
     Float_t            qualityRichCut[6];       //
     Float_t            richThetaMinCut[6];
     Float_t            richThetaMaxCut[6];
+    Float_t            sigmaEmc;
     
     const HGeomTransform *labTrans[6];
     HMdcGetContainers *fGetCont;
@@ -66,6 +76,8 @@ class HMetaMatchF2 : public HReconstructor {
     HCategory         *fCatShower;
     HCategory         *fCatRich;
     HCategory         *fCatRpcCluster;
+    HCategory         *fCatEmc;
+    HCategory         *fCatEmcCluster;
 
     HMdcKickPlane      kickplane;
     HMdcTrackGSpline  *pSpline;
@@ -80,6 +92,7 @@ class HMetaMatchF2 : public HReconstructor {
     HTofGeomPar       *fTofGeometry;
     HShowerGeometry   *fShrGeometry;
     HRpcGeomPar       *fRpcGeometry;
+    HEmcGeomPar       *fEmcGeometry;
 
     Int_t              nRpcClusters[6];
     HRpcCluster*       fRpcClusters[6][200];
@@ -93,6 +106,13 @@ class HMetaMatchF2 : public HReconstructor {
     Char_t             tofModule[6][100];       // Tof module of hit
     Short_t            indexTofHit[6][100];
     Char_t             tofClustSize[6][100];    // 0 - HTofHit obj., >=1 - HTofCluster
+
+    Int_t              nEmcHits[6];
+    HEmcCal*           fEmcHits[6][160];
+    Short_t            indexEmcHit[6][160];
+    Int_t              nEmcClusters[6];
+    HEmcCluster*       fEmcCluster[6][160];
+    Short_t            indexEmcCluster[6][160];
     
     HMdcSeg           *segments[2];
     HGeomVector        mdcTrackPar[4];
@@ -106,6 +126,13 @@ class HMetaMatchF2 : public HReconstructor {
     UChar_t            nRpcMatched;             // Number of matched rpc clusters
     Float_t            qual2RpcAr[MMF_BUF][3];  // [?][0]-quality^2,[?][1]-dx,[?][2]-dy
     Short_t            rpcInd[MMF_BUF];         // HRpcCluster indexis
+    
+    UChar_t            nEmcMatched;             // Number of matched shower hits
+    Float_t            qual2EmcAr[MMF_BUF][3];  // [][0]-quality^2,[][1]-dx,[][2]-dy
+    Short_t            emcInd[MMF_BUF];         // HEmcCal indexis
+    UChar_t            nEmcClusMatched;         // Number of matched shower hits
+    Float_t            qual2EmcClusAr[MMF_BUF][3];  // [][0]-quality^2,[][1]-dx,[][2]-dy
+    Short_t            emcClusInd[MMF_BUF];     // HEmcCal indexis
 
     UChar_t            nRichId;                 // Number of matched HRichHit
     Short_t            richInd[RICH_BUF];       // indexis
@@ -129,7 +156,13 @@ class HMetaMatchF2 : public HReconstructor {
     Char_t            *tofClustSizeSec;         // ...
     Char_t            *tofModuleSec;            // ...
     const HGeomTransform* secLabTrans;
-
+    
+    Int_t              nEmcHitsSec;             // == nEmcHits[sec] for current sector
+    HEmcCal          **fEmcHitsSec;             // ...
+    Short_t           *indexEmcHitSec;          // ...
+    Int_t              nEmcClusSec;             // == nEmcHits[sec] for current sector
+    HEmcCluster      **fEmcClusSec;             // ...
+    Short_t           *indexEmcClusSec;         // ...
       
     Bool_t             isPrint;
     
@@ -141,10 +174,12 @@ class HMetaMatchF2 : public HReconstructor {
     static Float_t scaleRpcRMS   [2];
     static Float_t scaleShowerRMS[2];
     static Float_t scaleTofRMS   [2];
+    static Float_t scaleEmcRMS   [2];
 
     static Float_t scaleRpcCut   ;
     static Float_t scaleShowerCut;
     static Float_t scaleTofCut   ;
+    static Float_t scaleEmcCut   ;
 
 
     Bool_t             stNotMatTracks;      // kTRUE - store not matched tracks in cat.
@@ -164,11 +199,14 @@ class HMetaMatchF2 : public HReconstructor {
 	scaleShowerRMS[1] = shrrmsy;
 	scaleTofRMS   [0] = tofrmsx;
 	scaleTofRMS   [1] = tofrmsy;
+	scaleEmcRMS   [0] = shrrmsx;  // for EMS parameter shrrmsx is used
+	scaleEmcRMS   [1] = shrrmsy;  // for EMS parameter shrrmsy is used
     }
     static void  setScaleCut(Float_t tofcut,Float_t rpccut,Float_t shrcut) {
-	scaleRpcCut = rpccut;
-	scaleTofCut = tofcut;
+	scaleRpcCut    = rpccut;
+	scaleTofCut    = tofcut;
 	scaleShowerCut = shrcut;
+	scaleEmcCut    = shrcut;    // for EMS parameter shrcut is used
     }
   private:
     void         setInitParam(void);
@@ -176,6 +214,8 @@ class HMetaMatchF2 : public HReconstructor {
     void         collectTofHits(void);
     void         collectRpcClusters(void);
     void         collectShowerHits(void);
+    void         collectEmcHits(void);
+    void         collectEmcClusters(void);
     void         makeOuterSegMatch(HMdcTrkCand* pTrkCand);
     Bool_t       getMetaMatchSlot(Int_t trkCandIndex);
     Bool_t       quality2TofClustS2(Int_t& hit);
@@ -183,6 +223,8 @@ class HMetaMatchF2 : public HReconstructor {
     Bool_t       quality2TofHit(Int_t hit);
     Float_t      quality2Shower(HShowerHit* pShrHit);
     Float_t      quality2Rpc(HRpcCluster* pRpcCl);
+    Float_t      quality2Emc(HEmcCal* pEmcHit,HModGeomPar *pmodgeom,Double_t xSegCr,Double_t ySegCr);
+    Float_t      quality2EmcClus(HEmcCluster* pEmcClus,Double_t xSegCr,Double_t ySegCr);
     void         setCurrentSector(Int_t sec);
     void         addTofCluster(HTofCluster* pTofCluster);
     void         addTofHit(HTofHit* pTofHit,Int_t clSize=0);

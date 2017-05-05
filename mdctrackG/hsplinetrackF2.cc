@@ -20,6 +20,7 @@
 #include "hmdcseg.h"
 #include "rpcdef.h"
 #include "showerdef.h"
+#include "emcdef.h"
 #include "hmdctrackgcorrpar.h"
 #include "hmdctrackgfieldpar.h"
 #include "hmatrixcategory.h"
@@ -33,6 +34,7 @@
 #include "hsplinetrack.h"
 #include "hmagnetpar.h"
 #include "hshowerhitsim.h"
+#include "hemcclustersim.h"
 #include "hmdcsizescells.h"
 #include "heventheader.h"
 #include "hmdcgetcontainers.h"
@@ -66,6 +68,7 @@ void HSplineTrackF2::setDef(void) {
   fCatTofCluster  = NULL;
   fCatRpcCluster  = NULL;
   fCatShowerHit   = NULL;
+  fCatEmcCluster  = NULL;
   field           = NULL;
   corr            = NULL;
   qSpline         = -1.f;
@@ -131,9 +134,10 @@ Bool_t HSplineTrackF2::init()
       if(!fCatRpcCluster) Warning("init", "NO catRpcCluster in input!");;
       
       
-      fCatShowerHit = event -> getCategory(catShowerHit);
-      if(!fCatShowerHit) {
-	  Warning("init", "NO catShowerHit in input!");
+      fCatShowerHit  = event -> getCategory(catShowerHit);
+      fCatEmcCluster = event->getCategory(catEmcCluster);
+      if(fCatShowerHit == NULL && fCatEmcCluster == NULL) {
+	  Warning("init", "NO catShowerHit and fCatEmcCluster in input!");
       }
       
       fCatSplineTrack = event -> getCategory(catSplineTrack);
@@ -260,10 +264,15 @@ Bool_t HSplineTrackF2::doMassStuff(HMetaMatch2 *pMetaMatch)
       isMatched = kTRUE; 
       doMassStuff2("rpc", pMetaMatch);
     }
-  if( pMetaMatch -> getNShrHits() )
+  if( fCatShowerHit!=NULL &&  pMetaMatch -> getNShrHits() )
     {
       isMatched = kTRUE;
       doMassStuff2("shower", pMetaMatch);
+    }
+  else if( fCatEmcCluster!=NULL && pMetaMatch -> getNEmcClusters() )
+    {
+      isMatched = kTRUE;
+      doMassStuff2("emc", pMetaMatch);
     }
   if ( pMetaMatch -> getNTofHits() )
     {
@@ -357,6 +366,35 @@ void  HSplineTrackF2::doMassStuff2(TString opt, HMetaMatch2 *pMetaMatch )
 	     //pShowerHit -> getLabXYZ(&xTof,&yTof,&zTof);
 	
 	     fillData(segments[0], kFALSE);
+	}
+      	
+    }
+    
+  if( opt.Contains("emc"))
+    {
+      
+    
+      for(UChar_t n = 0; n < pMetaMatch -> getNEmcClusters(); ++n )
+	{
+	  indEmc = pMetaMatch->getEmcClusterInd(n);
+	  if( indEmc < 0 ) 
+	    { 
+	      Warning("Spline","Index of emc is < 0, DISASTER!");
+	      continue;
+            }
+	    
+ 	    pEmcCluster = (HEmcCluster*)fCatEmcCluster -> getObject(indEmc);
+                  
+            if(!pEmcCluster) 
+	    { 
+	      Warning("Spline","Pointer to Emc is NULL, DISASTER!");
+	    }        
+            
+	    pEmcCluster -> getXYZLab(xTof,yTof,zTof);
+            pointMeta.setXYZ(xTof,yTof,zTof);
+	    pointMeta = tRans[(Int_t)sector]->transTo(pointMeta);
+            calcBeta(pEmcCluster->getTime(), pointMeta.getX(), pointMeta.getY(), pointMeta.getZ());  
+            fillData(segments[0]);
 	}
       	
     }

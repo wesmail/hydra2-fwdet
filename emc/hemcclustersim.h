@@ -5,11 +5,11 @@
 
 class HEmcClusterSim : public HEmcCluster {
 protected:
-  Short_t nTracks;        // number of tracks in list
-  Short_t totMult;        // total number of tracks in this cluster
-  Int_t   rpcTrack;       // track number of matched rpc cluster    
-  Int_t   listTracks[5];  // list of GEANT tracknumbers sorted by energy
-  Float_t trackEnergy[5]; // energy deposit for each track   
+  Short_t nTracks;        // number of tracks in the list
+  Short_t totMult;        // total number of tracks in the cluster
+  Int_t   rpcTrack;       // GEANT track number of matched RPC cluster
+  Int_t   listTracks[5];  // list of GEANT track numbers sorted by energy
+  Float_t trackEnergy[5]; // energy deposit for the each track
   
 public:
   HEmcClusterSim() :
@@ -31,9 +31,10 @@ public:
   Short_t getNTracks(void)          const  {return nTracks;}
   Int_t   getTrack(Short_t n=0)     const  {return n>=0&&n<nTracks ? listTracks[n]  : 0;}
   Float_t getTrackEnergy(Short_t n) const  {return n>=0&&n<nTracks ? trackEnergy[n] : 0.F;}
-  Short_t getTotMult(void)          const  {return totMult;} 
+  Short_t getTotMult(void)          const  {return totMult;}
+  Int_t   getRpcTrack(void)         const  {return rpcTrack;}
   
-  ClassDef(HEmcClusterSim,1) //EMC cal data class
+  ClassDef(HEmcClusterSim,1) // EMC cluster data class
 };
 
 #endif /* !HEMCCLUSTER_H */

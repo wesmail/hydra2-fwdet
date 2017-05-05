@@ -28,9 +28,11 @@ class HMdcGeomPar;
 class HTofGeomPar;
 class HRpcGeomPar;
 class HShowerGeometry;
+class HEmcGeomPar;
 class HMdcGetContainers;
 class HMdcSizesCells;
 class HRpcCluster;
+class HEmcCluster;
 
 class HRKTrackBF2 : public HReconstructor 
 {
@@ -39,8 +41,9 @@ class HRKTrackBF2 : public HReconstructor
    Short_t mode;        // mode = {0 || 2} for initial momentum as {selfGuess, SplineTrack-Guess}
    HGeomTransform      secTrans[6];     // sector transformation, used to transform META point to MdcSegment-ccord-system
    HGeomTransform      showerSM[6];     //trans shower, modtosec
+   HGeomTransform      emcSM[6];        //trans emc, modtosec
    HGeomTransform      tofSM[6][8];     //trans tof,  modtosec
-   HGeomTransform      rpcSM[6];     //trans rpc,  modtosec
+   HGeomTransform      rpcSM[6];        //trans rpc,  modtosec
    HGeomTransform      transMetaSM;     //trans meta, modtosec
    
    
@@ -53,12 +56,17 @@ class HRKTrackBF2 : public HReconstructor
     Float_t            sigma2MdcInRpcY[6];
     Float_t            sigma2MdcInShrX[6];
     Float_t            sigma2MdcInShrY[6];
+    Float_t            sigma2MdcInEmcX[6];
+    Float_t            sigma2MdcInEmcY[6];
     Float_t            sShowerX[6];
     Float_t            sShowerY[6];
+    Float_t            sEmcX[6];
+    Float_t            sEmcY[6];
     Float_t            sRpcX[6];
     Float_t            sRpcY[6];
     Float_t            quality2RPCCut[6];
     Float_t            quality2SHOWERCut[6];
+    Float_t            quality2EMCCut[6];
    
    
    
@@ -67,8 +75,9 @@ class HRKTrackBF2 : public HReconstructor
    HSpecGeomPar*       fSpecGeomPar;    // sector and target geometry
    HMdcGetContainers*  fGetCont;        // pointer to HMdcGetContainers object
    HTofGeomPar*        fTofGeometry;    // TOF geometry
-   HRpcGeomPar*        fRpcGeometry; // Tofino geometry
+   HRpcGeomPar*        fRpcGeometry;    // Rpc geometry
    HShowerGeometry*    fShowerGeometry; // Shower geometry
+   HEmcGeomPar*        fEmcGeometry;    // Emc geometry
    HMdcSizesCells*     pMSizesCells;    // pointer to HMdcSizesCells objects
    
    HCategory*          fCatMetaMatch;   // pointer to MetaMatch category
@@ -83,6 +92,7 @@ class HRKTrackBF2 : public HReconstructor
    HSplineTrack*       pSplineTrack;    // Spline track 
    HCategory*          fCatKine;        // pointer to the Kine category
    HCategory*          fCatShower;      // pointer to the Shower category
+   HCategory*          fCatEmc;         // pointer to the Emc category
    HCategory*          fCatTof;         // pointer to the Tof hit category
    HTofHit  *          pTofHit[3];
    HCategory*          fCatTofCluster;  // pointer to the Tof cluster category
@@ -99,9 +109,10 @@ class HRKTrackBF2 : public HReconstructor
    Bool_t mdcInstalled[4][6];    //! remembers which MDCs have known geometry
    Float_t multSig[8];           // multiplicators for resolution
    Float_t vertex[3];            // vertex
-   HGeomVector normVecRpc[6]; // normal vector on the Tofino module in the sector coordinate system
-   HGeomVector centerRpc[6];  // physical center of Tofino module in the sector coordinate system
+   HGeomVector normVecRpc[6];    // normal vector on the Tofino module in the sector coordinate system
+   HGeomVector centerRpc[6];     // physical center of Tofino module in the sector coordinate system
    HGeomVector normVecShower[6]; // normal vector on the Shower module in the sector coordinate system
+   HGeomVector normVecEmc[6];    // normal vector on the Emc module in the sector coordinate system
    HGeomVector normVecTof[6][8]; // normal vector on each Tof module in the sector coordinate system
    HGeomVector metaNormVec;      // normal vector on the meta module in the sector coordinate system
    HGeomVector pointMeta;        // META hit
@@ -126,17 +137,21 @@ class HRKTrackBF2 : public HReconstructor
    Float_t dX, dY;
    Float_t qualityRpc;
    Float_t qualityShower;
+   Float_t qualityEmc;
    Float_t qualityTof;
    
-   HShowerHit *pShowerHit;
+   HShowerHit  *pShowerHit;
+   HEmcCluster *pEmcCluster;
    HRpcCluster *pRpc;
    Short_t indRpc;
    Short_t indTof[3];
    Short_t indShower;
+   Short_t indEmc;
 
    Bool_t doMassStuff();
    void matchWithRpc();
    void matchWithShower();
+   void matchWithEmc();
    void matchWithTof();
    void calcBeta(Float_t, Int_t , Bool_t option = kTRUE);
    Int_t indexRK;

@@ -131,7 +131,10 @@ void HEDColorDef::showShower(Bool_t show, Int_t sec){
     for(Int_t i=0; i<nodesSHOWER.GetEntries(); i++){
 	TGeoNode* vol = (TGeoNode*) nodesSHOWER[i];
 	TString name = vol->GetName();
-	if(sec < 0 || name.CompareTo(Form("SHK%i_1",sec+1)) == 0){
+	if(sec < 0 ||
+	   name.CompareTo(Form("SHK%i_1",sec+1)) == 0 ||
+	   name.CompareTo(Form("GMOM_%i",sec+1)) == 0
+	  ){
 	    vol->SetVisibility(show);
 	    vol->SetVisDaughters(show);
 	}
@@ -359,7 +362,8 @@ HEDSetup::HEDSetup(const TGWindow *p, UInt_t w, UInt_t h)
     transSHOWER = new TGNumberEntry(fH, colorDef->transSHOWER, 3, -1, TGNumberFormat::kNESInteger);
     transSHOWER->SetLimits(TGNumberFormat::kNELLimitMinMax,0,100);
     fH->AddFrame(transSHOWER, new TGLayoutHints(kLHintsTop | kLHintsLeft, 2, 0, 2, 2));
-    fCheckSHOWER = new TGCheckButton(fH, new TGHotString("SHOWER"), IDs.GetUnID());
+    if(!HEDTransform::isEmc()) fCheckSHOWER = new TGCheckButton(fH, new TGHotString("SHOWER"), IDs.GetUnID());
+    else                       fCheckSHOWER = new TGCheckButton(fH, new TGHotString("ECAL"), IDs.GetUnID());
     fH->AddFrame(fCheckSHOWER, new TGLayoutHints(kLHintsLeft, 0, 2, 1, 1));
     fButtonGroupVol->AddFrame(fH, new TGLayoutHints(kLHintsExpandX, 0, 2, 1, 1));
 
@@ -455,8 +459,11 @@ HEDSetup::HEDSetup(const TGWindow *p, UInt_t w, UInt_t h)
     //-------------------------------------------------------------
 
     //-------------------------------------------------------------
+    TString namegroup = "SHOWER sectors";
+    if(HEDTransform::isEmc()) namegroup ="ECAL sectors";
+
     TGHorizontalFrame *fHL8 = new TGHorizontalFrame(fHLMaster, width, height);
-    TGGroupFrame *groupSHOWER  = new TGGroupFrame(fHL8, "SHOWER sectors",kHorizontalFrame);
+    TGGroupFrame *groupSHOWER  = new TGGroupFrame(fHL8, namegroup.Data(),kHorizontalFrame);
     groupSHOWER->SetTitlePos(TGGroupFrame::kCenter);
 
     for(Int_t s = 0; s < 6; s ++){

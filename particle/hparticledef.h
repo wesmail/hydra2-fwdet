@@ -27,7 +27,8 @@ enum eSelMeta {
 	kTofHit1   = 1,
 	kTofHit2   = 2,
 	kRpcClst   = 3,
-	kShowerHit = 4
+	kShowerHit = 4,
+	kEmcClst   = 5
 };
 
 enum eDetBits
@@ -41,6 +42,7 @@ enum eDetBits
 	kIsInInnerMDC      = 0x08,  //    8 Inner Mdc has seen this trackid
     
 	kIsInSHOWER        = 0x10,  //   16 Shower has seen this trackid
+	kIsInEMC           = 0x10,  //   16 EMC has seen this trackid (SHOWER and EMC will not be used together)
 	kIsInTOF           = 0x20,  //   32 TOF has seen this trackid
 	kIsInRPC           = 0x40,  //   64 Rpc has seen this trackid
 	kIsInMETA          = 0x80,  //  128 One of the Meta dets has seen this trackid

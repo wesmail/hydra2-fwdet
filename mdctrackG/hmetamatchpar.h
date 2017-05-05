@@ -24,6 +24,7 @@ protected:
   TArrayF showerSigmaXOffset;    // x-offset for sigma in MDC SHOWER matching
   TArrayF showerSigmaYOffset;    // y-offset for sigma in MDC SHOWER matching
   TArrayF showerQualityCut;      // cut for quality of MDC SHOWER matching
+  // For EMC shower data memeber is used
   
   TArrayF tofSigmaX;             // sigma (x-dir) of MDC TOF matching
   TArrayF tofSigmaY;             // sigma (y-dir) of MDC TOF matching
@@ -60,6 +61,13 @@ public:
   Float_t getShowerSigmaXOffset(Int_t s)    {return showerSigmaXOffset[s];}
   Float_t getShowerSigmaYOffset(Int_t s)    {return showerSigmaYOffset[s];}
   Float_t getShowerQualityCut(Int_t s)      {return showerQualityCut[s];}
+
+  //     For EMC shower data member is used:
+  Float_t getEmcSigmaXMdc(Int_t s)          {return showerSigmaXMdc[s];}
+  Float_t getEmcSigmaYMdc(Int_t s)          {return showerSigmaYMdc[s];}
+  Float_t getEmcSigmaXOffset(Int_t s)       {return showerSigmaXOffset[s];}
+  Float_t getEmcSigmaYOffset(Int_t s)       {return showerSigmaYOffset[s];}
+  Float_t getEmcQualityCut(Int_t s)         {return showerQualityCut[s];}
   
   Float_t getRpcSigmaXMdc(Int_t s)          {return rpcSigmaXMdc[s];}
   Float_t getRpcSigmaYMdc(Int_t s)          {return rpcSigmaYMdc[s];}
@@ -90,7 +98,13 @@ public:
   void setShowerSigmaXOffset(Float_t v,Int_t s) {showerSigmaXOffset.AddAt(v,s);}
   void setShowerSigmaYOffset(Float_t v,Int_t s) {showerSigmaYOffset.AddAt(v,s);}
   void setShowerQualityCut(Float_t v,Int_t s)   {showerQualityCut.AddAt(v,s);}
-   
+     
+  void setEmcSigmaXMdc(Float_t v,Int_t s)       {showerSigmaXMdc.AddAt(v,s);}
+  void setEmcSigmaYMdc(Float_t v,Int_t s)       {showerSigmaYMdc.AddAt(v,s);}
+  void setEmcSigmaXOffset(Float_t v,Int_t s)    {showerSigmaXOffset.AddAt(v,s);}
+  void setEmcSigmaYOffset(Float_t v,Int_t s)    {showerSigmaYOffset.AddAt(v,s);}
+  void setEmcQualityCut(Float_t v,Int_t s)      {showerQualityCut.AddAt(v,s);}
+  
   void setRpcSigmaXMdc(Float_t v,Int_t s)       {rpcSigmaXMdc.AddAt(v,s);}
   void setRpcSigmaYMdc(Float_t v,Int_t s)       {rpcSigmaYMdc.AddAt(v,s);}
   void setRpcSigmaXOffset(Float_t v,Int_t s)    {rpcSigmaXOffset.AddAt(v,s);}

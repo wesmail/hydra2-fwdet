@@ -15,7 +15,6 @@ using namespace std;
 #include "hrpcclustersim.h"
 #include "hrpchitsim.h"
 #include "hemcgeompar.h"
-#include "hspecgeompar.h"
 #include "hgeomtransform.h"
 #include "hgeomcompositevolume.h"
 #include "hgeomvolume.h"
@@ -28,10 +27,10 @@ using namespace std;
 
 /////////////////////////////////////////////////////////////////////
 //
-//  HEmcClusterF combines neighboring time correlated cells to the cluster
-//  Match cells to RPC
-//  Calculate cluster mean time (by corrected times)
-//  In simulation assign cluster to the track which has maximal energy deposit
+//  HEmcClusterF combines neighboring time correlated cells to the cluster,
+//  matches cells to RPC,
+//  calculates cluster mean time (by corrected times)
+//  In simulation the cluster is assigned to the track which has maximal energy deposit
 //
 //  Algorithm
 //  "0": find cell which has maximal energy deposit (t0 is a time of this cell)
@@ -41,23 +40,22 @@ using namespace std;
 //  ...
 //
 //  Time Correlation
-//  Assumption: maximal energy deposit cell is a first fired by track cell
+//  Assumption: first cell fired by this particle has maximal energy deposit
 //  dt0 = tc - V*dc    - t0
 //  dt  = (tc - V*dc) - (tp - V*dp) ,
 //  where
 //   V = 0.30 ns/cell 
 //   cells "c" and "p" are neighboring cells
-//   dc and dp  are distances in cells to the cell with maximum energy deposit (cell "0")
-//   tc and tp  are measured time in cells "c" and "p"
+//   dc and dp  are distances to the cell which has maximal energy deposit (cell from step "0"), units are cells
+//   tc and tp  are measured times in cells "c" and "p"
 //  Cells accepted for the cluster must fulfill conditions
 //    dtmin < dt0 < dtmax 
 //     &&
 //    dtmin < dt < dtmax
 // 
 //  Matching to RPC
-//  Matching done in theta, phi and time 
-//  Cluster will marked as matched with RPC if at least one cell 
-//    on the steps "0" and "1" has a matching with RPC
+//  Matching by theta, phi and time 
+//  Cluster is marked as matched with RPC if at least one cell in the steps "0" and "1" has a matching with RPC
 //
 /////////////////////////////////////////////////////////////////////
 
@@ -74,16 +72,16 @@ void HEmcClusterF::initData(void) {
   fEmcCalCat      = NULL;
   fClusterCat     = NULL;
   // RPC matching parameters:
-  dThetaSigOfset  = 0.1;   // (thetaEmc-thetaRpc)/sigmaDTheta+dThSigOfset
-  dThetaScale     = 1.61;  // dTheta = dThetaSigOfset/dThetaScale
-  dTimeOfset      = 0.03;  // [ns] (time1 - timeRpcN + dTimeOfset)/sigmaDTof;
-  dTimeCut        = 3.;    // Nsigma cut for matchin in time 
-  dThdPhCut       = 3.6;   // Nsigma cut for matching in angles  
+  dThetaSigOffset  = 0.1;   // (thetaEmc-thetaRpc)/sigmaDTheta+dThSigOffset
+  dThetaScale      = 1.61;  // dTheta = dThetaSigOffset/dThetaScale
+  dTimeOffset      = 0.03;  // [ns] (time1 - timeRpcN + dTimeOffset)/sigmaDTof;
+  dTimeCut         = 3.;    // Nsigma cut for matchin in time 
+  dThdPhCut        = 3.6;   // Nsigma cut for matching in angles  
   // Cluster finder parameters:
-  cellToCellSpeed = 0.3;   // [ns/cell]
-  distOffset      = 0.9;
-  timeCutMin      = -0.6;
-  timeCutMax      = +0.6;
+  cellToCellSpeed  = 0.3;   // [ns/cell]
+  distOffset       = 0.9;
+  timeCutMin       = -0.6;
+  timeCutMax       = +0.6;
 }
 
 HEmcClusterF::~HEmcClusterF(void) {
@@ -91,8 +89,7 @@ HEmcClusterF::~HEmcClusterF(void) {
 
 Bool_t HEmcClusterF::init(void) {
 
- gHades->getRuntimeDb()->getContainer("EmcGeomPar");
- gHades->getRuntimeDb()->getContainer("SpecGeomPar");
+  gHades->getRuntimeDb()->getContainer("EmcGeomPar");
 
   HEmcDetector* emc = (HEmcDetector*)(gHades->getSetup()->getDetector("Emc"));  
   if (emc == NULL) {
@@ -100,7 +97,7 @@ Bool_t HEmcClusterF::init(void) {
     return kFALSE;  
   }  
 
-  fGeantKineCat = gHades->getCurrentEvent()->getCategory(catGeantKine);
+  HCategory* fGeantKineCat = gHades->getCurrentEvent()->getCategory(catGeantKine);
   if (fGeantKineCat) { isSimulation = kTRUE;  }
   else               { isSimulation = kFALSE; }
   
@@ -129,14 +126,12 @@ Bool_t HEmcClusterF::init(void) {
 }
 
 Bool_t HEmcClusterF::reinit(void) {
-  HEmcGeomPar*  emcGeomPar  = (HEmcGeomPar*)(gHades->getRuntimeDb()->getContainer("EmcGeomPar"));
-  HSpecGeomPar* specGeomPar = (HSpecGeomPar*)(gHades->getRuntimeDb()->getContainer("SpecGeomPar"));
+  sigmaXYmod  = 92./TMath::Sqrt(12.);             // 92.mm - size of cell (module)
+  HEmcGeomPar *emcGeomPar  = (HEmcGeomPar*)(gHades->getRuntimeDb()->getContainer("EmcGeomPar"));
   HGeomTransform labTrans[6];
   for(Int_t s=0;s<6;s++) {
     HModGeomPar* fmodgeom = emcGeomPar->getModule(s);
     labTrans[s] = fmodgeom->getLabTransform();
-    HGeomVolume*          fVol    = specGeomPar->getSector(s);
-    HGeomTransform        trnsSec = fVol->getTransform();
     HGeomCompositeVolume* fMod    = fmodgeom->getRefVolume();
     for(Int_t c=0;c<emcMaxComponents;c++) {
       HGeomVolume* fVol=fMod->getComponent(c);
@@ -151,6 +146,8 @@ Bool_t HEmcClusterF::reinit(void) {
       emcCellsLab[s][c] = new HGeomVector;
       HGeomVector* p    = emcCellsLab[s][c];
       *p = fVol->getTransform().getTransVector();
+      cellXmod[c] = p->getX();
+      cellYmod[c] = p->getY();
       *p = labTrans[s].transFrom(*p);
       
       // Calc. theta and phi of module(cell)
@@ -161,9 +158,8 @@ Bool_t HEmcClusterF::reinit(void) {
       if(phiEmcLab[s][c] < 0.) phiEmcLab[s][c] += 360.;
       
       // Calc. errors of theta and phi
-      Double_t sig     = 92./TMath::Sqrt(12.);                     // 92.mm - size of cell (module)
-      sigmaTheta[s][c] = p->getZ()/xyz2 * sig * TMath::RadToDeg();
-      sigmaPhi[s][c]   = 1./TMath::Sqrt(xy2) * sig * TMath::RadToDeg();
+      sigmaTheta[s][c]    = p->getZ()/xyz2 * sigmaXYmod * TMath::RadToDeg();
+      sigmaPhi[s][c]      = 1./TMath::Sqrt(xy2) * sigmaXYmod * TMath::RadToDeg();
     }
   }
   return kTRUE;
@@ -196,9 +192,13 @@ Int_t HEmcClusterF::execute(void) {
 //        if(energy[cell] < 15) break;
 //        if(energy[cell] < 150.) break;
       // New cluster:
-      HEmcCal* cal = pSecECells[cell];
-
-      Int_t nMatchedCells = 0;
+      HEmcCal *cal           = pSecECells[cell];
+      Float_t  xPos          = 0.;
+      Float_t  yPos          = 0.;
+      Float_t  errXYPos      = 0.;
+      Double_t posNorm       = 0.;
+      Int_t    nMatchedCells = 0;
+      HGeomVector pos;
       Float_t qualityDThDPh,qualityDTime;
       HRpcCluster* pRpcClusF = rpcMatch(cal,qualityDThDPh,qualityDTime);
       if(pRpcClusF != NULL) nMatchedCells++;
@@ -217,13 +217,23 @@ Int_t HEmcClusterF::execute(void) {
 
       while(ind<size) {
 //        Float_t timeN = pClustCells[ind]->getTime1();
-        clustEnergy   += energy[listClustCell[ind]];
+        Int_t cind     = listClustCell[ind];
+        clustEnergy   += energy[cind];
         clustEnErr    += pClustCells[ind]->getSigmaEnergy()*pClustCells[ind]->getSigmaEnergy();
         Float_t distN  = ind==0 ? 0. : calcDist(cal,pClustCells[ind]);
         Float_t tCorrN = pClustCells[ind]->getTime1() - cellToCellSpeed*(distN - distOffset);
-        
+        if(distN<1.9) {
+          HGeomVector *pemc = emcCellsLab[sec][cind];
+          HGeomVector vc(pemc->getX(),pemc->getY(),pemc->getZ());
+          vc       *= energy[cind];
+          pos      += vc;
+          posNorm  += energy[cind];
+          xPos     += cellXmod[cind]*energy[cind];
+          yPos     += cellYmod[cind]*energy[cind];
+          errXYPos += energy[cind]*energy[cind];
+        }
         for(Int_t i=0;i<8;i++) {
-          Int_t celli = getNearbyCell(listClustCell[ind],i);
+          Int_t celli = getNearbyCell(cind,i);
           if(celli < 0) continue;
           if( flagUsed[celli] != 0 ) continue;  // skip not fired cells & cells which used already
           HEmcCal *cali =  pSecECells[celli];
@@ -246,7 +256,7 @@ Int_t HEmcClusterF::execute(void) {
             if(pRpcClus == pRpcClusF) nMatchedCells++;
             else {
               if(dist0 < 1.9) nMatchedCells++;
-              else if(nMatchedCells == 0) continue;  // ignore???     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  or ?
+              else if(nMatchedCells == 0) continue;  // ignore???
               if(pRpcClusF == NULL) {
                 pRpcClusF = pRpcClus;
                 qualityDThDPh = qualityDThDPhI;
@@ -267,9 +277,12 @@ Int_t HEmcClusterF::execute(void) {
       } //cluter end
 
 
-      // For real output:
       timeSum  /= clustEnergy;
       timeError = TMath::Sqrt(timeError)/clustEnergy;
+      xPos     /= posNorm;
+      yPos     /= posNorm; 
+      pos      /= posNorm;
+      errXYPos = sigmaXYmod*TMath::Sqrt(errXYPos)/posNorm;
 
 //--------------------------------------------------------------------------------------
       // end of cluster
@@ -292,10 +305,15 @@ Int_t HEmcClusterF::execute(void) {
       pCluster->setSigmaEnergy(TMath::Sqrt(clustEnErr));
       pCluster->setTime(timeSum);
       pCluster->setSigmaTime(timeError);
-      HGeomVector *pemc = emcCellsLab[sec][cell];
-      pCluster->setXYZLab(pemc->getX(),pemc->getY(),pemc->getZ());
-      pCluster->setTheta(thetaEmcLab[sec][cell]);
-      pCluster->setPhi(phiEmcLab[sec][cell]);
+      pCluster->setXYMod(xPos,yPos);
+      pCluster->setSigmaXYMod(errXYPos);
+      pCluster->setXYZLab(pos.getX(),pos.getY(),pos.getZ());
+      Double_t xy    =  TMath::Sqrt(pos.getX()*pos.getX() + pos.getY()*pos.getY());
+      Double_t theta = TMath::ATan2(xy,pos.getZ())*TMath::RadToDeg();
+      Double_t phi   = TMath::ATan2(pos.getY(),pos.getX())*TMath::RadToDeg();
+      if(phi < 0.) phi += 360.;
+      pCluster->setTheta(theta);
+      pCluster->setPhi(phi);
       pCluster->setCellList(size,listClustCell);
       if(pRpcClusF != NULL) {
         pCluster->setRpcIndex(pRpcClusF->getIndex());    
@@ -365,13 +383,13 @@ HRpcCluster* HEmcClusterF::rpcMatch(HEmcCal* cal,Float_t &qualityDThDPh,Float_t 
     Float_t timeRpc    = rpc->getTof() + timeCorr;
 
     // Calculate quality of matching for angles (dThdPh)
-    Float_t dThSig = ((thEmc -rpc->getTheta())/sigmaTh + dThetaSigOfset)/dThetaScale;
+    Float_t dThSig = ((thEmc -rpc->getTheta())/sigmaTh + dThetaSigOffset)/dThetaScale;
     Float_t dPhSig = (phEmc - rpc->getPhi())/sigmaPh;
     Float_t dThdPh = TMath::Sqrt(dThSig*dThSig + dPhSig*dPhSig);  // O-shaped cut
     
     // Calculate quality of matching for time (dTOFc)
     Float_t sigmaDTof = TMath::Sqrt(sigmaTm1*sigmaTm1 + sigTof*sigTof);
-    Float_t dTOFc  = (time1 - timeRpc + dTimeOfset)/sigmaDTof;
+    Float_t dTOFc  = (time1 - timeRpc + dTimeOffset)/sigmaDTof;
 
     // Test matching
     if(TMath::Abs(dTOFc) > dTimeCut || dThdPh > dThdPhCut) continue ;

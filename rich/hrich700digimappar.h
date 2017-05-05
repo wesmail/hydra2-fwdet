@@ -49,8 +49,8 @@ public:
     virtual ~HRich700DigiMapPar();
 
 
-    void                              getLocation(Int_t pmtId, Float_t x, Float_t y, Int_t *loc);
-    pair<Double_t, Double_t>          getXY(Int_t* loc);
+    void                              getLocation(Int_t pmtId, Float_t x, Float_t y, Int_t *loc,Bool_t silent=kTRUE);
+    pair<Double_t, Double_t>          getXY(Int_t* loc,Bool_t silent=kTRUE);
     pair<Double_t, Double_t>          getPmtCenter(Int_t pmtId);
     vector<pair<Double_t, Double_t> > getPmtCenters();
     Double_t                          getPmtSize(){return fPmtSize;}

@@ -192,6 +192,19 @@ void HMetaMatch2::setShrHitMMF(UChar_t nln,Short_t ind[],Float_t ql2[][3]) {
   }
 }
 
+void HMetaMatch2::setEmcClstMMF(UChar_t nln,Short_t ind[],Float_t ql2[][3]) {
+  // Filling function for HMetaMatchF2 class
+  setShrHitMMF(nln,ind,ql2);
+  setEmcClusterFlag();
+//   nShrHits = nln<=META_TAB_SIZE ? nln : META_TAB_SIZE;
+//   for(UChar_t l=0;l<nShrHits;l++) {
+//     shrHitInd[l]  = ind[l];
+//     shrQuality[l] = TMath::Sqrt(ql2[l][0]);
+//     shrDX[l]      = ql2[l][1];
+//     shrDY[l]      = ql2[l][2];
+//   }
+}
+
 void HMetaMatch2::setTofClstMMF(UChar_t nln,Short_t ind[][3],Float_t ql2[][9]) {
   // Filling function for HMetaMatchF2 class
   nTofHits = nln<=META_TAB_SIZE ? nln : META_TAB_SIZE;
@@ -269,15 +282,10 @@ void HMetaMatch2::print(void) {
     for(UChar_t n=0;n<nRichIPUId;n++) printf("  %i",richIPUInd[n]);
     printf("\n");
   }
-  if(flag > 0) {
-    printf("  Accepted tracks:");
-//    if(isSplineAccepted())       printf(" spline");
-//    if(isRungeKuttaAccepted())   printf(" RK");
-//    if(isKalmanFilterAccepted()) printf(" KF");
-    printf("\n");
+  if(splineInd>=0 || rungeKuttaInd>=0 || kalmanFilterInd>=0) {
     printf("  Tracks:");
     if(splineInd>=0)       printf("  splineInd=%i",splineInd);
-    //if(rungeKuttaInd>=0)   printf("  rungeKuttaInd=%i",rungeKuttaInd);
+    if(rungeKuttaInd>=0)   printf("  rungeKuttaInd=%i",rungeKuttaInd);
     if(kalmanFilterInd>=0) printf("  kalmanFilterInd=%i", kalmanFilterInd);
     printf("\n");
   } else printf("  No accepted tracks!\n");

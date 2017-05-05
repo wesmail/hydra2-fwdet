@@ -223,31 +223,57 @@ void HParticleCand::print(UInt_t selection)
 
     cout<<"    "<<" --------------------------------------------"<<endl;
     if( (selection>>0) & 0x01){
-	cout<<"    "
-	    <<"sec: "    <<fSector
-	    <<" cand ind : "<<setw(4)<<fIndex
-	    <<", R: "    <<setw(3)<<fRichInd
-	    <<", iM: "   <<setw(4)<<fInnerSegInd
-	    <<", oM: "   <<setw(4)<<fOuterSegInd
-	    <<", Tclst: "<<setw(3)<<fTofClstInd
-	    <<", Thit: " <<setw(3)<<fTofHitInd
-	    <<", S: "    <<setw(3)<<fShowerInd
-	    <<", RPC: "  <<setw(3)<<fRpcInd
-	    <<endl;
+	if(isEmc()){
+	    cout<<"    "
+		<<"sec: "    <<fSector
+		<<" cand ind : "<<setw(4)<<fIndex
+		<<", R: "    <<setw(3)<<fRichInd
+		<<", iM: "   <<setw(4)<<fInnerSegInd
+		<<", oM: "   <<setw(4)<<fOuterSegInd
+		<<", Tclst: "<<setw(3)<<fTofClstInd
+		<<", Thit: " <<setw(3)<<fTofHitInd
+		<<", E: "  <<setw(3)<<fShowerInd
+		<<", RPC: "  <<setw(3)<<fRpcInd
+		<<endl;
+
+	} else {
+	    cout<<"    "
+		<<"sec: "    <<fSector
+		<<" cand ind : "<<setw(4)<<fIndex
+		<<", R: "    <<setw(3)<<fRichInd
+		<<", iM: "   <<setw(4)<<fInnerSegInd
+		<<", oM: "   <<setw(4)<<fOuterSegInd
+		<<", Tclst: "<<setw(3)<<fTofClstInd
+		<<", Thit: " <<setw(3)<<fTofHitInd
+		<<", S: "  <<setw(3)<<fShowerInd
+		<<", RPC: "  <<setw(3)<<fRpcInd
+		<<endl;
+	}
     }
     if( (selection>>1) & 0x01){
 	cout<<"    "
 	    <<"ichi2    : " <<setw(8)<<fInnerSegmentChi2
 	    <<",ochi2   : " <<setw(8)<<fOuterSegmentChi2
 	    <<endl;
+	if(isEmc())
+	{
+	    cout<<"    "
+		<<"RKM      : "   <<setw(8)<<fMetaMatchQuality
+		<<",RKMECA  : "   <<setw(8)<<fMetaMatchQualityShower
+		<<",RKMR    : "   <<setw(8)<<fMetaMatchRadius
+		<<",RKMRECA : "   <<setw(8)<<fMetaMatchRadiusShower
+		<<",RKMdx   : "   <<setw(8)<<fRkMetaDx
+		<<",RKMdy   : "   <<setw(8)<<fRkMetaDy <<endl;
+	} else {
+	    cout<<"    "
+		<<"RKM      : "   <<setw(8)<<fMetaMatchQuality
+		<<",RKMShr  : "   <<setw(8)<<fMetaMatchQualityShower
+		<<",RKMR    : "   <<setw(8)<<fMetaMatchRadius
+		<<",RKMRShr : "   <<setw(8)<<fMetaMatchRadiusShower
+		<<",RKMdx   : "   <<setw(8)<<fRkMetaDx
+		<<",RKMdy   : "   <<setw(8)<<fRkMetaDy <<endl;
+	}
 	cout<<"    "
-	    <<"RKM      : "   <<setw(8)<<fMetaMatchQuality
-	    <<",RKMShr  : "   <<setw(8)<<fMetaMatchQualityShower
-	    <<",RKMR    : "   <<setw(8)<<fMetaMatchRadius
-	    <<",RKMRShr : "   <<setw(8)<<fMetaMatchRadiusShower
-            <<",RKMdx   : "   <<setw(8)<<fRkMetaDx
-            <<",RKMdy   : "   <<setw(8)<<fRkMetaDy <<endl;
-        cout<<"    "
 	    <<"RKRKM    : "   <<setw(8)<<((fMetaMatchQuality >= 0 && fChi2 > 0 ) ? fMetaMatchQuality*fChi2 : -1.f)
 	    <<",RKRKMR  : "   <<setw(8)<<((fMetaMatchRadius  >= 0 && fChi2 > 0 ) ? fMetaMatchRadius*fChi2 : -1.f)
 	    <<",RKR     : "   <<setw(8)<<((fRichInd >= 0) ? getRichMatchingQuality() : -1.f)
@@ -546,6 +572,10 @@ void HParticleCand::Streamer(TBuffer &R__b)
       R__b >> fShowerSum0;
       R__b >> fShowerSum1;
       R__b >> fShowerSum2;
+
+      if(R__v > 9) R__b >> fEmcFlags;
+      else                 fEmcFlags=0;
+
       if(R__v > 1) R__b >> fSelectedMeta;
 
       if(R__v == 5 ) {
@@ -620,6 +650,7 @@ void HParticleCand::Streamer(TBuffer &R__b)
       R__b << fShowerSum0;
       R__b << fShowerSum1;
       R__b << fShowerSum2;
+      R__b << fEmcFlags;
       R__b << fSelectedMeta;
       R__b << fMetaInd;
       R__b << fRichInd;

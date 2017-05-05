@@ -22,9 +22,16 @@ ULong64_t timeVal;
 Int_t njobsRun;
 Int_t njobsPend;
 
+TString cluster;
 TString user;
 TString group;
 TString project;
+
+Int_t   loadnRun;
+Int_t   loadnAvail;
+Int_t   loadnMax;
+Float_t loadAvail;
+Float_t loadMax;
 
 Bool_t readLog(TString userDat,TTree* tree)
 {
@@ -44,6 +51,18 @@ Bool_t readLog(TString userDat,TTree* tree)
 	    if(l != "" ){
 		timeStamp=0;
 
+		njobsRun  =-1;
+		njobsPend =-1;
+		cluster   ="noCluster";
+		user      ="noUser";
+		group     ="noGroup";
+		project   ="noProject";
+		loadnRun  =-1;
+		loadnAvail=-1;
+		loadnMax  =-1;
+		loadMax   =-1;
+		loadAvail =-1;
+
 
 		//-----------------------------------------------------------
 		// tokenize the line: format "timestamp user1:njobs:njobstotal user2:njobs:njobstotal user3:njobs:njobstotal"
@@ -58,22 +77,36 @@ Bool_t readLog(TString userDat,TTree* tree)
 		    //-----------------------------------------------------------
 		    // get user and number of jobs
 		    TObjArray* a2 = word.Tokenize(":");
-		    if(a2->GetEntries()==5){
+		    if(a2->GetEntries()==4){        // user log
 			timeVal=timeStamp;
-			user = ((TObjString*)a2->At(0))->GetString();
-			njobsRun= ((TObjString*)a2->At(1))->GetString().Atoi();
+			user     = ((TObjString*)a2->At(0))->GetString();
+			njobsRun = ((TObjString*)a2->At(1))->GetString().Atoi();
 			njobsPend= ((TObjString*)a2->At(2))->GetString().Atoi() - njobsRun;
-			group= ((TObjString*)a2->At(3))->GetString();
-			project= ((TObjString*)a2->At(4))->GetString();
+			group    = ((TObjString*)a2->At(3))->GetString();
+			//project= ((TObjString*)a2->At(4))->GetString();
 			tree->Fill();
 
-		    } else if(a2->GetEntries()==3){
+		    } else if(a2->GetEntries()==3){ // group log
 			timeVal=timeStamp;
-			user = ((TObjString*)a2->At(0))->GetString();
-			njobsRun= ((TObjString*)a2->At(1))->GetString().Atoi();
+			user     = ((TObjString*)a2->At(0))->GetString();
+			njobsRun = ((TObjString*)a2->At(1))->GetString().Atoi();
 			njobsPend= ((TObjString*)a2->At(2))->GetString().Atoi() - njobsRun;
-			group="sum";
-			project="sum";
+			group    ="sum";
+			project  ="sum";
+			tree->Fill();
+
+		    } else if(a2->GetEntries()==6){ // load log  : mainCluster:njobsRun:njobsAvail:njobsMaximum:loadAvail:loadMaximum
+			timeVal=timeStamp;
+			cluster = ((TObjString*)a2->At(0))->GetString();
+
+                        if(cluster!="mainCluster") continue;
+
+			loadnRun     = ((TObjString*)a2->At(1))->GetString().Atoi();
+			loadnAvail   = ((TObjString*)a2->At(2))->GetString().Atoi();
+			loadnMax     = ((TObjString*)a2->At(3))->GetString().Atoi();
+			loadAvail    = ((TObjString*)a2->At(4))->GetString().Atof();
+			loadMax      = ((TObjString*)a2->At(5))->GetString().Atof();
+
 			tree->Fill();
 
 		    } else {
@@ -98,7 +131,7 @@ Bool_t readLog(TString userDat,TTree* tree)
     return kTRUE;
 }
 
-void fillTree(TString userDat="archive/logUser_*.dat",TString groupDat="archive/logGroup_*.dat")
+void fillTree(TString userDat="archive/logUser_*.dat",TString groupDat="archive/logGroup_*.dat",TString loadDat="archive/logLoad_*.dat")
 {
     gStyle->SetOptStat(0);
     TFile* out=new TFile("testTree.root","RECREATE");
@@ -117,17 +150,25 @@ void fillTree(TString userDat="archive/logUser_*.dat",TString groupDat="archive/
 
 
     Int_t bufsize=5000;
-    tree->Branch("user", &user, bufsize,99);
-    tree->Branch("group",&group, bufsize,99);
-    tree->Branch("project",&project, bufsize,99);
-    tree->Branch("timeVal",&timeVal,"timeVal/l",bufsize);
-    tree->Branch("njobsRun",&njobsRun,"njobsRun/I",bufsize);
+    tree->Branch("user"     ,&user     , bufsize,99);
+    tree->Branch("group"    ,&group    , bufsize,99);
+    tree->Branch("project"  ,&project  , bufsize,99);
+    tree->Branch("timeVal"  ,&timeVal  ,"timeVal/l"  ,bufsize);
+    tree->Branch("njobsRun" ,&njobsRun ,"njobsRun/I" ,bufsize);
     tree->Branch("njobsPend",&njobsPend,"njobsPend/I",bufsize);
+
+    tree->Branch("cluster"   ,&cluster   , bufsize       ,99);
+    tree->Branch("loadnRun"  ,&loadnRun  ,"loadnRun/I"  ,bufsize);
+    tree->Branch("loadnAvail",&loadnAvail,"loadnAvail/I",bufsize);
+    tree->Branch("loadnMax"  ,&loadnMax  ,"loadnMax/I"  ,bufsize);
+    tree->Branch("loadAvail" ,&loadAvail ,"loadAvail/F" ,bufsize);
+    tree->Branch("loadMax"   ,&loadMax   ,"loadMax/F"   ,bufsize);
 
     TObjArray* filesUser  = HTool::glob(userDat);
     TObjArray* filesGroup = HTool::glob(groupDat);
+    TObjArray* filesLoad  = HTool::glob(loadDat);
 
-    if(filesUser && filesGroup){
+    if(filesUser && filesGroup && filesLoad){
 
 	if(filesUser->GetEntries()!=filesGroup->GetEntries()){
 	    cout<<"Not same number of log files"<<endl;
@@ -136,12 +177,15 @@ void fillTree(TString userDat="archive/logUser_*.dat",TString groupDat="archive/
 
 	for(Int_t i=0; i< filesUser->GetEntries();i++)
 	{
-	    TString fileUser = ((TObjString*)filesUser->At(i))->GetString();
+	    TString fileUser = ((TObjString*)filesUser ->At(i))->GetString();
 	    TString fileGroup= ((TObjString*)filesGroup->At(i))->GetString();
+	    TString fileLoad = ((TObjString*)filesLoad ->At(i))->GetString();
 	    cout<<"add File :"<<fileUser<<endl;
 	    readLog(fileUser,tree);
 	    cout<<"add File :"<<fileGroup<<endl;
 	    readLog(fileGroup,tree);
+	    cout<<"add File :"<<fileLoad<<endl;
+	    readLog(fileLoad,tree);
 	}
 
 
@@ -149,6 +193,8 @@ void fillTree(TString userDat="archive/logUser_*.dat",TString groupDat="archive/
 	delete filesUser;
 	filesGroup->Delete();
 	delete filesGroup;
+	filesLoad->Delete();
+	delete filesLoad;
     }
 
     tree->Write();

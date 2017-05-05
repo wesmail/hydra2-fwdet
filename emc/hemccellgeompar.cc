@@ -62,13 +62,13 @@ Bool_t HEmcCellGeomPar::init(HParIo*,Int_t*) {
       for(Int_t m=0;m<pGeomPar->getNumModules();m++) {
         HModGeomPar* module=pGeomPar->getModule(m);
         if (module) {
-          HGeomTransform trMod2Lab=module->getLabTransform();
+          trMod2Lab[m]=module->getLabTransform();
           for(Int_t c=0;c<pGeomPar->getNumComponents();c++) {
             HGeomVolume* cell=refMod->getComponent(c);
             if (cell && strlen(cell->GetName())>0) {
               HGeomVector* lpos=new HGeomVector;
               HGeomVector cPos=cell->getTransform().getTransVector();
-              (*lpos)=trMod2Lab.transFrom(cPos);
+              (*lpos)=trMod2Lab[m].transFrom(cPos);
               labPos->AddAt(lpos,m*nMaxCells+c);
             }
           }
