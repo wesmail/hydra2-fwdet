@@ -545,8 +545,8 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
 
 	    //--------------------------------------------------
 	    // shifting tracknumbers and indices
-	    gemc->setTrack         (track        +kineLastTr);
-	    gemc->setNextHitIndex  ((nexhit>-1)  ? nexhit  + lastEmc + 1   : -1);
+	    if(track>0) gemc->setTrack (track        +kineLastTr);  // special track Num -777 in Ecal shold not be shifted
+	    gemc->setNextHitIndex      ((nexhit>-1)  ? nexhit  + lastEmc + 1   : -1);
 	    //--------------------------------------------------
 	}
     }
