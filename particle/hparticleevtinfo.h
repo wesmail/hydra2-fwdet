@@ -20,7 +20,7 @@ private:
     Int_t aMdcSegFittedMult        [MAXSECTOR][MAXIOSEG];  // fitted MDC segments
     Int_t aMdcSegUnfittedMult      [MAXSECTOR][MAXIOSEG];  // unfitted MDc segments
     Int_t aTofMult                 [MAXSECTOR];            // TOF hit multiplicity
-    Int_t aShowerMult              [MAXSECTOR];            // Shower/TOFino hit multiplicity
+    Int_t aShowerMult              [MAXSECTOR];            // Shower/TOFino hit or Emc cluster multiplicity
     Int_t aRpcMult                 [MAXSECTOR];            // RPC cluster multiplicity
     Int_t aRpcMultHit              [MAXSECTOR];            // RPC hit multiplicity
     Int_t aTofMultCut              [MAXSECTOR];            // TOF hit multiplicity after cut < 35 ns
@@ -73,6 +73,7 @@ public:
     void setRpcMultCut              (const Int_t m[MAXSECTOR]) { for (Int_t s = 0; s < MAXSECTOR; ++s) aRpcMultCut              [s] = m[s]; }
     void setRpcMultHitCut           (const Int_t m[MAXSECTOR]) { for (Int_t s = 0; s < MAXSECTOR; ++s) aRpcMultHitCut           [s] = m[s]; }
     void setShowerMult              (const Int_t m[MAXSECTOR]) { for (Int_t s = 0; s < MAXSECTOR; ++s) aShowerMult              [s] = m[s]; }
+    void setEmcMult                 (const Int_t m[MAXSECTOR]) { for (Int_t s = 0; s < MAXSECTOR; ++s) aShowerMult              [s] = m[s]; }
     void setParticleCandMult        (const Int_t m[MAXSECTOR]) { for (Int_t s = 0; s < MAXSECTOR; ++s) aParticleCandMult        [s] = m[s]; }
     void setSelectedParticleCandMult(const Int_t m[MAXSECTOR]) { for (Int_t s = 0; s < MAXSECTOR; ++s) aSelectedParticleCandMult[s] = m[s]; }
     void setPrimaryParticleCandMult (const Int_t m[MAXSECTOR]) { for (Int_t s = 0; s < MAXSECTOR; ++s) aPrimaryParticleCandMult [s] = m[s]; }
@@ -145,6 +146,7 @@ public:
     Int_t getRpcMultCut              (Int_t s)           const { return ( s >= 0 && s < MAXSECTOR )  ?  aRpcMultCut              [s]  :  -1; }
     Int_t getRpcMultHitCut           (Int_t s)           const { return ( s >= 0 && s < MAXSECTOR )  ?  aRpcMultHitCut           [s]  :  -1; }
     Int_t getShowerMult              (Int_t s)           const { return ( s >= 0 && s < MAXSECTOR )  ?  aShowerMult              [s]  :  -1; }
+    Int_t getEmcMult                 (Int_t s)           const { return ( s >= 0 && s < MAXSECTOR )  ?  aShowerMult              [s]  :  -1; }
     Int_t getParticleCandMult        (Int_t s)           const { return ( s >= 0 && s < MAXSECTOR )  ?  aParticleCandMult        [s]  :  -1; }
     Int_t getSelectedParticleCandMult(Int_t s)           const { return ( s >= 0 && s < MAXSECTOR )  ?  aSelectedParticleCandMult[s]  :  -1; }
     Int_t getPrimaryParticleCandMult (Int_t s)           const { return ( s >= 0 && s < MAXSECTOR )  ?  aPrimaryParticleCandMult [s]  :  -1; }
@@ -198,6 +200,11 @@ public:
 	return sum;
     }
     Int_t getSumShowerMult() const {
+	Int_t sum = 0;
+	for (Int_t s = 0; s < MAXSECTOR; ++s ) sum += aShowerMult[s];
+	return sum;
+    }
+    Int_t getSumEmcMult() const {
 	Int_t sum = 0;
 	for (Int_t s = 0; s < MAXSECTOR; ++s ) sum += aShowerMult[s];
 	return sum;

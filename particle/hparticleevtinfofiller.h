@@ -28,6 +28,7 @@ private:
     TIterator *pTofHitIter;
     TIterator *pRpcClusterIter;
     TIterator *pRpcHitIter;
+    TIterator *pEmcClusIter;
     TIterator *pShowerHitIter;
     TIterator *pParticleCandIter;
 

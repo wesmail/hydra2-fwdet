@@ -1634,71 +1634,45 @@ void HParticleCandFiller::fillCandSim(candidate& cand)
 	}
 
 	//--------------------------------------------------------------------
-        // if there is Shower fill it
-	if((cand.system == 0 || cand.system == 2) && objects.pShowerHit) {
-
-	    if(cand.isEMC){
-		if(objects.pEmcClst){
-		    Int_t nTr = objects.pEmcClst->getNTracks();
-		    for(Int_t i = 0; i < nTr; i ++) {
-			tr = objects.pEmcClst->getTrack(i);
-			if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
-			    cand.emcTracks.addTrack(tr,1,kIsInEMC|kIsInMETA);
-			}
-		    }
-		    cand.emcTracks.calcWeights();
-		}
-	    } else {
-
-		if(objects.pShowerHit){
-		    Int_t nTr = objects.pShowerHit->getNTracks();
-		    for(Int_t i = 0; i < nTr; i ++) {
-			tr = objects.pShowerHit->getTrack(i);
-			if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
-			    cand.showerTracks.addTrack(tr,1,kIsInSHOWER|kIsInMETA);
-			}
-		    }
-		    cand.showerTracks.calcWeights();
-		}
-	    }
-	}
-	//--------------------------------------------------------------------
-
-
-
-
-
-	//--------------------------------------------------------------------
     } else if(selMetaHit  == kShowerHit){
-
-	if(objects.pShowerHit) {
-	    Int_t nTr = objects.pShowerHit->getNTracks();
-	    for(Int_t i = 0; i < nTr; i ++) {
-		tr = objects.pShowerHit->getTrack(i);
-		if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
-		    cand.showerTracks.addTrack(tr,1,kIsInSHOWER|kIsInMETA);
-		}
-	    }
-	    cand.showerTracks.calcWeights();
-	}
 
 	//--------------------------------------------------------------------
     } else if(selMetaHit  == kEmcClst){
 
-	if(objects.pEmcClst) {
-	    Int_t nTr = objects.pEmcClst->getNTracks();
-	    for(Int_t i = 0; i < nTr; i ++) {
-		tr = objects.pEmcClst->getTrack(i);
-		if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
-		    cand.emcTracks.addTrack(tr,1,kIsInEMC|kIsInMETA);
-		}
-	    }
-	    cand.emcTracks.calcWeights();
-	}
 	//--------------------------------------------------------------------
 
     } else { ; }  // NO META
     //--------------------------------------------------------------------
+
+
+    //--------------------------------------------------------------------
+    // Always fill SHOWER/EMC if existing
+    if(objects.pEmcClst){
+	Int_t nTr = objects.pEmcClst->getNTracks();
+	for(Int_t i = 0; i < nTr; i ++) {
+	    tr = objects.pEmcClst->getTrack(i);
+	    if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
+		cand.emcTracks.addTrack(tr,1,kIsInEMC|kIsInMETA);
+	    }
+	}
+	cand.emcTracks.calcWeights();
+    }
+
+    if(objects.pShowerHit){
+	Int_t nTr = objects.pShowerHit->getNTracks();
+	for(Int_t i = 0; i < nTr; i ++) {
+	    tr = objects.pShowerHit->getTrack(i);
+	    if( tr >= 0 || tr == gHades->getEmbeddingRealTrackId()){
+		cand.showerTracks.addTrack(tr,1,kIsInSHOWER|kIsInMETA);
+	    }
+	}
+	cand.showerTracks.calcWeights();
+    }
+    //--------------------------------------------------------------------
+
+
+
+
 
 
     //--------------------------------------------------------------------

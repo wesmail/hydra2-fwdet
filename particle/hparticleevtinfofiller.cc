@@ -29,6 +29,7 @@
 #include "tofdef.h"
 #include "hstartdef.h"
 #include "showerdef.h"
+#include "emcdef.h"
 #include "rpcdef.h"
 #include "hmdcdef.h"
 #include "hmdctrackddef.h"
@@ -52,6 +53,7 @@
 #include "htofhit.h"
 #include "hrpccluster.h"
 #include "hrpchit.h"
+#include "hemccluster.h"
 #include "hwallhit.h"
 #include "hwalleventplane.h"
 #include "hstart2hit.h"
@@ -253,6 +255,9 @@ Bool_t HParticleEvtInfoFiller::init(void)
     cat = HCategoryManager::getCategory(catShowerHit,doErrorMessage,"catShowerHit, from HParticleEvtInfoFiller::init()");
     if (cat) pShowerHitIter  = cat->MakeIterator("native");
 
+    cat = HCategoryManager::getCategory(catEmcCluster,doErrorMessage,"catEmcCluster, from HParticleEvtInfoFiller::init()");
+    if (cat) pEmcClusIter  = cat->MakeIterator("native");
+
     pWallEventPlaneCat       = HCategoryManager::getCategory(catWallEventPlane,doErrorMessage,"catWallEventPlane, from HParticleEvtInfoFiller::init()");
 
     // make output category
@@ -306,6 +311,7 @@ Int_t HParticleEvtInfoFiller::execute(void)
     HMdcClus           *mdc_clus         = 0;
     HMdcSeg            *mdc_seg          = 0;
     HShowerHit         *shower_hit       = 0;
+    HEmcCluster        *emc_clus         = 0;
     HTofHit            *tof_hit          = 0;
     HRpcCluster        *rpc_cluster      = 0;
     HRpcHit            *rpc_hit          = 0;
@@ -531,6 +537,12 @@ Int_t HParticleEvtInfoFiller::execute(void)
 	    if(shower_hit->getModule() == 0) ++ shower_hits[(Int_t)shower_hit->getSector()];
 	}
     }
+    if (pEmcClusIter) {
+	pEmcClusIter->Reset();
+	while ((emc_clus = (HEmcCluster*) pEmcClusIter->Next())) {
+	    ++ shower_hits[(Int_t)emc_clus->getSector()];
+	}
+    }
 
     pUsedRichHit.Set(rings);
     pUsedRichHit.Reset();
@@ -675,7 +687,7 @@ Int_t HParticleEvtInfoFiller::execute(void)
 	pParticleEvtInfo->setTofMultCut              ( tof_hits_cut );
 	pParticleEvtInfo->setRpcMultCut              ( rpc_clst_cut );
 	pParticleEvtInfo->setRpcMultHitCut           ( rpc_hits_cut );
-	pParticleEvtInfo->setShowerMult              ( shower_hits );
+	pParticleEvtInfo->setShowerMult              ( shower_hits );     // EMC too
 	pParticleEvtInfo->setParticleCandMult        ( particle_cands );
 	pParticleEvtInfo->setSelectedParticleCandMult( selected_particle_cands );
 	pParticleEvtInfo->setPrimaryParticleCandMult ( primary_particle_cands );
