@@ -13,13 +13,13 @@ class HCategory;
 class HFwDetStrawGeomPar;
 class HFwDetStrawDigiPar;
 class HFwDetVectorFinderPar;
-class HVectorCand;
+class HFwDetCand;
 
 struct ComboSet {
     Int_t pattern;
     Double_t chi2;                          // store chi2
     Double_t pars[4];                       // store params for given best chi2
-    Double_t z[FWDET_STRAW_MAX_VPLANES];   // store LR combination
+    Double_t z[FWDET_STRAW_MAX_VPLANES];    // store LR combination
 
     void print() const {
         printf("COMBO: chi2=%f  patt=%x\n     LR=", chi2, pattern);
@@ -50,7 +50,7 @@ public:
 private:
     HCategory* pStrawHits;                  // Input array of straw hits
     HCategory* pRpcHits;                    // Input array of rpc hits
-    HCategory* pVectorCand;                 // Output array of vectors
+    HCategory* pFwDetCand;                  // Output array of candidates
     HFwDetStrawGeomPar* pStrawGeomPar;      // straw geometry parameters
     HFwDetStrawDigiPar* pStrawDigiPar;      // straw digitizer parameters
     HFwDetVectorFinderPar * pStrawVFPar;    // vector finder parameters
@@ -68,8 +68,8 @@ private:
     Int_t nLayers[FWDET_STRAW_MAX_MODULES];
 
     std::multimap<Int_t,Int_t> fHitPl[FWDET_STRAW_MAX_MODULES][FWDET_STRAW_MAX_LAYERS * FWDET_STRAW_MAX_PLANES]; //! hit indices on planes vs tube No
-    std::vector<HVectorCand*> fVectors[FWDET_STRAW_MAX_MODULES+1]; //! track vectors for stations
-    std::vector<HVectorCand*> fVectorsHigh[FWDET_STRAW_MAX_MODULES]; //! track vectors for stations (high resolution)
+    std::vector<HFwDetCand*> fVectors[FWDET_STRAW_MAX_MODULES+1]; //! track vectors for stations
+    std::vector<HFwDetCand*> fVectorsHigh[FWDET_STRAW_MAX_MODULES]; //! track vectors for stations (high resolution)
 
     // vector finder helper vectors
     Double_t fUz[FWDET_STRAW_MAX_VPLANES];      // hit position
@@ -103,7 +103,7 @@ private:
     // keeps pair of hit indexes in a double-layer
     std::vector<DoubletPair> fHit[FWDET_STRAW_MAX_MODULES][FWDET_STRAW_MAX_LAYERS];
 
-    HVectorCand * current_track;
+    HFwDetCand * current_track;
 
     Int_t nMaxBest;
     std::vector<ComboSet> combos;   // keeps combinations for best selection
@@ -114,8 +114,8 @@ private:
     void getHits();
     void makeVectors();
     void processDouble(Int_t m, Int_t l, Int_t patt);
-    HVectorCand * addVector(Int_t ista, Int_t patt, Double_t chi2, Double_t *pars, Bool_t lowRes = kTRUE);
-    void setTrackId(HVectorCand *vec);
+    HFwDetCand * addVector(Int_t ista, Int_t patt, Double_t chi2, Double_t *pars, Bool_t lowRes = kTRUE);
+    void setTrackId(HFwDetCand *vec);
     void findLine(Int_t patt, Double_t *pars);
     Double_t findChi2(Int_t patt, Double_t *pars);
     void checkParams();
@@ -126,9 +126,9 @@ private:
     void storeVectors(Int_t sel);
     void mergeVectors();
     void selectTracks(Int_t ipass);
-    Double_t refit(Int_t patt, HVectorCand *track, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr);
-    void addTrack(Int_t ista0, HVectorCand *tr1, HVectorCand *tr2,
-            Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2);
+    Double_t refit(Int_t patt, HFwDetCand *track, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr);
+    void addTrack(Int_t ista0, HFwDetCand *tr1, HFwDetCand *tr2,
+		  Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2);
 
     Int_t matchRpcHit(Double_t * params, Double_t z);
     Float_t calcDriftRadius(Float_t t) const;

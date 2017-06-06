@@ -1,5 +1,5 @@
-#ifndef HVECTORCAND_H
-#define HVECTORCAND_H
+#ifndef HFWDETCAND_H
+#define HFWDETCAND_H
 
 #include "Rtypes.h"
 
@@ -11,11 +11,11 @@
 #include "TMatrixDSym.h"
 #include "TObject.h"
 
-class HVectorCand: public TLorentzVector
+class HFwDetCand: public TLorentzVector
 {
 public:
-    HVectorCand();
-    virtual ~HVectorCand();
+    HFwDetCand();
+    virtual ~HFwDetCand();
 
     Int_t getNofHits() const { return fNhits; }
     Int_t getNDF() const { return fNDF; }
@@ -74,7 +74,7 @@ private:
 
     TBits fLRbits;          // bit pattern for left-right drift direction choice (L "-", R "+")
 
-    ClassDef(HVectorCand, 1);
+    ClassDef(HFwDetCand, 1);
 };
 
 #endif

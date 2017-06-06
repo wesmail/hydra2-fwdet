@@ -1,9 +1,9 @@
-#ifndef HVECTORCANDSIM_H
-#define HVECTORCANDSIM_H
+#ifndef HFWDETCANDSIM_H
+#define HFWDETCANDSIM_H
 
 #include "Rtypes.h"
 
-#include "hvectorcand.h"
+#include "hfwdetcand.h"
 #include "haddef.h"
 #include "fwdetdef.h"
 
@@ -12,11 +12,11 @@
 #include "TMatrixDSym.h"
 #include "TObject.h"
 
-class HVectorCandSim: public HVectorCand
+class HFwDetCandSim: public HFwDetCand
 {
 public:
-    HVectorCandSim();
-    virtual ~HVectorCandSim();
+    HFwDetCandSim();
+    virtual ~HFwDetCandSim();
 
     Int_t getTrack() const { return fTrack; }
     Int_t getRpcTrack() const { return fRpcTrack; }
@@ -79,10 +79,10 @@ private:
 
     Int_t fTrackInds[FWDET_STRAW_MAX_VPLANES];  // hit indices in planes
 
-    ClassDef(HVectorCandSim, 1);
+    ClassDef(HFwDetCandSim, 1);
 };
 
-Float_t HVectorCandSim::getSimTx() const
+Float_t HFwDetCandSim::getSimTx() const
 {
     // Calculates simulated Tx slope
     Float_t dz = fZ2 - fZ1;
@@ -90,7 +90,7 @@ Float_t HVectorCandSim::getSimTx() const
     return dx/dz;
 }
 
-Float_t HVectorCandSim::getSimTy() const
+Float_t HFwDetCandSim::getSimTy() const
 {
     // Calculates simulated Ty slope
     Float_t dz = fZ2 - fZ1;
@@ -98,7 +98,7 @@ Float_t HVectorCandSim::getSimTy() const
     return dy/dz;
 }
 
-Int_t HVectorCandSim::addHitTrack(Int_t track)
+Int_t HFwDetCandSim::addHitTrack(Int_t track)
 {
     Int_t fNhits = getNofHits();
     if (!fNhits)

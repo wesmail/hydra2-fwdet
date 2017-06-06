@@ -8,7 +8,7 @@ const Cat_t catFwDetStrawCal        = FWDET_OFFSET+1;
 const Cat_t catFwDetScinCal         = FWDET_OFFSET+2;
 const Cat_t catFwDetRpcCal          = FWDET_OFFSET+3;
 const Cat_t catFwDetRpcHit          = FWDET_OFFSET+4;
-const Cat_t catVectorCand           = FWDET_OFFSET+5;
+const Cat_t catFwDetCand            = FWDET_OFFSET+5;
 
 const Int_t FWDET_STRAW_MAX_MODULES   = 2;    // max number of modules (stations)
 const Int_t FWDET_STRAW_MAX_LAYERS    = 4;    // max number of layers per module

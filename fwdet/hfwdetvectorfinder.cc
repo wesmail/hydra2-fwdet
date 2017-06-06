@@ -1,5 +1,4 @@
-//*-- AUTHOR : A.Zinchenko <Alexander.Zinchenko@jinr.ru>
-//*-- Created : 08/08/2016
+//*-- AUTHOR : A.Zinchenko <Alexander.Zinchenko@jinr.ru>//*-- Created : 08/08/2016
 //*-- Modified: R. Lalik <Rafal.Lalik@ph.tum.de> 2016/10/10
 
 //_HADES_CLASS_DESCRIPTION
@@ -23,8 +22,8 @@
 #include "hfwdetrpchit.h"
 #include "hfwdetvectorfinder.h"
 #include "hfwdetvectorfinderpar.h"
-#include "hvectorcand.h"
-#include "hvectorcandsim.h"
+#include "hfwdetcand.h"
+#include "hfwdetcandsim.h"
 #include "hgeominterface.h"
 #include "hgeomrootbuilder.h"
 #include "hgeomvolume.h"
@@ -74,7 +73,7 @@ HFwDetVectorFinder::~HFwDetVectorFinder()
 void HFwDetVectorFinder::initVariables()
 {
     isSimulation = kFALSE;
-    pStrawHits = pRpcHits = pVectorCand = nullptr;
+    pStrawHits = pRpcHits = pFwDetCand = nullptr;
     pStrawVFPar = nullptr;
 
     fMinHits = 10; // FIXME to aparams
@@ -131,18 +130,18 @@ Bool_t HFwDetVectorFinder::init()
 
     // build the Straw vector category
     if (isSimulation)
-        pVectorCand = new HLinearCategory("HVectorCandSim");
+        pFwDetCand = new HLinearCategory("HFwDetCandSim");
     else
-        pVectorCand = new HLinearCategory("HVectorCand");
+        pFwDetCand = new HLinearCategory("HFwDetCand");
 
-    if (!pVectorCand)
+    if (!pFwDetCand)
     {
-        Error("HFwDetVectorFinder::init()","Straw vector category not created");
+        Error("HFwDetVectorFinder::init()","FwDetCand category not created");
         return kFALSE;
     }
     else
     {
-        gHades->getCurrentEvent()->addCategory(catVectorCand, pVectorCand, "FwDet");
+        gHades->getCurrentEvent()->addCategory(catFwDetCand, pFwDetCand, "FwDet");
     }
 
     pStrawVFPar = (HFwDetVectorFinderPar *)
@@ -835,19 +834,19 @@ printf("[%d,%d] -> [(%d,%f,%.1f),(%d,%f,%.1f)] | %f < %f = TanCut\n", ipl, pl, t
     }
 }
 
-HVectorCand * HFwDetVectorFinder::addVector(Int_t m, Int_t patt, Double_t chi2, Double_t *pars, Bool_t lowRes)
+HFwDetCand * HFwDetVectorFinder::addVector(Int_t m, Int_t patt, Double_t chi2, Double_t *pars, Bool_t lowRes)
 {
-    // Add vector to the temporary container (as HVectorCand)
+    // Add vector to the temporary container (as HFwDetCand)
 #ifdef VERBOSE_MODE3
 printf("      + addVector(): m=%d  patt=%x  chi2=%f  LR=%d\n", m, patt, chi2, lowRes);
 printf("        pars=%f %f %f %f\n", pars[0], pars[1], pars[2], pars[3]);
 #endif
 
-    HVectorCand *track;
+    HFwDetCand *track;
     if (isSimulation)
-        track = (HVectorCand*) new HVectorCandSim();
+        track = (HFwDetCand*) new HFwDetCandSim();
     else
-        track = new HVectorCand();
+        track = new HFwDetCand();
 
     track->setChi2(chi2);
     track->setParams(pars);
@@ -863,7 +862,7 @@ printf("        pars=%f %f %f %f\n", pars[0], pars[1], pars[2], pars[3]);
         if (isSimulation)
         {
             HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) pStrawHits->getObject(fUzHit[ipl]);
-            ((HVectorCandSim*)track)->addHitTrack(hit->getTrack());
+            ((HFwDetCandSim*)track)->addHitTrack(hit->getTrack());
         }
 
         if (lowRes) continue;
@@ -886,7 +885,7 @@ printf("        pars=%f %f %f %f\n", pars[0], pars[1], pars[2], pars[3]);
     return track;
 }
 
-void HFwDetVectorFinder::setTrackId(HVectorCand *vec)
+void HFwDetVectorFinder::setTrackId(HFwDetCand *vec)
 {
     if (!isSimulation)
     {
@@ -920,9 +919,9 @@ void HFwDetVectorFinder::setTrackId(HVectorCand *vec)
 
     // to have a valid ID more than half of the tracks must have the same ID
     if (currentMax > nhits/2)
-        ((HVectorCandSim*) vec)->setTrack(arg_max);
+        ((HFwDetCandSim*) vec)->setTrack(arg_max);
     else
-        ((HVectorCandSim*) vec)->setTrack(-1);
+        ((HFwDetCandSim*) vec)->setTrack(-1);
 }
 
 void HFwDetVectorFinder::findLine(Int_t patt, Double_t *pars)
@@ -983,7 +982,7 @@ void HFwDetVectorFinder::checkParams()
         //for (Int_t iv = 0; iv < nvec; ++iv) {
         for (Int_t iv = fIndx0[m]; iv < nvec; ++iv)
         {
-            HVectorCand *vec = fVectors[m][iv];
+            HFwDetCand *vec = fVectors[m][iv];
             if (!vec) continue;
 
 //             vec->getParams(pars);
@@ -1000,7 +999,7 @@ Int_t cnt = fVectors[m].size();
 #endif
         for (Int_t iv = nvec-1; iv >= fIndx0[m]; --iv)
         {
-            HVectorCand *vec = fVectors[m][iv];
+            HFwDetCand *vec = fVectors[m][iv];
             if (!vec) continue;
 
             if (vec->getChi2() < 0)
@@ -1035,7 +1034,7 @@ void HFwDetVectorFinder::matchVectors()
 
         for (Int_t iv2 = 0; iv2 < nvec2; ++iv2)
         {
-            HVectorCand *vec2 = fVectors[m][iv2];
+            HFwDetCand *vec2 = fVectors[m][iv2];
             if (!vec2) continue;
 
             vec2->getParams(pars);
@@ -1043,7 +1042,7 @@ void HFwDetVectorFinder::matchVectors()
 
             for (Int_t iv1 = 0; iv1 < nvec1; ++iv1)
             {
-                HVectorCand *vec1 = fVectors[m-1][iv1];
+                HFwDetCand *vec1 = fVectors[m-1][iv1];
                 if (!vec1) continue;
 
                 vec1->getParams(pars);
@@ -1127,7 +1126,7 @@ void HFwDetVectorFinder::highRes()
         {
             combos.clear();
 
-            HVectorCand *vec = fVectors[m][iv];
+            HFwDetCand *vec = fVectors[m][iv];
             if (!vec) continue;
 
             Int_t nhits = vec->getNofHits(), patt = 0;
@@ -1146,7 +1145,7 @@ void HFwDetVectorFinder::highRes()
                 vec->setTof(rpchit->getTof());
                 vec->setDistance(rpchit->getDistance());
                 if (isSimulation)
-                    ((HVectorCandSim*) vec)->setRpcTrack(rpchit->getTrack());
+                    ((HFwDetCandSim*) vec)->setRpcTrack(rpchit->getTrack());
             }
 
             current_track = vec;
@@ -1210,14 +1209,14 @@ void HFwDetVectorFinder::highRes()
                     fUz[i] = cs.z[i];
 
                 // add vector to the temporary container
-                HVectorCand * hc = addVector(m, cs.pattern, cs.chi2, cs.pars, kFALSE);
+                HFwDetCand * hc = addVector(m, cs.pattern, cs.chi2, cs.pars, kFALSE);
                 if (hc)
                 {
                     hc->setTof(current_track->getTof());
                     hc->setDistance(current_track->getDistance());
                     if (isSimulation)
-                        ((HVectorCandSim*) hc)->setRpcTrack(
-                            ((HVectorCandSim*) current_track)->getRpcTrack());
+                        ((HFwDetCandSim*) hc)->setRpcTrack(
+                            ((HFwDetCandSim*) current_track)->getRpcTrack());
                 }
             }
         }
@@ -1320,21 +1319,21 @@ Int_t vec_cnt = 0;
         {
             if (!fVectors[ist][iv]) continue;
 
-            HVectorCand* cal = (HVectorCand*) pVectorCand->getNewSlot(loc);
+            HFwDetCand* cal = (HFwDetCand*) pFwDetCand->getNewSlot(loc);
 
             if (cal)
             {
                 if (isSimulation)
-                    cal = (HVectorCand*) new(cal) HVectorCandSim(*(HVectorCandSim*)(fVectors[ist][iv]));
+                    cal = (HFwDetCand*) new(cal) HFwDetCandSim(*(HFwDetCandSim*)(fVectors[ist][iv]));
                 else
-                    cal = new(cal) HVectorCand(*(fVectors[ist][iv]));
+                    cal = new(cal) HFwDetCand(*(fVectors[ist][iv]));
                 cal->SetUniqueID(ist);
                 setTrackId(cal);
 #ifdef VERBOSE_MODE1
                 if (isel)
                 {
                     if (isSimulation)
-                        ((HVectorCandSim*)cal)->print();
+                        ((HFwDetCandSim*)cal)->print();
                     else
                         cal->print();
                     ++vec_cnt;
@@ -1367,7 +1366,7 @@ void HFwDetVectorFinder::mergeVectors()
 
         for (Int_t iv = fIndx0[m]; iv < nvec; ++iv)
         {
-            HVectorCand *tr = fVectors[m][iv];
+            HFwDetCand *tr = fVectors[m][iv];
             if (!tr) continue;
 
             tr->getParams(pars);
@@ -1405,7 +1404,7 @@ void HFwDetVectorFinder::mergeVectors()
 
     for (Int_t iv = fIndx0[m1]; iv < nvec1; ++iv)
     {
-        HVectorCand *tr1 = fVectors[m1][iv];
+        HFwDetCand *tr1 = fVectors[m1][iv];
         if (!tr1) continue;
 
         tr1->getParams(pars1);
@@ -1416,7 +1415,7 @@ void HFwDetVectorFinder::mergeVectors()
 
     for (Int_t iv = fIndx0[m2]; iv < nvec2; ++iv)
     {
-        HVectorCand *tr2 = fVectors[m2][iv];
+        HFwDetCand *tr2 = fVectors[m2][iv];
         if (!tr2) continue;
 
         tr2->getParams(pars2);
@@ -1427,12 +1426,12 @@ void HFwDetVectorFinder::mergeVectors()
 
     for (Int_t iv1 = fIndx0[m1]; iv1 < nvec1; ++iv1)
     {
-        HVectorCand *tr1 = fVectors[m1][iv1];
+        HFwDetCand *tr1 = fVectors[m1][iv1];
         if (!tr1) continue;
 
         for (Int_t iv2 = fIndx0[m2]; iv2 < nvec2; ++iv2)
         {
-            HVectorCand *tr2 = fVectors[m2][iv2];
+            HFwDetCand *tr2 = fVectors[m2][iv2];
             if (!tr2) continue;
 
             Float_t dtx = fabs(tr1->getTx() - tr2->getTx());
@@ -1496,15 +1495,15 @@ void HFwDetVectorFinder::mergeVectors()
     delete [] wp_m2;
 }
 
-void HFwDetVectorFinder::addTrack(Int_t m0, HVectorCand *tr1, HVectorCand *tr2, Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2)
+void HFwDetVectorFinder::addTrack(Int_t m0, HFwDetCand *tr1, HFwDetCand *tr2, Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2)
 {
     // Save merged vector
 
-    HVectorCand * track = nullptr;
+    HFwDetCand * track = nullptr;
     if (isSimulation)
-        track = (HVectorCand*) new HVectorCandSim();
+        track = (HFwDetCand*) new HFwDetCandSim();
     else
-        track = new HVectorCand();
+        track = new HFwDetCand();
 
     track->setParams(parOk);
     track->setChi2(c2 + tr1->getChi2() + tr2->getChi2());
@@ -1519,7 +1518,7 @@ void HFwDetVectorFinder::addTrack(Int_t m0, HVectorCand *tr1, HVectorCand *tr2, 
         if (isSimulation)
         {
             HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) pStrawHits->getObject(fVectors[0][indx1]->getHitIndex(i));
-            ((HVectorCandSim*)track)->addHitTrack(hit->getTrack());
+            ((HFwDetCandSim*)track)->addHitTrack(hit->getTrack());
         }
         if (b[i]) track->setLRbit(i);
     }
@@ -1532,7 +1531,7 @@ void HFwDetVectorFinder::addTrack(Int_t m0, HVectorCand *tr1, HVectorCand *tr2, 
         if (isSimulation)
         {
             HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) pStrawHits->getObject(fVectors[1][indx2]->getHitIndex(i));
-            ((HVectorCandSim*)track)->addHitTrack(hit->getTrack());
+            ((HFwDetCandSim*)track)->addHitTrack(hit->getTrack());
         }
         if (b[i]) track->setLRbit(lim1 + i);
     }
@@ -1540,8 +1539,8 @@ void HFwDetVectorFinder::addTrack(Int_t m0, HVectorCand *tr1, HVectorCand *tr2, 
     track->setTof(fVectors[0][indx1]->getTof());
     track->setDistance(fVectors[0][indx1]->getDistance());
     if (isSimulation)
-        ((HVectorCandSim*) track)->setRpcTrack(
-            ((HVectorCandSim*) fVectors[0][indx1])->getRpcTrack());
+        ((HFwDetCandSim*) track)->setRpcTrack(
+            ((HFwDetCandSim*) fVectors[0][indx1])->getRpcTrack());
 
     fVectors[nModules].push_back(track);
 
@@ -1558,7 +1557,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
 
     for (Int_t i = 0; i < ntrs; ++i)
     {
-        HVectorCand *tr = fVectors[nModules][i];
+        HFwDetCand *tr = fVectors[nModules][i];
         if (!tr) continue;
 
 //         if (tr->getNofHits() != nVecMin) continue;   // FIXME before was two tracks (m0 and m1), now we have up to 16, how to validate proper track?
@@ -1571,7 +1570,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
     multimap<Double_t,Int_t>::iterator it, it1;
     for (it = c2merge.begin(); it != c2merge.end(); ++it)
     {
-        HVectorCand *tr = fVectors[nModules][it->second];
+        HFwDetCand *tr = fVectors[nModules][it->second];
         if (!tr) continue;
 
         Int_t nvecs1 = tr->getNofHits();
@@ -1614,7 +1613,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
             hit->getHitPos(x, y, z);
             if (isSimulation)
             {
-                HVectorCandSim* trs = (HVectorCandSim*)tr;
+                HFwDetCandSim* trs = (HFwDetCandSim*)tr;
                 trs->setPx1(px);
                 trs->setPy1(py);
                 trs->setPz1(pz);
@@ -1629,7 +1628,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
             hit->getHitPos(x, y, z);
             if (isSimulation)
             {
-                HVectorCandSim* trs = (HVectorCandSim*)tr;
+                HFwDetCandSim* trs = (HFwDetCandSim*)tr;
                 trs->setPx2(px);
                 trs->setPy2(py);
                 trs->setPz2(pz);
@@ -1648,7 +1647,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
 
     for (it = c2merge.begin(); it != c2merge.end(); ++it)
     {
-        HVectorCand *tr1 = fVectors[nModules][it->second];
+        HFwDetCand *tr1 = fVectors[nModules][it->second];
         if (!tr1) continue;
 
         Int_t nvecs1 = tr1->getNofHits();
@@ -1668,7 +1667,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
         it1 = it;
         for (++it1; it1 != c2merge.end(); ++it1)
         {
-            HVectorCand *tr2 = fVectors[nModules][it1->second];
+            HFwDetCand *tr2 = fVectors[nModules][it1->second];
             if (!tr2) continue;
 
             Int_t nvecs2 = tr2->getNofHits(), nover = 0;
@@ -1702,7 +1701,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
     {
         for (Int_t i = 0; i < ntrs; ++i)
         {
-            HVectorCand *tr = fVectors[nModules][i];
+            HFwDetCand *tr = fVectors[nModules][i];
             if (!tr) continue;
 
             if (tr->getChi2() / tr->getNDF() <= fHRCutChi2) // 3.0
@@ -1711,7 +1710,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
                 Int_t nvecs1 = tr->getNofHits();
                 for (Int_t iv = 0; iv < nvecs1; ++iv)
                 {
-                    HVectorCand *vec = fVectors[iv][tr->getHitIndex(iv)];
+                    HFwDetCand *vec = fVectors[iv][tr->getHitIndex(iv)];
                     if (!vec) continue;
 
                     Int_t nh = vec->getNofHits();
@@ -1732,7 +1731,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
     }
 }
 
-Double_t HFwDetVectorFinder::refit(Int_t patt, HVectorCand *track, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr)
+Double_t HFwDetVectorFinder::refit(Int_t patt, HFwDetCand *track, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr)
 {
     // Fit of hits to the straight line
 

@@ -4,17 +4,17 @@
 
 //_HADES_CLASS_DESCRIPTION
 /////////////////////////////////////////////////////////////
-//  HVectorCand
+//  HFwDetCand
 //
 //  Reconstructed vector
 //
 /////////////////////////////////////////////////////////////
 
-#include "hvectorcand.h"
+#include "hfwdetcand.h"
 #include "hfwdetrpchit.h"
 #include "hmdcsizescells.h"
 
-HVectorCand::HVectorCand() : TLorentzVector(),
+HFwDetCand::HFwDetCand() : TLorentzVector(),
     fNhits(0), fNDF(0), fTof(-1.0), fDistance(0.0), fChi2(0.0),
     dirVec(0., 0., 1.0), refVec(0., 0., 0.)
 {
@@ -22,16 +22,16 @@ HVectorCand::HVectorCand() : TLorentzVector(),
     for (Int_t i = 0; i < 10; ++i) fCovar[i] = 0;
 }
 
-HVectorCand::~HVectorCand() {}
+HFwDetCand::~HFwDetCand() {}
 
-Int_t HVectorCand::addHit(Int_t indx)
+Int_t HFwDetCand::addHit(Int_t indx)
 {
     // Add hit with index indx to the track
     fHitInds[fNhits++] = indx;
     return fNhits;
 }
 
-TMatrixDSym HVectorCand::getCovarMatr() const
+TMatrixDSym HFwDetCand::getCovarMatr() const
 {
     // Return covariance matrix as TMatrixDSym
     TMatrixDSym cov(4);
@@ -47,7 +47,7 @@ TMatrixDSym HVectorCand::getCovarMatr() const
     return cov;
 }
 
-void HVectorCand::setCovar(TMatrixDSym cov)
+void HFwDetCand::setCovar(TMatrixDSym cov)
 {
     // Set covariance matrix
     Int_t ipos = 0;
@@ -60,7 +60,7 @@ void HVectorCand::setCovar(TMatrixDSym cov)
     }
 }
 
-void HVectorCand::getHadesParams(Double_t *params) const
+void HFwDetCand::getHadesParams(Double_t *params) const
 {
     // Convert to HADES track parameters
     Double_t x1 = refVec.X(), y1 = refVec.Y(), z1 = refVec.Z();
@@ -69,7 +69,7 @@ void HVectorCand::getHadesParams(Double_t *params) const
     HMdcSizesCells::calcMdcSeg(x1, y1, z1, x2, y2, z2, params[0], params[1], params[2], params[3]);
 }
 
-Double_t HVectorCand::getHadesParam(Int_t ipar) const
+Double_t HFwDetCand::getHadesParam(Int_t ipar) const
 {
     // Convert (at first call) and return HADES track parameters
 
@@ -78,7 +78,7 @@ Double_t HVectorCand::getHadesParam(Int_t ipar) const
     return params[ipar];
 }
 
-void HVectorCand::print() const
+void HFwDetCand::print() const
 {
     printf("----- VECTOR -----\n");
     printf("   nhits=%d   ndf=%d   indexes=", fNhits, fNDF);
@@ -95,7 +95,7 @@ void HVectorCand::print() const
     printf("   QA chi2=%f   chi2/ndf=%f\n", fChi2, fChi2/fNDF);
 }
 
-void HVectorCand::getParams(Double_t* pars) const
+void HFwDetCand::getParams(Double_t* pars) const
 {
     // get X, Y, Tx, Ty
     pars[0] = refVec.X();
@@ -104,7 +104,7 @@ void HVectorCand::getParams(Double_t* pars) const
     pars[3] = dirVec.Y();
 }
 
-void HVectorCand::setParams(Double_t* pars)
+void HFwDetCand::setParams(Double_t* pars)
 {
     // set X, Y, Tx, Ty
     refVec.SetX(pars[0]);
@@ -113,7 +113,7 @@ void HVectorCand::setParams(Double_t* pars)
     dirVec.SetY(pars[3]);
 }
 
-void HVectorCand::calc4vectorProperties(Double_t p, Double_t m)
+void HFwDetCand::calc4vectorProperties(Double_t p, Double_t m)
 {
     // Calc TLorentzVector for given momentum and mass
     TVector3 v3(dirVec);
@@ -121,11 +121,11 @@ void HVectorCand::calc4vectorProperties(Double_t p, Double_t m)
     SetVectM(v3, m);
 }
 
-void HVectorCand::calc4vectorProperties(Double_t m)
+void HFwDetCand::calc4vectorProperties(Double_t m)
 {
     // Calc TLorentzVector for given mass, momentum is calculated from TOF
     Float_t mom = HFwDetRpcHit::calcMomentum(fDistance, fTof, m);
     calc4vectorProperties(mom, m);
 }
 
-ClassImp(HVectorCand);
+ClassImp(HFwDetCand);

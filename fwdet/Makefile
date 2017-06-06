@@ -34,8 +34,8 @@ SOURCE_FILES := hfwdetdetector.cc         \
                 hfwdetstrawdigipar.cc     \
                 hfwdetvectorfinder.cc     \
                 hfwdetvectorfinderpar.cc  \
-                hvectorcand.cc            \
-                hvectorcandsim.cc
+                hfwdetcand.cc            \
+                hfwdetcandsim.cc
 
 include $(HADDIR)/hades.def.mk
 include $(HADDIR)/hades.module.mk
