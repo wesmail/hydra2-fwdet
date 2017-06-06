@@ -43,6 +43,11 @@ public:
   void getHit(Float_t& aX, Float_t& aY, Float_t& aZ, Float_t& aPx, Float_t& aPy, Float_t& aPz,
               Float_t& aTof, Float_t& aLen, Float_t& aE);
 
+  Int_t getModule (void) { return module;}
+  Int_t getLayer  (void) { return layer;}
+  Int_t getCell   (void) { return cell;}
+  Int_t getSubCell(void) { return subcell;}
+
   Int_t getNLocationIndex(void) {return 3;}
   inline Int_t getLocationIndex(Int_t i);
 
