@@ -83,6 +83,7 @@ protected:
   Bool_t suppressed;        // flag used to filter out particle hits before digitization 
   Float_t userVal;          // stores user specific values (for expample evtSeqnumber of PLUTO particles for embedding)
   UInt_t  acceptance ;      // bit wise : 1-25 MDCLAYER 26-27 sys0/sys1 28-31 layer crop  highest bit : filled/not filled
+  UInt_t  acceptance2;      // bit wise : 1-16 STRAWLAYER 17-19 RPC highest bit : filled/not filled
 public:
   HGeantKine(void);
   HGeantKine(HGeantKine &aKine);
@@ -197,6 +198,8 @@ public:
   Int_t getNStartHits(void);
   Int_t getFirstStartHit() {return firstStartHit;}
   Int_t getNFwDetHits(void);
+  Int_t getNFwDetHitsStraw(void);
+  Int_t getNFwDetHitsRpc(void);
   Int_t getFirstFwDetHit() {return firstFwDetHit;}
 
   Int_t getRichHits (vector<HGeantRichPhoton*>& v);
@@ -207,6 +210,8 @@ public:
   Int_t getEmcHits  (vector<HGeantEmc*>& v);
   Int_t getStartHits(vector<HGeantStart*>& v);
   Int_t getFwDetHits(vector<HGeantFwDet*>& v);
+  Int_t getFwDetHitsStraw(vector<HGeantFwDet*>& v);
+  Int_t getFwDetHitsRpc(vector<HGeantFwDet*>& v);
 
   void setFirstRichHit  (Int_t index) { firstRichHit  = index;}
   void setFirstMdcHit   (Int_t index) { firstMdcHit   = index;}
@@ -233,6 +238,17 @@ public:
   void   getNHitsDecay   (Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& sys0,Int_t& sys1);
   void   getNHitsBit     (Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& sys0,Int_t& sys1);
   void   getNHitsDecayBit(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& sys0,Int_t& sys1);
+
+  Bool_t isInAcceptanceFW        (Int_t nstraw=4,Int_t nrpc=1);
+  Bool_t isInAcceptanceFWDecay   (Int_t nstraw=4,Int_t nrpc=1);
+  Bool_t isInAcceptanceFWBit     (Int_t nstraw=4,Int_t nrpc=1);
+  Bool_t isInAcceptanceFWDecayBit(Int_t nstraw=4,Int_t nrpc=1);
+  void   getNHitsFW              (Int_t& nstraw,Int_t& nrpc);
+  void   getNHitsFWDecay         (Int_t& nstraw,Int_t& nrpc);
+  void   getNHitsFWBit           (Int_t& nstraw,Int_t& nrpc);
+  void   getNHitsFWDecayBit      (Int_t& nstraw,Int_t& nrpc);
+
+
   Int_t  getSystem(void);
   Int_t  getSectorFromBitArray(void);
   UInt_t getMdcSectorBitArray(void);
@@ -320,6 +336,29 @@ public:
   void   unsetAcceptanceFilled() { acceptance &=~((0x1)<<(31)); }
   Bool_t isAcceptanceFilled()    { return ( acceptance &  ( 0x01 << (31) )); }
   void   fillAcceptanceBit();
+//-----------------------------------------------------------------------
+
+  //-----------------------------------------------------------------------
+  // acceptance2 bits  FWDET
+  void    setStrawLayers(UInt_t io,UInt_t layers)      { acceptance2 |=(layers&(0xFFFF));}
+  void    setStrawLayer (UInt_t lay)                   { acceptance2 |=  ( 0x01 << (lay) );}
+  void    unsetAllStrawLayers()                        { acceptance2 &= ~0xFFFF; }
+  static void setStrawLayer(UInt_t lay,UInt_t& layers) { layers |=  ( 0x01 << (lay) ); }
+  Bool_t  getStrawLayer    (UInt_t lay)                { return ( acceptance2 &  ( 0x01 << (lay) )); }
+  Bool_t  hasStrawLayers   (UInt_t layerstest)         { return ((acceptance2&0xFFF)==(layerstest&0xFFF));}
+  Int_t   getNStrawLayer   ();
+  void    printFWDetLayers();
+
+  void    setFWRpcLayer  (UInt_t lay)                  { acceptance2 |=  ( 0x01 << (16+lay) ); }
+  Bool_t  getFWRpcLayer  (UInt_t lay)                  { return ( acceptance2 &  ( 0x01 << (16+lay) )); }
+  void    unsetAllFWRpcLayers()                        { acceptance2 &= ~( 0xF  << 16 ); }
+
+  Int_t   getNFWRpcLayer  ()        ;
+
+  void    setAcceptanceFWFilled()                      { acceptance2 |=((0x1)<<(31));  }
+  void    unsetFWAcceptanceFWFilled()                  { acceptance2 &=~((0x1)<<(31)); }
+  Bool_t  isAcceptanceFWFilled()                       { return ( acceptance2 &  ( 0x01 << (31) )); }
+  void    fillAcceptanceFWBit();
 //-----------------------------------------------------------------------
 
 

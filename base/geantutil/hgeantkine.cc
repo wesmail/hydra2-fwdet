@@ -117,6 +117,7 @@ HGeantKine::HGeantKine(void) {
   suppressed = kFALSE;
   userVal = -1;
   acceptance = 0;
+  acceptance2 = 0;
 }
 
 HGeantKine::HGeantKine(HGeantKine &aKine) : TObject(aKine) {
@@ -149,6 +150,7 @@ HGeantKine::HGeantKine(HGeantKine &aKine) : TObject(aKine) {
   suppressed = aKine.suppressed;
   userVal = aKine.userVal;
   acceptance = aKine.acceptance;
+  acceptance2 = aKine.acceptance2;
 
 }
 
@@ -896,6 +898,38 @@ Int_t HGeantKine::getNFwDetHits(void) {
    return n;
 }
 
+Int_t HGeantKine::getNFwDetHitsStraw(void) {
+  // Return number of Forward Detector hits made by present track.
+  // in the STRAW tracker
+   Int_t n = 0;
+   if(firstFwDetHit > -1) {
+      resetFwDetIter();
+      HGeantFwDet* hit=0;
+      while( (hit = (HGeantFwDet*)nextFwDetHit()) != NULL){
+          if(hit->getModule()>2) continue;
+	  n++;
+      }
+      resetFwDetIter();
+   }
+   return n;
+}
+
+Int_t HGeantKine::getNFwDetHitsRpc(void) {
+  // Return number of Forward Detector hits made by present track.
+  // in the FW RPC
+   Int_t n = 0;
+   if(firstFwDetHit > -1) {
+      resetFwDetIter();
+      HGeantFwDet* hit=0;
+      while( (hit = (HGeantFwDet*)nextFwDetHit()) != NULL){
+          if(hit->getModule()<6) continue;
+	  n++;
+      }
+      resetFwDetIter();
+   }
+   return n;
+}
+
 
 Int_t HGeantKine::getRichHits(vector<HGeantRichPhoton*>& v) {
   // Return  RICH photon hits made by present track.
@@ -1018,6 +1052,40 @@ Int_t HGeantKine::getFwDetHits(vector<HGeantFwDet*>& v) {
     if(firstFwDetHit > -1) {
 	resetFwDetIter();
 	while((hit = (HGeantFwDet*) nextFwDetHit()) != NULL){
+	    v.push_back(hit);
+	}
+	resetFwDetIter();
+    }
+    return v.size();
+}
+
+Int_t HGeantKine::getFwDetHitsStraw(vector<HGeantFwDet*>& v) {
+  // Return  Forward detector hits made by present track.
+  // in STRAW tracker
+    v.clear();
+
+    HGeantFwDet* hit;
+    if(firstFwDetHit > -1) {
+	resetFwDetIter();
+	while((hit = (HGeantFwDet*) nextFwDetHit()) != NULL){
+            if(hit->getModule()>2) continue;
+	    v.push_back(hit);
+	}
+	resetFwDetIter();
+    }
+    return v.size();
+}
+
+Int_t HGeantKine::getFwDetHitsRpc(vector<HGeantFwDet*>& v) {
+  // Return  Forward detector hits made by present track.
+  // in FW RPC
+    v.clear();
+
+    HGeantFwDet* hit;
+    if(firstFwDetHit > -1) {
+	resetFwDetIter();
+	while((hit = (HGeantFwDet*) nextFwDetHit()) != NULL){
+            if(hit->getModule()<6) continue;
 	    v.push_back(hit);
 	}
 	resetFwDetIter();
@@ -1170,6 +1238,7 @@ void HGeantKine::fillAcceptanceBit() {
     if(firstTofHit > -1)                      setSys(1);
     if(firstRpcHit!=-1 || firstShowerHit!=-1 || firstEmcHit!=-1) setSys(0);
     setAcceptanceFilled();
+    fillAcceptanceFWBit();
 }
 
 void  HGeantKine::getNHits(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& sys0,Int_t& sys1)
@@ -1264,6 +1333,151 @@ void  HGeantKine::getNHitsDecayBit(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t
 	if(sys0>1)sys0=1;
 	if(sys1>1)sys1=1;
 
+    }
+}
+
+Bool_t HGeantKine::isInAcceptanceFW(Int_t nstraw,Int_t nrpc)
+{
+    // return kTRUE if the particle has hit at least nstraw double Layer STRAW (default 4)
+    // nrpc hits in RPC
+
+    Int_t nStraw  = getNFwDetHitsStraw();
+    Int_t nRpc    = getNFwDetHitsRpc();
+
+
+    if(nStraw >= nstraw && nRpc >= nrpc) return kTRUE;
+    else                                 return kFALSE;
+}
+
+Bool_t HGeantKine::isInAcceptanceFWDecay(Int_t nstraw,Int_t nrpc)
+{
+    // return kTRUE if the particle (and his decayed charged daughter it it exist) has hit at
+    // least nstraw double Layer STRAW (default 4) and nrpc hits in RPC
+
+    Int_t nStraw = getNFwDetHitsStraw();
+    Int_t nRpc   = getNFwDetHitsRpc();
+
+    if(nStraw >= nstraw && nRpc >= nrpc) return kTRUE;
+
+    HGeantKine* d = HGeantKine::getChargedDecayDaughter(this);
+
+    if(d){
+
+	Int_t nStraw_d = d->getNFwDetHitsStraw();
+	Int_t nRpc_d   = d->getNFwDetHitsRpc();
+
+        nStraw += nStraw_d;
+        nRpc   += nRpc_d;
+    }
+    if(nStraw >= nstraw && nRpc >= nrpc) return kTRUE;
+    return kFALSE;
+}
+
+Bool_t HGeantKine::isInAcceptanceFWBit(Int_t nstraw,Int_t nrpc)
+{
+    // return kTRUE if the particle has hit at least nstraw double Layer STRAW (default 4)
+    // nrpc hits in RPC
+
+    Int_t nStraw,nRpc;
+    getNHitsFWBit(nStraw,nRpc);
+
+    if(nStraw >= nstraw && nRpc >= nrpc) return kTRUE;
+    else                                 return kFALSE;
+
+}
+
+Bool_t HGeantKine::isInAcceptanceFWDecayBit(Int_t nstraw,Int_t nrpc)
+{
+    // return kTRUE if the particle (and his decayed charged daughter it it exist) has hit at
+    // least nstraw double Layer STRAW (default 4) and nrpc hits in RPC
+
+    Int_t nStraw,nRpc;
+    getNHitsFWBit(nStraw,nRpc);
+    if(nStraw >= nstraw && nRpc >= nrpc) return kTRUE;
+
+    HGeantKine* d = HGeantKine::getChargedDecayDaughter(this);
+
+    if(d){
+ 	Int_t nStraw_d = d->getNFwDetHitsStraw();
+	Int_t nRpc_d   = d->getNFwDetHitsRpc();
+
+        nStraw += nStraw_d;
+        nRpc   += nRpc_d;
+    }
+
+    if(nStraw >= nstraw && nRpc >= nrpc) return kTRUE;
+    else                                 return kFALSE;
+}
+
+void HGeantKine::fillAcceptanceFWBit() {
+    //
+    if(firstFwDetHit > -1)
+    {
+	unsetAllStrawLayers();
+        unsetAllFWRpcLayers();
+	resetFwDetIter();
+	HGeantFwDet* hit=0;
+
+	while( (hit = (HGeantFwDet*)nextFwDetHit()) != NULL){
+	    if(hit->getModule()<=2) {  // STRAW
+		setStrawLayer(hit->getLayer()+4*hit->getModule());
+	    }
+	    if(hit->getModule()>=6) {  // RPC
+		setFWRpcLayer(hit->getLayer());
+	    }
+	}
+	resetFwDetIter();
+    }
+    setAcceptanceFWFilled();
+}
+
+void  HGeantKine::getNHitsFW(Int_t& nstraw,Int_t& nrpc)
+{
+    // returns the number of hits in STRAW and FW RPC
+    nstraw    = getNFwDetHitsStraw();
+    nrpc      = getNFwDetHitsRpc();
+}
+
+void  HGeantKine::getNHitsFWDecay(Int_t& nstraw,Int_t& nrpc)
+{
+    // returns the number of hits in STRAW and FW RPC
+    // of the track (and his decayed charged daughter it it exist)
+
+    nstraw    = getNFwDetHitsStraw();
+    nrpc      = getNFwDetHitsRpc();
+
+    HGeantKine* d = HGeantKine::getChargedDecayDaughter(this);
+
+    if(d){
+	nstraw    += d->getNFwDetHitsStraw();
+	nrpc      += d->getNFwDetHitsRpc();
+    }
+}
+
+void  HGeantKine::getNHitsFWBit(Int_t& nstraw,Int_t& nrpc)
+{
+    // returns the number of hits in STRAW and FW RPC
+    // this function works on prefilled acceptance bits and needs no
+    // additional categories.
+    nstraw    = getNStrawLayer();
+    nrpc      = getNFWRpcLayer();
+}
+
+void  HGeantKine::getNHitsFWDecayBit(Int_t& nstraw,Int_t& nrpc)
+{
+    // returns the number of hits in STRAW and FW RPC
+    // of the track (and his decayed charged daughter it it exist)
+    // this function works on prefilled acceptance bits and needs no
+    // additional categories.
+    nstraw    = getNStrawLayer();
+    nrpc      = getNFWRpcLayer();
+
+    HGeantKine* d = HGeantKine::getChargedDecayDaughter(this);
+
+    if(d){
+
+	nstraw    += d->getNStrawLayer();
+	nrpc      += d->getNFWRpcLayer();
     }
 }
 
@@ -1780,6 +1994,11 @@ void HGeantKine::Streamer(TBuffer &R__b)
       } else {
 	  acceptance = 0;
       }
+      if (R__v > 11) {
+	  R__b >> acceptance2;
+      } else {
+	  acceptance2 = 0;
+      }
 
    } else {
       R__b.WriteVersion(HGeantKine::IsA());
@@ -1812,6 +2031,7 @@ void HGeantKine::Streamer(TBuffer &R__b)
       R__b << suppressed;
       R__b << userVal;
       R__b << acceptance;
+      R__b << acceptance2;
    }
 } 
 
@@ -2177,6 +2397,36 @@ void HGeantKine::printLayers()
     for(Int_t i=32;i>0;i--){
 	if(i<25&&i%6==0) out+=" ";
 	out+= ( (acceptance>>(i-1)) & 0x1 );
+    }
+    cout<<"    layers "<<out.Data()<<endl;
+}
+
+Int_t HGeantKine::getNStrawLayer()
+{
+    Int_t sum=0;
+    for(UInt_t i=0;i<16;i++){
+	sum+= getStrawLayer(i);
+    }
+
+    return sum;
+}
+
+Int_t HGeantKine::getNFWRpcLayer()
+{
+    Int_t sum=0;
+    for(UInt_t i=0;i<4;i++){
+	sum+= getFWRpcLayer(i);
+    }
+
+    return sum;
+}
+
+void HGeantKine::printFWDetLayers()
+{
+    TString out="";
+    for(Int_t i=32;i>0;i--){
+	if(i%4==0) out+=" ";
+	out+= ( (acceptance2>>(i-1)) & 0x1 );
     }
     cout<<"    layers "<<out.Data()<<endl;
 }
