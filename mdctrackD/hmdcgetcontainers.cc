@@ -588,7 +588,8 @@ void HMdcGetContainers::initMdcSetup(void) {
   for(Int_t s=0;s<6;s++) {
     numMods[s] = 0;
     for(Int_t m=0;m<4;m++) {
-      modSetup[s][m] = HMdcTrackDSet::isModActive(s,m) && getMdcDetector()->getModule(s,m)!=0;
+      if(getMdcDetector() != NULL) modSetup[s][m] = HMdcTrackDSet::isModActive(s,m) && getMdcDetector()->getModule(s,m)!=0;
+      else                         modSetup[s][m] = HMdcTrackDSet::isModActive(s,m);
       if(modSetup[s][m]) numMods[s]++;
     }
     segSetup[s][0] = modSetup[s][0] || modSetup[s][1];
