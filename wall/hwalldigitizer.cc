@@ -75,27 +75,28 @@ HWallDigitizer::~HWallDigitizer(void) {
 Bool_t HWallDigitizer::init(void) {
 
     time_t curtime;
-    initParContainer();
 
     fGeantCat = gHades->getCurrentEvent()->getCategory(catWallGeantRaw);
     if (!fGeantCat) {
-	fGeantCat = gHades->getSetup()->getDetector("Wall")->buildCategory(catWallGeantRaw);
-	if (!fGeantCat) return kFALSE;
-	else gHades->getCurrentEvent()->addCategory(catWallGeantRaw,fGeantCat,"Wall");
-    }
+        Warning("init()","No category catWallGeantRaw found!") ;
+    } else iterGeant   = (HIterator *)fGeantCat->MakeIterator("native");
 
     fRawCat = gHades->getCurrentEvent()->getCategory(catWallRaw);
     if (!fRawCat) {
 	HWallDetector* wall=(HWallDetector*)(gHades->getSetup()->getDetector("Wall"));
 	if(wall){
 	    fRawCat=wall->buildMatrixCategory("HWallRawSim",0.5F);
+	    if (fRawCat) gHades->getCurrentEvent()->addCategory(catWallRaw,fRawCat,"Wall");
 	}
-	if (!fRawCat) return kFALSE;
-	else gHades->getCurrentEvent()->addCategory(catWallRaw,fRawCat,"Wall");
     }
 
-    iterGeant   = (HIterator *)fGeantCat->MakeIterator("native");
-    iterWallRaw = (HIterator *)fRawCat  ->MakeIterator("native");
+    
+    if(fRawCat) iterWallRaw = (HIterator *)fRawCat  ->MakeIterator("native");
+    else        Warning("init()","No category catWallRaw !") ;
+
+
+    if(fGeantCat&&fRawCat) initParContainer();
+
 
     time(&curtime);
 
@@ -103,6 +104,8 @@ Bool_t HWallDigitizer::init(void) {
 }
 
 Int_t HWallDigitizer::execute(void) {
+
+    if(!iterGeant || !iterWallRaw) return 0;
 
     const Float_t quantEff = 0.24;       // PMT quantum efficiency.
     const Float_t photYield = 11100.0;   // photon yield in scintillator (phot/MeV).
