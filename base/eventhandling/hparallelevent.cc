@@ -23,6 +23,7 @@
 #include "hgeantwall.h"
 #include "hgeantstart.h"
 #include "hgeantemc.h"
+#include "hgeantfwdet.h"
 
 //-----------------------
 #include "TBranch.h"
@@ -180,6 +181,7 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
     HCategory* startCat            = targetEvent->getCategory(catStartGeantRaw);
     HCategory* wallCat             = targetEvent->getCategory(catWallGeantRaw);
     HMatrixCategory* emcCat        = (HMatrixCategory*)targetEvent->getCategory(catEmcGeantRaw);
+    HCategory* fwdetCat            = targetEvent->getCategory(catFwDetGeantRaw);
 
 
 
@@ -194,6 +196,7 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
     HCategory* startCatLoc            = fCurrentEvent->getCategory(catStartGeantRaw);
     HCategory* wallCatLoc             = fCurrentEvent->getCategory(catWallGeantRaw);
     HMatrixCategory* emcCatLoc        = (HMatrixCategory*)fCurrentEvent->getCategory(catEmcGeantRaw);
+    HCategory* fwdetCatLoc            = fCurrentEvent->getCategory(catFwDetGeantRaw);
 
 
 
@@ -209,6 +212,7 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
     if( (!startCat     &&startCatLoc     )|| (startCat     &&!startCatLoc     ))  { Error("mergeGeantEvent()","catStart has different setting!");         return; }
     if( (!wallCat      &&wallCatLoc      )|| (wallCat      &&!wallCatLoc      ))  { Error("mergeGeantEvent()","catWall has different setting!");          return; }
     if( (!emcCat       &&emcCatLoc       )|| (emcCat       &&!emcCatLoc       ))  { Error("mergeGeantEvent()","catEmc has different setting!");           return; }
+    if( (!fwdetCat     &&fwdetCatLoc     )|| (fwdetCat     &&!fwdetCatLoc     ))  { Error("mergeGeantEvent()","catFwDet has different setting!");         return; }
 
     HLocation loc;//dummy
     Int_t index ;
@@ -224,6 +228,7 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
     HGeantWall*       gwall     = 0;
     HGeantEmc*        gemc      = 0;
     HGeantStart*      gstart    = 0;
+    HGeantFwDet*      gfwdet    = 0;
 
     Int_t lastRichCer = (richCatCerenk)? richCatCerenk->getEntries()-1 : -1;
     Int_t lastRichDir = (richCatDirect)? richCatDirect->getEntries()-1 : -1;
@@ -235,6 +240,7 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
     Int_t lastWall    = (wallCat)      ? wallCat      ->getEntries()-1 : -1;
     Int_t lastEmc     = (emcCat)       ? emcCat       ->getEntries()-1 : -1;
     Int_t lastStart   = (startCat)     ? startCat     ->getEntries()-1 : -1;
+    Int_t lastFwDet   = (fwdetCat)     ? fwdetCat     ->getEntries()-1 : -1;
 
 
     Int_t kineLastTr  = 0;
@@ -259,6 +265,7 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
 	    Int_t firstWallLoc   = kineLoc->getFirstWallHit();
 	    Int_t firstEmcLoc    = kineLoc->getFirstEmcHit();
 	    Int_t firstStartLoc  = kineLoc->getFirstStartHit();
+	    Int_t firstFwDetLoc  = kineLoc->getFirstFwDetHit();
 
 
 	    kine = (HGeantKine*) kineCat->getNewSlot(loc,&index); // new slot in target cat
@@ -279,6 +286,7 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
 	    kine->setFirstWallHit  ((firstWallLoc >-1)? firstWallLoc + lastWall    + 1: -1);
 	    kine->setFirstEmcHit   ((firstEmcLoc  >-1)? firstEmcLoc  + lastEmc     + 1: -1);
 	    kine->setFirstStartHit ((firstStartLoc>-1)? firstStartLoc+ lastStart   + 1: -1);
+	    kine->setFirstFwDetHit ((firstFwDetLoc>-1)? firstFwDetLoc+ lastFwDet   + 1: -1);
 
 	    kine->setRichCategory(0);
 	    kine->setMdcCategory(0) ;
@@ -288,6 +296,7 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
             kine->setWallCategory(0) ;
             kine->setEmcCategory(0) ;
             kine->setStartCategory(0) ;
+            kine->setFwDetCategory(0) ;
             kine->resetRichIter();
             kine->resetMdcIter();
             kine->resetTofIter();
@@ -550,7 +559,22 @@ void     HParallelEvent::mergeGeantEvent(HRecEvent*  targetEvent)
 	    //--------------------------------------------------
 	}
     }
+    if(fwdetCatLoc && fwdetCatLoc->getEntries()>0){
+	loc.set(0);
+	for(Int_t i=0;i<fwdetCatLoc->getEntries();i++){
+	    HGeantFwDet* gfwdetLoc = (HGeantFwDet* ) fwdetCatLoc->getObject(i);
+	    Int_t track  = gfwdetLoc->getTrack();
+	    Int_t nexhit = gfwdetLoc->getNextHitIndex();
+	    gfwdet       = (HGeantFwDet*) fwdetCat->getNewSlot(loc,&index); // new slot in target cat
+	    gfwdet       = new (gfwdet) HGeantFwDet(*gfwdetLoc);            // copy local object to target cat
 
+	    //--------------------------------------------------
+	    // shifting tracknumbers and indices
+	    gfwdet->setTrack         (track        +kineLastTr);
+	    gfwdet->setNextHitIndex  ((nexhit>-1)  ? nexhit  + lastFwDet + 1   : -1);
+	    //--------------------------------------------------
+	}
+    }
 }
 
 

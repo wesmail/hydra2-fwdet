@@ -53,6 +53,11 @@
 #include "hemcclustersim.h"
 #include "hwallhit.h"
 #include "hwallhitsim.h"
+#include "hfwdetcand.h"
+#include "hfwdetcandsim.h"
+
+
+
 
 #include "hpiontrackertrack.h"
 #include "hpiontrackerhit.h"
@@ -84,6 +89,7 @@
 #include "hgeantwall.h"
 #include "hgeantstart.h"
 #include "hgeantemc.h"
+#include "hgeantfwdet.h"
 
 //-----------------------
 #include "TBranch.h"
@@ -149,38 +155,41 @@ ClassImp(HParticleTree)
 //       SUPPORTED CATEGORIES:
 //
 //       catParticleCand
-//       catParticleEvtInfo (fullcopy)
-//       catStart2Hit       (fullcopy)
-//       catStart2Cal       (fullcopy)
-//       catTBoxChan        (fullcopy)
-//       catWallHit         (fullcopy)
-//       catPionTrackerRaw  (fullcopy)
-//       catPionTrackerCal  (fullcopy)
-//       catPionTrackerHit  (fullcopy)
-//       catPionTrackerTrack(fullcopy)
-//       catTofHit
-//       catTofCluster
-//       catRpcCluster
-//       catShowerHit
-//       catEmcCluster      (fullcopy)
-//       catRichHit
-//       catRichDirClus     (fullcopy)
-//       catRichCal         (fullcopy)
-//       catMdcSeg
-//       catMdcHit
-//       catMdcCal1
-//       catMdcClus
-//       catMdcClusInf
-//       catMdcClusFit
-//       catMdcWireFit
-//       catGeantKine             (fullcopy)
-//       catMdcGeantRaw           (fullcopy)
-//       catTofGeantRaw           (fullcopy)
-//       catRpcGeantRaw           (fullcopy)
-//       catShowerGeantRaw        (fullcopy)
-//       catEmcGeantRaw           (fullcopy)
-//       catWallGeantRaw          (fullcopy)
-//       catRichGeantRaw (+1,+2)  (fullcopy)
+//       catParticleMdc           (extracted from HParticleCand only)
+//       catParticleEvtInfo       (fullcopy only)
+//       catFwDetCand             (fullcopy only)
+//       catStart2Hit             (fullcopy only)
+//       catStart2Cal             (fullcopy only)
+//       catTBoxChan              (fullcopy only)
+//       catWallHit               (fullcopy only)
+//       catPionTrackerRaw        (fullcopy only)
+//       catPionTrackerCal        (fullcopy only)
+//       catPionTrackerHit        (fullcopy only)
+//       catPionTrackerTrack      (fullcopy only)
+//       catTofHit                (fullcopy or extracted from HParticleCand)
+//       catTofCluster            (fullcopy or extracted from HParticleCand)
+//       catRpcCluster            (fullcopy or extracted from HParticleCand)
+//       catShowerHit             (fullcopy or extracted from HParticleCand)
+//       catEmcCluster            (fullcopy only)
+//       catRichHit               (fullcopy or extracted from HParticleCand)
+//       catRichDirClus           (fullcopy only)
+//       catRichCal               (fullcopy only)
+//       catMdcSeg                (extracted from HParticleCand only)
+//       catMdcHit                (extracted from HParticleCand only)
+//       catMdcCal1               (extracted from HParticleCand only)
+//       catMdcClus               (extracted from HParticleCand only)
+//       catMdcClusInf            (extracted from HParticleCand only)
+//       catMdcClusFit            (extracted from HParticleCand only)
+//       catMdcWireFit            (extracted from HParticleCand only)
+//       catGeantKine             (fullcopy only)
+//       catMdcGeantRaw           (fullcopy only)
+//       catTofGeantRaw           (fullcopy only)
+//       catRpcGeantRaw           (fullcopy only)
+//       catShowerGeantRaw        (fullcopy only)
+//       catEmcGeantRaw           (fullcopy only)
+//       catFwDetGeantRaw         (fullcopy only)
+//       catWallGeantRaw          (fullcopy only)
+//       catRichGeantRaw (+1,+2)  (fullcopy only)
 //
 //
 // create output:
@@ -277,8 +286,8 @@ ClassImp(HParticleTree)
 //  //-------CONFIGURE EventStructure-----------------------
 //  Cat_t PersistentCat[] = {
 //    catParticleCand,
-//    catParticleMdc,
 //    catParticleEvtInfo,
+//    catFwDetCand,
 //    catStart2Hit,
 //    catStart2Cal,
 //    catTBoxChan,
@@ -287,12 +296,16 @@ ClassImp(HParticleTree)
 //    //catPionTrackerRaw,
 //    //catPionTrackerCal,
 //    //catPionTrackerHit,
+//    //-----------------------------
+//    // NO OPTION FULL COPY : ONLY OBJECTS USED BY HParticleCand WILL BE COPIED!
+//    // IF YOU WANT A FULL COPY SET THE FULL COPY IN ADDIION!
 //    //catTofHit,
 //    //catTofCluster,
 //    //catRpcCluster,
-//    //catEmcCluster,
 //    //catShowerHit,
 //    //catRichHit,
+//    //-----------------------------
+//    catEmcCluster,
 //    //catRichDirClus,
 //    //catRichCal,
 //    //catMdcSeg,
@@ -302,6 +315,8 @@ ClassImp(HParticleTree)
 //    //catMdcClusInf,
 //    //catMdcClusFit,
 //    //catMdcWireFit
+//    //-----------------------------
+//    // GEANT
 //    //catGeantKine,
 //    //catMdcGeantRaw,
 //    //catTofGeantRaw,
@@ -313,43 +328,25 @@ ClassImp(HParticleTree)
 //    //catRichGeantRaw+1,
 //    //catRichGeantRaw+2,
 //    //catEmcGeantRaw,
+//    //catFwDetGeantRaw,
 //    //catStartGeantRaw
+//    //-----------------------------
 //   };
 //
 //  // list of categories which should be fully copied
-//  // do not use categories twice!
+//  // (only these contained in HParticleCand as Hit Index)
 //
+//    //-----------------------------
+//    // OPTION FULL COPY : ONLY FOR OBJECTS USED BY HParticleCand!
+//    // IF THE CAT IS SELECTED ALREADY, YOU CAN SWITCH IT TO FULL COPY HERE!
 //    Cat_t PersistentCatFullCopy[] = {
-//    catParticleEvtInfo,
-//    catStart2Hit,
-//    catStart2Cal,
-//    catTBoxChan,
-//    catWallHit,
-//    catPionTrackerTrack,
-//    //catPionTrackerRaw,
-//    //catPionTrackerCal,
-//    //catPionTrackerHit,
 //    //catTofHit,
 //    //catTofCluster,
 //    //catRpcCluster,
 //    //catShowerHit,
-//    //catEmcCluster,
-//    //catRichHit,
-//    //catRichDirClus,
-//    //catRichCal,
-//    //catGeantKine,
-//    //catMdcGeantRaw,
-//    //catTofGeantRaw,
-//    //catRpcGeantRaw,
-//    //catShowerGeantRaw,
-//    //catEmcGeantRaw,
-//    //catWallGeantRaw,
-//    //catRichGeantRaw,
-//    //catRichGeantRaw+1,
-//    //catRichGeantRaw+2,
-//    //catEmcGeantRaw,
-//    //catStartGeantRaw
+//    //catRichHit
 //   };
+//    //-----------------------------
 //
 //  parttree->setEventStructure(sizeof(PersistentCat)        /sizeof(Cat_t),PersistentCat,kFALSE); // filter these cats
 //  parttree->setEventStructure(sizeof(PersistentCatFullCopy)/sizeof(Cat_t),PersistentCat,kTRUE);  // copy these cats witt all entries
@@ -387,6 +384,7 @@ ClassImp(HParticleTree)
 	catParticleCand,
 	catParticleMdc,
 	catParticleEvtInfo,
+	catFwDetCand,
 	catStart2Hit,
 	catStart2Cal,
         catTBoxChan,
@@ -421,6 +419,7 @@ ClassImp(HParticleTree)
 	catRichGeantRaw+1,
 	catRichGeantRaw+2,
 	catEmcGeantRaw,
+	catFwDetGeantRaw,
         catStartGeantRaw
     };
 
@@ -432,32 +431,8 @@ ClassImp(HParticleTree)
 
 
     Cat_t supportFullCopy [] ={
-	catGeantKine,
-	catMdcGeantRaw,
-	catTofGeantRaw,
-	catRpcGeantRaw,
-	catShowerGeantRaw,
-	catEmcGeantRaw,
-	catWallGeantRaw,
-	catRichGeantRaw,
-	catRichGeantRaw+1,
-	catRichGeantRaw+2,
-	catEmcGeantRaw,
-        catStartGeantRaw,
-	catParticleEvtInfo,
-	catStart2Hit,
-	catStart2Cal,
-        catTBoxChan,
-	catWallHit,
-	catPionTrackerRaw,
-	catPionTrackerCal,
-	catPionTrackerHit,
-	catPionTrackerTrack,
         catRichHit,
-	catRichDirClus,
-	catRichCal,
 	catShowerHit,
-	catEmcCluster,
 	catTofHit,
 	catTofCluster,
 	catRpcCluster
@@ -1030,6 +1005,22 @@ Int_t  HParticleTree::execute()
 		    }
 		}
 		//-------------------------------------------
+
+		//-------------------------------------------
+		if(fCurrentEvent->getCategory(catFwDetGeantRaw))  // linear
+		{
+		    HCategory* catIn  = HCategoryManager::getCategory(catFwDetGeantRaw);
+		    HCategory* catOut = fCurrentEvent->getCategory(catFwDetGeantRaw);
+		    Int_t n = catIn->getEntries();
+		    HGeantFwDet* kine1 = 0;
+		    HGeantFwDet* kine2 = 0;
+		    Int_t index;
+		    for(Int_t i = 0; i < n; i++){
+			kine1 = HCategoryManager::getObject    (kine1,catIn,i);
+			kine2 = HCategoryManager::newObjectCopy(kine2,kine1,catOut,index);
+		    }
+		}
+		//-------------------------------------------
  		//###########################################
 		//###########################################
 
@@ -1260,6 +1251,61 @@ Int_t  HParticleTree::execute()
 		}
 		//-------------------------------------------
 
+		//-------------------------------------------
+		if(fCurrentEvent->getCategory(catEmcCluster)){
+
+		    HCategory* catOut = fCurrentEvent->getCategory(catEmcCluster);
+		    HCategory* catIn  = HCategoryManager::getCategory(catEmcCluster);
+
+		    Int_t n = catIn->getEntries();
+                    Int_t index;
+
+		    for(Int_t i = 0; i < n; i++){
+			if(isSim)
+			{
+			    HEmcClusterSim* hit1 = 0;
+			    HEmcClusterSim* hit2 = 0;
+			    hit1 = HCategoryManager::getObject(hit1,catEmcCluster,i);
+			    hit2 = HCategoryManager::newObjectCopy(hit2,hit1,catOut,index);
+
+			} else {
+
+			    HEmcCluster* hit1 = 0;
+			    HEmcCluster* hit2 = 0;
+			    hit1 = HCategoryManager::getObject(hit1,catEmcCluster,i);
+			    hit2 = HCategoryManager::newObjectCopy(hit2,hit1,catOut,index);
+			}
+		    }
+		}
+		//-------------------------------------------
+
+		//-------------------------------------------
+		if(fCurrentEvent->getCategory(catFwDetCand)){
+
+		    HCategory* catOut = fCurrentEvent->getCategory(catFwDetCand);
+		    HCategory* catIn  = HCategoryManager::getCategory(catFwDetCand);
+
+		    Int_t n = catIn->getEntries();
+                    Int_t index;
+
+		    for(Int_t i = 0; i < n; i++){
+			if(isSim)
+			{
+			    HFwDetCandSim* hit1 = 0;
+			    HFwDetCandSim* hit2 = 0;
+			    hit1 = HCategoryManager::getObject(hit1,catFwDetCand,i);
+			    hit2 = HCategoryManager::newObjectCopy(hit2,hit1,catOut,index);
+
+			} else {
+
+			    HFwDetCand* hit1 = 0;
+			    HFwDetCand* hit2 = 0;
+			    hit1 = HCategoryManager::getObject(hit1,catFwDetCand,i);
+			    hit2 = HCategoryManager::newObjectCopy(hit2,hit1,catOut,index);
+			}
+		    }
+		}
+		//-------------------------------------------
 
 
 
@@ -1461,37 +1507,6 @@ Int_t  HParticleTree::execute()
 		    }
 		}
 		//-------------------------------------------
-
-		//-------------------------------------------
-		if(fCurrentEvent->getCategory(catEmcCluster) && doFullCopy(catEmcCluster)){
-
-		    HCategory* catOut = fCurrentEvent->getCategory(catEmcCluster);
-		    HCategory* catIn  = HCategoryManager::getCategory(catEmcCluster);
-
-		    Int_t n = catIn->getEntries();
-                    Int_t index;
-
-		    for(Int_t i = 0; i < n; i++){
-			if(isSim)
-			{
-			    HEmcClusterSim* hit1 = 0;
-			    HEmcClusterSim* hit2 = 0;
-			    hit1 = HCategoryManager::getObject(hit1,catShowerHit,i);
-			    hit2 = HCategoryManager::newObjectCopy(hit2,hit1,catOut,index);
-
-			} else {
-
-			    HEmcCluster* hit1 = 0;
-			    HEmcCluster* hit2 = 0;
-			    hit1 = HCategoryManager::getObject(hit1,catEmcCluster,i);
-			    hit2 = HCategoryManager::newObjectCopy(hit2,hit1,catOut,index);
-			}
-		    }
-		}
-		//-------------------------------------------
-
-
-
 		//-------------------------------------------
 
 
@@ -1616,7 +1631,7 @@ Int_t  HParticleTree::execute()
 
 		    //-------------------------------------------
 
-		    if(!doFullCopy(catParticleMdc))
+		    if(catParticleMdc)
 		    {
 			if(particleMdcInd1 !=-1 && fCurrentEvent->getCategory(catParticleMdc))
 			{

@@ -117,6 +117,8 @@ Bool_t HGeantMergeSource::createGeantEvent(HRecEvent* fCurrentEvent){
 	Int_t iniEmc[2]={6,MAXTRKEMC};
 	pKine->addCategory(catEmcGeantRaw,new HMatrixCategory("HGeantEmc",2,iniEmc,0.1) );
 
+	pKine->addCategory(catFwDetGeantRaw,new HLinearCategory("HGeantFwDet",MAXTRKFWDET) );
+
         return kTRUE;
     }
     return kFALSE;

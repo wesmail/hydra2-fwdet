@@ -221,6 +221,7 @@ public:
   void setFirstWallHit  (Int_t index) { firstWallHit  = index;}
   void setFirstEmcHit   (Int_t index) { firstEmcHit   = index;}
   void setFirstStartHit (Int_t index) { firstStartHit = index;}
+  void setFirstFwDetHit (Int_t index) { firstFwDetHit = index;}
 
 
   void sortRichHits(void);  // sort hits in list
