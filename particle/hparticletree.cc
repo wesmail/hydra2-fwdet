@@ -287,6 +287,7 @@ ClassImp(HParticleTree)
 //  Cat_t PersistentCat[] = {
 //    catParticleCand,
 //    catParticleEvtInfo,
+//    catParticleMdc,
 //    catFwDetCand,
 //    catStart2Hit,
 //    catStart2Cal,
