@@ -850,7 +850,7 @@ printf("        pars=%f %f %f %f\n", pars[0], pars[1], pars[2], pars[3]);
 
     track->setChi2(chi2);
     track->setParams(pars);
-    track->setZ(fZ0[0]);
+    track->setPointZ(fZ0[0]);
     TMatrixDSym cov(*fMatr[patt]);
     cov *= (fErrU * fErrU);
     track->setCovar(cov);
@@ -973,7 +973,7 @@ void HFwDetVectorFinder::checkParams()
 {
     // Remove vectors with wrong orientation
 
-    Double_t pars[4];
+    //Double_t pars[4];   //unused
 
     for (Int_t m = 0; m < nModules; ++m)
     {
@@ -1038,7 +1038,7 @@ void HFwDetVectorFinder::matchVectors()
             if (!vec2) continue;
 
             vec2->getParams(pars);
-            Double_t x2 = pars[0], y2 = pars[1], tx2 = pars[2], ty2 = pars[3], z2 = vec2->getZ();
+            Double_t x2 = pars[0], y2 = pars[1], tx2 = pars[2], ty2 = pars[3], z2 = vec2->getPointZ();
 
             for (Int_t iv1 = 0; iv1 < nvec1; ++iv1)
             {
@@ -1046,7 +1046,7 @@ void HFwDetVectorFinder::matchVectors()
                 if (!vec1) continue;
 
                 vec1->getParams(pars);
-                Double_t x1 = pars[0], y1 = pars[1], tx1 = pars[2], ty1 = pars[3], z1 = vec1->getZ();
+                Double_t x1 = pars[0], y1 = pars[1], tx1 = pars[2], ty1 = pars[3], z1 = vec1->getPointZ();
 
                 Float_t x2_proj = x1 + tx1 * (z2-z1);
                 Float_t y2_proj = y1 + ty1 * (z2-z1);
@@ -1177,7 +1177,7 @@ void HFwDetVectorFinder::highRes()
 // printf("LR dt: %f -> %f (%f), grad=%f, z=%f\n", time,  drift_time, fDrift[plane], tof_grad, fDz[plane]);
 #endif
 
-                Float_t T = vec->getTx() * fCosa[plane] + vec->getTy() * fSina[plane];
+                Float_t T = vec->getDirTx() * fCosa[plane] + vec->getDirTy() * fSina[plane];
                 Float_t b = fDrift[plane]/cos(atan(T));
                 uu[plane][1] = b;
                 patt |= (1 << plane);
@@ -1370,7 +1370,7 @@ void HFwDetVectorFinder::mergeVectors()
             if (!tr) continue;
 
             tr->getParams(pars);
-            Double_t zbeg = tr->getZ();
+            Double_t zbeg = tr->getPointZ();
             Double_t dz = zMed - zbeg;
             pars[0] += dz * pars[2];
             pars[1] += dz * pars[3];
@@ -1384,7 +1384,7 @@ void HFwDetVectorFinder::mergeVectors()
             covd.SetTol(0.1 * covd.GetTol());
             covd.Invert(); // weight matrix
             tr->setParams(pars);
-            tr->setZ(zbeg);
+            tr->setPointZ(zbeg);
             tr->setCovar(covd);
         }
     }
@@ -1434,8 +1434,8 @@ void HFwDetVectorFinder::mergeVectors()
             HFwDetCand *tr2 = fVectors[m2][iv2];
             if (!tr2) continue;
 
-            Float_t dtx = fabs(tr1->getTx() - tr2->getTx());
-            Float_t dty = fabs(tr1->getTy() - tr2->getTy());
+            Float_t dtx = fabs(tr1->getDirTx() - tr2->getDirTx());
+            Float_t dty = fabs(tr1->getDirTy() - tr2->getDirTy());
 
             if (dtx > fTxyCut or dty > fTxyCut)
                 continue;
@@ -1508,7 +1508,7 @@ void HFwDetVectorFinder::addTrack(Int_t m0, HFwDetCand *tr1, HFwDetCand *tr2, In
     track->setParams(parOk);
     track->setChi2(c2 + tr1->getChi2() + tr2->getChi2());
     track->setNDF(4 + tr1->getNDF() + tr2->getNDF());  // FIXME why 4?
-    track->setZ((tr1->getZ() + tr2->getZ())/2.0);
+    track->setPointZ((tr1->getPointZ() + tr2->getPointZ())/2.0);
 
     TBits b = fVectors[0][indx1]->getLR();
     Int_t lim1 = fVectors[0][indx1]->getNofHits();
@@ -1551,7 +1551,8 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
 {
     // Remove ghost tracks (having at least N the same hits (i.e. fired tubes))
 
-    const Int_t nMax = 8, nPl = 40, nVecMin = 2;
+    const Int_t nMax = 8, nPl = 40;
+    //const Int_t nVecMin = 2;  //unused
     Int_t planes[nPl], hinds[nPl], lr[nPl], ntrs = fVectors[nModules].size();
     multimap<Double_t,Int_t> c2merge;
 
@@ -1598,7 +1599,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
         tr->setChi2(chi2);
         tr->setParams(pars);
         tr->setCovar(cov);
-        tr->setZ(fZ0[0]);
+        tr->setPointZ(fZ0[0]);
 
         if (isSimulation)
         {
@@ -1739,7 +1740,7 @@ Double_t HFwDetVectorFinder::refit(Int_t patt, HFwDetCand *track, Int_t *hinds, 
     Bool_t ok = kFALSE, onoff;
     TVectorD b(4);
 
-    Double_t plane = track->getZ();
+    //Double_t plane = track->getPointZ(); // unused
     Double_t tof = track->getTof();
     Double_t tofl = track->getDistance();
 
@@ -1772,7 +1773,7 @@ Double_t HFwDetVectorFinder::refit(Int_t patt, HFwDetCand *track, Int_t *hinds, 
 #ifdef VERBOSE_MODE
 // printf("HR/* dt*/: %f -> %f (%f), grad=%f, z=%f\n", time,  drift_time, fDrift[i], tof_grad, fDz[i]);
 #endif
-        Float_t T = track->getTx() * fCosa[i] + track->getTy() * fSina[i];
+        Float_t T = track->getDirTx() * fCosa[i] + track->getDirTy() * fSina[i];
         Float_t bb = fDrift[i]/cos(atan(T));
 
         Double_t uc = (hit->getU() + lr[i] * bb) * fCosa[i]; // resolved ambiguity !!!
