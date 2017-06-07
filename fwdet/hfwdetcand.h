@@ -30,8 +30,8 @@ public:
     Float_t getDistance() const { return fDistance; }
     Double_t getHadesZ()       const { return getHadesParam(0); }
     Double_t getHadesR()       const { return getHadesParam(1); }
-    Double_t getHadesTheta()   const { return getHadesParam(2) * TMath::RadToDeg(); }
-    Double_t getHadesPhi()     const { Double_t ph = getHadesParam(3)*TMath::RadToDeg();  return ph < 0 ? ph+360. : ph; }
+    Double_t getHadesTheta()   const { return getHadesParam(2); }
+    Double_t getHadesPhi()     const { return getHadesParam(3); }
     void getHadesParams(Double_t *params) const;
 
     Int_t getHitIndex(Int_t ihit) const { return fHitInds[ihit]; }

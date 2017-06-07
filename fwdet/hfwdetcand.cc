@@ -67,6 +67,10 @@ void HFwDetCand::getHadesParams(Double_t *params) const
     Double_t dz = 100.0;
     Double_t z2 = z1 + dz, x2 = x1 + dirVec.X() * dz, y2 = y1 + dirVec.Y() * dz;
     HMdcSizesCells::calcMdcSeg(x1, y1, z1, x2, y2, z2, params[0], params[1], params[2], params[3]);
+    params[2]  *= TMath::RadToDeg() ;
+    Double_t ph = params[3]*TMath::RadToDeg();
+    if( ph < 0) ph+=360.;
+    params[3]=ph;
 }
 
 Double_t HFwDetCand::getHadesParam(Int_t ipar) const
