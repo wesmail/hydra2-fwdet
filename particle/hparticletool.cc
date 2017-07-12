@@ -4839,7 +4839,7 @@ Bool_t HParticleTool::printSimTracks(HParticleCandSim* cand)
     if(cand->isEmc()){
 	if(cand->getEmcInd()>-1){
 	    emc = (HEmcClusterSim*)HParticleTool::getEmcCluster(cand->getEmcInd());
-	    if(shower){
+	    if(emc){
 		cout<<"EmcCluster : "<<endl;
 		cout<<"         "<<flush;
 
