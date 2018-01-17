@@ -158,6 +158,9 @@ private:
     Bool_t                     fIsNewFile; // == kTRUE for first entry after a new file is opened
     Bool_t                     fIsSkipped; // == kTRUE event was skipped by tasklist
     Bool_t                    fUseTaskSet; // == kTRUE if hades tasksets should be executed
+    Long64_t               fTreeCacheSize; //
+    Long64_t        fTreeCacheDefaultSize; // default 8MB
+    Bool_t                    fIsCacheSet; // kTRUE if user has set the the cache.
     Bool_t        setStatus(TString catname, Int_t stat );
     Bool_t        addCatName(TString catname,Short_t catNum);
 
@@ -193,7 +196,7 @@ public:
     void           clearCategories();
     Int_t          nextEvent(Int_t iev);
     void           setRefID(Int_t id)          { fRefID = id;}
-
+    void           setTreeCacheSize(Long64_t cs = 8000000);
     void           printCategories();
     void           printChain();
     void           printBranchStatus();

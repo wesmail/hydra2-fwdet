@@ -40,7 +40,7 @@
 //    //---------------LOOP CONFIG----------------------------------------------------------------
 //    Bool_t createHades = kTRUE;  // kTRUE = create HADES new
 //    HLoop* loop = new HLoop(createHades); // create HADES (needed if one wants to use gHades)
-//
+//    loop.setTreeCacheSize(8000000);//8MB (default is 8MB, values <= 0 will disable the cache)
 //    //--------------------------------------------------------------------------------------------
 //    loop->readSectorFileList("selection.list",kFALSE,kTRUE);  // hldname_without_evtbuilder 1 1 1 1 1 1
 //                                                              // a map of all files to active sector is filled
@@ -153,6 +153,7 @@
 //{
 //    Bool_t createHades=kTRUE;
 //    HLoop* loop = new HLoop(createHades);  // kTRUE : create Hades  (needed to work with standard eventstructure)
+//    loop.setTreeCacheSize(8000000);//8MB (default is 8MB, values <= 0 will disable the cache)
 //
 //    TString asciiParFile = "/misc/kempter/projects/plot_dedx/param_31oct11.txt";
 //    TString rootParFile = "";
@@ -249,10 +250,10 @@ HLoop *gLoop=0;
 
 HLoop::HLoop(Bool_t createHades)
 {
-    // if createHades == kTRUE (default=kFALSE) Hades will be created and eventstructure set
+    // if createHades == kTRUE (default=kFALSE) Hades will be created and event structure set
     //                == kFALSE Hades will not be created, but if exists
     //                   the event structure will be replaced by the one defined in HLoop
-    // if Hades does not exists and is not created new, the eventsructure will be
+    // if Hades does not exists and is not created new, the event structure will be
     // available only via HLoop and not via gHades
     gLoop = this;
     fChain        = new TChain("T");
@@ -269,6 +270,11 @@ HLoop::HLoop(Bool_t createHades)
     fHasCreatedHades = kFALSE;
     fRefID        = -1;
     fFirstEvent   = kTRUE;
+
+    fTreeCacheSize        = 8000000; //8Mb
+    fTreeCacheDefaultSize = 8000000; //8Mb;
+    fIsCacheSet           = kFALSE;
+
     fRecEvent     = new HRecEvent();
     for(Int_t s=0;s<6;s++) fsectors[s]=1;
 
@@ -300,10 +306,22 @@ HLoop::~HLoop()
     if(fGeantMedia) delete fGeantMedia;
 }
 
+void HLoop::setTreeCacheSize(Long64_t cs )
+{
+    // Configure the read of the Root Tree:
+    // default is 8MB to minimize the seek/read on the file system
+    // values <= 0 will disable the cache (for comparison)
+    // THis function has to be called before setInput().
+
+    fTreeCacheSize = cs;
+    fIsCacheSet    = kTRUE;
+}
+
+
 Bool_t HLoop::addFile (TString infile)
 {
     // add a single root file to the chain.
-    // It will checked if the file exists.
+    // It will be checked if the file exists.
 
     TObjArray* elements = fChain->GetListOfFiles();
     Int_t nfiles        = elements->GetEntries();
@@ -408,7 +426,7 @@ Bool_t HLoop::setInput(TString readCategories)
     // ones. The global disable -* has to be the first in the
     // list. Or (example 2) "-HMdcRaw,-HRichHit" (enable all
     // categories, but not the give ones).  For simulation
-    // or real data one has to use the correct coresponing
+    // or real data one has to use the correct corresponding
     // names (expample : HParticleCandSim / HParticleCand)
 
 
@@ -612,7 +630,21 @@ Bool_t HLoop::setInput(TString readCategories)
     fIn->Close();
 
     printChain();
+    Long64_t cs = fChain->GetCacheSize();
+    if(!fIsCacheSet ){
+	cs = fTreeCacheDefaultSize;
+    } else {
+        cs = fTreeCacheSize;
+    }
 
+    if(fTreeCacheSize > 0) Info("setInput()","Setting Tree Cache size = %lld byte.",cs);
+    else                   Info("setInput()","Tree cache is disabled");
+
+    if(cs > 0){
+	fChain->SetCacheSize(cs);
+	fChain->AddBranchToCache("*",kTRUE);
+	fChain->StopCacheLearningPhase();
+    }
     return kTRUE;
 }
 
@@ -723,7 +755,7 @@ HPartialEvent* HLoop::getPartialEvent(TString catname,Bool_t silent)
 
 HGeantHeader* HLoop::getGeantHeader(Bool_t silent)
 {
-    // return the pointer to HGeantHader (subhader of PartialEvent Simul).
+    // return the pointer to HGeantHader (subheader of PartialEvent Simul).
     // NULL if not found
     HPartialEvent* pEvt = getPartialEvent("Simul",silent);
     HGeantHeader* header = NULL;
@@ -808,17 +840,13 @@ Int_t HLoop::nextEvent(Int_t iev)
 
     //--------------------------------------------------------
     // read next event from Chain
-    Long64_t centry = fChain->LoadTree(fCurrentEntry);
-    if(centry < 0 ){
-	Warning("nextEvent()","LoadEntry %i < 0 !",(Int_t)fCurrentEntry);
-    }
-
     Int_t nbytes = fChain->GetEntry(fCurrentEntry);  // 0 = entry not found , -1 = IO error
     if(nbytes == 0) {
 	Warning("nextEvent()","Entry %i not found!",(Int_t)fCurrentEntry);
     } else if(nbytes == -1) {
 	Warning("nextEvent()","Entry %i read with Io error!",(Int_t)fCurrentEntry);
     }
+
     //--------------------------------------------------------
 
     //--------------------------------------------------------
@@ -993,9 +1021,9 @@ Bool_t HLoop::isNewFile(TString& name)
 
 TObject* HLoop::getFromInputFile(TString name)
 {
-    // returns an object form root input file
+    // returns an object from root input file
     // return 0 if not existsing, file not opened
-    // or anaything else strange.
+    // or anything else strange.
     if(name=="") return 0;
 
     if(fFileCurrent){
