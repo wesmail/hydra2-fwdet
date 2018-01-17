@@ -313,23 +313,30 @@ void HParticleTrackSorter::clear()
     iterParticleCandCat  =  NULL;
     fill_Iteration       =  0;
     selectBest_Iteration =  0;
-    currentEvent         = -1;
+    currentEvent         = 100000000;
+    fEvent               = NULL;
 }
 
-Bool_t HParticleTrackSorter::init(void)
+Bool_t HParticleTrackSorter::init(HRecEvent* evt)
 {
     // get the pointer to the HParticleCand categegory and create the
-    // corresponding iterator.
+    // corresponding iterator. HRecEvent* evt == 0 (default) the current event
+    // will be used otherise the event provided.
 
-    pParticleCandCat = gHades->getCurrentEvent()->getCategory(catParticleCand);
+    if(evt) { fEvent = evt; }
+    else    { fEvent = (HRecEvent*)gHades->getCurrentEvent(); }
+
+    pParticleCandCat = fEvent->getCategory(catParticleCand);
     if (!pParticleCandCat) {
 	Error("HParticleTrackSorter::init()"," No HParticleCand Input -> Switching HParticleTrackSorter OFF");
     }
-    else iterParticleCandCat = (HIterator *) pParticleCandCat->MakeIterator();
+    else {
+        if(iterParticleCandCat) delete iterParticleCandCat;
+	iterParticleCandCat = (HIterator *) pParticleCandCat->MakeIterator();
+    }
+    pEmcClusterCat   = fEvent->getCategory(catEmcCluster);
 
-    pEmcClusterCat   = gHades->getCurrentEvent()->getCategory(catEmcCluster);
-
-    HCategory* catKine = gHades->getCurrentEvent()->getCategory(catGeantKine);
+    HCategory* catKine = fEvent->getCategory(catGeantKine);
     if(catKine) isSimulation = kTRUE;
 
     if(kDebug) {
@@ -935,7 +942,7 @@ void HParticleTrackSorter::printEvent(TString comment)
 
     cout<<"----------------------------------------"<<endl;
     cout<<"Event kSwitchParticle: "<<kSwitchParticle<<" "
- 	<<setw(6)                  <<gHades->getEventCounter()
+ 	<<setw(6)                  <<fEvent->getHeader()->getEventSeqNumber()
 	<<"s: "                    <<selectBest_Iteration
 	<<", f: "                  <<fill_Iteration
 	<<" "                      <<comment.Data()
@@ -1288,8 +1295,8 @@ Int_t HParticleTrackSorter::selectBest(HParticleTrackSorter::ESwitch byQuality, 
     // if printLevel >=3 the properties of the candidates (accepted and rejected) are
     // printed.
 
-    if(gHades->getEventCounter() != currentEvent){
-	currentEvent         = gHades->getEventCounter();
+    if(fEvent->getHeader()->getEventSeqNumber() != currentEvent){
+	currentEvent         = fEvent->getHeader()->getEventSeqNumber();
         selectBest_Iteration = 0;
     }
     selectBest_Iteration++;

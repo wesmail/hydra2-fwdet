@@ -5,6 +5,7 @@
 
 #include "hcategory.h"
 #include "hiterator.h"
+#include "hrecevent.h"
 
 #include <vector>
 #include "TString.h"
@@ -137,7 +138,7 @@ protected:
 
     Int_t  fill_Iteration;                 //! remember the number of fill() calls
     Int_t  selectBest_Iteration;           //! remember the number of selectBest() calls
-    Int_t  currentEvent;                   //! find new event
+    UInt_t  currentEvent;                   //! find new event
 
     vector < candidateSort *> all_candidates;  //!
 
@@ -160,6 +161,7 @@ protected:
     HCategory* pParticleCandCat;           //! HParticleCand category
     HCategory* pEmcClusterCat;             //! HEmcCluster category
     HIterator* iterParticleCandCat;        //! iterator on HParticleCand
+    HRecEvent* fEvent;                     //! pointer to local event under reconstruction
 
 
     static Bool_t (*pUserSort)(candidateSort*, candidateSort*); //! user provided function pointer to sort algo
@@ -183,7 +185,7 @@ public:
     HParticleTrackSorter(void);
     HParticleTrackSorter(TString name,TString title);
     ~HParticleTrackSorter(void);
-    Bool_t init     (void);
+    Bool_t init     (HRecEvent* evt=0);
     Bool_t finalize (void);
     // setup selections
     static void   setDebug              (Bool_t debug = kTRUE)  { kDebug               = debug;}
