@@ -24,7 +24,12 @@
 //  static void HMdcVertexWriter::setSkipNoVertex (Bool_t skip = kTRUE){doSkipNoVertex = skip; }
 //  With doSkipNoVertex == kTRUE (default : kTRUE) events without calculated vertex will be skipped.
 //
-//  with setVertexType(Int_t type) // kVertexCluster= 1, kVertexSegment = 2 (segments,default), kVertexParticle = 3
+//  with setVertexType(Int_t type)
+//  kVertexCluster  = 1,(cluster finder vertex (mean middle of target segment position in z, x,y on 0,0))
+//  kVertexSegment  = 2 (Mdc inner segments used to estimated the vertex,default),
+//  kVertexParticle = 3 (fully reconstructed and sorted HParticleCand used to estimate the vertex),
+//  kVertexClusterMeanXY = 4 (user provided mean x,y, z from vertexCluster)
+//  kVertexGeant         = 5 (use primary vertex from HGeant)
 //  the reconstructed vertex type can be selected.
 //  with void setUserSelectionEvent(Bool_t (*function)(TObjArray* ),TObjArray* params=0) the user
 //  can set a event selection function of the form
@@ -44,6 +49,7 @@
 #include "hades.h"
 #include "hevent.h"
 #include "heventheader.h"
+#include "hcategorymanager.h"
 #include "hdatasource.h"
 #include "hcategory.h"
 #include "hgeantkine.h"
@@ -63,6 +69,8 @@ ClassImp(HMdcVertexWriter)
 
 Bool_t  HMdcVertexWriter::doSkipNoVertex = kTRUE;
 Int_t   HMdcVertexWriter::vertextype     = 2; // segments
+Double_t HMdcVertexWriter::fMeanX        = -1000.;
+Double_t HMdcVertexWriter::fMeanY        = -1000.;
 
 HMdcVertexWriter::HMdcVertexWriter(void)
 {
@@ -280,9 +288,7 @@ Int_t HMdcVertexWriter::execute(void)
 
     }
     //---------------------------------------------
-
     if(outfile){
-
 	HEvent* event = gHades->getCurrentEvent();
 	if(event){
 	    HEventHeader* header = event ->getHeader();
@@ -291,36 +297,83 @@ Int_t HMdcVertexWriter::execute(void)
                 if(vertextype == 1)  event_vertex = header->getVertexCluster();
                 if(vertextype == 2)  event_vertex = header->getVertex();
                 if(vertextype == 3)  event_vertex = header->getVertexReco();
+                if(vertextype == 4)  event_vertex = header->getVertexCluster();
 
-
-		if(doSkipNoVertex)
+		if(vertextype == 5)
 		{
-		    Bool_t acceptedEvent = kTRUE;
-		    if(pUserSelectEvent){
-			acceptedEvent=(*pUserSelectEvent)(pUserParams);
+		    //--------------------------------------------------------------
+		    // retrive the vertex form first primary kine particle
+		    HGeantKine* kine;
+		    Float_t vx,vy,vz;
+
+		    HCategory* kineCat = HCategoryManager::getCategory(catGeantKine);
+		    if(!kineCat) {
+                        Error("execute()","No catGeantKine in current Event! Cannot extract vertex from HGeantKine.");
+			return 0;
 		    }
-		    // write only if a vertex has been
-		    // calculated
-		    if(event_vertex.getX() != -1000 &&
-		       event_vertex.getY() != -1000 &&
-		       event_vertex.getZ() != -1000 &&
-                       acceptedEvent
-		      )
+
+		    Int_t n = kineCat->getEntries();
+		    for(Int_t j = 0; j < n; j ++){
+			kine = HCategoryManager::getObject(kine,kineCat,j);
+			if(kine) {
+			    if(kine->isPrimary())
+			    {
+				kine->getVertex(vx,vy,vz);
+				if(doSkipNoVertex)
+				{
+				    Bool_t acceptedEvent = kTRUE;
+				    if(pUserSelectEvent){
+					acceptedEvent=(*pUserSelectEvent)(pUserParams);
+				    }
+
+				    if(acceptedEvent)vertex->Fill(vx,vy,vz,header->getEventSeqNumber());
+				} else {
+				    vertex->Fill(vx,vy,vz,header->getEventSeqNumber());
+				}
+                                break;
+			    }
+			}
+		    }
+		    //------------------------------------------------------------
+
+		} else {
+		    Double_t x,y,z;
+		    x = event_vertex.getX();
+		    y = event_vertex.getY();
+		    z = event_vertex.getZ();
+
+		    if(vertextype == 4){
+			x = fMeanX;
+			y = fMeanY;
+		    }
+
+
+		    if(doSkipNoVertex)
 		    {
-			vertex->Fill(event_vertex.getX(),
-				     event_vertex.getY(),
+			Bool_t acceptedEvent = kTRUE;
+			if(pUserSelectEvent){
+			    acceptedEvent=(*pUserSelectEvent)(pUserParams);
+			}
+			// write only if a vertex has been
+			// calculated
+			if(event_vertex.getX() != -1000 &&
+			   event_vertex.getY() != -1000 &&
+			   event_vertex.getZ() != -1000 &&
+			   acceptedEvent
+			  )
+			{
+			    vertex->Fill(x,y,z,
+					 header->getEventSeqNumber()
+					);
+			}
+
+		    } else {
+			// fill allways
+			vertex->Fill(x,y,z,
 				     event_vertex.getZ(),
 				     header->getEventSeqNumber()
 				    );
 		    }
-
-		} else {
-		    // fill allways
-		    vertex->Fill(event_vertex.getX(),
-				 event_vertex.getY(),
-				 event_vertex.getZ(),
-				 header->getEventSeqNumber()
-				);
 		}
 	    }
 	}
