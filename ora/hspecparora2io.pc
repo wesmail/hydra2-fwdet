@@ -869,14 +869,20 @@ void HSpecParOra2Io::readSlowSummaries(HSlowPar* pPar) {
     if (slowPartition.CompareTo("online")==0) {
       EXEC SQL SELECT run_id, mean_value, sigma_value, min_value, max_value
                  INTO :sums:sums_Ind
-               FROM hades_scs.hscs_summaries_at_date
+               FROM hades_scs.hcss_summaries_at_date
                WHERE channel_name = :cname;
     } else {
-      EXEC SQL SELECT run_id, mean_value, sigma_value, min_value, max_value
-                 INTO :sums:sums_Ind
-               FROM hades_slow2.hscs_summaries_at_date
-               WHERE channel_name = :cname;
-
+      if (slowVers->versDate[0] >= 1451606400) {  // 01-JAN-2016 00:00:00
+        EXEC SQL SELECT run_id, mean_value, sigma_value, min_value, max_value
+                   INTO :sums:sums_Ind
+                 FROM hades_slow2.hcss_summaries_at_date
+                 WHERE channel_name = :cname;
+      } else {
+        EXEC SQL SELECT run_id, mean_value, sigma_value, min_value, max_value
+                   INTO :sums:sums_Ind
+                 FROM hades_slow2.hscs_summaries_at_date
+                 WHERE channel_name = :cname;
+      }
     }
     for(Int_t i=0;i<sqlca.sqlerrd[2];i++) {
       if (sums_Ind.vmin_Ind[i]!=-1) {

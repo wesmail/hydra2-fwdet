@@ -11,6 +11,8 @@
 using namespace std;
 #include "hemcparora2io.h"
 #include "hparora2set.h"
+#include "hemctrb3lookup.h"
+#include "hemccalpar.h"
 #include "hemcgeompar.h"
 #include "hgeomcompositevolume.h"
 #include "hora2geomdetversion.h"
@@ -60,7 +62,9 @@ Bool_t HEmcParOra2Io::init(HParSet* pPar,Int_t* set) {
     return kFALSE;
   }
   const Text_t* name=pPar->IsA()->GetName();
-  if (strcmp(name,"HEmcGeomPar")==0) return read(((HEmcGeomPar*)pPar),set);
+  if (strcmp(name,"HEmcTrb3Lookup")==0) return read(((HEmcTrb3Lookup*)pPar));
+  if (strcmp(name,"HEmcCalPar")==0)     return read(((HEmcCalPar*)pPar),set);
+  if (strcmp(name,"HEmcGeomPar")==0)    return read(((HEmcGeomPar*)pPar),set);
   cout<<"No read-interface to Oracle for parameter container "
       <<pPar->GetName()<<endl;
   return kFALSE;
@@ -70,10 +74,155 @@ Int_t HEmcParOra2Io::write(HParSet* pPar) {
   // calls the appropriate write function for the container
   if (getRunStart(pPar)<=0) return -1;
   const Text_t* name=pPar->IsA()->GetName();
-  if (strcmp(name,"HEmcGeomPar")==0) return writeAlignment((HEmcGeomPar*)pPar);
+  if (strcmp(name,"HEmcTrb3Lookup")==0) return writePar((HEmcTrb3Lookup*)pPar);
+  if (strcmp(name,"HEmcCalPar")==0)     return writePar((HEmcCalPar*)pPar);
+  if (strcmp(name,"HEmcGeomPar")==0)    return writeAlignment((HEmcGeomPar*)pPar);
   cout<<"No write-interface to Oracle for parameter container "
       <<pPar->GetName()<<endl;
   return 0;
+}
+
+Bool_t HEmcParOra2Io::getVersion(HParSet* pPar,Int_t& version) {
+  // checks, if the parameter container needs to be reinitialized
+  // reads the newest version valid for the current event file
+  // returns kTRUE, if new parameters must be read
+  // returns kFALSE, if no reinitialization needed or not valid version found
+  HParOra2Set* oraSet=getOraSet(pPar);
+  if (oraSet->contextId==-1 || runStart==-1) {
+    pPar->setInputVersion(-1,inputNumber);
+    version=-1;
+    return kFALSE;
+  }
+  Int_t contVers=pPar->getInputVersion(inputNumber);
+  if (contVers!=-1 && runStart>=oraSet->versDate[0] && runStart<=oraSet->versDate[1]) {
+    version=contVers;
+    return kFALSE;
+  }
+  const Char_t* containerClass=pPar->IsA()->GetName();
+  oraSet->clearVersDate();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int context;
+    int vers;
+    double since;
+    double until;
+  EXEC SQL END DECLARE SECTION;
+  context=oraSet->contextId;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("getVersion(HParSet*,Int_t&)");
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  if (strcmp(containerClass,"HEmcTrb3Lookup")==0) {
+    EXEC SQL SELECT version,
+                    hanadate.date_to_number(valid_since),
+                    hanadate.date_to_number(valid_until)
+             INTO :vers, :since, :until
+               FROM emc_ana2.trb3lookup_vers_at_date
+             WHERE context_id = :context;
+  } else {
+    if (strcmp(containerClass,"HEmcCalPar")==0) {
+      EXEC SQL SELECT version,
+                      hanadate.date_to_number(valid_since),
+                      hanadate.date_to_number(valid_until)
+               INTO :vers, :since, :until
+             FROM emc_ana2.calpar_vers_at_date
+               WHERE context_id = :context;
+    }
+  }
+  version=vers;
+  oraSet->versDate[0]=since;
+  oraSet->versDate[1]=until;
+  return kTRUE;
+notfound:
+  pPar->setInputVersion(-1,inputNumber);
+  version=-1;
+  return kFALSE;
+};
+
+Bool_t HEmcParOra2Io::read(HEmcTrb3Lookup* pPar) {
+  // reads the lookup table for the Trb3 unpacker and fill the container EmcTrb3Lookup
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int  address[EMC_MAXCELLS];
+      int  channel[EMC_MAXCELLS];
+      int  module[EMC_MAXCELLS];
+      int  cell[EMC_MAXCELLS];
+    } lookup;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HEmcTrb3Lookup*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT trbnet_address, channel,
+                  module, cell
+           INTO :lookup
+           FROM emc_ana2.trb3lookup_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  for (Int_t i=0;i<nData;i++) {
+    pPar->fill(lookup.address[i],lookup.channel[i],
+               lookup.module[i]-1,lookup.cell[i]);
+  }
+  rc=kTRUE;
+  if (nData>0) {
+    setChanged(pPar,oraVersion);
+    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+    rc=kFALSE;
+  }
+  return rc;
+}
+
+Bool_t HEmcParOra2Io::read(HEmcCalPar* pPar, Int_t* set) {
+  // reads the calibration parameters and fill the EmcCalPar container
+  Int_t oraVersion=-1;
+  Bool_t rc=getVersion(pPar,oraVersion);
+  if (oraVersion<0) return kFALSE;
+  if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+  pPar->clear();
+  initModules->Reset();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+      int module[EMC_MAXCELLS];
+      int cell[EMC_MAXCELLS];
+      float tdcSlope[EMC_MAXCELLS];
+      float tdcOffset[EMC_MAXCELLS];
+      float adcSlope[EMC_MAXCELLS];
+      float adcOffset[EMC_MAXCELLS];
+    } cal;
+  EXEC SQL END DECLARE SECTION;
+  vers=oraVersion;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HEmcCalPar*,Int_t*)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT module, cell, tdc_slope, tdc_offset, adc_slope, adc_offset 
+           INTO :cal
+           FROM emc_ana2.calpar_data_view
+           WHERE vers_id = :vers;
+  Int_t nData=sqlca.sqlerrd[2];
+  Int_t m=-1;
+  for (Int_t i=0;i<nData;i++) {
+    m=cal.module[i]-1;
+    if (set[m]) {
+      (*pPar)[m][cal.cell[i]].fill(cal.tdcSlope[i],cal.tdcOffset[i],
+                                   cal.adcSlope[i],cal.adcOffset[i]);
+      initModules->AddAt(1,m);
+    }
+  }
+  rc=kTRUE;
+  for(Int_t i=0;i<EMC_MAXSEC;i++) {
+    if (set[i]==1 && initModules->At(i)==0) rc=kFALSE;
+  }
+  if (rc) {
+    setChanged(pPar,oraVersion);
+    printInfo(pPar->GetName());
+  } else {
+    pPar->setInputVersion(-1,inputNumber);
+  }
+  return rc;
 }
 
 Bool_t HEmcParOra2Io::read(HEmcGeomPar* pPar, Int_t* set) {
@@ -228,4 +377,185 @@ Bool_t HEmcParOra2Io::transformGeomCompositeComponents(HDetGeomPar* pPar) {
     } else rc=kFALSE;
   } else rc=kFALSE;
   return rc;
+}
+
+Int_t HEmcParOra2Io::createVers(HParSet* pPar) {
+  // creates a new version for parameters
+  // returns the new version
+  cout<<"---------------  "<<pPar->GetName()<<"   ---------------\n";
+  if (strlen(pPar->getAuthor())==0) {
+    Error("createVers(HParSet*)",
+          "author of parameters not defined");
+    return -1;
+  }
+  if (strlen(pPar->getDescription())==0) {
+    Error("createVers(HParSet*)",
+          "descriction of parameters not defined");
+    return -1;
+  }
+  const Char_t* contName=pPar->IsA()->GetName();
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   vers=-1;
+    int   context;
+    int   run;
+    char* creator;
+    char* descript;
+  EXEC SQL END DECLARE SECTION;
+  context = getContextId(contName,pPar->getParamContext());
+  if (context==-1) return -1;
+  run=getActRunId();
+  creator=(Char_t*)pPar->getAuthor();
+  descript=(Char_t*)pPar->getDescription();
+  EXEC SQL WHENEVER SQLERROR GOTO not_found;
+  EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+  if (strcmp(contName,"HEmcTrb3Lookup")==0) {
+    EXEC SQL EXECUTE
+      BEGIN
+        SELECT emc_ana2.emc_par_query.next_version INTO :vers FROM DUAL;
+        INSERT INTO emc_ana2.trb3lookup_vers
+                   (vers_id, orig_context_id, run_id, author, description)
+            VALUES (:vers, :context, :run, :creator, :descript);
+      END;
+    END-EXEC;
+  } else {
+    if (strcmp(contName,"HEmcCalPar")==0) {
+      EXEC SQL EXECUTE
+        BEGIN
+          SELECT emc_ana2.emc_par_query.next_version INTO :vers FROM DUAL;
+          INSERT INTO emc_ana2.calpar_vers
+                     (vers_id, orig_context_id, run_id, author, description)
+              VALUES (:vers, :context, :run, :creator, :descript);
+        END;
+      END-EXEC;
+    }
+  }
+  cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
+  return vers;
+not_found:
+  showSqlError("createVers(HParSet*)");
+  return vers;
+}
+
+Int_t HEmcParOra2Io::writePar(HEmcTrb3Lookup* pPar) {
+  // creates a new version and writes the lookup table to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   rows_to_insert;
+    int   vers[EMC_MAXCELLS];
+    int   address[EMC_MAXCELLS];
+    int   channel[EMC_MAXCELLS];
+    int   module[EMC_MAXCELLS];
+    int   cell[EMC_MAXCELLS];
+  EXEC SQL END DECLARE SECTION;
+  Int_t nChan=0;
+  Int_t arrayOffset=pPar->getArrayOffset();
+  for(Int_t b=0;b<pPar->getSize();b++) {
+    HEmcTrb3LookupBoard* board=(*pPar)[b];
+    if (board) {
+      for(Int_t t=0;t<board->getSize();t++) {
+        HEmcTrb3LookupChan& rChan=(*board)[t];
+        if (rChan.getSector()!=-1&&rChan.getCell()!=-1) {
+          vers[nChan]=version;
+          address[nChan]=arrayOffset+b;
+          channel[nChan]=t;
+          module[nChan]=rChan.getSector()+1;
+          cell[nChan]=rChan.getCell();
+          nChan++;
+        }
+      }
+    }
+  }
+  rows_to_insert=nChan;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+  EXEC SQL FOR :rows_to_insert
+  INSERT INTO emc_ana2.trb3lookup_data
+              (vers_id, trbnet_address, channel_id, cell_id)
+       VALUES (:vers, :address, :channel,
+               emc_ana2.emc_par_query.get_cell_id(:module,:cell));
+  cout<<rows_to_insert<<" rows inserted\n";
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HEmcTrb3Lookup*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+Int_t HEmcParOra2Io:: writePar(HEmcCalPar* pPar) {
+  // creates a new version and writes the calibration parameters to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   module[EMC_MAXSECCELLS];
+    int   cell[EMC_MAXSECCELLS];
+    int   vers[EMC_MAXSECCELLS];
+    float tdcSlope[EMC_MAXSECCELLS];
+    float tdcOffset[EMC_MAXSECCELLS];
+    float adcSlope[EMC_MAXSECCELLS];
+    float adcOffset[EMC_MAXSECCELLS];
+    int rows_to_insert;
+  EXEC SQL END DECLARE SECTION;
+  Int_t nCell=0;
+  for(Int_t s=0; s<pPar->getSize(); s++) {
+    HEmcCalParSec& rSec= (*pPar)[s];
+    nCell=0;
+    for(Int_t c=0; c<rSec.getSize(); c++) {
+      HEmcCalParCell& rCell= rSec[c];
+      if (rCell.getTdcSlope()!=1||rCell.getTdcOffset()!=0
+          ||rCell.getAdcSlope()!=1||rCell.getAdcOffset()!=0) {
+        if (nCell >= EMC_MAXSECCELLS) {
+          Error("writePar(HEmcCalPar*)","Too many cells in sector %i",s);
+          rollback();
+          pPar->setChanged(kFALSE);
+          return -1;
+        }
+        module[nCell]=s+1;
+        cell[nCell]=c;
+        vers[nCell]=version;
+        tdcSlope[nCell]=rCell.getTdcSlope();
+        tdcOffset[nCell]=rCell.getTdcOffset();
+        adcSlope[nCell]=rCell.getAdcSlope();
+        adcOffset[nCell]=rCell.getAdcOffset();
+        nCell++;
+      }     
+    }
+    if (nCell==0) continue;
+    rows_to_insert=nCell;
+    EXEC SQL WHENEVER SQLERROR GOTO not_found;
+    EXEC SQL WHENEVER NOT FOUND GOTO not_found;
+    EXEC SQL FOR :rows_to_insert
+      INSERT INTO emc_ana2.calpar_data
+      (vers_id, cell_id, tdc_slope, tdc_offset, adc_slope, adc_offset )
+        VALUES (:vers, emc_ana2.emc_par_query.get_cell_id(:module,:cell),
+                :tdcSlope, :tdcOffset, :adcSlope, :adcOffset);
+    cout<<"Sector "<<s<<"    "<<rows_to_insert<<" rows inserted\n";
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+not_found:
+  showSqlError("writePar(HEmcCalPar*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+
+void HEmcParOra2Io::printInfo(const Char_t* contName) {
+  // prints the sectors initialized from Oracle
+  Bool_t first=kTRUE;
+  for(Int_t i=0;i<EMC_MAXSEC;i++) {
+    if (initModules->At(i)) {
+      if (first) {
+        cout<<contName<<": sector(s) initialized from Oracle: ";
+        first=kFALSE;
+      }
+      cout<<i<<" ";
+    }
+  }
+  cout<<'\n';
 }
