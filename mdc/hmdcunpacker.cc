@@ -308,6 +308,8 @@ Int_t HMdcUnpacker::execute(void)
 	    {
 		gHades->getMsg()->error(10,HMessageMgr::DET_MDC,GetName(),"Event: %i - SubEvtId 0x%x - negative eventsize (%i) ... skipping subevent!",gHades->getCurrentEvent()->getHeader()->getEventSeqNumber(),subEvtId,diff);
 		return -1;
+	    } else {
+		return -1;
 	    }
 	}
 	// data loop
@@ -329,6 +331,8 @@ Int_t HMdcUnpacker::execute(void)
 		    decodeTrbNet(data,subEvtId);
 		    // move datapointer to end of TRBNet data block
 		    data+=((*data&0xffff0000)>>16)+1;
+		} else {
+		    return 1;
 		}
 		break;
 	    case 0x2000:
@@ -359,8 +363,8 @@ Int_t HMdcUnpacker::execute(void)
 		    {
 			gHades->getMsg()->info(10,HMessageMgr::DET_MDC,GetName(),"Event: %i - SubEvtId 0x%x could not identify new header!? Wrong number of datawords from 0x%8x",gHades->getCurrentEvent()->getHeader()->getEventSeqNumber(),subEvtId, *data);
 			gHades->getMsg()->info(10,HMessageMgr::DET_MDC,GetName(),"Event: %i - SubEvtId 0x%x .... skipping rest of this subevent!\n",gHades->getCurrentEvent()->getHeader()->getEventSeqNumber(),subEvtId);
-			return 1;
 		    }
+		    return 1;
 		}
 		data++;
 		for(Int_t i=0;i<dataword->getSubEventSize();i++)
