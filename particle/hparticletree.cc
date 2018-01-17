@@ -286,8 +286,8 @@ ClassImp(HParticleTree)
 //  //-------CONFIGURE EventStructure-----------------------
 //  Cat_t PersistentCat[] = {
 //    catParticleCand,
-//    catParticleEvtInfo,
 //    catParticleMdc,
+//    catParticleEvtInfo,
 //    catFwDetCand,
 //    catStart2Hit,
 //    catStart2Cal,
@@ -303,6 +303,7 @@ ClassImp(HParticleTree)
 //    //catTofHit,
 //    //catTofCluster,
 //    //catRpcCluster,
+//    //catEmcCluster,
 //    //catShowerHit,
 //    //catRichHit,
 //    //-----------------------------
