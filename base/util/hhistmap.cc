@@ -1197,7 +1197,7 @@ TH1* HHistMap::createHist(TString Type,
 			  TString xtitle,TString ytitle,TString ztitle)
 {
     // create an histograms (const binning).
-    // Type : TH1S,TH1I,TH1F,TH1D,TH2S,TH2I,TH2F,TH2D,TH3S,TH3I,TH3F,TH3D
+    // Type : TH1S,TH1I,TH1F,TH1D,TH2S,TH2I,TH2F,TH2D,TH3S,TH3I,TH3F,TH3D,TProfile,TProfile2D,TProfile3D
     // name : hist name
     // title : hist title
     // hist axis : 1d  Int_t nbinx,Double_t x1,Double_t x2,
@@ -1269,8 +1269,23 @@ TH1* HHistMap::createHist(TString Type,
 	h->SetYTitle(ytitle.Data());
 	h->SetZTitle(ztitle.Data());
 
+    } else if (
+	       Type == "TProfile"   ||
+	       Type == "TProfile2D" ||
+	       Type == "TProfile3D"
+	      ){
+	if(Type == "TProfile")  {
+	    h = new TProfile(name.Data(),title.Data(),nbinx,x1,x2);
+	} else if(Type == "TProfile2D")  {
+	    h = new TProfile2D(name.Data(),title.Data(),nbinx,x1,x2,nbiny,y1,y2);
+	} else if(Type == "TProfile3D")  {
+	    h = new TProfile3D(name.Data(),title.Data(),nbinx,x1,x2,nbiny,y1,y2,nbinz,z1,z2);
+	}
+	h->SetXTitle(xtitle.Data());
+	h->SetYTitle(ytitle.Data());
+	h->SetZTitle(ztitle.Data());
     } else {
-	Error("createHist()","Unknow hist type %s. Supported are S,I,F,D for 1,2 and 3 dim hists.",Type.Data());
+	Error("createHist()","Unknow hist type %s. Supported are S,I,F,D for 1,2 and 3 dim hists and profiles.",Type.Data());
         return NULL;
     }
     h->SetDirectory(0);
@@ -1285,7 +1300,7 @@ TH1* HHistMap::createHistN(TString Type,
 			  TString xtitle,TString ytitle,TString ztitle)
 {
     // create an histograms (non const binning).
-    // Type : TH1S,TH1I,TH1F,TH1D,TH2S,TH2I,TH2F,TH2D,TH3S,TH3I,TH3F,TH3D
+    // Type : TH1S,TH1I,TH1F,TH1D,TH2S,TH2I,TH2F,TH2D,TH3S,TH3I,TH3F,TH3D,TProfile,TProfile2D,TProfile3D
     // name : hist name
     // title : hist title
     // hist axis : 1d  Int_t nbinx, pointer to Double_t array x for bins,
@@ -1357,8 +1372,24 @@ TH1* HHistMap::createHistN(TString Type,
 	h->SetYTitle(ytitle.Data());
 	h->SetZTitle(ztitle.Data());
 
+    } else if (
+	       Type == "TProfile" ||
+	       Type == "TProfile2D" ||
+	       Type == "TProfile3D"
+	      ){
+	if(Type == "TProfile")  {
+	    h = new TProfile(name.Data(),title.Data(),nbinx,x);
+	} else if(Type == "TProfile2D")  {
+	    h = new TProfile2D(name.Data(),title.Data(),nbinx,x,nbiny,y);
+	} else if(Type == "TProfile3D")  {
+	    h = new TProfile3D(name.Data(),title.Data(),nbinx,x,nbiny,y,nbinz,z);
+	}
+	h->SetXTitle(xtitle.Data());
+	h->SetYTitle(ytitle.Data());
+	h->SetZTitle(ztitle.Data());
+
     } else {
-	Error("createHistN()","Unknow hist type %s. Supported are S,I,F,D for 1,2 and 3 dim hists.",Type.Data());
+	Error("createHistN()","Unknow hist type %s. Supported are S,I,F,D for 1,2 and 3 dim hists and profiles.",Type.Data());
         return NULL;
     }
     h->SetDirectory(0);
@@ -1374,7 +1405,7 @@ Bool_t HHistMap::addHist(TString Type,
 			 TString dir)
 {
     // add an histograms (const binning).
-    // Type : TH1S,TH1I,TH1F,TH1D,TH2S,TH2I,TH2F,TH2D,TH3S,TH3I,TH3F,TH3D
+    // Type : TH1S,TH1I,TH1F,TH1D,TH2S,TH2I,TH2F,TH2D,TH3S,TH3I,TH3F,TH3D,TProfile,TProfile2D,TProfile3D
     // name : hist name
     // title : hist title
     // hist axis : 1d  Int_t nbinx,Double_t x1,Double_t x2,
@@ -1420,7 +1451,7 @@ Bool_t HHistMap::addHistN(TString Type,
 			 TString dir)
 {
     // add an histograms (non const binning).
-    // Type : TH1S,TH1I,TH1F,TH1D,TH2S,TH2I,TH2F,TH2D,TH3S,TH3I,TH3F,TH3D
+    // Type : TH1S,TH1I,TH1F,TH1D,TH2S,TH2I,TH2F,TH2D,TH3S,TH3I,TH3F,TH3D,TProfile,TProfile2D,TProfile3D
     // name : hist name
     // title : hist title
     // hist axis : 1d  Int_t nbinx, pointer to Double_t array x for bins,
@@ -2177,6 +2208,15 @@ TH1* HHistMap::get(TString name,Int_t i1,Int_t i2,Int_t i3,Int_t i4,Int_t i5)
     return 0;
 }
 
+TProfile* HHistMap::getP(TString name,Int_t i1,Int_t i2,Int_t i3,Int_t i4,Int_t i5)
+{
+    // get Tprofile from map. print error and map
+    // if not existing. the map has to be set before
+    // If the requested object is an array of histograms
+    // the index has to specified.
+     return (TProfile*)get(name,i1,i2,i3,i4,i5);
+}
+
 TH2* HHistMap::get2(TString name,Int_t i1,Int_t i2,Int_t i3,Int_t i4,Int_t i5)
 {
     // get TH2 histogram from map (do not call it on other hist types!).
@@ -2187,6 +2227,16 @@ TH2* HHistMap::get2(TString name,Int_t i1,Int_t i2,Int_t i3,Int_t i4,Int_t i5)
     return (TH2*) h;
 }
 
+TProfile2D* HHistMap::get2P(TString name,Int_t i1,Int_t i2,Int_t i3,Int_t i4,Int_t i5)
+{
+    // get TProfile2D from map (do not call it on other hist types!).
+    // print error and map if not existing. the map has to be set before
+    // If the requested object is an array of histograms
+    // the index has to specified.
+    TH1* h = get(name,i1,i2,i3,i4,i5);
+    return (TProfile2D*) h;
+}
+
 TH3* HHistMap::get3(TString name,Int_t i1,Int_t i2,Int_t i3,Int_t i4,Int_t i5)
 {
     // get TH3 histogram from map (do not call it on other hist types!).
@@ -2195,6 +2245,16 @@ TH3* HHistMap::get3(TString name,Int_t i1,Int_t i2,Int_t i3,Int_t i4,Int_t i5)
     // the index has to specified.
     TH1* h = get(name,i1,i2,i3,i4,i5);
     return (TH3*) h;
+}
+
+TProfile3D* HHistMap::get3P(TString name,Int_t i1,Int_t i2,Int_t i3,Int_t i4,Int_t i5)
+{
+    // get TProfile3D histogram from map (do not call it on other hist types!).
+    // print error and map if not existing. the map has to be set before
+    // If the requested object is an array of histograms
+    // the index has to specified.
+    TH1* h = get(name,i1,i2,i3,i4,i5);
+    return (TProfile3D*) h;
 }
 
 vector < TString> HHistMap::getMatchingHistLabels(TString expression,TString type,Int_t dim)

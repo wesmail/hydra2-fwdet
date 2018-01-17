@@ -10,6 +10,9 @@
 #include "TH1.h"
 #include "TH2.h"
 #include "TH3.h"
+#include "TProfile.h"
+#include "TProfile2D.h"
+#include "TProfile3D.h"
 #include "TCutG.h"
 #include "TF1.h"
 #include "TCanvas.h"
@@ -158,6 +161,9 @@ public:
     TH1*         get   (TString name,Int_t i1=0,Int_t i2=-1,Int_t i3=-1,Int_t i4=-1,Int_t i5=-1);
     TH2*         get2  (TString name,Int_t i1=0,Int_t i2=-1,Int_t i3=-1,Int_t i4=-1,Int_t i5=-1);
     TH3*         get3  (TString name,Int_t i1=0,Int_t i2=-1,Int_t i3=-1,Int_t i4=-1,Int_t i5=-1);
+    TProfile*    getP  (TString name,Int_t i1=0,Int_t i2=-1,Int_t i3=-1,Int_t i4=-1,Int_t i5=-1);
+    TProfile2D*  get2P (TString name,Int_t i1=0,Int_t i2=-1,Int_t i3=-1,Int_t i4=-1,Int_t i5=-1);
+    TProfile3D*  get3P (TString name,Int_t i1=0,Int_t i2=-1,Int_t i3=-1,Int_t i4=-1,Int_t i5=-1);
 
     vector<TString> getMatchingHistLabels(TString expression,TString type="",Int_t dim=-1);
     vector<TH1*   > getMatchingHists     (TString expression,TString type="",Int_t dim=-1);
