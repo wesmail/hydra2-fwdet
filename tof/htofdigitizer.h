@@ -47,6 +47,7 @@ private:
   static HTofDigitizer* pTofDigi;//! pointer to this
   Bool_t useOld;                 //! flag: kTRUE:use old execute function (before embedding)
 
+#define MAXCHRGCH    10000
   //--------------------------------------------------------------------------
 
   Int_t findFirstHitInTof(HGeantTof* pOld,HGeantTof** pNew,Int_t* count);

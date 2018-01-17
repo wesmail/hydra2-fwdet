@@ -346,20 +346,20 @@ Int_t HTofDigitizer::executeOld(void) {
 
 	    chargeCh = (Int_t) ((chargeL/chargeRef)*256. + prevChargeL);
 	    if (chargeCh < 0) chargeCh = 0;
-	    if (chargeCh > 4095)  chargeCh = 4095;
+	    if (chargeCh > MAXCHRGCH)  chargeCh = MAXCHRGCH;
 	    chargeL = (Float_t)chargeCh;
 
 	    chargeCh = (Int_t) ((chargeR/chargeRef)*256. + prevChargeR);
 	    if (chargeCh < 0) chargeCh = 0;
-	    if (chargeCh > 4095)  chargeCh = 4095;
+	    if (chargeCh > MAXCHRGCH)  chargeCh = MAXCHRGCH;
 	    chargeR = (Float_t)chargeCh;
 
 	} else {
 
 	    timeL = 4095.;
 	    timeR = 4095.;
-	    chargeL = 4095.;
-	    chargeR = 4095.;
+	    chargeL = MAXCHRGCH;
+	    chargeR = MAXCHRGCH;
 	}
 	raw->setLeftTime(timeL);
 	raw->setRightTime(timeR);
@@ -672,12 +672,12 @@ void HTofDigitizer::fillArray()
 
 	    chargeCh = (Int_t) ((chargeL/chargeRef)*256. + prevChargeL);
 	    if (chargeCh < 0) chargeCh = 0;
-	    if (chargeCh > 4095)  chargeCh = 4095;
+	    if (chargeCh > MAXCHRGCH)  chargeCh = MAXCHRGCH;
 	    chargeL = (Float_t)chargeCh;
 
 	    chargeCh = (Int_t) ((chargeR/chargeRef)*256. + prevChargeR);
 	    if (chargeCh < 0) chargeCh = 0;
-	    if (chargeCh > 4095)  chargeCh = 4095;
+	    if (chargeCh > MAXCHRGCH)  chargeCh = MAXCHRGCH;
 	    chargeR = (Float_t)chargeCh;
 	    //-------------------------------------------------
 
@@ -687,8 +687,8 @@ void HTofDigitizer::fillArray()
 	    // setting default values for times and charges
 	    timeL = 4095.;
 	    timeR = 4095.;
-	    chargeL = 4095.;
-	    chargeR = 4095.;
+	    chargeL = MAXCHRGCH;
+	    chargeR = MAXCHRGCH;
 	    //-------------------------------------------------
 	}
 
