@@ -263,6 +263,7 @@ map<Int_t,particleproperties> HPhysicsConstants::initParticleID()
     idToPropL[67]=createParticle(67,"J/Psi",       3096.88,    0,  0,  0, 0);  /*67: J/Psi      */
     idToPropL[68]=createParticle(68,"Psi'",        3685.96,    0,  0,  0, 0);  /*68: Psi'       */
     idToPropL[69]=createParticle(69,"pn"  ,        2650.,      1,  0,  2, 0);  /*69: pn         */
+    idToPropL[120]=createParticle(120,"Hypertriton",2991.,     1,  0,  3, 0);  /*69: Hypertriton */
 
     HPhysicsConstants::setDefaultGraphic(kMagenta,1);
     HPhysicsConstants::setGraphic(14,kGray    ,1); // proton
