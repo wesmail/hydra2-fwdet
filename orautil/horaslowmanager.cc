@@ -28,8 +28,9 @@ HOraSlowManager::HOraSlowManager() {
   // Default constructor
   gHOraSlowManager=this;
   partition=0;
-  pOraReader=0;
   hldfileFilter=0;
+  oraUser="HADES_ANA";
+  dbName="db-hades";
 }
 
 HOraSlowManager::~HOraSlowManager() {
@@ -40,24 +41,7 @@ HOraSlowManager::~HOraSlowManager() {
     delete partition;
     partition=0;
   }
-  if (pOraReader) {
-    delete pOraReader;
-    pOraReader=0;
-  }
   gHOraSlowManager=0;
-}
-
-Bool_t HOraSlowManager::openOraInput() {
-  // Connnects to Oracle (is done automatically when needed)
-  if (pOraReader==0) {
-    pOraReader=new HOraSlowReader();
-  }
-  return pOraReader->open();
-}
-
-void HOraSlowManager::closeOraInput() {
-  // Closes the Oracle connection
-  if (pOraReader) pOraReader->close();
 }
 
 HOraSlowPartition* HOraSlowManager::setPartition(const Char_t* pName,
@@ -83,9 +67,8 @@ HOraSlowPartition* HOraSlowManager::setPartition(const Char_t* pName,
   if (partition&&name!=partition->GetName()) {
     delete partition;
   }
-  partition=new HOraSlowPartition(name);
-  partition->setStartTime(t1);
-  partition->setEndTime(t2);
+  if (!partition) partition=new HOraSlowPartition(name);
+  partition->setTimeRange(t1,t2);
   TIter next(&channels);
   HOraSlowChannel* p=0;
   while((p=(HOraSlowChannel*)next())) {
@@ -142,12 +125,12 @@ void HOraSlowManager::clearHldfileFilter() {
 Bool_t HOraSlowManager::readArchiverRates() {
   // Reads the rates of the channel archiver 
   if (!partition) {
-    Error("readSummary","No partition defined!");
+    Error("readArchiverRates","No partition defined!");
     return kFALSE;
   }
-  Bool_t rc=openOraInput();
+  Bool_t rc=partition->openOraInput();
   if (!rc) return rc;
-  return pOraReader->readArchiverRates(partition);
+  return partition->getOraReader()->readArchiverRates();
 }
 
 Bool_t HOraSlowManager::readSummary() {
@@ -156,19 +139,20 @@ Bool_t HOraSlowManager::readSummary() {
     Error("readSummary","No partition defined!");
     return kFALSE;
   }
-  Bool_t rc=openOraInput();
+  Bool_t rc=partition->openOraInput();
+  HOraSlowReader* pOraReader=partition->getOraReader();
   if (!rc) return rc;
   if (!partition->getRunPeriods()) {
-    rc=pOraReader->readRunPeriods(partition);
+    rc=pOraReader->readRunPeriods();
   }  
   if (!rc) return rc;
   partition->setHldFileFilter(hldfileFilter);
   HOraSlowChannel* ch=0;
   TListIter iter(&channels);
   while((ch=(HOraSlowChannel*)iter.Next())&&rc) {
-    rc=pOraReader->readChannelMetaData(partition,ch);
+    rc=pOraReader->readChannelMetaData(ch);
     if (!rc) break;
-    rc=pOraReader->readChannelRunSum(partition,ch);
+    rc=pOraReader->readChannelRunSum(ch);
   }
   return rc;
 }

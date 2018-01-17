@@ -22,12 +22,14 @@ HOraSlowChanRunSum::HOraSlowChanRunSum() {
   periodIndex=-1;
   nData=0;
   nMonData=-1;
+  nMonSmplPer=1;
   status=0;
   mean=sigma=minVal=maxVal=0.;
 }
 
 void HOraSlowChanRunSum::fill(Int_t pInd,Double_t mea,Double_t sig,
-                 Double_t min,Double_t max,Int_t nD,Int_t st,Int_t nMon) {
+                 Double_t min,Double_t max,Int_t nD,Int_t st,
+                 Int_t nMon,Int_t nMonSP) {
   // Fills the data elements
   periodIndex=pInd;
   mean=mea;
@@ -37,6 +39,7 @@ void HOraSlowChanRunSum::fill(Int_t pInd,Double_t mea,Double_t sig,
   nData=nD;
   status=st;
   nMonData=nMon;
+  nMonSmplPer=nMonSP;
 }
 
 void HOraSlowChanRunSum::print(Int_t valPrec) {
@@ -71,16 +74,16 @@ void HOraSlowChanRunSum::write(fstream& fout,Int_t valPrec) {
 
 
 Int_t HOraSlowChanRunSum::getMonRate() {
-  // Returns the rate (number of entries/minute) of the corresponding
-  // monitor channel.
-  // The rate should be about 60 (one entry/s).
+  // Returns the rate (number of entries/minute * sampling period) of the
+  // corresponding monitor channel.
+  // The rate should be about 60.
   // A much lower rate indicated, that the archiver was not running for
   // the whole period.
   Int_t rate=nMonData;
   if (period!=0&&nMonData!=-1) {
     Int_t dt=period->getDuration();
     if (dt>0) {
-      rate=(Int_t)(60.*nMonData/dt+0.5);
+      rate=(Int_t)(nMonData*nMonSmplPer*60./dt+0.5);
     }
   }
   return rate;

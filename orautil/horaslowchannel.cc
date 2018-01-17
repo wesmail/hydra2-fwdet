@@ -32,6 +32,7 @@ ClassImp(HOraSlowChannel)
 HOraSlowChannel::HOraSlowChannel(const Char_t* name) {
   // Constructor with argument channel name
   SetName(name);
+  channelType="F";
   channelId=-1;
   pRunSumData=0;
   pMetaData=0;
@@ -226,10 +227,10 @@ Bool_t HOraSlowChannel::readRawData(Int_t index) {
   // Reads the raw data of a period specified by the array index
   HOraSlowPeriod* period=0;
   if (gHOraSlowManager==0||partition==0||(period=partition->getPeriod(index))==0) {
-    Error("readRawData","Period not found!");
+    Error("*** readRawData","Period not found!");
     return kFALSE;
   }
-  Bool_t rc=gHOraSlowManager->openOraInput();
+  Bool_t rc=partition->openOraInput();
   if (!rc) return rc;
   clearRawData();
   if (pRunSumData) {
@@ -241,19 +242,14 @@ Bool_t HOraSlowChannel::readRawData(Int_t index) {
       }
     }
   }
-  if (strcmp(partition->GetName(),"online")==0) {
-    return gHOraSlowManager->getOraReader()->readOnlineRawData(
+  return partition->getOraReader()->readRawData(
                  this,period->getStartTime(),period->getEndTime());
-  } else { 
-    return gHOraSlowManager->getOraReader()->readRawData(
-                 this,period->getStartTime(),period->getEndTime());
-  }
 }
 
 Bool_t HOraSlowChannel::readRawData(const Char_t* t1, const Char_t* t2) {
   // Reads the raw data of a period specified by a time range t1 - t2
-  if (gHOraSlowManager==0) return kFALSE;
-  Bool_t rc=gHOraSlowManager->openOraInput();
+  if (gHOraSlowManager==0||partition==0) return kFALSE;
+  Bool_t rc=partition->openOraInput();
   if (!rc) return rc;
   Int_t l1=strlen(t1);
   Int_t l2=strlen(t2);
@@ -279,11 +275,7 @@ Bool_t HOraSlowChannel::readRawData(const Char_t* t1, const Char_t* t2) {
     return kFALSE;
   }
   clearRawData();
-  if (partition==0||strcmp(partition->GetName(),"online")!=0) {
-    return gHOraSlowManager->getOraReader()->readRawData(this,start.Data(),end.Data());
-  } else { 
-    return gHOraSlowManager->getOraReader()->readOnlineRawData(this,start.Data(),end.Data());
-  }
+  return partition->getOraReader()->readRawData(this,start.Data(),end.Data());
 }
 
 void HOraSlowChannel::printRawData() {

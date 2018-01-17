@@ -1,6 +1,8 @@
 #ifndef HORASLOWREADER_H
 #define HORASLOWREADER_H
 
+#define NMAX_SCS 2000
+
 using namespace std;
 #include "TObject.h"
 #include "TString.h"
@@ -11,36 +13,26 @@ class HOraSlowPeriod;
 class HOraSlowChannel;
 
 class HOraSlowReader : public TObject {
-private:
-  HDbConn* pConn;     // pointer to the connection class
+protected:
+  HDbConn*           pConn;      // pointer to the connection class
+  HOraSlowPartition* pPartition; // pointer to partition class
 public:
   HOraSlowReader();
-  ~HOraSlowReader();
+  virtual ~HOraSlowReader();
+  void setPartition(HOraSlowPartition* p) {pPartition=p;}
   Bool_t open();
   void close();
   void print();
   Bool_t isOpen();
-  Bool_t readPartition(HOraSlowPartition*);
-  Bool_t readRunPeriods(HOraSlowPartition*);
-  Bool_t readArchiverRates(HOraSlowPartition*);
-  Bool_t readChannelRunSum(HOraSlowPartition*,HOraSlowChannel*);  
-  Bool_t readChannelMetaData(HOraSlowPartition*,HOraSlowChannel*);
-  Bool_t readRawData(HOraSlowChannel*,const Char_t*,const Char_t*);
-  Bool_t readOnlineRawData(HOraSlowChannel*,const Char_t*,const Char_t*);
-private:
-  Bool_t readOnlineRunPeriods(HOraSlowPartition*);
-  Bool_t readOnlineArchiverRates(HOraSlowPartition*);
-  Bool_t readOnlineChannelRunSum(HOraSlowPartition*,HOraSlowChannel*);  
-  Bool_t readOnlineChannelMetaData(HOraSlowChannel*);
-  Int_t readChannelId(HOraSlowChannel*);
-  Int_t readOnlineChannelId(HOraSlowChannel*);
+  virtual Bool_t readRunPeriods();
+  virtual Bool_t readArchiverRates()                                       {return kFALSE;}
+  virtual Bool_t readChannelRunSum(HOraSlowChannel*)                       {return kFALSE;}
+  virtual Bool_t readChannelMetaData(HOraSlowChannel*)                     {return kFALSE;}
+  virtual Bool_t readRawData(HOraSlowChannel*,const Char_t*,const Char_t*) {return kFALSE;}
+protected:
+  Bool_t readPartition();
   Bool_t readPeriods(Char_t*,TObjArray*,Int_t,Int_t,Int_t);
-  Bool_t readOnlinePeriods(TObjArray*,Int_t,Int_t,Int_t);
-  Int_t readRawF(HOraSlowChannel*,const Char_t*,const Char_t*);
-  Int_t readOnlineRawF(HOraSlowChannel*,const Char_t*,const Char_t*);
-  Int_t readRawI(HOraSlowChannel*,const Char_t*,const Char_t*);
-  Int_t readOnlineRawI(HOraSlowChannel*,const Char_t*,const Char_t*);
-  ClassDef(HOraSlowReader,0) // Class to read slowcontrol data from Oracle
+  ClassDef(HOraSlowReader,0) // Base class to read slowcontrol data from Oracle
 };
 
 #endif  /* !HORASLOWREADER */

@@ -35,6 +35,7 @@ class HGeomInterface : public TObject {
   HGeomIo*      fileInput;   // ASCII file I/O
   HGeomIo*      oraInput;    // Oracle input
   HGeomIo*      output;      // Oracle output
+  Bool_t        addDateTime; // Add date and time to the geo file names
   Int_t         nSets;       // number of geometry sets (detector parts) 
   Int_t         nActualSets; // number of set in actual geometry
   Int_t         nFiles;      // number of geometry and hit files  
@@ -49,7 +50,7 @@ public:
   HGeomInterface();
   ~HGeomInterface();
   void setOracleInput(HGeomIo* p) {oraInput=p;}
-  void setOutput(HGeomIo* p) {output=p;}
+  void setOutput(HGeomIo* p, Bool_t fl=kTRUE) {output=p; addDateTime=fl;}
   void setGeomBuilder(HGeomBuilder* p) {geoBuilder=p;}
   HGeomIo* getFileInput() { return fileInput; }
   HGeomIo* getOraInput() { return oraInput; }
@@ -59,10 +60,13 @@ public:
   void addInputFile(const Char_t*);
   Bool_t addAlignment(HSpecGeomPar*);
   Bool_t addAlignment(HDetGeomPar*);
+  void   adjustSecGeom(void);
   HGeomSet* findSet(const Char_t*);
   Bool_t readSet(HGeomSet*);
   Bool_t writeSet(HGeomSet*);
   Bool_t writeSet(HGeomSet*,const Char_t*);
+  Bool_t writeSet(const Char_t* name,const Char_t* author,const Char_t* descr);
+  Bool_t writeMedia(const Char_t* author,const Char_t* descr);
   Bool_t createSet(HGeomSet*);
   void deleteSet(HGeomSet* pSet);
   Bool_t readMedia();
@@ -79,7 +83,9 @@ public:
   void print();
 private:
   HGeomIo* connectInput(const Char_t*);
-  Bool_t connectOutput(const Char_t*,TString pType="geo");
+  Bool_t   connectOutput(const Char_t*,TString pType="geo");
+  void     shiftNode(Int_t set,const Char_t* name, Double_t zShift);
+  void     shiftNode6sect(Int_t set,const Char_t* name, Double_t zShift);
   ClassDef(HGeomInterface,0) // Class to manage geometry for simulations
 };
 

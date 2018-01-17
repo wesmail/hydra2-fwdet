@@ -1,0 +1,373 @@
+//*-- AUTHOR  : Ilse Koenig
+//*-- Created  : 16/08/2004 by Ilse Koenig
+//*-- Modified : 09/02/2011 by Ilse Koenig
+
+//_HADES_CLASS_DESCRIPTION 
+//////////////////////////////////////////////////////////////////////////////
+//
+// HOraSlowReader2010
+//
+// Class to read slowcontrol data from Oracle for beam times 2010 - 2015
+//
+//////////////////////////////////////////////////////////////////////////////
+
+#include "horaslowreader2010.h"
+#include "hdbconn.h"
+#include "horaslowpartition.h"
+#include "horaslowperiod.h"
+#include "horaslowchannel.h"
+#include "horaslowchanrunsum.h"
+#include "horaslowchanmeta.h"
+#include "horaslowchanraw.h"
+#include "horaslowarchrateobj.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+#define SQLCA_STORAGE_CLASS extern
+#define ORACA_STORAGE_CLASS extern
+
+// Oracle communication area
+#include <oraca.h>
+// SQL Communications Area
+#include <sqlca.h>
+
+ClassImp(HOraSlowReader2010)
+
+Bool_t HOraSlowReader2010::readArchiverRates() {
+  // Reads the archiver rates in the time range specified in partition
+  if (!pConn->isOpen()||!pPartition) return kFALSE;
+  TString start=pPartition->getStartTime();
+  TString end=pPartition->getEndTime();
+  if (start.IsNull()||end.IsNull()) {
+    readPartition();
+    start=pPartition->getStartTime();
+    end=pPartition->getEndTime();
+  }
+  if (start.IsNull()||end.IsNull()) return kFALSE;
+  TString t1=start(0,10);
+  TString t2=end(0,10);
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL BEGIN DECLARE SECTION;
+    char* tstart;
+    char* tend;
+    struct {
+      char stime[NMAX_SCS][20];
+      int  nminutes[NMAX_SCS];
+      int  nentries[NMAX_SCS];
+    } rates;
+  EXEC SQL END DECLARE SECTION;
+  tstart=(Char_t*)t1.Data();
+  tend=(Char_t*)t2.Data();
+  TObjArray* data=0;
+  Int_t nTot=0;
+  Int_t nLast=0;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL DECLARE rates_cursor CURSOR FOR
+           SELECT TO_CHAR(starttime,'yyyy-mm-dd hh24:mi:ss'),
+                  interval, ndata
+           FROM hades_slow2.hscs_archiver_rate
+           WHERE starttime >= TO_DATE(:tstart,'yyyy-mm-dd hh24:mi:ss')
+             AND starttime < TO_DATE(:tend,'yyyy-mm-dd hh24:mi:ss')
+           ORDER BY starttime;
+  EXEC SQL OPEN rates_cursor;
+  do {  
+    EXEC SQL FETCH rates_cursor INTO :rates;
+    nLast=sqlca.sqlerrd[2]-nTot;
+    if (nLast>0) {
+      if (data==0) data=new TObjArray(nLast);
+      else data->Expand(sqlca.sqlerrd[2]);
+      for (Int_t i=0;i<nLast;i++) {
+        rates.stime[i][19]='\0';
+        Int_t v=(Int_t)(rates.nentries[i]/rates.nminutes[i]);
+        HOraSlowArchRateObj* p=new HOraSlowArchRateObj(rates.stime[i],v);
+        data->AddAt(p,nTot);
+        nTot++;
+      }
+    } 
+  } while (nLast==NMAX_SCS&&nTot<=100000);
+  EXEC SQL CLOSE rates_cursor;
+  pPartition->setRates(data);
+  return kTRUE;
+errorfound:
+  pConn->showSqlError("readArchiverRates");  
+  return kFALSE;
+}
+
+Int_t HOraSlowReader2010::readChannelId(HOraSlowChannel* pChannel) {
+  // Reads the channel id and data type of a channel
+  if (!pConn->isOpen()||!pChannel) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    char*   chname;
+    int     chid;
+    varchar chtype[3];
+  EXEC SQL END DECLARE SECTION;
+  chname=(Char_t*)pChannel->GetName();
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO notfound;
+  EXEC SQL SELECT pv_id, pv_type INTO :chid, :chtype
+           FROM hades_slow2.hscs_channel
+           WHERE pv_name = :chname;
+  pChannel->setChannelId(chid);
+  chtype.arr[chtype.len]='\0';
+  pChannel->setChannelType((Char_t*)chtype.arr);  
+  return chid;
+notfound:
+  Warning("readChannelId","Channel %s not found",chname);
+  return -1;
+errorfound:
+  pConn->showSqlError("readChannelId");  
+  return -1;
+}  
+
+Bool_t HOraSlowReader2010::readChannelRunSum(HOraSlowChannel* pChannel) {
+  // Reads the summary information of a channel for the given partition
+  if (!pConn->isOpen()||!pPartition||!pChannel) return kFALSE;
+  TObjArray* periods=pPartition->getRunPeriods();
+  if (!periods) return kFALSE; 
+  Int_t lastIndex=periods->GetLast();
+  if (lastIndex<0) return kFALSE;
+  Int_t channelId=pChannel->getChannelId();
+  if (channelId<0) {
+    channelId=readChannelId(pChannel);
+  }
+  if (channelId<=0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int chid;
+    int pmin;
+    int pmax;
+    struct {
+      int     pid[NMAX_SCS];
+      double  vmean[NMAX_SCS];
+      double  vsigma[NMAX_SCS];
+      double  vmin[NMAX_SCS];
+      double  vmax[NMAX_SCS];
+      int     nd[NMAX_SCS];
+      int     vstat[NMAX_SCS];
+      int     vmon[NMAX_SCS];
+    } runsum;
+  EXEC SQL END DECLARE SECTION;
+  chid=channelId;
+  pmin=((HOraSlowPeriod*)(periods->At(0)))->getPeriodId();
+  pmax=((HOraSlowPeriod*)(periods->At(lastIndex)))->getPeriodId();
+  Int_t nData=lastIndex+1;
+  TObjArray* data=new TObjArray(nData);
+  Int_t nTot=0;
+  Int_t nLast=0;
+  Int_t periodId=0;
+  HOraSlowPeriod* period=0;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL DECLARE chansum_cursor CURSOR FOR
+           SELECT period_id, mean_value, sigma_value, min_value, max_value,
+                  num_data_rows, stat, mon_num_data_rows
+           FROM hades_slow2.hscs_chan_run_sum_view_ana
+           WHERE pv_id = :chid
+           AND period_id BETWEEN :pmin AND :pmax
+           ORDER BY period_id;
+  EXEC SQL OPEN chansum_cursor;
+  do {  
+    EXEC SQL FETCH chansum_cursor INTO :runsum;
+    nLast=sqlca.sqlerrd[2]-nTot;
+    for (Int_t i=0;i<nLast;i++) {
+      HOraSlowChanRunSum* p=new HOraSlowChanRunSum();
+      period=(HOraSlowPeriod*)(periods->At(nTot));
+      periodId=period->getPeriodId();
+      if (periodId==runsum.pid[i]) {
+        p->setPeriod(period);
+        p->fill(runsum.pid[i],runsum.vmean[i],runsum.vsigma[i],
+                runsum.vmin[i],runsum.vmax[i],runsum.nd[i],
+                runsum.vstat[i],runsum.vmon[i]);
+      } else {
+        p->fill(periodId,-999.,0.,-999.,-999.,0,1,-1);
+      }      
+      data->AddAt(p,nTot);
+      nTot++;
+    } 
+  } while (nLast==NMAX_SCS&&nTot<(lastIndex+1));
+  EXEC SQL CLOSE chansum_cursor;
+  pChannel->setRunSumData(data);
+  if (nTot==nData) {
+    cout<<"Run summary data for channel "<<pChannel->GetName()<<" read from Oracle\n";
+    return kTRUE;
+  } else {
+    Error("readChannelRunSum","Too few data read");
+    return kFALSE;
+  }
+errorfound:
+  pConn->showSqlError("readChannelRunSum");  
+  return kFALSE;
+}  
+
+Bool_t HOraSlowReader2010::readChannelMetaData(HOraSlowChannel* pChannel) {
+  // Reads the meta information of a channel for the given partition
+  if (!pConn->isOpen()||!pPartition||!pChannel) return kFALSE;
+  TString start=pPartition->getStartTime();
+  TString end=pPartition->getEndTime();
+  if (start.IsNull()||end.IsNull()) {
+    readPartition();
+    start=pPartition->getStartTime();
+    end=pPartition->getEndTime();
+  }
+  if (start.IsNull()||end.IsNull()) return kFALSE;
+  Int_t channelId=pChannel->getChannelId();
+  if (channelId<0) {
+    channelId=readChannelId(pChannel);
+  }
+  if (channelId<=0) return kFALSE;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int chid;
+    char* pstart;
+    char* pend;
+    struct {
+      double  lgraph[NMAX_SCS];
+      double  hgraph[NMAX_SCS];
+      double  lwarn[NMAX_SCS];
+      double  hwarn[NMAX_SCS];
+      double  lalarm[NMAX_SCS];
+      double  halarm[NMAX_SCS];
+      varchar un[NMAX_SCS][21];
+      int     prec[NMAX_SCS];
+      char    ts[NMAX_SCS][20];
+    } meta;
+    struct {
+      short lgraph_Ind[NMAX_SCS];
+      short hgraph_Ind[NMAX_SCS];
+      short lwarn_Ind[NMAX_SCS];
+      short hwarn_Ind[NMAX_SCS];
+      short lalarm_Ind[NMAX_SCS];
+      short halarm_Ind[NMAX_SCS];
+      short un_Ind[NMAX_SCS];
+      short prec_Ind[NMAX_SCS];
+      short ts_Ind[NMAX_SCS];
+    } meta_Ind;
+  EXEC SQL END DECLARE SECTION;
+  chid=channelId;
+  pstart=(Char_t*)start.Data();
+  pend=(Char_t*)end.Data();
+  Int_t nData=0;
+  Int_t maxPrec=0;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL SELECT lgraph_limit, hgraph_limit, lwarn_limit, hwarn_limit,
+                  lalarm_limit, halarm_limit, units, precision,
+                  TO_CHAR(md_starttime,'yyyy-mm-dd hh24:mi:ss')
+           INTO :meta INDICATOR : meta_Ind
+           FROM hades_slow2.arch_meta
+           WHERE pv_id = :chid
+             AND ( ( md_starttime < TO_DATE(:pstart,'yyyy-mm-dd hh24:mi:ss')
+                     AND ( md_endtime IS NULL
+                           OR md_endtime > TO_DATE(:pstart,'yyyy-mm-dd hh24:mi:ss') ) )
+                OR ( md_starttime BETWEEN TO_DATE(:pstart,'yyyy-mm-dd hh24:mi:ss')
+                     AND TO_DATE(:pend,'yyyy-mm-dd hh24:mi:ss') ) )
+           ORDER BY md_starttime;
+  nData=sqlca.sqlerrd[2];
+  if (nData>0) {
+    TObjArray* data=new TObjArray(nData);
+    for (Int_t i=0;i<sqlca.sqlerrd[2];i++) {
+      HOraSlowChanMeta* p=new HOraSlowChanMeta();
+      if (meta_Ind.lgraph_Ind[i]!=-1) p->setLowGraphLimit(meta.lgraph[i]);
+      if (meta_Ind.hgraph_Ind[i]!=-1) p->setHighGraphLimit(meta.hgraph[i]);
+      if (meta_Ind.lwarn_Ind[i]!=-1) p->setLowWarnLimit(meta.lwarn[i]);
+      if (meta_Ind.hwarn_Ind[i]!=-1) p->setHighWarnLimit(meta.hwarn[i]);
+      if (meta_Ind.lalarm_Ind[i]!=-1) p->setLowAlarmLimit(meta.lalarm[i]);
+      if (meta_Ind.halarm_Ind[i]!=-1) p->setHighAlarmLimit(meta.halarm[i]);
+      if (meta_Ind.un_Ind[i]!=-1) {
+        meta.un[i].arr[meta.un[i].len]='\0';
+        p->setUnits((Char_t*)meta.un[i].arr);
+      }
+      if (meta_Ind.prec_Ind[i]!=-1) {
+        p->setPrecision(meta.prec[i]);
+        if (meta.prec[i]>maxPrec) maxPrec=meta.prec[i];
+      }
+      if (meta_Ind.ts_Ind[i]!=-1) {
+        meta.ts[i][19]='\0';
+        p->setStartTime((Char_t*)meta.ts[i]);
+      }
+      data->AddAt(p,i);
+    }
+    pChannel->setMetaData(data);
+    pChannel->setMaxPrecision(maxPrec);
+    cout<<"Meta data for channel "<<pChannel->GetName()<<" read from Oracle\n";
+    return kTRUE;
+  }
+  Error("readChannelMetaData","No meta data found for channel %s",pChannel->GetName());
+  return kTRUE;
+errorfound:
+  pConn->showSqlError("readChannelMetaData");  
+  return kFALSE;
+}  
+
+Bool_t HOraSlowReader2010::readRawData(HOraSlowChannel* channel,
+                                   const Char_t* start, const Char_t* end) {
+  // Reads the raw data of a channel in the specified time range
+  if (!pConn->isOpen()||channel==0||start==0||end==0) return kFALSE;
+  Int_t channelId=channel->getChannelId();
+  if (channelId<0) {
+    channelId=readChannelId(channel);
+  }
+  if (channelId<=0) return kFALSE;
+  if (channel->getMetaData()==0) readChannelMetaData(channel);
+  EXEC SQL BEGIN DECLARE SECTION;
+    int chid;
+    char* tstart;
+    char* tend;
+    struct {
+      char   ti[NMAX_SCS][20];
+      int    na[NMAX_SCS];
+      double va[NMAX_SCS];
+      int    se[NMAX_SCS];
+    } rawdata;
+  EXEC SQL END DECLARE SECTION;
+  chid=channelId;
+  tstart=(Char_t*)start;
+  tend=(Char_t*)end;
+  TObjArray* data=0;
+  Int_t nTot=0;
+  Int_t nLast=0;
+  TString lastTimestamp;
+  Int_t sevr = 0, status = 0;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND continue;
+  EXEC SQL DECLARE rawf_cursor CURSOR FOR
+           SELECT TO_CHAR(timestamp,'yyyy-mm-dd hh24:mi:ss'),
+                  nanosecs, NVL(value,0.), sevr
+           FROM hades_slow2.archive_data_f
+           WHERE timestamp BETWEEN TO_DATE(:tstart,'yyyy-mm-dd hh24:mi:ss')
+                               AND TO_DATE(:tend,'yyyy-mm-dd hh24:mi:ss')
+           AND pv_id = :chid
+           ORDER BY timestamp, nanosecs;
+  EXEC SQL OPEN rawf_cursor;
+  do {  
+    EXEC SQL FETCH rawf_cursor INTO :rawdata;
+    nLast=sqlca.sqlerrd[2]-nTot;
+    if (nLast>0) {
+      if (data==0) data=new TObjArray(nLast);
+      else data->Expand(sqlca.sqlerrd[2]);
+      for (Int_t i=0;i<nLast;i++) {
+        HOraSlowChanRaw* p=new HOraSlowChanRaw();
+        rawdata.ti[i][19]='\0';
+        sevr=rawdata.se[i];
+        if (sevr==3904||sevr==3872||sevr==3874) status=1;
+        else status=0;
+        p->fill(rawdata.ti[i],rawdata.na[i],rawdata.va[i],status);
+        data->AddAt(p,nTot);
+        nTot++;
+      }
+      lastTimestamp=rawdata.ti[nLast-1];
+    } 
+  } while (nLast==NMAX_SCS&&nTot<=20000);
+  EXEC SQL CLOSE rawf_cursor;
+  if (nTot>0) {
+    if (nTot>=20000) channel->setRawData(data,start,lastTimestamp.Data());
+    else channel->setRawData(data,start,end);
+    cout<<"Number of raw data: "<<nTot<<'\n';
+    return kTRUE;
+  }
+  Error("readRawData","No raw data found!");
+  return kFALSE;
+errorfound:
+  pConn->showSqlError("readRawData");
+  return kFALSE;
+}

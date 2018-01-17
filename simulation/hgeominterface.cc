@@ -57,6 +57,7 @@ HGeomInterface::HGeomInterface() {
   nActualSets=0;
   nFiles=0;
   geoBuilder=0;
+  addDateTime = kTRUE;
 }
 
 HGeomInterface::~HGeomInterface() {
@@ -255,6 +256,29 @@ Bool_t HGeomInterface::readSet(HGeomSet* pSet) {
   return rc;
 }
 
+Bool_t HGeomInterface::writeSet(const Char_t* name,const Char_t* author,const Char_t* descr) {
+  HGeomSet* set = findSet(name);
+  TString v;
+  if (set) {
+    set->setAuthor(v=author);
+    set->setDescription(v=descr);
+    return writeSet(set);
+  } 
+  Error("writeSet","Set %s is not found!",name);
+  return kFALSE;
+}
+
+Bool_t HGeomInterface::writeMedia(const Char_t* author,const Char_t* descr) {
+  TString v;
+  if (media != NULL) {
+    media->setAuthor(v=author);
+    media->setDescription(v=descr);
+    return writeMedia();
+  } 
+  Error("writeMedia","Media is not defined!");
+  return kFALSE;
+}
+
 Bool_t HGeomInterface::writeSet(HGeomSet* pSet) {
   // Writes the geometry for the detector part to output
   Bool_t rc=kFALSE;
@@ -422,30 +446,33 @@ Bool_t HGeomInterface::connectOutput (const Char_t* name,TString pType) {
   if (output) {
     if (strcmp(output->IsA()->GetName(),"HGeomAsciiIo")==0) {
       TString fName(name);
-      Char_t buf[80];
-      struct tm* newtime;
-      time_t t;
-      time(&t);
-      newtime=localtime(&t);
-      if (newtime->tm_mday<10) sprintf(buf,"_0%i",newtime->tm_mday);
-      else sprintf(buf,"_%i",newtime->tm_mday);
-      fName=fName+buf;
-      if (newtime->tm_mon<9) sprintf(buf,"0%i",newtime->tm_mon+1);
-      else sprintf(buf,"%i",newtime->tm_mon+1);
-      fName=fName+buf;
-      Int_t y=newtime->tm_year-100;
-      if (y<10) sprintf(buf,"0%i",y);
-      else sprintf(buf,"%i",y);
-      fName=fName+buf;
-      if (newtime->tm_hour<10) sprintf(buf,"0%i",newtime->tm_hour);
-      else sprintf(buf,"%i",newtime->tm_hour);
-      fName=fName+buf;
-      if (newtime->tm_min<10) sprintf(buf,"0%i",newtime->tm_min);
-      else sprintf(buf,"%i",newtime->tm_min);
-      fName=fName+buf;
-      if (newtime->tm_sec<10) sprintf(buf,"0%i",newtime->tm_sec);
-      else sprintf(buf,"%i",newtime->tm_sec);
-      fName=fName+buf+"."+pType;
+      if(addDateTime) {
+        Char_t buf[80];
+        struct tm* newtime;
+        time_t t;
+        time(&t);
+        newtime=localtime(&t);
+        if (newtime->tm_mday<10) sprintf(buf,"_0%i",newtime->tm_mday);
+        else sprintf(buf,"_%i",newtime->tm_mday);
+        fName=fName+buf;
+        if (newtime->tm_mon<9) sprintf(buf,"0%i",newtime->tm_mon+1);
+        else sprintf(buf,"%i",newtime->tm_mon+1);
+        fName=fName+buf;
+        Int_t y=newtime->tm_year-100;
+        if (y<10) sprintf(buf,"0%i",y);
+        else sprintf(buf,"%i",y);
+        fName=fName+buf;
+        if (newtime->tm_hour<10) sprintf(buf,"0%i",newtime->tm_hour);
+        else sprintf(buf,"%i",newtime->tm_hour);
+        fName=fName+buf;
+        if (newtime->tm_min<10) sprintf(buf,"0%i",newtime->tm_min);
+        else sprintf(buf,"%i",newtime->tm_min);
+        fName=fName+buf;
+        if (newtime->tm_sec<10) sprintf(buf,"0%i",newtime->tm_sec);
+        else sprintf(buf,"%i",newtime->tm_sec);
+        fName=fName+buf;
+      }
+      fName=fName+"."+pType;
       output->open(fName,"out");
       cout<<"Output file for "<<name<<":  "
           <<((HGeomAsciiIo*)output)->getFilename()<<endl;
@@ -538,6 +565,7 @@ Bool_t HGeomInterface::addAlignment(HDetGeomPar* pPar) {
     Error("addAlignment","Detector %s not defined!",pPar->getDetectorName());
     return kFALSE;
   }
+  Double_t shiftFDSR[2] = {1000.,1000.};
   Int_t nModules=pPar->getNumModules();
   for (Int_t i=0;i<nModules;i++) {
     HModGeomPar* mod=pPar->getModule(i);
@@ -545,18 +573,165 @@ Bool_t HGeomInterface::addAlignment(HDetGeomPar* pPar) {
       HGeomNode* node=pDet->getVolume(mod->GetName());
       if (node) {
         TString mo(node->getMother());
-        if (!mo.Contains("CAVE")&&!mo.Contains("SEC"))
-          node=pDet->getVolume(mo.Data());  
-        node->setLabTransform(mod->getLabTransform());
-	//cout<<"Lab Transform"<<endl;
-	//node->getLabTransform()->print();
-	//cout<<"Local Transform"<<endl;
-	//node->getTransform().print();
+        if (!mo.Contains("CAVE")&&!mo.Contains("SEC")) node=pDet->getVolume(mo.Data());  
+        HGeomTransform &modtr = mod->getLabTransform();
+          
+        node->setLabTransform(modtr);
+        
+        // Correction of MDCIV barrels lab position in according to the mdc alignment:
+        if( detName.EqualTo("mdc") ) {
+          TString modName(mod->GetName());
+          if( modName.BeginsWith("DR4") ) {
+            TString bar1name("FDB1");
+            TString bar2name("FDB2");
+            bar1name += modName[4];  // Sector
+            bar2name += modName[4];  // Sector
+            HGeomSet*  frames = (HGeomSet*)sets->At(kHGeomFrames);
+            if( frames != NULL) {
+              HGeomNode* bar1 = frames->getVolume(bar1name.Data());
+              HGeomNode* bar2 = frames->getVolume(bar2name.Data());
+              bar1->setLabTransform(modtr);
+              bar2->setLabTransform(modtr);
+            } else Error("addAlignment","No frames loaded!");
+          } else if( modName.BeginsWith("DR1") || modName.BeginsWith("DR2")) {
+            //  Adjust position of FD1S1...6, FD1R1...6, FD2S1...6, FD2R1...6 according to MDCI,II alignment:
+            //  find shift of MDC frustum without overlap with MDC
+            Int_t mdcpl = modName.BeginsWith("DR1") ? 0:1;
+            
+            HGeomVector zVect(0.,0.,1.);                   // direction of z-axis in the lab.system
+            zVect = modtr.getRotMatrix().inverse()*zVect;  // rotation of zVect to MDC module coor.sys.
+            Double_t A = zVect.getX()/zVect.getZ();
+            Double_t B = zVect.getY()/zVect.getZ();
+            HGeomVolume* cv = (HGeomVolume*)mod->getRefVolume();
+            Double_t zMdc = cv->getPoint(0)->getZ();
+            Double_t yMdc = cv->getPoint(0)->getY();
+            
+            HGeomSet*  frames = (HGeomSet*)sets->At(kHGeomFrames);
+            TString FDSname(mdcpl==0 ? "FD1S":"FD2S");
+            TString FDRname(mdcpl==0 ? "FD1R":"FD2R");
+            FDSname += modName[4];  // Sector
+            FDRname += modName[4];  // Sector
+            HGeomNode* pFDS = frames->getVolume(FDSname.Data());
+            
+            Double_t phi  = pFDS->getPoint(1)->getX()*TMath::DegToRad();
+            // Points was selected by knowing of MDC frustum volumes.
+            // In the case of changing volumes need to be rechecked!
+            HGeomVector *par1 = pFDS->getPoint(mdcpl==0 ? 5:4);  // 4
+            HGeomVector *par2 = pFDS->getPoint(3);
+
+            HGeomVector point[4];  // Coordinates of points (on frustum volume) which closest TO MDC
+            point[0].setXYZ( par1->getZ()/TMath::Tan(phi), par1->getZ(), par1->getX());
+            point[1].setXYZ(-par1->getZ()/TMath::Tan(phi), par1->getZ(), par1->getX());
+            point[2].setXYZ( par2->getZ()/TMath::Tan(phi), par2->getZ(), par2->getX());
+            point[3].setXYZ(-par2->getZ()/TMath::Tan(phi), par2->getZ(), par2->getX());
+            for(Int_t p=0;p<4;p++) {
+              // Calculate distance from point to the MDC in direction of zVect
+              HGeomVector pnt(pFDS->getLabTransform()->transFrom(point[p]));
+              pnt = modtr.transTo(pnt);
+              Double_t shift = (zMdc-pnt.getZ())*TMath::Sqrt(A*A+B*B+1.);
+              if(shift < shiftFDSR[mdcpl]) shiftFDSR[mdcpl] = shift;
+            }
+            
+            
+            HGeomNode* pFDR = frames->getVolume(FDRname.Data());
+            HGeomVector pnt(0.,pFDR->getPoint(1)->getY(),pFDR->getPoint(2)->getZ());
+            pnt = pFDR->getLabTransform()->transFrom(pnt);
+            pnt = modtr.transTo(pnt);
+            Double_t yCr = pnt.getY() + B*(zMdc-pnt.getZ());
+            if(yCr < yMdc) continue;                         // No cross with MDC
+            Double_t shift = (zMdc-pnt.getZ())*TMath::Sqrt(A*A+B*B+1.);
+            if(shift < 0.) shift -= 0.010;  // -10 mkm for savety rison
+            if(shift < shiftFDSR[mdcpl]) shiftFDSR[mdcpl] = shift;
+          }
+        }
       }
     }
   }
+  
   cout<<"Alignment for "<<pPar->getDetectorName()<<" added"<<endl;
+  
+  if(shiftFDSR[0] < 999.) {
+    if(shiftFDSR[0] < 0. || shiftFDSR[0] > 1.) {        // Ignore gap < 1. mm
+      shiftNode6sect(kHGeomFrames,"FD1S",shiftFDSR[0]);
+      shiftNode6sect(kHGeomFrames,"FD1R",shiftFDSR[0]);
+    } else printf("*** FD1S,FD1R - MDCI gap (%f mm) is ignored\n",shiftFDSR[0]);
+  }
+  if(shiftFDSR[1] < 999.) {
+    if(shiftFDSR[1] < 0. || shiftFDSR[1] > 1.) {       // Ignore gap < 1. mm
+      shiftNode6sect(kHGeomFrames,"FD2S",shiftFDSR[1]);
+      shiftNode6sect(kHGeomFrames,"FD2R",shiftFDSR[1]);
+    } else  printf("*** FD2S,FD2R - MDCII gap (%f mm) is ignored\n",shiftFDSR[1]);
+  }
   return kTRUE;
+}
+
+void HGeomInterface::adjustSecGeom(void) {
+  HGeomSet* pRich  = (HGeomSet*)sets->At(kHGeomRich);
+  HGeomSet* pSec   = (HGeomSet*)sets->At(kHGeomSect);
+  HGeomSet* frames = (HGeomSet*)sets->At(kHGeomFrames);
+  if (pRich==NULL || pSec==NULL || frames==NULL) {
+    Error("adjustSecGeom","Sector, RICH or frames not found in GEANT geometry!");
+    return;
+  }
+  HGeomNode*      node     = pRich->getVolume("RICH");
+  HGeomTransform& t        = node->getTransform();
+  Double_t        zRichEnd = t.getTransVector().getZ()+node->getPoint(4)->getX();
+  Double_t        zSect    = pSec->getVolume("SEC1")->getPoint(5)->getX();
+  Double_t        zShift   = zRichEnd-zSect;  // >0 - overlap
+  
+  if(zShift<=0. && zShift > -2.0) {        // Ignore gap < 2. mm
+    if(zShift < 0.) printf("*** RICH - Sector gap (%f mm) is ignored\n", -zShift);
+    return;
+  }
+  
+  for(Int_t s=1;s<=6;s++) {
+    TString secNm("SEC");
+    secNm += s;
+    HGeomVector *p0 = pSec->getVolume(secNm.Data())->getPoint(0);
+    Int_t npnt = p0->getX()+1.1;
+    for(Int_t ip=3;ip<=npnt;ip++) {    
+      HGeomVector *p = pSec->getVolume(secNm.Data())->getPoint(ip);
+      p->setX(p->getX()+zShift);
+    }
+  }
+  shiftNode6sect(kHGeomFrames,"FIWL",zShift);
+  shiftNode6sect(kHGeomFrames,"FOWL",zShift);
+  shiftNode6sect(kHGeomFrames,"FINC",zShift);
+  shiftNode6sect(kHGeomFrames,"FOUC",zShift);
+  shiftNode(kHGeomFrames,"FINA",zShift);
+  shiftNode(kHGeomFrames,"FIWR",zShift);
+  shiftNode(kHGeomFrames,"FOTU",zShift);
+  shiftNode(kHGeomFrames,"FTWL",zShift);
+  shiftNode(kHGeomFrames,"FTWR",zShift);
+  // Test veto:
+  HGeomSet* start = (HGeomSet*)sets->At(kHGeomStart);
+  if(start != NULL && start->getVolume("VVET") != NULL) {
+    HGeomNode* pVVSH = frames->getVolume("VVSH");
+    if(pVVSH != 0) shiftNode(kHGeomStart,"VVSH",zShift);
+    else shiftNode6sect(kHGeomStart,"VSHS",zShift);
+  }
+}
+
+void HGeomInterface::shiftNode6sect(Int_t set,const Char_t* name, Double_t zShift) {
+  for(Int_t s=1;s<=6;s++) {
+    TString nm(name);
+    nm += s;
+    shiftNode(set,nm.Data(),zShift);
+  }
+}
+
+void HGeomInterface::shiftNode(Int_t set,const Char_t* name, Double_t zShift) {
+  HGeomNode* pNode = ((HGeomSet*)sets->At(set))->getVolume(name);
+  if(pNode == NULL) {
+    printf("Volume %s is absent in the current setup\n",name);
+    return;
+  }
+  HGeomTransform trNode = ((*(pNode->getLabTransform())));
+  HGeomVector pos = trNode.getTransVector();
+  pos.setZ(pos.getZ() + zShift);
+  trNode.setTransVector(pos);
+  pNode->setLabTransform(trNode);
+  printf("Volume %s shifted by %f mm\n",name,zShift);
 }
 
 void HGeomInterface::print() {

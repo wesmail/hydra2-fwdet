@@ -25,6 +25,9 @@ SOURCE_FILES :=	hdbcolumn.cc			\
 		hdbtable.pc			\
 		horadetruninfoio.pc		\
 		horaslowreader.pc		\
+		horaslowreaderonline.pc		\
+		horaslowreader2010.pc		\
+		horaslowreader2016.pc		\
 		horamagnetimport.pc
 
 include $(HADDIR)/hades.def.mk

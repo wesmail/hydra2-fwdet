@@ -21,6 +21,7 @@ private:
   Int_t    nData;         // Number of raw data in the corresponding period
   Int_t    status;        // Status flag
   Int_t    nMonData;      // Number of raw data in the monitor channel during the corresponding period
+  Int_t    nMonSmplPer;   // Sampling period of monitor_channel
 public:
   HOraSlowChanRunSum();
   ~HOraSlowChanRunSum() {}
@@ -33,7 +34,8 @@ public:
   void setNData(Int_t n) {nData=n;}
   void setStatus(Int_t n) {status=n;}
   void setNMonData(Int_t n) {nMonData=n;}
-  void fill(Int_t,Double_t,Double_t,Double_t,Double_t,Int_t,Int_t,Int_t);
+  void setNMonSmplPer(Int_t n) {nMonSmplPer=n;}
+  void fill(Int_t,Double_t,Double_t,Double_t,Double_t,Int_t,Int_t,Int_t,Int_t nMonSP=1);
   Int_t getPeriodIndex() {return periodIndex;}
   HOraSlowPeriod* getPeriod() {return period;}
   Double_t getMean() {return mean;}
@@ -43,6 +45,7 @@ public:
   Int_t getNData() {return nData;}
   Int_t getStatus() {return status;}
   Int_t getNMonData() {return nMonData;}
+  Int_t getNMonSmplPer() {return nMonSmplPer;}
   Int_t getMonRate();
   void print(Int_t valPrec=3);
   void write(fstream& fout,Int_t valPrec=3);

@@ -11,6 +11,9 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "horaslowpartition.h"
+#include "horaslowreaderonline.h"
+#include "horaslowreader2010.h"
+#include "horaslowreader2016.h"
 #include "horaslowperiod.h"
 #include "horaslowarchrateobj.h"
 #include "TGraph.h"
@@ -29,12 +32,32 @@ HOraSlowPartition::HOraSlowPartition(const Char_t* name) {
   pRates=0;
   ratesIter=0;
   pGraph=0;
+  pOraReader=0;
+  if (strcmp(name,"online")==0) {
+    pOraReader = new HOraSlowReaderOnline();
+  } else {
+    //Int_t year = ((Int_t)name(3)-'0')*10 + (Int_t)name(4)-'0');
+    TString bt(name,5);
+    bt.Remove(0,3);
+    Int_t year = bt.Atoi();
+    if (year > 0) {
+      if (year >= 16) pOraReader=new HOraSlowReader2016();
+      else            pOraReader=new HOraSlowReader2010();
+    } else {
+      Error("HOraSlowPartition(const Char_t* name)","Invalid partition name");
+    }
+  }
+  if (pOraReader) pOraReader->setPartition(this);
 }
 
 HOraSlowPartition::~HOraSlowPartition() {
   // Destructor
   clearRunPeriods();
   clearRates();
+  if (pOraReader) {
+    delete pOraReader;
+    pOraReader=0;
+  }
 }
 
 void HOraSlowPartition::clearRunPeriods() {
@@ -72,11 +95,33 @@ void HOraSlowPartition::deleteGraph() {
   }
 }
 
+Bool_t HOraSlowPartition::openOraInput() {
+  // Connnects to Oracle (is done automatically when needed)
+  if (pOraReader) return pOraReader->open();
+  else return kFALSE;
+}
+
+void HOraSlowPartition::closeOraInput() {
+  // Closes the Oracle connection
+  if (pOraReader) pOraReader->close();
+}
+
+void HOraSlowPartition::setTimeRange(const Char_t* t1,const Char_t* t2) {
+  // Compares the time ranges and if different clears the list of run periods
+  if (startTime.CompareTo(t1) != 0 || endTime.CompareTo(t2) != 0 ){
+    clearRunPeriods();
+    startTime = t1;
+    endTime   = t2;
+  }
+}
+
 TObjArray* HOraSlowPartition::setNumPeriods(Int_t n) {
   // Creates an array of size n for the periods 
   clearRunPeriods();
-  pRunPeriods=new TObjArray(n);
-  periodIter=pRunPeriods->MakeIterator();
+  if (n>0) {
+    pRunPeriods=new TObjArray(n);
+    periodIter=pRunPeriods->MakeIterator();
+  }
   return pRunPeriods;
 }
 
@@ -84,7 +129,7 @@ void HOraSlowPartition::setRates(TObjArray* p) {
   // Sets the array of archiver rates
   clearRates();
   pRates=p;
-  ratesIter=pRates->MakeIterator();
+  if (pRates) ratesIter=pRates->MakeIterator();
 }
 
 HOraSlowPeriod* HOraSlowPartition::getPeriod(Int_t i) {
@@ -94,7 +139,7 @@ HOraSlowPeriod* HOraSlowPartition::getPeriod(Int_t i) {
 }
 
 HOraSlowPeriod* HOraSlowPartition::getRun(Int_t runId) {
-  // Returns the pointer to the period corresponding to the run with id runId 
+  // Returns the pointer to the period corresponding to the run with id runId
   HOraSlowPeriod* p=0;
   if (periodIter) {
     periodIter->Reset();
@@ -186,6 +231,7 @@ void HOraSlowPartition::setHldFileFilter(TList* l) {
   }
 } 
 
+
 void HOraSlowPartition::printRates() {
   // Prints the archiver rates to stdout
   if (ratesIter) {
@@ -266,5 +312,4 @@ TGraph* HOraSlowPartition::getRatesGraph(Int_t mStyle,Int_t mColor) {
   yaxis->SetTitle("Entries per minute");
   return pGraph;
 }
-
 

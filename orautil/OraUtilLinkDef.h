@@ -30,6 +30,9 @@
 #pragma link C++ class HOraSlowArchRateObj;
 #pragma link C++ class HOraSlowChannel;
 #pragma link C++ class HOraSlowReader;
+#pragma link C++ class HOraSlowReaderOnline;
+#pragma link C++ class HOraSlowReader2010;
+#pragma link C++ class HOraSlowReader2016;
 #pragma link C++ class HOraSlowManager;
 
 #pragma link C++ global gHOraSlowManager;
