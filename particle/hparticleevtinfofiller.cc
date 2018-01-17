@@ -180,7 +180,7 @@ HParticleEvtInfoFiller::~HParticleEvtInfoFiller()
     delete pRpcHitIter;
     delete pShowerHitIter;
     delete pParticleCandIter;
-
+    delete pEmcClusIter;
     clearMembers();
 }
 // ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ void HParticleEvtInfoFiller::clearMembers()
     pRpcHitIter       = 0;
     pShowerHitIter    = 0;
     pParticleCandIter = 0;
-
+    pEmcClusIter      = 0;
 
     pParticleEvtInfoCat = 0;
 
