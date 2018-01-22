@@ -329,6 +329,7 @@ printf("     resolution effects                                                 
 #endif
 
             df.posU = cell_x;
+            df.posZ = cell_z;
 
             df.hitnr = ++track_hit_cnt[gf.trackNumber];
 

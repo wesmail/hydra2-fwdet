@@ -34,37 +34,19 @@ HFwDetRpcGeomPar::~HFwDetRpcGeomPar()
 {
 }
 
-void HFwDetRpcGeomPar::printParam() const
-{
-    cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
-    cout << "Number of detectors:   " << getModules() << endl;
-    for (Int_t m = 0; m < getModules(); ++m)
-    {
-        cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
-        cout << "Detector number:       " << m << endl;
-        // prints the geometry parameters of a single detector
-        cout << "Number of layers:      " << getLayers(m) << endl;
-        cout << "Module rotations:      " << getModulePhi(m) << endl;
-        cout << "Module Z-offset:       " << getModuleZ(m) << endl;
-
-        cout << "Layer Y-offsets:      ";
-        for (Int_t i = 0; i < getLayers(m); ++i)
-        {
-            cout << " " << getLayerY(m, i);
-        }
-        cout << endl;
-    }
-}
-
 void HFwDetRpcGeomPar::clear()
 {
     for (Int_t i = 0; i < FWDET_RPC_MAX_MODULES; ++i)
     {
         // clear all variables
         sm_mods[i].nLayers = 0;
-        sm_mods[i].fModulePhi = 0;
-        sm_mods[i].fModuleZ = 0;
-        sm_mods[i].fLayerY = 0;
+        sm_mods[i].fModulePhi = 0.0;
+        sm_mods[i].fModuleZ = 0.0;
+        sm_mods[i].fLayerY = 0.0;
+        sm_mods[i].nStrips = 0;
+        sm_mods[i].fStripLength = 0.0;
+        sm_mods[i].fStripWidth = 0.0;
+        sm_mods[i].fStripGap = 0.0;
     }
 }
 
@@ -114,6 +96,46 @@ Float_t HFwDetRpcGeomPar::getLayerY(Int_t m, Int_t l) const
         return -1;
 }
 
+Int_t HFwDetRpcGeomPar::getStrips(Int_t m, Int_t l) const
+{
+    // return number of layers in module 'm'
+    // m -- module number
+    if (m < getModules() && l < getLayers(m))
+        return sm_mods[m].nStrips[l];
+    else
+        return 0;
+}
+
+Float_t HFwDetRpcGeomPar::getStripLength(Int_t m, Int_t l) const
+{
+    // return strip length
+    // m -- module number
+    if (m < getModules() && l < getLayers(m))
+        return sm_mods[m].fStripLength[l];
+    else
+        return 0.0;
+}
+
+Float_t HFwDetRpcGeomPar::getStripWidth(Int_t m, Int_t l) const
+{
+    // return strip width
+    // m -- module number
+    if (m < getModules() && l < getLayers(m))
+        return sm_mods[m].fStripWidth[l];
+    else
+        return 0.0;
+}
+
+Float_t HFwDetRpcGeomPar::getStripGap(Int_t m, Int_t l) const
+{
+    // return strip gap
+    // m -- module number
+    if (m < getModules() && l < getLayers(m))
+        return sm_mods[m].fStripGap[l];
+    else
+        return 0.0;
+}
+
 void HFwDetRpcGeomPar::setModules(int m)
 {
     if (m <= FWDET_RPC_MAX_MODULES)
@@ -126,6 +148,10 @@ void HFwDetRpcGeomPar::setLayers(Int_t m, Int_t l)
     // resizes all depending arrays
     sm_mods[m].nLayers = l;
     sm_mods[m].fLayerY.Set(l);
+    sm_mods[m].nStrips.Set(l);
+    sm_mods[m].fStripLength.Set(l);
+    sm_mods[m].fStripWidth.Set(l);
+    sm_mods[m].fStripGap.Set(l);
 }
 
 void HFwDetRpcGeomPar::setModulePhi(Int_t m, Float_t r)
@@ -161,6 +187,50 @@ void HFwDetRpcGeomPar::setLayerY(Int_t m, Int_t l, Float_t o)
     }
 }
 
+void HFwDetRpcGeomPar::setStrips(Int_t m, Int_t l, Int_t s)
+{
+    // set number of blocks for module 'm'
+    // m -- module number
+    // b -- number of blocks
+    if (m < getModules() && l < getLayers(m))
+    {
+        sm_mods[m].nStrips[l] = s;
+    }
+}
+
+void HFwDetRpcGeomPar::setStripLength(Int_t m, Int_t l, Float_t len)
+{
+    // set strip length
+    // m -- module number
+    // b -- number of blocks
+    if (m < getModules() && l < getLayers(m))
+    {
+        sm_mods[m].fStripLength[l] = len;
+    }
+}
+
+void HFwDetRpcGeomPar::setStripWidth(Int_t m, Int_t l, Float_t w)
+{
+    // set strip length
+    // m -- module number
+    // b -- number of blocks
+    if (m < getModules() && l < getLayers(m))
+    {
+        sm_mods[m].fStripWidth[l] = w;
+    }
+}
+
+void HFwDetRpcGeomPar::setStripGap(Int_t m, Int_t l, Float_t g)
+{
+    // set strip length
+    // m -- module number
+    // b -- number of blocks
+    if (m < getModules() && l < getLayers(m))
+    {
+        sm_mods[m].fStripGap[l] = g;
+    }
+}
+
 void HFwDetRpcGeomPar::putParams(HParamList* l)
 {
     // add the parameters to the list for writing
@@ -178,6 +248,10 @@ void HFwDetRpcGeomPar::putParams(HParamList* l)
     TArrayF par_modulePhi(nModules);
     TArrayF par_moduleZ(nModules);
     TArrayF par_layerY(total_layers);
+    TArrayI par_strips(total_layers);
+    TArrayF par_stripLength(total_layers);
+    TArrayF par_stripWidth(total_layers);
+    TArrayF par_stripGap(total_layers);
 
     Int_t cnt_layers = 0;
 
@@ -197,20 +271,30 @@ void HFwDetRpcGeomPar::putParams(HParamList* l)
         for (Int_t l = 0; l < layers; ++l)
         {
             Int_t offset = getLayerY(i, l);
+            Int_t sn = getStrips(i, l);
+            Float_t sl = getStripLength(i, l);
+            Float_t sw = getStripWidth(i, l);
+            Float_t sg = getStripGap(i, l);
 
-            // set number of panels
             par_layerY.SetAt(offset, cnt_layers + l);
+            par_strips.SetAt(sn, cnt_layers + l);
+            par_stripLength.SetAt(sl, cnt_layers + l);
+            par_stripWidth.SetAt(sw, cnt_layers + l);
+            par_stripGap.SetAt(sg, cnt_layers + l);
         }
 
         cnt_layers += layers;
     }
 
-
-    l->add("fModules",   nModules);
-    l->add("fLayers",    par_layers);
-    l->add("fModulePhi", par_modulePhi);
-    l->add("fModuleZ",   par_moduleZ);
-    l->add("fLayerY",    par_layerY);
+    l->add("fModules",     nModules);
+    l->add("fLayers",      par_layers);
+    l->add("fModulePhi",   par_modulePhi);
+    l->add("fModuleZ",     par_moduleZ);
+    l->add("fLayerY",      par_layerY);
+    l->add("nStrips",      par_strips);
+    l->add("fStripLength", par_stripLength);
+    l->add("fStripWidth",  par_stripWidth);
+    l->add("fStripGap",    par_stripGap);
 }
 
 Bool_t HFwDetRpcGeomPar::getParams(HParamList* l)
@@ -261,7 +345,7 @@ Bool_t HFwDetRpcGeomPar::getParams(HParamList* l)
         total_layers += par_layers[d];
     }
 
-    TArrayF par_layerY;
+    TArrayF par_layerY(total_layers);
     if (!l->fill("fLayerY", &par_layerY))
         return kFALSE;
 
@@ -269,6 +353,50 @@ Bool_t HFwDetRpcGeomPar::getParams(HParamList* l)
     {
         Error("HFwDetRpcGeomPar::getParams(HParamList* l)",
               "Array size of panels=%d does not fit to number of layers=%d", par_layers.GetSize(), total_layers);
+        return kFALSE;
+    }
+
+    TArrayI par_strips(total_layers);
+    if (!l->fill("nStrips", &par_strips))
+        return kFALSE;
+
+    if (par_strips.GetSize() != total_layers)
+    {
+        Error("HFwDetRpcGeomPar::getParams(HParamList* l)",
+              "Array size of strips=%d does not fit to number of layers=%d", par_layers.GetSize(), total_layers);
+        return kFALSE;
+    }
+
+    TArrayF par_stripLength(total_layers);
+    if (!l->fill("fStripLength", &par_stripLength))
+        return kFALSE;
+
+    if (par_stripLength.GetSize() != total_layers)
+    {
+        Error("HFwDetRpcGeomPar::getParams(HParamList* l)",
+              "Array size of stripLength=%d does not fit to number of layers=%d", par_layers.GetSize(), total_layers);
+        return kFALSE;
+    }
+
+    TArrayF par_stripWidth(total_layers);
+    if (!l->fill("fStripWidth", &par_stripWidth))
+        return kFALSE;
+
+    if (par_stripWidth.GetSize() != total_layers)
+    {
+        Error("HFwDetRpcGeomPar::getParams(HParamList* l)",
+              "Array size of stripWidth=%d does not fit to number of layers=%d", par_layers.GetSize(), total_layers);
+        return kFALSE;
+    }
+
+    TArrayF par_stripGap(total_layers);
+    if (!l->fill("fStripGap", &par_stripGap))
+        return kFALSE;
+
+    if (par_stripGap.GetSize() != total_layers)
+    {
+        Error("HFwDetRpcGeomPar::getParams(HParamList* l)",
+              "Array size of stripGap=%d does not fit to number of layers=%d", par_layers.GetSize(), total_layers);
         return kFALSE;
     }
 
@@ -289,10 +417,11 @@ Bool_t HFwDetRpcGeomPar::getParams(HParamList* l)
         // iterate over layers
         for (Int_t l = 0; l < layers; ++l)
         {
-            Float_t offset = par_layerY[cnt_layers + l];
-
-            // set number of planes
-            setLayerY(i, l, offset);
+            setLayerY(i, l, par_layerY[cnt_layers + l]);
+            setStrips(i, l, par_strips[cnt_layers + l]);
+            setStripLength(i, l, par_stripLength[cnt_layers + l]);
+            setStripWidth(i, l, par_stripWidth[cnt_layers + l]);
+            setStripGap(i, l, par_stripGap[cnt_layers + l]);
         }
         cnt_layers += layers;
     }

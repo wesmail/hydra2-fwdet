@@ -1,5 +1,5 @@
-//*-- Author  : Luis silva
-//*-- Created : 27.01.2016
+//*-- Author  : Rafal Lalik
+//*-- Created : 03.05.2017
 
 //_HADES_CLASS_DESCRIPTION
 /////////////////////////////////////////////////////////////
@@ -28,6 +28,8 @@ using namespace std;
 #include "hfwdetrpcdigipar.h"
 #include "hfwdetrpcgeompar.h"
 
+#include "TRandom.h"
+
 // #define VERBOSE_MODE 1
 
 ClassImp(HFwDetRpcDigitizer);
@@ -54,8 +56,8 @@ void HFwDetRpcDigitizer::initVariables()
     // initialize the variables in constructor
     pGeantFwDetCat  = 0;
     pFwDetRpcCalCat = 0;
-    pFwDetRpcDigiPar     = 0;
-    pFwDetRpcGeomPar     = 0;
+    pFwDetRpcDigiPar = 0;
+    pFwDetRpcGeomPar = 0;
     fLoc.setNIndex(4);
     fLoc.set(4,0,0);
 }
@@ -113,8 +115,9 @@ Bool_t HFwDetRpcDigitizer::reinit()
     for (Int_t m = 0; m < mods; ++m)
     {
         Float_t phi = pFwDetRpcGeomPar->getModulePhi(m);
-        sina[m] = sin(TMath::DegToRad() * phi);
-        cosa[m] = cos(TMath::DegToRad() * phi);
+        rot[m] = TMath::DegToRad() * phi;
+        sina[m] = sin(rot[m]);
+        cosa[m] = cos(rot[m]);
         Int_t lays = pFwDetRpcGeomPar->getLayers(m);
         for (Int_t l = 0; l < lays; ++l)
         {
@@ -139,12 +142,9 @@ Int_t HFwDetRpcDigitizer::execute()
     Int_t   geaCell;        // cell number
     Char_t  geaSubCell;     // sub cell number
 
-    Int_t c_tr = -1;      // current (tracked) variables
-    Int_t c_mod = -1;
-    Int_t c_lay = -1;
-
-    RpcTrackHits rpc_track_hit;
-    rpc_track_hit.hits_num = 0;
+    Float_t time_reso = pFwDetRpcDigiPar->getTimeReso();
+    Float_t time_prop = pFwDetRpcDigiPar->getTimeProp();
+    Float_t time_offset = pFwDetRpcDigiPar->getTimeOffset();
 
     Int_t entries = pGeantFwDetCat->getEntries();
 
@@ -164,6 +164,7 @@ printf("<<-- RPC: VERBOSE_MODE ON - process %3d entries ->>\n", entries);
 
             Char_t module;  // rpc module number
             Char_t layer;   // rpc layer number
+
             GeantFields gf;
             // calculate rpc cell number and set location indexes
             module = geaModule - FWDET_RPC_MODULE_MIN + (geaLayer >> 1);
@@ -172,172 +173,124 @@ printf("<<-- RPC: VERBOSE_MODE ON - process %3d entries ->>\n", entries);
             ghit->getHit(gf.xHit, gf.yHit, gf.zHit, gf.pxHit, gf.pyHit, gf.pzHit, gf.tofHit, gf.trackLength, gf.eHit);
             gf.trackNumber = ghit->getTrackNumber();
 
-            if (gf.trackNumber != c_tr or module != c_mod or layer != c_lay)
-            {
-                // new track, but do something with the old one
-                if (rpc_track_hit.hits_num > 0)
-                    processHits(rpc_track_hit);
-
-                c_tr = gf.trackNumber;
-                c_mod = module;
-                c_lay = layer;
-
-                rpc_track_hit.mod = module;
-                rpc_track_hit.lay = layer;
-                rpc_track_hit.hits_num = 0;
-                rpc_track_hit.track = c_tr;
-            }
-
             Int_t m = (Int_t)module;
             Int_t l = (Int_t)layer;
 
             Float_t offy = offset[m][l];
 
+            Float_t xx = gf.xHit;
+            Float_t yy = gf.yHit + offy;
+
+            Float_t x_lab = xx*cosa[m] - yy*sina[m];
+            Float_t y_lab = xx*sina[m] + yy*cosa[m];
+
+            Float_t strip_half_len = pFwDetRpcGeomPar->getStripLength(m, l)/2.;
+
+            Float_t base_time = gf.tofHit + time_offset;
+            // estimation of time
+            Float_t tr = (strip_half_len + gf.xHit) / time_prop + base_time;
+            Float_t tl = (strip_half_len - gf.xHit) / time_prop + base_time;
+
+            if (time_reso > 0.0)
+            {
+                tl += gRandom->Gaus(0.0, time_reso);
+                tl = TMath::Max(Float_t(0), tl);
+
+                tr += gRandom->Gaus(0.0, time_reso);
+                tr = TMath::Max(Float_t(0), tr);
+            }
+
+            // fake charge
+            Float_t ql = (gf.xHit + strip_half_len) * time_prop + time_offset;
+            Float_t qr = (strip_half_len - gf.xHit) * time_prop + time_offset;
+
+            Int_t strip = findStrip(m, l, gf.yHit);
+            Int_t max_strips = pFwDetRpcGeomPar->getStrips(m, l);
+            if (strip < 0 || strip >= max_strips)
+            {
+                Error("HFwDetRpcDigitizer::execute()","Strip number %d,%d,%f -> %d outside allowed range %d,%d", m, l, gf.yHit, strip, 0, max_strips);
+                continue;
+            }
+
+            ClusterFields cf;
+            cf.m = m;
+            cf.l = l;
+            cf.s = strip;
+            cf.tl = tl;
+            cf.tr = tr;
+            cf.ql = ql;
+            cf.qr = qr;
+            cf.tof = gf.tofHit;
+            cf.track = gf.trackNumber;
+            cf.x = x_lab;
+            cf.y = y_lab;
+
 #ifdef VERBOSE_MODE
 printf("[%2d] (%d,%d,%d,%d) -> (%d,%d,%d,%d)\n", gf.trackNumber,
        geaModule, geaLayer, geaCell, geaSubCell, module, layer, geaCell, geaSubCell);
 printf("(%d,%d)  cosa=%f, sina=%f, off=%f   ", m, l, cosa[m], sina[m], offset[m][l]);
+printf("%f,%f -> %f,%f -> %f,%f\n", gf.xHit, gf.yHit, xx, yy, cf.x, cf.y);
 #endif
 
-            Float_t xx = gf.xHit;
-            Float_t yy = gf.yHit + offy;
-
-            x = xx*cosa[m] - yy*sina[m];
-            y = xx*sina[m] + yy*cosa[m];
-
-#ifdef VERBOSE_MODE
-printf("%f,%f -> %f,%f -> %f,%f\n", gf.xHit, gf.yHit, xx, yy, x, y);
-#endif
-
-
-// #ifdef VERBOSE_MODE
-// printf("(%2d) gm=%d  gl=%d  gc=%d tn=%d -> hit=(%f,%f,%f)  el=%f  tof=%f  p=%f (%f,%f,%f)\n", ++cnt, geantModule, geantLayer, geantCell, trackNumber, xHit, yHit, zHit, eHit, tofHit, sqrt(pxHit*pxHit + pyHit*pyHit + pzHit*pzHit), pxHit, pyHit, pzHit);
-// #endif
-
-            Int_t hn = rpc_track_hit.hits_num;
-            rpc_track_hit.cell[hn] = geaCell*FWDET_RPC_MAX_SUBCELLS + geaSubCell;
-            rpc_track_hit.x[hn] = gf.xHit;
-            rpc_track_hit.y[hn] = gf.yHit;
-            rpc_track_hit.strip[hn] = findStrip(gf.yHit);
-            rpc_track_hit.tof[hn] = gf.tofHit;
-            rpc_track_hit.lab_x[hn] = x;
-            rpc_track_hit.lab_y[hn] = y;
-            ++rpc_track_hit.hits_num;
+            fillHit(cf);
         }
     }
-
-    if (rpc_track_hit.hits_num > 0)
-        processHits(rpc_track_hit);
 
     return 0;
 }
 
-void HFwDetRpcDigitizer::processHits(const RpcTrackHits & rpc_track_hit)
+Int_t HFwDetRpcDigitizer::findStrip(Int_t m, Int_t l, Float_t x)
 {
-    // here you process the data, e.g.
+    Int_t strips_num = pFwDetRpcGeomPar->getStrips(m, l);  // go to params
+    Float_t strip_width = pFwDetRpcGeomPar->getStripWidth(m, l);
+    Float_t strip_gap = pFwDetRpcGeomPar->getStripGap(m, l);
+    Float_t ax = abs(x);
 
-#ifdef VERBOSE_MODE
-    rpc_track_hit.print();
-    printf("\n");
-#endif
-
-    Int_t fired_cells = rpc_track_hit.hits_num;
-
-    Float_t avg_x = 0.0;
-    Float_t avg_y = 0.0;
-    Float_t avg_t = 0.0;
-
-    Int_t cnt_cells = 0;
-    Int_t tracked_strip = -1;
-    Int_t current_strip = -1;
-
-    // loop over all cells
-    for (Int_t i = 0; i < fired_cells; ++i)
+    if ((strips_num & 0x1) == 1) // odd strips calc
     {
-        // get current strip number (project hit coordinate to strip)
-        // y (in local geometry) is used as a coordinate to reflect strip
-        current_strip = rpc_track_hit.strip[i];
-
-        // if another strip that before, process the strip's hit
-        if (current_strip != tracked_strip)
+        Int_t limit = (strips_num + 1)/2;
+        Int_t i = 0;
+        for (i = 0; i < limit; ++i)
         {
-            if (cnt_cells > 0)
+            Float_t upper_x = strip_width/2.0 + (strip_gap+strip_width)*i;
+//             Float_t lower_x = -strip_width/2.0 + (strip_gap+strip_width)*i;
+
+            if (ax < upper_x/* && ax > lower_x*/) // FIXME gap hit is assigned to a strip
             {
-                // calculate and save hit from strip
-                // avg_x is used to reflect position along strip
-                calculateHit(rpc_track_hit.mod, rpc_track_hit.lay,
-                    current_strip, avg_x / cnt_cells, avg_t / cnt_cells, rpc_track_hit.track);
+                if (x < 0)
+                    return strips_num/2 - i;
+                else
+                    return strips_num/2 + i;
             }
-
-            // reset variables
-            cnt_cells = 0;
-            tracked_strip = current_strip;
         }
-
-        avg_x += rpc_track_hit.x[i];
-        avg_y += rpc_track_hit.y[i];
-        avg_t += rpc_track_hit.tof[i];
-        ++cnt_cells;
     }
-
-    if (cnt_cells > 0)
+    else // even strips calc
     {
-        // calculate and save hit from strip
-        calculateHit(rpc_track_hit.mod, rpc_track_hit.lay,
-            current_strip, avg_y / cnt_cells, avg_t / cnt_cells, rpc_track_hit.track);
+        Int_t limit = strips_num/2;
+        Int_t i = 0;
+        for (i = 0; i < limit; ++i)
+        {
+            Float_t upper_x = -strip_gap/2.0 + (strip_gap+strip_width)*(i+1);
+//             Float_t lower_x = strip_gap/2.0 + (strip_gap+strip_width)*i;
+
+            if (ax < upper_x/* && ax > lower_x*/) // FIXME gap hit is assigned to a strip
+            {
+                if (x < 0)
+                    return limit - 1 - i;
+                else
+                    return limit + i;
+            }
+        }
     }
-}
 
-bool HFwDetRpcDigitizer::calculateHit(Int_t mod, Int_t lay, Int_t s, Float_t a_y, Float_t a_tof, Int_t track)
-{
-    Float_t strip_length = 900.;    // should go to params
-    Float_t dt_slope = 0.2;         // should go to params
-    Float_t dt_offset = 0.;         // should go to params
-
-    Float_t strip_half_len = strip_length/2.;
-
-    // estimation of time
-    Float_t tl = (a_y + strip_half_len) * dt_slope + dt_offset;
-    Float_t tr = (strip_half_len - a_y) * dt_slope + dt_offset;
-
-    // fake charge
-    Float_t ql = (a_y + strip_half_len) * dt_slope + dt_offset;
-    Float_t qr = (strip_half_len - a_y) * dt_slope + dt_offset;
-
-    // save hit from strip
-
-    ClusterFields cf;
-    cf.m = mod;
-    cf.l = lay;
-    cf.s = s;
-    cf.tl = tl;
-    cf.tr = tr;
-    cf.ql = ql;
-    cf.qr = qr;
-    cf.tof = a_tof;
-    cf.track = -1;
-    return fillHit(cf);
-}
-
-Int_t HFwDetRpcDigitizer::findStrip(Float_t x)
-{
-    Int_t strips_num = 30;  // go to params
-//     Float_t strip_gap = 0.0;    // go to params
-    Float_t strip_width = 30.0;
-
-    // quick estimations
-    // no gap included
-    // center of layer is (0,0) coordinate
-    Int_t strip = (x / strip_width) + strips_num/2;
-
-    return strip;
+    return -1;
 }
 
 bool HFwDetRpcDigitizer::fillHit(const ClusterFields & cf)
 {
     fLoc[0] = cf.m;    // module
     fLoc[1] = cf.l;    // layer
-    fLoc[2] = 0;    // dummy
+    fLoc[2] = 0;       // dummy
     fLoc[3] = cf.s;    // strip
 
     HFwDetRpcCalSim * cal = (HFwDetRpcCalSim*)pFwDetRpcCalCat->getObject(fLoc);
@@ -355,7 +308,14 @@ bool HFwDetRpcDigitizer::fillHit(const ClusterFields & cf)
         {
             Int_t n = cal->getHitsNum();
             cal->setTrack(n-1, cf.track);
-            cal->setHit(n-1, x, y, cf.tof);
+            cal->setHit(n-1, cf.x, cf.y, cf.tof);
+
+            cal->reconstructHits(pFwDetRpcDigiPar->getTimeProp(),
+                                 pFwDetRpcGeomPar->getStripLength(cf.m, cf.l),
+                                 pFwDetRpcGeomPar->getStripWidth(cf.m, cf.l),
+                                 pFwDetRpcGeomPar->getStripGap(cf.m, cf.l),
+                                 pFwDetRpcGeomPar->getStrips(cf.m, cf.l),
+                                 offset[cf.m][cf.l], rot[cf.m]);
         }
 
 #ifdef VERBOSE_MODE

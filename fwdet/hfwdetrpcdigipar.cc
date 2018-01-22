@@ -27,8 +27,11 @@ HFwDetRpcDigiPar::~HFwDetRpcDigiPar()
 void HFwDetRpcDigiPar::clear()
 {
     // clears the container
-    nRpcCells = 0;
-    rpcRadius = 0.F;
+    nDigiModel = 0;
+    fTimeReso = 0.0;
+    fTimeProp = 0.0;
+    fTimeOffset = 0.0;
+
     status = kFALSE;
     resetInputVersions();
     changed = kFALSE;
@@ -38,15 +41,19 @@ void HFwDetRpcDigiPar::putParams(HParamList* l)
 {
     // puts all parameters to the parameter list, which is used by the io
     if (!l) return;
-    l->add("nRpcCells", nRpcCells );
-    l->add("fRpcRadius", rpcRadius );
+    l->add("nDigiModel", nDigiModel);
+    l->add("fTimeReso", fTimeReso);
+    l->add("fTimeProp", fTimeProp);
+    l->add("fTimeOffset", fTimeOffset);
 }
 
 Bool_t HFwDetRpcDigiPar::getParams(HParamList* l)
 {
     // gets all parameters from the parameter list, which is used by the io
     if (!l) return kFALSE;
-    if (!( l->fill("nRpcCells", &nRpcCells))) return kFALSE;
-    if (!( l->fill("fRpcRadius", &rpcRadius))) return kFALSE;
+    if (!( l->fill("nDigiModel", &nDigiModel))) return kFALSE;
+    if (!( l->fill("fTimeReso", &fTimeReso))) return kFALSE;
+    if (!( l->fill("fTimeProp", &fTimeProp))) return kFALSE;
+    if (!( l->fill("fTimeOffset", &fTimeOffset))) return kFALSE;
     return kTRUE;
 }

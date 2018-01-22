@@ -9,31 +9,6 @@ class HCategory;
 class HFwDetRpcDigiPar;
 class HFwDetRpcGeomPar;
 
-struct RpcTrackHits {
-    Int_t hits_num;
-    Int_t mod;
-    Int_t lay;
-    // factor 4 for cases of mult scatt.
-    Int_t cell[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
-    Float_t x[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
-    Float_t y[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
-    Int_t strip[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
-    Float_t tof[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
-    Float_t lab_x[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
-    Float_t lab_y[FWDET_RPC_MAX_CELLS*FWDET_RPC_MAX_SUBCELLS*4];
-    Int_t track;
-
-    void print() const
-    {
-        printf("  mod=%d  lay=%d  hits=%d\n", mod, lay, hits_num);
-        for (int i= 0; i < hits_num; ++i)
-        {
-            printf("     c=%d  x=%f  y=%f  tof=%f  strip=%d   lab=%f,%f\n",
-                   cell[i], x[i], y[i], tof[i], strip[i], lab_x[i], lab_y[i]);
-        }
-    }
-};
-
 class HFwDetRpcDigitizer : public HReconstructor
 {
 private:
@@ -69,26 +44,11 @@ private:
         Float_t qr;
         Float_t tof;
         Int_t track;
+        Float_t x;
+        Float_t y;
     };
 
-//     Int_t   trackNumber;  // GEANT track number
-//     Char_t  module;       // rpc module number
-//     Char_t  layer;       // rpc module number
-//     Int_t   rpcNum;       // rpc cell number
-//     Float_t xHit;         // x of hit  (in mm) in cell coord. system
-//     Float_t yHit;         // y of hit  (in mm) in cell coord. system
-//     Float_t zHit;         // z of hit  (in mm) in cell coord. system
-//     Float_t pxHit;        // x component of hit momentum (in MeV/c)
-//     Float_t pyHit;        // y component of hit momentum (in MeV/c)
-//     Float_t pzHit;        // z component of hit momentum (in MeV/c)
-//     Float_t tofHit;       // time of flight of hit (in ns)
-//     Float_t trackLength;  // track length (in mm)
-//     Float_t eHit;         // energy deposited (in MeV)
-
-    // variables for tracking cell hits
-
-    Float_t x;
-    Float_t y;
+    Float_t rot[FWDET_RPC_MAX_MODULES];
     Float_t sina[FWDET_RPC_MAX_MODULES];
     Float_t cosa[FWDET_RPC_MAX_MODULES];
     Float_t offset[FWDET_RPC_MAX_MODULES][FWDET_RPC_MAX_LAYERS];
@@ -105,11 +65,9 @@ public:
     Int_t  execute();
     Bool_t finalize() { return kTRUE;}
 
-    Int_t findStrip(Float_t x);
+    Int_t findStrip(Int_t m, Int_t l, Float_t x);
 
-    void processHits(const RpcTrackHits & rpc_track_hits);
-    bool calculateHit(Int_t mod, Int_t lay, Int_t s, Float_t a_y, Float_t a_tof, Int_t track);
-
+private:
     bool fillHit(const ClusterFields & cf);
 
     ClassDef(HFwDetRpcDigitizer, 0);

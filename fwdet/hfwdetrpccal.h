@@ -16,6 +16,11 @@ protected:
     Float_t fTimeR[FWDET_RPC_MAX_HITS];     // time right
     Float_t fChargeL[FWDET_RPC_MAX_HITS];   // charge left
     Float_t fChargeR[FWDET_RPC_MAX_HITS];   // charge right
+    Float_t fTof[FWDET_RPC_MAX_HITS];
+    Float_t fU[FWDET_RPC_MAX_HITS];
+    Float_t fV[FWDET_RPC_MAX_HITS];
+    Float_t fX[FWDET_RPC_MAX_HITS];
+    Float_t fY[FWDET_RPC_MAX_HITS];
     Int_t   nHitsNum;
 
 public:
@@ -30,7 +35,18 @@ public:
     Bool_t setHit(Int_t n, Float_t tl, Float_t tr, Float_t ql, Float_t qr);
     Bool_t addHit(Float_t tl, Float_t tr, Float_t ql, Float_t qr);
 
+    Float_t getTof(Int_t n) const;
+    Float_t getU(Int_t n) const;
+    Float_t getV(Int_t n) const;
+    Float_t getX(Int_t n) const;
+    Float_t getY(Int_t n) const;
+
+    //                   v_prop     length     width      gap size   #strips  st. offset  rot,
+    void reconstructHits(Float_t v, Float_t L, Float_t W, Float_t g, Int_t s, Float_t so, Float_t r);
     void print() const;
+
+private:
+    void calcHit(Int_t n, Float_t v, Float_t L, Float_t W, Float_t g, Int_t s, Float_t so, Float_t r);
 
     ClassDef(HFwDetRpcCal, 1)
 };

@@ -134,8 +134,6 @@ Bool_t HFwDetRpcHitFinder::reinit()
 
 Int_t HFwDetRpcHitFinder::execute()
 {
-    // Digitization of GEANT hits and storage in HFwDetRpcCalSim
-
     HFwDetRpcCalSim * cal = 0;
 
 #ifdef VERBOSE_MODE
@@ -163,7 +161,9 @@ printf("<<--- RPC: VERBOSE_MODE ON ---------------------->>\n");
 
             for (Int_t h = 0; h < hitsNum; ++h)
             {
-                cal->getHit(h, x, y, tof);
+                x = cal->getX(h);
+                y = cal->getY(h);
+                tof = cal->getTof(h);
                 cal->getTrack(h, track);
 
                 RpcHit rpch;

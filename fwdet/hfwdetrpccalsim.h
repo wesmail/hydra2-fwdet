@@ -9,9 +9,9 @@ class HFwDetRpcCalSim : public HFwDetRpcCal
 {
 public:
     Int_t   nTrack[FWDET_RPC_MAX_HITS]; // geant track contributing to the hit
-    Float_t fX[FWDET_RPC_MAX_HITS];
-    Float_t fY[FWDET_RPC_MAX_HITS];
-    Float_t fTof[FWDET_RPC_MAX_HITS];
+    Float_t fXGea[FWDET_RPC_MAX_HITS];
+    Float_t fYGea[FWDET_RPC_MAX_HITS];
+    Float_t fTofGea[FWDET_RPC_MAX_HITS];
 
 public:
     HFwDetRpcCalSim();
@@ -32,9 +32,9 @@ Bool_t HFwDetRpcCalSim::setHit(Int_t n, Float_t x, Float_t y, Float_t t)
 {
     if (n < nHitsNum)
     {
-        fX[n] = x;
-        fY[n] = y;
-        fTof[n] = t;
+        fXGea[n] = x;
+        fYGea[n] = y;
+        fTofGea[n] = t;
         return kTRUE;
     }
     return kFALSE;
@@ -44,9 +44,9 @@ Bool_t HFwDetRpcCalSim::getHit(Int_t n, Float_t& x, Float_t& y, Float_t& t) cons
 {
     if (n < nHitsNum)
     {
-        x = fX[n];
-        y = fY[n];
-        t = fTof[n];
+        x = fXGea[n];
+        y = fYGea[n];
+        t = fTofGea[n];
         return kTRUE;
     }
     return kFALSE;
