@@ -1336,6 +1336,97 @@ void  HGeantKine::getNHitsDecayBit(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t
     }
 }
 
+Bool_t HGeantKine::isInTrackAcceptanceFW(Int_t & nrpc)
+{
+    // To have fully reconstructed track, at least one hit
+    // in each of eight double-layers must be registered.
+    // Hit in RPC is need to reconstruct momentum, but not for the track.
+
+    nrpc = getNFwDetHitsRpc();
+
+    UInt_t acc2 = getAcceptanceFWBit() & 0xFFFF;
+
+    for (int i = 0; i < 16; i += 2)
+    {
+        if ( ! ( (acc2 & (0x1 << (i))) || (acc2 & (0x1 << (i+1))) ) )
+            return kFALSE;
+    }
+
+    return kTRUE;
+}
+
+Bool_t HGeantKine::isInTrackAcceptanceFWDecay(Int_t & nrpc)
+{
+    // To have fully reconstructed track, at least one hit
+    // in each of eight double-layers must be registered.
+    // Hit in RPC is need to reconstruct momentum, but not for the track.
+
+    nrpc = getNFwDetHitsRpc();
+
+    UInt_t acc2 = getAcceptanceFWBit() & 0xFFFF;
+
+    HGeantKine* d = HGeantKine::getChargedDecayDaughter(this);
+
+    if(d)
+    {
+        UInt_t acc2_d = d->getAcceptanceFWBit() & 0xFFFF;
+        acc2 |= acc2_d;
+    }
+
+    for (int i = 0; i < 16; i += 2)
+    {
+        if ( ! ( (acc2 & (0x1 << (i))) || (acc2 & (0x1 << (i+1))) ) )
+            return kFALSE;
+    }
+
+    return kTRUE;
+}
+
+Bool_t HGeantKine::isInTrackAcceptanceFWBit(Int_t & nrpc)
+{
+    // To have fully reconstructed track, at least one hit
+    // in each of eight double-layers must be registered.
+    // Hit in RPC is need to reconstruct momentum, but not for the track.
+
+    nrpc = getNFwDetHitsRpc();
+
+    for (int i = 0; i < 16; i += 2)
+    {
+        if ( ! ( (acceptance2 & (0x1 << (i))) || (acceptance2 & (0x1 << (i+1))) ) )
+            return kFALSE;
+    }
+
+    return kTRUE;
+}
+
+Bool_t HGeantKine::isInTrackAcceptanceFWDecayBit(Int_t & nrpc)
+{
+    // To have fully reconstructed track, at least one hit
+    // in each of eight double-layers must be registered.
+    // Hit in RPC is need to reconstruct momentum, but not for the track.
+
+    nrpc = getNFwDetHitsRpc();
+
+    UInt_t acc2 = acceptance2 & 0xFFFF;
+
+    HGeantKine* d = HGeantKine::getChargedDecayDaughter(this);
+
+    if(d)
+    {
+        UInt_t acc2_d = 0x0;
+        d->getStrawLayers(acc2_d);
+        acc2 |= acc2_d;
+    }
+
+    for (int i = 0; i < 16; i += 2)
+    {
+        if ( ! ( (acc2 & (0x1 << (i))) || (acc2 & (0x1 << (i+1))) ) )
+            return kFALSE;
+    }
+
+    return kTRUE;
+}
+
 Bool_t HGeantKine::isInAcceptanceFW(Int_t nstraw,Int_t nrpc)
 {
     // return kTRUE if the particle has hit at least nstraw double Layer STRAW (default 4)
@@ -1420,7 +1511,7 @@ void HGeantKine::fillAcceptanceFWBit() {
 
 	while( (hit = (HGeantFwDet*)nextFwDetHit()) != NULL){
 	    if(hit->getModule()<=2) {  // STRAW
-		setStrawLayer(hit->getLayer()+4*hit->getModule());
+		setStrawLayer(hit->getCell()%2 + 2*hit->getLayer() + 8*hit->getModule());
 	    }
 	    if(hit->getModule()>=6) {  // RPC
 		setFWRpcLayer(hit->getLayer());
@@ -1429,6 +1520,27 @@ void HGeantKine::fillAcceptanceFWBit() {
 	resetFwDetIter();
     }
     setAcceptanceFWFilled();
+}
+
+UInt_t HGeantKine::getAcceptanceFWBit() {
+    //
+    UInt_t acc2 = 0x0;
+    if(firstFwDetHit > -1)
+    {
+        resetFwDetIter();
+        HGeantFwDet* hit=0;
+
+        while( (hit = (HGeantFwDet*)nextFwDetHit()) != NULL){
+            if(hit->getModule()<=2) {  // STRAW
+                acc2 |= 0x1 << (hit->getCell()%2 + 2*hit->getLayer() + 8*hit->getModule());
+            }
+            if(hit->getModule()>=6) {  // RPC
+                acc2 |= 0x1 << (16 + hit->getLayer());
+            }
+        }
+        resetFwDetIter();
+    }
+    return acc2;
 }
 
 void  HGeantKine::getNHitsFW(Int_t& nstraw,Int_t& nrpc)

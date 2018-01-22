@@ -240,6 +240,11 @@ public:
   void   getNHitsBit     (Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& sys0,Int_t& sys1);
   void   getNHitsDecayBit(Int_t& m0,Int_t& m1,Int_t& m2,Int_t& m3,Int_t& sys0,Int_t& sys1);
 
+  Bool_t isInTrackAcceptanceFW        (Int_t & nrpc);
+  Bool_t isInTrackAcceptanceFWDecay   (Int_t & nrpc);
+  Bool_t isInTrackAcceptanceFWBit     (Int_t & nrpc);
+  Bool_t isInTrackAcceptanceFWDecayBit(Int_t & nrpc);
+
   Bool_t isInAcceptanceFW        (Int_t nstraw=4,Int_t nrpc=1);
   Bool_t isInAcceptanceFWDecay   (Int_t nstraw=4,Int_t nrpc=1);
   Bool_t isInAcceptanceFWBit     (Int_t nstraw=4,Int_t nrpc=1);
@@ -346,7 +351,8 @@ public:
   void    unsetAllStrawLayers()                        { acceptance2 &= ~0xFFFF; }
   static void setStrawLayer(UInt_t lay,UInt_t& layers) { layers |=  ( 0x01 << (lay) ); }
   Bool_t  getStrawLayer    (UInt_t lay)                { return ( acceptance2 &  ( 0x01 << (lay) )); }
-  Bool_t  hasStrawLayers   (UInt_t layerstest)         { return ((acceptance2&0xFFF)==(layerstest&0xFFF));}
+  void    getStrawLayers   (UInt_t & layers) const     { layers = acceptance2 & 0xFFFF; }
+  Bool_t  hasStrawLayers   (UInt_t layerstest)         { return ((acceptance2&0xFFFF)==(layerstest&0xFFFF));}
   Int_t   getNStrawLayer   ();
   void    printFWDetLayers();
 
@@ -360,6 +366,7 @@ public:
   void    unsetFWAcceptanceFWFilled()                  { acceptance2 &=~((0x1)<<(31)); }
   Bool_t  isAcceptanceFWFilled()                       { return ( acceptance2 &  ( 0x01 << (31) )); }
   void    fillAcceptanceFWBit();
+  UInt_t  getAcceptanceFWBit();
 //-----------------------------------------------------------------------
 
 
