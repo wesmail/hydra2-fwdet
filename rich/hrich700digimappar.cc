@@ -164,6 +164,11 @@ Int_t HRich700DigiMapPar::getSector(Float_t x, Float_t y)
 {
     // In PMT geometry there are no sectors any more ... lets take it for phi
     // phi calculated from x,y on PMT plane
+    if(x==0&&y==0) {
+	Warning("getSector()","x and y equal zero, return sector 0");
+	return 0;
+    }
+
     Float_t phi = TMath::ACos(x/sqrt(x*x+y*y));
     if (y<0) phi = 2.*TMath::Pi()-phi;
     Int_t sectorPhi = (Int_t)(phi/1.0471975)-1;   // get sector from phi angle
