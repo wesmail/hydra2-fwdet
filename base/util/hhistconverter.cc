@@ -89,7 +89,7 @@ void HHistConverter::printArray(const TArray& dat,Int_t nvals,Int_t width,Int_t 
     cout<<endl;
 }
 
-void HHistConverter::writeArray(ofstream& out,TString name,const TArray& dat,Int_t nvals)
+void HHistConverter::writeArray(ostream& out,TString name,const TArray& dat,Int_t nvals)
 {
     // write content of array with n values /row to stream out.
     // A lable name and and type specifier is added. Format is
