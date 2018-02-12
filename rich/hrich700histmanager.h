@@ -9,6 +9,7 @@
 #include "TGraph2D.h"
 #include "TProfile.h"
 #include "TProfile2D.h"
+#include "TCanvas.h"
 #include <iostream>
 #include <map>
 #include <string>
@@ -122,6 +123,8 @@ public:
 
    void WriteToFile();
    void ReadFromFile(TFile* file);
+   void AddTNamedObject(TObject* obj);
+   void AddTDirectoryObject(TObject* obj);
    void Clear(Option_t*);
    void ShrinkEmptyBinsH1(const string& histName);
    void ShrinkEmptyBinsH2(const string& histName);
@@ -129,6 +132,16 @@ public:
    void NormalizeToIntegral(const string& histName);
    void Rebin( const string& histName, Int_t ngroup);
    string ToString() const;
+
+    TCanvas* CreateCanvas(
+         const string& name,
+         const string& title,
+         Int_t width,
+         Int_t height);
+
+    void SaveCanvasToImage(
+         const string& outputDir,
+         const string& options = "png");
 
     // Operator << for convenient output to std::ostream.
     // return Insertion stream in order to be able to call a succession of insertion operations.
@@ -142,6 +155,8 @@ private:
 
    // Map of histogram (graph) name to its pointer
    map<string, TNamed*> fMap;
+
+   vector<TCanvas*> fCanvases; // Pointers to all created canvases
 
    ClassDef(HRich700HistManager, 1)
 };

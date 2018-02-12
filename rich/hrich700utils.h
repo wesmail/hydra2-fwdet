@@ -52,6 +52,12 @@ Int_t Sign(
    return (x > ZERO) ? 1 : ((x < ZERO) ? -1 : 0);
 }
 
+template< typename T, size_t N >
+std::vector<T> MakeVector( const T (&data)[N] )
+{
+    return std::vector<T>(data, data+N);
+}
+
 void SaveCanvasAsImage(
    TCanvas* c,
    const std::string& dir,

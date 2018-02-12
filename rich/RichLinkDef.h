@@ -52,8 +52,8 @@
 #pragma link C++ class HRich700HistManager;
 #pragma link C++ class HRich700Pmt;
 #pragma link C++ class HRich700DigiPar;
+#pragma link C++ class HRich700DigiParCreator;
 #pragma link C++ class HRich700Digitizer;
-#pragma link C++ class HRich700DigiMapPar;
 #pragma link C++ class HRich700RingFinderPar;
 #pragma link C++ class HRich700RingFinderIdeal;
 #pragma link C++ class HRich700RingFinderHough;
@@ -68,4 +68,3 @@
 #pragma link C++ global catRichTrack;
 
 #endif
-

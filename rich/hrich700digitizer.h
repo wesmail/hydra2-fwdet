@@ -14,7 +14,6 @@ using namespace std;
 
 class HGeantKine;
 class HRich700DigiPar;
-class HRich700DigiMapPar;
 
 class HRich700Digitizer : public HReconstructor {
 
@@ -24,8 +23,7 @@ private:
    HCategory* fCatRichPhoton; //!
    HCategory* fCatRichDirect; //!
    HCategory* fCatRichCal;    //!
-   HRich700DigiPar*    fDigiPar; //!
-   HRich700DigiMapPar* fDigiMap; //!
+   HRich700DigiPar* fDigiPar; //!
 
    static HRich700Digitizer* fDigitizer; //!
 
@@ -48,10 +46,11 @@ private:
 
    HRich700Pmt fPmt;
 
-   Double_t fCrossTalkProbability;
-   Int_t fNofNoiseHits;
-
    void processEvent();
+
+   void setProbabilityForDeltaElectrons();
+
+   Bool_t workOnDeltaElectrons(HGeantKine* primary, Int_t sector);
 
    void processRichPhoton(HGeantRichPhoton* photon);
 
@@ -79,8 +78,6 @@ public:
    static HRich700Digitizer* getDigitizer() { return fDigitizer;}
 
    void setStoreOnlyConvertedPhotonTrackIds(Bool_t s){fStoreOnlyConvertedPhotonTrackIds = s;}
-   void setCrossTalkProbability(Double_t p){fCrossTalkProbability = p;}
-   void setNofNoiseHits(Int_t nofHits) {fNofNoiseHits = nofHits;}
 
    //----------- using delta electrons -----------------
    void   setDeltaElectronUse(Bool_t use, Bool_t useDeltaMomSel=kFALSE, Int_t ionId=109,Float_t momCut=20.,Float_t probDelta=2.){ fProbDeltaAccepted = probDelta; fUseDeltaElectrons = use;fUseDeltaMomSelection = useDeltaMomSel; fIonID=ionId; fMomMaxDeltaElecCut = momCut; }
@@ -91,11 +88,4 @@ public:
 
 };
 
-#endif // HRICH700DIGITIZER_H 
-
-
-
-
-
-
-
+#endif // HRICH700DIGITIZER_H

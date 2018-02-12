@@ -27,7 +27,7 @@
 #include "richdef.h"
 #include "hrichcalsim.h"
 #include "hgeantkine.h"
-#include "hrich700digimappar.h"
+#include "hrich700digipar.h"
 #include "hrichhitsim.h"
 #include "hrich700ringfittercop.h"
 
@@ -53,7 +53,6 @@ HRich700RingFinderIdeal::~HRich700RingFinderIdeal()
 
 Bool_t HRich700RingFinderIdeal::init()
 {
-
    fCatKine = gHades->getCurrentEvent()->getCategory(catGeantKine);
    if (NULL == fCatKine) {
       Error("init()", "Initialization of catGeantKine category failed, returning...");
@@ -82,9 +81,9 @@ Bool_t HRich700RingFinderIdeal::init()
        }
    }
 
-   fDigiMap = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
-    if(!fDigiMap) {
-	Error("init", "Can not retrieve HRich700DigiMapPar");
+   fDigiPar = (HRich700DigiPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiPar");
+    if(!fDigiPar) {
+	Error("init", "Can not retrieve HRich700DigiPar");
         return kFALSE;
     }
 
@@ -102,10 +101,9 @@ Bool_t HRich700RingFinderIdeal::reinit()
 Int_t HRich700RingFinderIdeal::execute()
 {
    processEvent();
-
    return 0;
 }
- 
+
 void HRich700RingFinderIdeal::processEvent()
 {
    map<Int_t, vector<HRichCalSim*> > hitMap;
@@ -128,7 +126,6 @@ void HRich700RingFinderIdeal::processEvent()
 
 void HRich700RingFinderIdeal::addRichHit(Int_t sector, Int_t trackId, const vector<HRichCalSim*>& cals)
 {
-
    HRich700Ring ring;
    for (UInt_t i = 0; i < cals.size(); i++) {
       HRichCal* richCal = cals[i];
@@ -136,7 +133,7 @@ void HRich700RingFinderIdeal::addRichHit(Int_t sector, Int_t trackId, const vect
       loc[0] = richCal->getSector();
       loc[1] = richCal->getCol();
       loc[2] = richCal->getRow();
-      pair<Double_t, Double_t> xy = fDigiMap->getXY(loc);
+      pair<Double_t, Double_t> xy = fDigiPar->getXY(loc);
       HRich700Hit hit;
       hit.fX = xy.first;
       hit.fY = xy.second;
@@ -147,38 +144,38 @@ void HRich700RingFinderIdeal::addRichHit(Int_t sector, Int_t trackId, const vect
 
     HLocation loc;
     loc.set(1, sector);
-
     HRichHitSim* hit = (HRichHitSim*)fCatRichHit->getNewSlot(loc);
+    hit = new (hit) HRichHitSim();
+
     if (NULL != hit) {
-      // assign MC information
-	Float_t theta,phi;
-	hit->nSector               = fDigiMap->getInterpolatedSectorThetaPhi(ring.fCircleXCenter,ring.fCircleYCenter,theta,phi);
-	hit->fTheta                = theta;
+          // assign MC information
+    	Float_t theta,phi;
+    	hit->nSector               = fDigiPar->getInterpolatedSectorThetaPhi(ring.fCircleXCenter,ring.fCircleYCenter,theta,phi);
+    	hit->fTheta                = theta;
         hit->fPhi                  = phi;
-	hit->track1                = trackId;
-	hit->weigTrack1            = cals.size();
-	hit->fRich700NofRichCals   = cals.size();
-	hit->fRich700CircleCenterX = ring.fCircleXCenter;
-	hit->fRich700CircleCenterY = ring.fCircleYCenter;
-	hit->fRich700CircleRadius  = ring.fCircleRadius;
-	hit->fRich700CircleChi2    = ring.fCircleChi2;
+    	hit->track1                = trackId;
+    	hit->weigTrack1            = cals.size();
+    	hit->fRich700NofRichCals   = cals.size();
+    	hit->fRich700CircleCenterX = ring.fCircleXCenter;
+    	hit->fRich700CircleCenterY = ring.fCircleYCenter;
+    	hit->fRich700CircleRadius  = ring.fCircleRadius;
+    	hit->fRich700CircleChi2    = ring.fCircleChi2;
 
         Float_t x = ring.fCircleXCenter;
         Float_t y = ring.fCircleYCenter;
 
-	hit->setXY(x,y);
-        Int_t pmtID = fDigiMap->getPMTId(x,y);
-	if(pmtID!=-1){
-
-	    HRich700PmtData* data = fDigiMap->getPMTData(pmtID);
-	    if(data){
-		hit->setRingCenterX(data->fIndX);
-		hit->setRingCenterY(data->fIndY);
-		hit->setLabXYZ(x,y,data->fZ);
-	    }
-	} else {
-	    hit->setLabXYZ(x,y,-1000);
-	}
+    	hit->setXY(x,y);
+        Int_t pmtID = fDigiPar->getPMTId(x,y);
+    	if(pmtID !=- 1){
+    	    HRich700PmtData* data = fDigiPar->getPMTData(pmtID);
+    	    if(data){
+        		hit->setRingCenterX(data->fIndX);
+        		hit->setRingCenterY(data->fIndY);
+        		hit->setLabXYZ(x,y,data->fZ);
+    	    }
+    	} else {
+    	    hit->setLabXYZ(x,y,-1000);
+    	}
     }
 }
 //---------------------------------------------------------------------------

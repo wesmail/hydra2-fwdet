@@ -71,10 +71,10 @@ public:
     }
 };
 
-class HRich700DigiMapPar;
+class HRich700DigiPar;
 class HRich700RingFinderPar;
 
-class HRich700RingFinderHough : public HReconstructor 
+class HRich700RingFinderHough : public HReconstructor
 {
 
 protected:
@@ -121,7 +121,7 @@ protected:
 
     HCategory* fCatRichCal;       //!
     HCategory* fCatRichHit;       //!
-    HRich700DigiMapPar* fDigiMap; //!
+    HRich700DigiPar* fDigiPar; //!
     HRich700RingFinderPar* fRingPar; //!
 
     Int_t fEventNum;

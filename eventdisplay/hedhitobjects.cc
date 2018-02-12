@@ -47,7 +47,7 @@
 #include "hgeomtransform.h"
 #include "hgeomvector.h"
 #include "hrichgeometrypar.h"
-#include "hrich700digimappar.h"
+#include "hrich700digipar.h"
 #include "hrich700data.h"
 #include "hmdcsizescells.h"
 #include "hwallgeompar.h"
@@ -246,7 +246,7 @@ Bool_t HEDMdcWire::makeWire(Int_t s,Int_t m,Int_t l,Int_t c, HMdcCal1Sim* cal)
 	    }
 	    title += Form(" tr = %i (%s,%6.2f MeV/c, parent %i)\n",tr,cname.Data(),mom, parentTr);
             //--------------------------------------------------------
- 
+
             //--------------------------------------------------------
 	    // list of tracks
 	    Int_t n = cal->getNTracks();
@@ -590,7 +590,7 @@ HEDTofCluster::HEDTofCluster(HTofClusterSim* hit):TEvePointSet(1)
     if(cname.CompareTo("HTofClusterSim") == 0){
 
 	HCategory* kineCat = gHades->getCurrentEvent()->getCategory(catGeantKine);
-        
+
 	for(Int_t i = 0; i < hit->getNParticipants(); i ++){
 
 	    Int_t   tracks[2] = {hit->getNTrack1(i),hit->getNTrack2(i)};
@@ -1206,7 +1206,7 @@ HEDRichPadPlane::HEDRichPadPlane(Int_t sec,Int_t cleaned)
 	    {
                 cal = HCategoryManager::getObject(cal,richCalCat,i);
 		HEDTransform::calcRichPadSector(cal,trans,coord);
-		
+
 		if(cleaned==0) {
 		    AddQuad(coord);
 		    QuadValue((Int_t)cal->getCharge());
@@ -1263,8 +1263,8 @@ HEDRich700PadPlane::HEDRich700PadPlane()
     // will be displayed in TEve my mouse over events in
     // the GL Viewer and the EveBrowser of the Event scene.
 
-    HRich700DigiMapPar* fRich700DigiMapPar = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
-    if(fRich700DigiMapPar)
+    HRich700DigiPar* fRich700DigiPar = (HRich700DigiPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiPar");
+    if(fRich700DigiPar)
     {
 	TEveRGBAPalette *pal = new TEveRGBAPalette(0,50);
 	SetOwnIds(kTRUE);  // quad deletes the id objects
@@ -1282,15 +1282,15 @@ HEDRich700PadPlane::HEDRich700PadPlane()
                 cal = HCategoryManager::getObject(cal,richCalCat,i);
                 Int_t col    = cal->getCol();
                 Int_t row    = cal->getRow();
-                Int_t pmtid  = fRich700DigiMapPar->getPMTId(col,row);
-                Float_t w    = fRich700DigiMapPar->getPmtSize();
-                Int_t  npix  = fRich700DigiMapPar->getNPixelInRow();
+                Int_t pmtid  = fRich700DigiPar->getPMTId(col,row);
+                Float_t w    = fRich700DigiPar->getPmtSize();
+                Int_t  npix  = fRich700DigiPar->getNPixelInRow();
 		Float_t pixw = w/npix;
                 w/=2;
 
 
 
-		HRich700PmtData* data = fRich700DigiMapPar ->getPMTData(pmtid);
+		HRich700PmtData* data = fRich700DigiPar ->getPMTData(pmtid);
 		if(data){
 		    //    +y   row 0 at max y
 		    //     |
@@ -1596,9 +1596,9 @@ HEDRichGeantPadPlane::HEDRichGeantPadPlane(HGeantKine* kine,Int_t select,HGeantR
 			}
 		    } else {
 
-			HRich700DigiMapPar* fRich700DigiMapPar = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
-			if(fRich700DigiMapPar){
-                           HRich700PmtData* data =  fRich700DigiMapPar->getPMTData(rich->getPmtId());
+			HRich700DigiPar* fRich700DigiPar = (HRich700DigiPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiPar");
+			if(fRich700DigiPar){
+                           HRich700PmtData* data =  fRich700DigiPar->getPMTData(rich->getPmtId());
 			   if(data){
 			       p.setXYZ(rich->getY()+data->fX,rich->getX()+data->fY,data->fZ);
                                p *= TO_CM;
@@ -1609,7 +1609,7 @@ HEDRichGeantPadPlane::HEDRichGeantPadPlane(HGeantKine* kine,Int_t select,HGeantR
 		    hitInd   = rich->getNextHitIndex();
 		} // end loop over rich photon
 	    }
-	} 
+	}
     }
 
     if(select == 1 && geadir)
@@ -1631,9 +1631,9 @@ HEDRichGeantPadPlane::HEDRichGeantPadPlane(HGeantKine* kine,Int_t select,HGeantR
 		SetNextPoint(p.getX(),p.getY(),p.getZ());
 	    }
 	} else {
-	    HRich700DigiMapPar* fRich700DigiMapPar = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
-	    if(fRich700DigiMapPar){
-		HRich700PmtData* data =  fRich700DigiMapPar->getPMTData(geadir->getPmtId());
+	    HRich700DigiPar* fRich700DigiPar = (HRich700DigiPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiPar");
+	    if(fRich700DigiPar){
+		HRich700PmtData* data =  fRich700DigiPar->getPMTData(geadir->getPmtId());
 		if(data){
 		    p.setXYZ(geadir->getY()+data->fX,geadir->getX()+data->fY,data->fZ);
 		    p *= TO_CM;
@@ -1673,7 +1673,7 @@ HEDRichGeantPadPlane::HEDRichGeantPadPlane(HGeantKine* kine,Int_t select,HGeantR
     if(HPhysicsConstants::pid(id) && id >= 0){ cname = HPhysicsConstants::pid(id);}
     else                                     { cname = "unknown"; }
 
-    
+
 
 
 
@@ -1752,7 +1752,7 @@ HEDRichGeantMirror::HEDRichGeantMirror(HGeantRichMirror* mirror) : TEvePointSet(
     if(HPhysicsConstants::pid(id) && id >= 0){ cname = HPhysicsConstants::pid(id);}
     else                                     { cname = "unknown"; }
 
-    
+
 
 
     title += Form(" tr = %i (%s , %5.3f MeV/c, parent %i grandparent %i)\n"
@@ -1885,4 +1885,3 @@ HEDGroup2D::~HEDGroup2D(){
     }
 }
 //----------------------------------------------------------------
-

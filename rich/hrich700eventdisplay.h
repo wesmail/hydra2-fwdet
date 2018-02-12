@@ -6,13 +6,14 @@
 #include "hcategory.h"
 #include "hiterator.h"
 #include "TCanvas.h"
+#include "hrich700histmanager.h"
 
 #include <vector>
 #include <string>
 
 using namespace std;
 
-class  HRich700DigiMapPar;
+class  HRich700DigiPar;
 
 class HRich700EventDisplay : public HReconstructor {
 
@@ -26,7 +27,7 @@ private:
    HCategory* fCatRichHit;           //!
    HCategory* fCatRichCal;           //!
    HCategory* fCatKine;              //!
-   HRich700DigiMapPar* fDigiMap;     //!
+   HRich700DigiPar* fDigiPar;     //!
 
    Int_t fEventNum;                  //!
    Bool_t fDrawRichPhotons;
@@ -36,17 +37,14 @@ private:
    Int_t fNofEventsToDraw;
    Int_t fNofDrawnEvents;
 
-   vector<TCanvas*> fCanvas;
    string fOutputDir;
 
-   
+   HRich700HistManager* fHM;
+
+
    void drawOneEvent();
    void drawOneRing();
-   void drawPmts(Double_t offsetX, Double_t offsetY);
-
-   TCanvas* createCanvas(const string& name, const string& title, Int_t width, Int_t height);
-
-   void saveCanvasToImage();
+   void drawPmts(Double_t offsetX, Double_t offsetY, Bool_t drawSens);
 
 public:
    HRich700EventDisplay();

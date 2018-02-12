@@ -538,37 +538,45 @@ HRichDigitizer::execute()
        // work on delta electrons
        Int_t trkNum        = pCherenkovHit->getTrack();
        HGeantKine* primary = HGeantKine::getPrimary(trkNum,(HLinearCategory*)catKine);
+
+       //---------------------------------------------------------------------
+       // identify delta electrons
+       Bool_t isDelta      = kFALSE;
+       Float_t mom         = 0;
+       Int_t   generator   = 0;
        if(primary) { // primary
-	   Float_t mom     = primary->getTotalMomentum() ;
-	   Int_t generator = primary->getGeneratorInfo();
+	   mom       = primary->getTotalMomentum() ;
+	   generator = primary->getGeneratorInfo();
 	   if( primary->getID() == ionID ||                                                    // beam ions simulated
 	      ( useDeltaMomSelection && primary->getID() == 3 && mom <momMaxDeltaElecCut)  ||  // any electron < momCut (shooting with kine generator)
 	      (!useDeltaMomSelection && primary->getID() == 3 && generator ==-3 )              // delta electrons input file source id ==-3
-	     )
+	     ) isDelta = kTRUE;
+       }
+       //---------------------------------------------------------------------
+
+       if(useDeltaElectrons)
+       {
+	   if(isDelta)
 	   {
-	       if(useDeltaElectrons)
+	       Int_t s = pCherenkovHit->getSector();
+	       if(mom < momMinDeltaCut[s]) continue;  // skipp all delta lower than cutmom
+
+	       //-------------------------------------------------------------------
+	       if(probDeltaAccepted<1)
 	       {
-		   Int_t s = pCherenkovHit->getSector();
-		   if(mom < momMinDeltaCut[s]) continue;  // skipp all delta lower than cutmom
-
-		   //-------------------------------------------------------------------
-		   if(probDeltaAccepted<1)
-		   {
-		       Float_t prob = 2;
-		       itDelta = mDeltaTrackProb.find(primary);
-		       if(itDelta != mDeltaTrackProb.end()) prob = itDelta->second;
-		       else {
-			   Error("execute()","No primary in delta map for trk = %i found! Should not happen!",trkNum);
-			   primary->print();
-		       }
-		       if(prob < probDeltaAccepted ) continue;
+		   Float_t prob = 2;
+		   itDelta = mDeltaTrackProb.find(primary);
+		   if(itDelta != mDeltaTrackProb.end()) prob = itDelta->second;
+		   else {
+		       Error("execute()","No primary in delta map for trk = %i found! Should not happen!",trkNum);
+		       primary->print();
 		   }
-		   //-------------------------------------------------------------------
-
-	       } else {
-		   continue; // skipp all delta electrons and daughter hits
+		   if(prob < probDeltaAccepted ) continue;
 	       }
+	       //-------------------------------------------------------------------
 	   }
+       } else { // skipp all deltaelectrons (generatorinfo ==-3)
+	   if(isDelta) continue;
        }
        //-------------------------------------------------------------------
 

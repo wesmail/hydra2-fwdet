@@ -3,7 +3,7 @@
 #define HRICH700RINGFINDERPAR_H_
 
 #include "hparcond.h"
-
+#include <string>
 
 
 class HParamList;
@@ -82,6 +82,7 @@ public:
     Bool_t  getParams(HParamList*);
     void    clear();
     void    printParam(void);
+    std::string  getStringForParTxtFile();
 
     ClassDef(HRich700RingFinderPar, 1)
 };

@@ -79,6 +79,7 @@ void HRichDrawHist::DrawH1(
     // markerSize Marker size.
     // markerStyle Marker style (see ROOT documentation for details).
 
+    if (hist == NULL) return;
     Double_t textSize = RichDrawingOptions::TextSize();
     hist->SetLineColor(color);
     hist->SetLineWidth(lineWidth);
@@ -118,6 +119,7 @@ void HRichDrawHist::DrawH2(
     // logz Specify logarithmic or linear scale for Z axis.
     // drawOpt Other drawing options (see ROOT documentation for details).
 
+    if (hist == NULL) return;
     Double_t textSize = RichDrawingOptions::TextSize();
     if (logx == kLog) { gPad->SetLogx(); }
     if (logy == kLog) { gPad->SetLogy(); }
@@ -205,6 +207,7 @@ void HRichDrawHist::DrawGraph(
     // markerSize Marker size.
     // markerStyle Marker style (see ROOT documentation for details).
 
+    if (graph == NULL) return;
     Double_t textSize = RichDrawingOptions::TextSize();
     graph->SetLineColor(color);
     graph->SetLineWidth(lineWidth);

@@ -37,7 +37,7 @@
 #include "hgeantkine.h"
 
 #include "hrich700histmanager.h"
-#include "hrich700digimappar.h"
+#include "hrich700digipar.h"
 #include "hrich700utils.h"
 
 #include <iostream>
@@ -94,9 +94,9 @@ Bool_t HRich700GeoTestQa::init()
 	return kFALSE;
     }
 
-    fDigiMap = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
-    if(!fDigiMap) {
-	Error("init", "Can not retrieve HRich700DigiMapPar");
+    fDigiPar = (HRich700DigiPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiPar");
+    if(!fDigiPar) {
+	Error("init", "Can not retrieve HRich700DigiPar");
         return kFALSE;
     }
 
@@ -118,15 +118,16 @@ void HRich700GeoTestQa::initHist()
 		       "fhNofRichMirrorPhotonsVsPhiElectron;Phi [deg];Number of mirror photons;Yield", 60, 0, 360, 175, 0, 350);
     fHM->Create2<TH2D>("fhNofRichCalsVsPhiElectron", "fhNofRichCalsVsPhiElectron;Phi [deg];Number of RICH cals;Yield", 60, 0, 360, 30, -.5, 29.5);
 
-    fHM->Create2<TH2D>("fhRingXYElectron", "fhRingsXYElectron;X [mm];Y [mm];Yield", 350,-700, 700, 350, -700, 700);
+    fHM->Create2<TH2D>("fhRingXYElectron", "fhRingsXYElectron;X [mm];Y [mm];Yield", 175,-700, 700, 175, -700, 700);
     fHM->Create2<TH2D>("fhRingRadiusVsThetaElectron", "fhRingRadiusVsThetaElectron;Theta [deg];Ring radius [mm];Yield", 30, 0, 90, 70, 0., 35.);
 
     fHM->Create1<TH1D>("fhRingChi2Electron", "fhRingChi2Electron;Chi2;Yield", 80, 0., 12.);
 
-    fHM->Create2<TH2D>("fhRichPhotonsXY", "fhRichPhotonsXY;X [mm];Y [mm];Yield", 350,-700, 700, 350, -700, 700);
+    fHM->Create2<TH2D>("fhRichPhotonsXY", "fhRichPhotonsXY;X [mm];Y [mm];Yield", 175,-700, 700, 175, -700, 700);
+    fHM->Create2<TH2D>("fhRichPhotonsSecXY", "fhRichPhotonsSecXY;X [mm];Y [mm];Yield", 175,-700, 700, 175, -700, 700);
     fHM->Create1<TH1D>("fhRichPhotonsEnergy", "fhRichPhotonsEnergy;Energy [eV];Yield", 120, 0, 12);
-    fHM->Create1<TH1D>("fhRichPhotonsWavelength", "fhRichPhotonsWavelength;Wavelength [nm];Yield", 100, 0., 700);
-    fHM->Create2<TH2D>("fhRichDirectsXY", "fhRichDirectsXY;X [mm];Y [mm];Yield", 350,-700, 700, 350, -700, 700);
+    fHM->Create1<TH1D>("fhRichPhotonsWavelength", "fhRichPhotonsWavelength;Wavelength [nm];Yield", 100, 0., 1000);
+    fHM->Create2<TH2D>("fhRichDirectsXY", "fhRichDirectsXY;X [mm];Y [mm];Yield", 175,-700, 700, 175, -700, 700);
 }
 
 Bool_t HRich700GeoTestQa::reinit()
@@ -151,24 +152,38 @@ void HRich700GeoTestQa::fillMcHist()
     Int_t nofRichPhotons = fCatRichPhoton->getEntries();
     for (Int_t i = 0; i < nofRichPhotons; i++) {
 	HGeantRichPhoton* richPhoton = static_cast<HGeantRichPhoton*>(fCatRichPhoton->getObject(i));
-	pair<Double_t, Double_t> pmtXY = fDigiMap->getPmtCenter(richPhoton->getPmtId());
-	fHM->H2("fhRichPhotonsXY")->Fill(pmtXY.first + richPhoton->getX(), pmtXY.second + richPhoton->getY());
+	pair<Double_t, Double_t> pmtXY = fDigiPar->getPmtCenter(richPhoton->getPmtId());
+
+    // if (richPhoton->getPmtId() > 400) {
+    //     cout << "pmtId:" << richPhoton->getPmtId() << " x:" << pmtXY.first << " y:" << pmtXY.second << endl;
+    // }
+
+	if (!(pmtXY.first == 0 && pmtXY.second == 0)) {
+            // x and y have to be swapped for compatibility
+	    fHM->H2("fhRichPhotonsXY")->Fill(pmtXY.first + richPhoton->getY(), pmtXY.second + richPhoton->getX());
+            Int_t trackId = richPhoton->getTrack();
+	    HGeantKine* kine = (HGeantKine*)fCatKine->getObject(trackId - 1);
+	    if (kine != NULL && !kine->isPrimary()) {
+		          fHM->H2("fhRichPhotonsSecXY")->Fill(pmtXY.first + richPhoton->getY(), pmtXY.second + richPhoton->getX());
+	    }
+	} else {
+	    //cout << "No Pmt  " <<richPhoton->getPmtId() << " " << pmtXY.first << " " <<  pmtXY.second  << endl;
+	}
+
 	fHM->H1("fhRichPhotonsEnergy")->Fill(richPhoton->getEnergy());
 	Double_t energy = richPhoton->getEnergy();
 
 	Double_t lambda = HRich700Pmt::getWavelength(energy);
 	fHM->H1("fhRichPhotonsWavelength")->Fill(lambda);
 
-	Int_t trackId = richPhoton->getTrack();
-	HGeantKine* kineTrack = (HGeantKine*)fCatKine->getObject(trackId - 1);
-	Float_t x,y,z;
-	kineTrack->getVertex(x,y,z);
+	//Float_t x,y,z;
+	//kineTrack->getVertex(x,y,z);
     }
 
     Int_t nofRichDirects = fCatRichDirect->getEntries();
     for (Int_t i = 0; i < nofRichDirects; i++) {
 	HGeantRichDirect* richDirect =  static_cast<HGeantRichDirect*>(fCatRichDirect->getObject(i));
-	pair<Double_t, Double_t> pmtXY = fDigiMap->getPmtCenter(richDirect->getPmtId());
+	pair<Double_t, Double_t> pmtXY = fDigiPar->getPmtCenter(richDirect->getPmtId());
 	fHM->H2("fhRichDirectsXY")->Fill(pmtXY.first + richDirect->getX(), pmtXY.second + richDirect->getY());
     }
 
@@ -218,42 +233,49 @@ Bool_t HRich700GeoTestQa::isPrimaryElectron(
 void HRich700GeoTestQa::drawHist()
 {
     {
-	TCanvas* c = createCanvas("hrich_fhRichPhotonsXY", "hrich_fhRichPhotonsXY", 1000, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhRichPhotonsXY", "hrich_fhRichPhotonsXY", 1000, 800);
 	c->cd();
-	fHM->NormalizeToIntegral("fhRichPhotonsXY");
+	fHM->Scale("fhRichPhotonsXY", 1./(Double_t)fEventNum);
 	HRichDrawHist::DrawH2(fHM->H2("fhRichPhotonsXY"));
     }
 
     {
-	TCanvas* c = createCanvas("hrich_fhRichPhotonsEnergy", "hrich_fhRichPhotonsEnergy", 800, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhRichPhotonsSecXY", "hrich_fhRichPhotonsSecXY", 1000, 800);
+	c->cd();
+	fHM->Scale("fhRichPhotonsSecXY", 1./(Double_t)fEventNum);
+	HRichDrawHist::DrawH2(fHM->H2("fhRichPhotonsSecXY"));
+    }
+
+    {
+	TCanvas* c = fHM->CreateCanvas("hrich_fhRichPhotonsEnergy", "hrich_fhRichPhotonsEnergy", 800, 800);
 	c->cd();
 	fHM->NormalizeToIntegral("fhRichPhotonsEnergy");
 	HRichDrawHist::DrawH1(fHM->H1("fhRichPhotonsEnergy"));
     }
 
     {
-	TCanvas* c = createCanvas("hrich_fhRichPhotonsWavelength", "hrich_fhRichPhotonsWavelength", 800, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhRichPhotonsWavelength", "hrich_fhRichPhotonsWavelength", 800, 800);
 	c->cd();
 	fHM->NormalizeToIntegral("fhRichPhotonsWavelength");
 	HRichDrawHist::DrawH1(fHM->H1("fhRichPhotonsWavelength"));
     }
 
     {
-	TCanvas* c = createCanvas("hrich_fhRichDirectsXY", "hrich_fhRichDirectsXY", 1000, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhRichDirectsXY", "hrich_fhRichDirectsXY", 1000, 800);
 	c->cd();
-	fHM->NormalizeToIntegral("fhRichDirectsXY");
+	fHM->Scale("fhRichDirectsXY", 1./(Double_t)fEventNum);
 	HRichDrawHist::DrawH2(fHM->H2("fhRichDirectsXY"));
     }
 
     {
-	TCanvas* c = createCanvas("hrich_fhRingXYElectron", "hrich_fhRingXYElectron", 800, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhRingXYElectron", "hrich_fhRingXYElectron", 800, 800);
 	c->cd();
-	fHM->NormalizeToIntegral("fhRingXYElectron");
+	fHM->Scale("fhRingXYElectron", 1./(Double_t)fEventNum);
 	HRichDrawHist::DrawH2(fHM->H2("fhRingXYElectron"));
     }
 
     {
-	TCanvas* c = createCanvas("hrich_fhRingChi2Electron", "hrich_fhRingChi2Electron", 800, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhRingChi2Electron", "hrich_fhRingChi2Electron", 800, 800);
 	c->cd();
 	fHM->NormalizeToIntegral("fhRingChi2Electron");
 	HRichDrawHist::DrawH1(fHM->H1("fhRingChi2Electron"));
@@ -295,7 +317,7 @@ void HRich700GeoTestQa::drawH2MeanRms(
 {
     TH1D* mean, *rms;
     createH2MeanRms((TH2D*)hist, &mean, &rms);
-    TCanvas *c = createCanvas(canvasName.c_str(), canvasName.c_str(), 1200, 600);
+    TCanvas *c = fHM->CreateCanvas(canvasName.c_str(), canvasName.c_str(), 1200, 600);
     c->Divide(2, 1);
     c->cd(1);
     hist->Scale(1./hist->Integral());
@@ -308,30 +330,11 @@ void HRich700GeoTestQa::drawH2MeanRms(
     py->GetYaxis()->SetTitle("Yield");
 }
 
-TCanvas* HRich700GeoTestQa::createCanvas(
-					 const string& name,
-					 const string& title,
-					 Int_t width,
-					 Int_t height)
-{
-    TCanvas* c = new TCanvas(name.c_str(), title.c_str(), width, height);
-    fCanvas.push_back(c);
-    return c;
-}
-
-void HRich700GeoTestQa::saveCanvasToImage()
-{
-    for (UInt_t i = 0; i < fCanvas.size(); i++)
-    {
-	RichUtils::SaveCanvasAsImage(fCanvas[i], string(fOutputDir + "/"), "png");
-    }
-}
-
 
 //---------------------------------------------------------------------------
 Bool_t HRich700GeoTestQa::finalize()
 {
     drawHist();
-    saveCanvasToImage();
+    fHM->SaveCanvasToImage(string(fOutputDir + "/"));
     return kTRUE;
 }

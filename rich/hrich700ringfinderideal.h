@@ -12,7 +12,7 @@
 
 using namespace std;
 
-class HRich700DigiMapPar;
+class HRich700DigiPar;
 
 class HRich700RingFinderIdeal : public HReconstructor {
 
@@ -21,7 +21,7 @@ private:
    HCategory* fCatKine;    //!
    HCategory* fCatRichCal; //!
    HCategory* fCatRichHit; //!
-   HRich700DigiMapPar* fDigiMap; //!
+   HRich700DigiPar* fDigiPar; //!
 
    void processEvent();
 

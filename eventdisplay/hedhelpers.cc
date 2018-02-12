@@ -38,7 +38,7 @@
 #include "hgeomvector2.h"
 #include "hgeomcompositevolume.h"
 
-#include "hrich700digimappar.h"
+#include "hrich700digipar.h"
 #include "hrichgeometrypar.h"
 #include "hrichpadtab.h"
 #include "hrichpad.h"
@@ -1384,10 +1384,3 @@ Bool_t HEDMakeContainers::reinit(void){
     return kTRUE;
 }
 //----------------------------------------------------------------
-
-
-
-
-
-
-

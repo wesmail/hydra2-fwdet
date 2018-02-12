@@ -23,7 +23,6 @@
 #include "hrichmappingpar.h"
 #include "hrichthresholdpar.h"
 #include "hrich700digipar.h"
-#include "hrich700digimappar.h"
 #include "hrich700ringfinderpar.h"
 #include "hruntimedb.h"
 
@@ -74,10 +73,6 @@ HRichContFact::setAllContainers()
                                   "Rich Threshold Parameters",
                                   ""));
 
-   containers->Add(new HContainer("Rich700DigiMapPar",
-                                  "Rich PMT Mapping Parameters",
-                                  ""));
-
    containers->Add(new HContainer("Rich700DigiPar",
                                   "Rich Digitizer Parameters",
                                   ""));
@@ -109,8 +104,6 @@ HRichContFact::createContainer(HContainer* c)
       return new HRichThresholdPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
    if (0 == strncmp(name, "Rich700DigiPar", strlen("Rich700DigiPar")))
       return new HRich700DigiPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
-   if (0 == strncmp(name, "Rich700DigiMapPar", strlen("Rich700DigiMapPar")))
-      return new HRich700DigiMapPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
    if (0 == strncmp(name, "Rich700RingFinderPar", strlen("Rich700RingFinderPar")))
       return new HRich700RingFinderPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
    return 0;

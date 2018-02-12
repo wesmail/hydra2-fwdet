@@ -43,9 +43,6 @@ private:
    Bool_t isPrimaryElectron(HGeantKine* kine);
    Bool_t isRichAcc(Int_t trackId);
 
-   TCanvas* createCanvas(const string& name, const string& title, Int_t width, Int_t height);
-   void saveCanvasToImage();
-
 public:
    HRich700RecoQa();
    ~HRich700RecoQa();

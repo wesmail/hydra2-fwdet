@@ -13,7 +13,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "hrich700histmanager.h"
-
+#include "hrich700utils.h"
 
 #include "TH1.h"
 #include "TH2.h"
@@ -72,6 +72,11 @@ void HRich700HistManager::Add(const string& name,TNamed* object)
     // Add new named object to manager.
     // name Name of the object.
     // object Pointer to object.
+
+    map<string, TNamed*>::iterator it = fMap.find(name);
+    if (it != fMap.end()){
+        cout << "HRich700HistManager::Add Object with name:" << name << " was already added. Set new object." << endl;
+    }
 
     std::pair<string, TNamed*> newpair = std::make_pair(name, object);
     fMap.insert(newpair);
@@ -269,12 +274,34 @@ void HRich700HistManager::ReadFromFile(
     TIter nextkey(dir->GetListOfKeys());
     TKey *key;
     while ((key = (TKey*) nextkey())) {
-	TObject* obj = key->ReadObj();
-	if (obj->IsA()->InheritsFrom (TH1::Class()) || obj->IsA()->InheritsFrom (TGraph::Class()) || obj->IsA()->InheritsFrom (TGraph2D::Class())) {
+    	TObject* obj = key->ReadObj();
+        AddTNamedObject(obj);
+        AddTDirectoryObject(obj);
+    }
+}
+
+void HRich700HistManager::AddTNamedObject(
+				       TObject* obj)
+{
+    if (obj->IsA()->InheritsFrom (TH1::Class()) || obj->IsA()->InheritsFrom (TGraph::Class()) || obj->IsA()->InheritsFrom (TGraph2D::Class())) {
 	    TNamed* h = (TNamed*) obj;
-	    TNamed* h1 = (TNamed*)file->Get(h->GetName());
-	    Add(string(h->GetName()), h1);
+	    //TNamed* h1 = (TNamed*)file->Get(h->GetName());
+	    Add(string(h->GetName()), h);
 	}
+}
+
+void HRich700HistManager::AddTDirectoryObject(
+				       TObject* obj)
+{
+    if (obj->IsA()->InheritsFrom (TDirectoryFile::Class())) {
+        TDirectoryFile* fileDir = (TDirectoryFile*)obj;
+        TIter nextkey(fileDir->GetListOfKeys());
+        TKey *key2;
+        while ((key2 = (TKey*) nextkey())) {
+            TObject* obj2 = key2->ReadObj();
+            AddTNamedObject(obj2);
+            AddTDirectoryObject(obj2);
+        }
     }
 }
 
@@ -393,6 +420,26 @@ string HRich700HistManager::ToString() const
 	str += it->first + "\n";
     }
     return str;
+}
+
+TCanvas* HRich700HistManager::CreateCanvas(
+		const string& name,
+		const string& title,
+		Int_t width,
+		Int_t height)
+{
+	TCanvas* c = new TCanvas(name.c_str(), title.c_str(), width, height);
+	fCanvases.push_back(c);
+	return c;
+}
+
+void HRich700HistManager::SaveCanvasToImage(
+		const string& outputDir,
+		const string& options)
+{
+	for (unsigned int i = 0; i < fCanvases.size(); i++) {
+		RichUtils::SaveCanvasAsImage(fCanvases[i], outputDir, options);
+	}
 }
 
 ClassImp(HRich700HistManager)

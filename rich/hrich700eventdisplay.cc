@@ -26,7 +26,7 @@
 #include "richdef.h"
 #include "hrich700drawhist.h"
 #include "hrich700utils.h"
-#include "hrich700digimappar.h"
+#include "hrich700digipar.h"
 #include "hrichcalsim.h"
 #include "hrichhitsim.h"
 #include "hgeantkine.h"
@@ -99,11 +99,13 @@ Bool_t HRich700EventDisplay::init()
 	return kFALSE;
     }
 
-    fDigiMap = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
-    if(!fDigiMap) {
-	Error("init", "Can not retrieve HRich700DigiMapPar");
+    fDigiPar = (HRich700DigiPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiPar");
+    if(!fDigiPar) {
+	Error("init", "Can not retrieve HRich700DigiPar");
         return kFALSE;
     }
+
+    fHM = new HRich700HistManager();
 
     return kTRUE;
 
@@ -127,10 +129,10 @@ Int_t HRich700EventDisplay::execute()
 
     Bool_t isDrawCurrentEvent = kFALSE;
     HRichHitSim* richHit = static_cast<HRichHitSim*>(fCatRichHit->getObject(0));
-    if (richHit != NULL) {
+   // if (richHit != NULL) {
 	isDrawCurrentEvent = kTRUE;
 	fNofDrawnEvents++;
-    }
+   // }
     if (fNofDrawnEvents > fNofEventsToDraw) return 0;
 
     if (isDrawCurrentEvent) {
@@ -146,7 +148,7 @@ void HRich700EventDisplay::drawOneEvent()
 {
     stringstream ss;
     ss << "hrich_event_display_event_"<< fNofDrawnEvents;
-    TCanvas *c = createCanvas(ss.str().c_str(), ss.str().c_str(), 800, 900);
+    TCanvas *c = fHM->CreateCanvas(ss.str().c_str(), ss.str().c_str(), 800, 900);
     c->cd();
     TH2D* pad = new TH2D("padU", ";x [cm];y [cm]", 1, -700., 700., 1, -700., 700);
     HRichDrawHist::DrawH2(pad);
@@ -154,7 +156,7 @@ void HRich700EventDisplay::drawOneEvent()
     gPad->SetLeftMargin(0.1);
     gPad->SetRightMargin(0.05);
 
-    drawPmts(0., 0.);
+    drawPmts(0., 0., false);
 
     if (fDrawRichHits) {
 	Int_t nofRichHits = fCatRichHit->getEntries();
@@ -179,7 +181,7 @@ void HRich700EventDisplay::drawOneEvent()
 	    loc[0] = richCal->getSector();
 	    loc[1] = richCal->getCol();
 	    loc[2] = richCal->getRow();
-	    pair<Double_t, Double_t> xy = fDigiMap->getXY(loc);
+	    pair<Double_t, Double_t> xy = fDigiPar->getXY(loc);
 
 	    TEllipse* hitDr = new TEllipse(xy.first, xy.second, 5.0);
 	    hitDr->SetFillColor(kRed);
@@ -193,8 +195,11 @@ void HRich700EventDisplay::drawOneEvent()
 	Int_t nofRichPhotons = fCatRichPhoton->getEntries();
 	for (Int_t i = 0; i < nofRichPhotons; i++) {
 	    HGeantRichPhoton* richPhoton = static_cast<HGeantRichPhoton*>(fCatRichPhoton->getObject(i));
-	    pair<Double_t, Double_t> pmtXY = fDigiMap->getPmtCenter(richPhoton->getPmtId());
-	    TEllipse* hitDr = new TEllipse(pmtXY.first + richPhoton->getX(), pmtXY.second + richPhoton->getY(), 1.5);
+	    pair<Double_t, Double_t> pmtXY = fDigiPar->getPmtCenter(richPhoton->getPmtId());
+	    // x and y have to be swapped for compatibility
+	    Double_t photonX = richPhoton->getY();
+            Double_t photonY = richPhoton->getX();
+	    TEllipse* hitDr = new TEllipse(pmtXY.first + photonX, pmtXY.second + photonY, 1.5);
 	    hitDr->SetFillColor(kBlue);
 	    hitDr->SetLineColor(kBlue);
 	    hitDr->Draw();
@@ -205,8 +210,11 @@ void HRich700EventDisplay::drawOneEvent()
 	Int_t nofRichDirect = fCatRichDirect->getEntries();
 	for (Int_t i = 0; i < nofRichDirect; i++) {
 	    HGeantRichDirect* richDirect = static_cast<HGeantRichDirect*>(fCatRichDirect->getObject(i));
-	    pair<Double_t, Double_t> pmtXY = fDigiMap->getPmtCenter(richDirect->getPmtId());
-	    TEllipse* hitDr = new TEllipse(pmtXY.first + richDirect->getX(), pmtXY.second + richDirect->getY(), 3.0);
+	    pair<Double_t, Double_t> pmtXY = fDigiPar->getPmtCenter(richDirect->getPmtId());
+	    // x and y have to be swapped for compatibility
+	    Double_t directX = richDirect->getY();
+            Double_t directY = richDirect->getX();
+	    TEllipse* hitDr = new TEllipse(pmtXY.first + directX, pmtXY.second + directY, 3.0);
 	    hitDr->SetFillColor(kGreen);
 	    hitDr->SetLineColor(kGreen);
 	    hitDr->Draw();
@@ -220,7 +228,7 @@ void HRich700EventDisplay::drawOneRing()
 
     stringstream ss;
     ss << "hrich_event_display_ring_"<< fNofDrawnEvents;
-    TCanvas *c = createCanvas(ss.str().c_str(), ss.str().c_str(), 800, 900);
+    TCanvas *c = fHM->CreateCanvas(ss.str().c_str(), ss.str().c_str(), 800, 900);
     c->cd();
     TH2D* pad = new TH2D("padU", ";x [cm];y [cm]", 1, -50., 50., 1, -50., 50);
     HRichDrawHist::DrawH2(pad);
@@ -233,7 +241,44 @@ void HRich700EventDisplay::drawOneRing()
     Double_t xc = ring->fRich700CircleCenterX;
     Double_t yc = ring->fRich700CircleCenterY;
 
-    drawPmts(xc, yc);
+    drawPmts(xc, yc, true);
+
+    if (fDrawRichCals){
+	Int_t nofRichCals = fCatRichCal->getEntries();
+	Double_t pixelHalfSize = fDigiPar->getPmtSensSize() /fDigiPar->getNPixelInRow() / 2.;
+
+	for (Int_t i = 0; i < nofRichCals; i++) {
+	    HRichCal* richCal = static_cast<HRichCal*>(fCatRichCal->getObject(i));
+
+	    Int_t loc[3];
+	    loc[0] = richCal->getSector();
+	    loc[1] = richCal->getCol();
+	    loc[2] = richCal->getRow();
+	    pair<Double_t, Double_t> xy = fDigiPar->getXY(loc);
+
+	  //  TEllipse* hitDr = new TEllipse(xy.first - xc, xy.second - yc, 2.9);
+	  //  hitDr->SetFillColor(kRed);
+	  //  hitDr->SetLineColor(kRed);
+	  //  hitDr->Draw();
+
+            TBox* box = new TBox(xy.first - xc - pixelHalfSize, xy.second - yc - pixelHalfSize,
+				 xy.first - xc + pixelHalfSize, xy.second - yc + pixelHalfSize);
+            box->SetFillColor(kRed);
+	   // box->SetLineColor(kRed + 3);
+	    box->SetFillStyle(3001);
+	    box->SetLineWidth(2);
+	    box->Draw();
+
+            // workaround, draw box outer line
+	    TBox* box2 = new TBox(xy.first - xc - pixelHalfSize, xy.second - yc - pixelHalfSize,
+				 xy.first - xc + pixelHalfSize, xy.second - yc + pixelHalfSize);
+	    box2->SetLineColor(kRed + 3);
+	    box2->SetFillStyle(0);
+	    box2->SetLineWidth(2);
+	    box2->Draw();
+
+	}
+    }
 
 
     TEllipse* circle = new TEllipse(ring->fRich700CircleCenterX - xc, ring->fRich700CircleCenterY - yc, ring->fRich700CircleRadius);
@@ -261,31 +306,15 @@ void HRich700EventDisplay::drawOneRing()
     }
 
 
-    if (fDrawRichCals){
-	Int_t nofRichCals = fCatRichCal->getEntries();
-	for (Int_t i = 0; i < nofRichCals; i++) {
-	    HRichCal* richCal = static_cast<HRichCal*>(fCatRichCal->getObject(i));
-
-	    Int_t loc[3];
-	    loc[0] = richCal->getSector();
-	    loc[1] = richCal->getCol();
-	    loc[2] = richCal->getRow();
-	    pair<Double_t, Double_t> xy = fDigiMap->getXY(loc);
-
-	    TEllipse* hitDr = new TEllipse(xy.first - xc, xy.second - yc, 3.0);
-	    hitDr->SetFillColor(kRed);
-	    hitDr->SetLineColor(kRed);
-	    hitDr->Draw();
-	}
-    }
-
-
     if (fDrawRichPhotons){
 	Int_t nofRichPhotons = fCatRichPhoton->getEntries();
 	for (Int_t i = 0; i < nofRichPhotons; i++) {
 	    HGeantRichPhoton* richPhoton = static_cast<HGeantRichPhoton*>(fCatRichPhoton->getObject(i));
-	    pair<Double_t, Double_t> pmtXY = fDigiMap->getPmtCenter(richPhoton->getPmtId());
-	    TEllipse* hitDr = new TEllipse(pmtXY.first + richPhoton->getX() - xc, pmtXY.second + richPhoton->getY() - yc, .6);
+	    pair<Double_t, Double_t> pmtXY = fDigiPar->getPmtCenter(richPhoton->getPmtId());
+	    // x and y have to be swapped for compatibility
+	    Double_t photonX = richPhoton->getY();
+            Double_t photonY = richPhoton->getX();
+	    TEllipse* hitDr = new TEllipse( pmtXY.first + photonX - xc, pmtXY.second + photonY - yc, .6);
 	    hitDr->SetFillColor(kBlue);
 	    hitDr->SetLineColor(kBlue);
 	    hitDr->Draw();
@@ -296,8 +325,11 @@ void HRich700EventDisplay::drawOneRing()
 	Int_t nofRichDirect = fCatRichDirect->getEntries();
 	for (Int_t i = 0; i < nofRichDirect; i++) {
 	    HGeantRichDirect* richDirect = static_cast<HGeantRichDirect*>(fCatRichDirect->getObject(i));
-	    pair<Double_t, Double_t> pmtXY = fDigiMap->getPmtCenter(richDirect->getPmtId());
-	    TEllipse* hitDr = new TEllipse(pmtXY.first + richDirect->getX() - xc, pmtXY.second + richDirect->getY() - yc, .8);
+	    pair<Double_t, Double_t> pmtXY = fDigiPar->getPmtCenter(richDirect->getPmtId());
+	    // x and y have to be swapped for compatibility
+	    Double_t directX = richDirect->getY();
+            Double_t directY = richDirect->getX();
+	    TEllipse* hitDr = new TEllipse( pmtXY.first + directX - xc, pmtXY.second + directY - yc, .8);
 	    hitDr->SetFillColor(kGreen);
 	    hitDr->SetLineColor(kGreen);
 	    hitDr->Draw();
@@ -314,44 +346,55 @@ void HRich700EventDisplay::drawOneRing()
 
 }
 
-void HRich700EventDisplay::drawPmts(Double_t offsetX, Double_t offsetY)
+void HRich700EventDisplay::drawPmts(Double_t offsetX, Double_t offsetY, Bool_t drawSens)
 {
-    Double_t pmtHalfSize = fDigiMap->getPmtSize() / 2.;
-    vector<pair<Double_t, Double_t> > pmtXY = fDigiMap->getPmtCenters();
+    Double_t pmtHalfSize = fDigiPar->getPmtSize() / 2.;
+    Double_t pmtHalfSensSize = fDigiPar->getPmtSensSize() / 2.;
 
-    for (UInt_t i = 0; i < pmtXY.size(); i++) {
-	Double_t pmtX = pmtXY[i].first;
-	Double_t pmtY = pmtXY[i].second;
-	TBox* box = new TBox(pmtX - pmtHalfSize - offsetX, pmtY - pmtHalfSize - offsetY, pmtX + pmtHalfSize - offsetX, pmtY + pmtHalfSize - offsetY);
-	box->SetLineColor(kOrange);
-	box->SetFillStyle(0);
-	box->SetLineWidth(2);
-	box->Draw();
+    map<Int_t,HRich700PmtData> pmtDataMap = fDigiPar->getPmtDataMapPmtId();
+
+    const Int_t colors[] = { kBlue, kGreen + 1, kMagenta, kYellow+3, kRed, kCyan+2, kGray, kPink - 7};
+    vector<Int_t> colorVec = RichUtils::MakeVector(colors);
+    map<Int_t, Int_t> colorMap;
+    for(map<Int_t,HRich700PmtData>::iterator it = pmtDataMap.begin(); it != pmtDataMap.end(); it++) {
+        if (colorMap.find(it->second.fPmtType) == colorMap.end()) {
+            Int_t colorInd = (colorMap.size() >= colorVec.size() )? colorVec.size() - 1: colorMap.size();
+            colorMap[it->second.fPmtType] = colors[colorInd];
+        }
     }
-}
 
-TCanvas* HRich700EventDisplay::createCanvas(
-					    const string& name,
-					    const string& title,
-					    Int_t width,
-					    Int_t height)
-{
-    TCanvas* c = new TCanvas(name.c_str(), title.c_str(), width, height);
-    fCanvas.push_back(c);
-    return c;
-}
+    for(map<Int_t,HRich700PmtData>::iterator it = pmtDataMap.begin(); it != pmtDataMap.end(); it++) {
+        Double_t pmtX = it->second.fX;
+        Double_t pmtY = it->second.fY;
+        TBox* box = new TBox(pmtX - pmtHalfSize - offsetX, pmtY - pmtHalfSize - offsetY, pmtX + pmtHalfSize - offsetX, pmtY + pmtHalfSize - offsetY);
+        box->SetFillStyle(drawSens?3003:3001);
+        box->SetFillColor(colorMap[it->second.fPmtType]);
+        box->Draw();
 
-void HRich700EventDisplay::saveCanvasToImage()
-{
-    for (UInt_t i = 0; i < fCanvas.size(); i++)
-    {
-	RichUtils::SaveCanvasAsImage(fCanvas[i], string(fOutputDir + "/"), "png");
+        // workaround, draw outer line
+        TBox* box2 = new TBox(pmtX - pmtHalfSize - offsetX, pmtY - pmtHalfSize - offsetY, pmtX + pmtHalfSize - offsetX, pmtY + pmtHalfSize - offsetY);
+        box2->SetLineColor(kOrange + 1);
+        box2->SetFillStyle(0);
+        box2->SetLineWidth(2);
+        box2->Draw();
+
+
+        if (drawSens) {
+            TBox* boxSens = new TBox(pmtX - pmtHalfSensSize - offsetX, pmtY - pmtHalfSensSize - offsetY,
+                         pmtX + pmtHalfSensSize - offsetX, pmtY + pmtHalfSensSize - offsetY);
+            boxSens->SetLineColor(kGreen + 2);
+            boxSens->SetFillStyle(0);
+            boxSens->SetLineWidth(2);
+            boxSens->Draw();
+        }
+
+
     }
 }
 
 //---------------------------------------------------------------------------
 Bool_t HRich700EventDisplay::finalize()
 {
-    saveCanvasToImage();
+    fHM->SaveCanvasToImage(string(fOutputDir + "/"));
     return kTRUE;
 }

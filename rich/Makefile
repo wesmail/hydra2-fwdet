@@ -59,15 +59,14 @@ SOURCE_FILES := hrichanalysis.cc		\
 		hrich700pmt.cc 			\
 		hrich700digitizer.cc 		\
 		hrich700digipar.cc 		\
-		hrich700digimappar.cc 		\
 		hrich700ringfinderpar.cc	\
 		hrich700ringfinderideal.cc 	\
 		hrich700ringfittercop.cc 	\
 		hrich700ringfinderhough.cc 	\
-		hrich700recoqa.cc
+		hrich700recoqa.cc \
+		hrich700digiparcreator.cc
 
 DEBUG_LEVEL := 0
 
 include $(HADDIR)/hades.def.mk
 include $(HADDIR)/hades.module.mk
-

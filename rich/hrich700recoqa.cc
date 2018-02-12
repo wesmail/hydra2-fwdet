@@ -254,28 +254,28 @@ void HRich700RecoQa::drawHist()
 {
     HRichDrawHist::SetDefaultDrawStyle();
     {
-	TCanvas* c = createCanvas("hrich_fhTrueAllRatioAll", "hrich_fhTrueAllRatioAll", 800, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhTrueAllRatioAll", "hrich_fhTrueAllRatioAll", 800, 800);
 	c->cd();
 	fHM->NormalizeToIntegral("fhTrueAllRatioAll");
 	HRichDrawHist::DrawH1(fHM->H1("fhTrueAllRatioAll"));
     }
 
     {
-	TCanvas* c = createCanvas("hrich_fhTrueAllRatioElectron", "hrich_fhTrueAllRatioElectron", 800, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhTrueAllRatioElectron", "hrich_fhTrueAllRatioElectron", 800, 800);
 	c->cd();
 	fHM->NormalizeToIntegral("fhTrueAllRatioElectron");
 	HRichDrawHist::DrawH1(fHM->H1("fhTrueAllRatioElectron"));
     }
 
     {
-	TCanvas* c = createCanvas("hrich_fhTrueAllRatioVsThetaElectron", "hrich_fhTrueAllRatioVsThetaElectron", 1000, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhTrueAllRatioVsThetaElectron", "hrich_fhTrueAllRatioVsThetaElectron", 1000, 800);
 	c->cd();
 	fHM->NormalizeToIntegral("fhTrueAllRatioVsThetaElectron");
 	HRichDrawHist::DrawH2(fHM->H2("fhTrueAllRatioVsThetaElectron"));
     }
 
     {
-	TCanvas* c = createCanvas("hrich_fhNofCalsElectron", "hrich_fhNofCalsElectron", 800, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhNofCalsElectron", "hrich_fhNofCalsElectron", 800, 800);
 	c->cd();
 	fHM->NormalizeToIntegral("fhNofTrueCalsElectron");
 	fHM->NormalizeToIntegral("fhNofWrongCalsElectron");
@@ -307,7 +307,7 @@ void HRich700RecoQa::drawHist()
     drawAccRecEff("hrich_fhPairAccRecTheta", "hrich_fhPairEffTheta", "fhPairAccTheta", "fhPairRecTheta");
 
     {
-	TCanvas* c = createCanvas("hrich_fhGhostsClones", "hrich_fhGhostsClones", 800, 800);
+	TCanvas* c = fHM->CreateCanvas("hrich_fhGhostsClones", "hrich_fhGhostsClones", 800, 800);
 	c->cd();
 	fHM->Scale("fhGhostsClones", 1./ (Double_t)fEventNum);
 	HRichDrawHist::DrawH1(fHM->H1("fhGhostsClones"));
@@ -322,7 +322,7 @@ void HRich700RecoQa::drawAccRecEff(
 				   const string& histNameRec)
 {
     {
-	TCanvas* c = createCanvas(canvasNameAccRec.c_str(), canvasNameAccRec.c_str(), 800, 800);
+	TCanvas* c = fHM->CreateCanvas(canvasNameAccRec.c_str(), canvasNameAccRec.c_str(), 800, 800);
 	c->cd();
 	vector<TH1*> hist;
 	hist.push_back(fHM->H1(histNameAcc));
@@ -341,7 +341,7 @@ void HRich700RecoQa::drawAccRecEff(
     {
 	TH1D* pxEff = RichUtils::DivideH1((TH1D*)fHM->H1(histNameRec)->Clone(), (TH1D*)fHM->H1(histNameAcc)->Clone(), "", 100., "Efficiency [%]");
 	pxEff->SetMinimum(0.);
-	TCanvas* c = createCanvas(canvasNameEff.c_str(), canvasNameEff.c_str(), 800, 800);
+	TCanvas* c = fHM->CreateCanvas(canvasNameEff.c_str(), canvasNameEff.c_str(), 800, 800);
 	c->cd();
 	vector<TH1*> hist;
 	hist.push_back(pxEff);
@@ -354,28 +354,9 @@ void HRich700RecoQa::drawAccRecEff(
     }
 }
 
-TCanvas* HRich700RecoQa::createCanvas(
-				      const string& name,
-				      const string& title,
-				      Int_t width,
-				      Int_t height)
-{
-    TCanvas* c = new TCanvas(name.c_str(), title.c_str(), width, height);
-    fCanvas.push_back(c);
-    return c;
-}
-
-void HRich700RecoQa::saveCanvasToImage()
-{
-    for (UInt_t i = 0; i < fCanvas.size(); i++)
-    {
-	RichUtils::SaveCanvasAsImage(fCanvas[i], string(fOutputDir + "/"), "png");
-    }
-}
-
 Bool_t HRich700RecoQa::finalize()
 {
     drawHist();
-    saveCanvasToImage();
+    fHM->SaveCanvasToImage(string(fOutputDir + "/"));
     return kTRUE;
 }

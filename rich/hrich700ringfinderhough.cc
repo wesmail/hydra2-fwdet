@@ -29,7 +29,7 @@
 #include "hrichcalsim.h"
 #include "hrichhit.h"
 #include "hrichhitsim.h"
-#include "hrich700digimappar.h"
+#include "hrich700digipar.h"
 #include "hrich700ringfinderpar.h"
 #include "hrich700ringfittercop.h"
 
@@ -134,9 +134,9 @@ Bool_t HRich700RingFinderHough::init()
 	Error("init", "No category catRichHit found");
     }
 
-    fDigiMap = (HRich700DigiMapPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiMapPar");
-    if(!fDigiMap) {
-	Error("init", "Can not retrieve HRich700DigiMapPar");
+    fDigiPar = (HRich700DigiPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiPar");
+    if(!fDigiPar) {
+	Error("init", "Can not retrieve HRich700DigiPar");
         return kFALSE;
     }
 
@@ -184,7 +184,7 @@ void HRich700RingFinderHough::processEvent()
 	loc[0] = richCal->getSector();
 	loc[1] = richCal->getCol();
 	loc[2] = richCal->getRow();
-	pair<Double_t, Double_t> xy = fDigiMap->getXY(loc);
+	pair<Double_t, Double_t> xy = fDigiPar->getXY(loc);
 
 	HRich700HoughHit houghHit;
 	houghHit.fX = xy.first;
@@ -510,10 +510,10 @@ void HRich700RingFinderHough::AddRing(HRich700Ring* ring)
     HRichHit* hit = (HRichHit*)fCatRichHit->getNewSlot(loc);
     //          new (hit) HRichHit
     if(fIsSimulation) {
-	hit = new (hit) HRichHitSim();
-	hitS = (HRichHitSim*) hit;
+    	hit = new (hit) HRichHitSim();
+    	hitS = (HRichHitSim*) hit;
     } else {
-	hit = new (hit) HRichHit();
+	       hit = new (hit) HRichHit();
     }
     if (NULL != hit) {
 
@@ -521,7 +521,7 @@ void HRich700RingFinderHough::AddRing(HRich700Ring* ring)
 	Float_t y = ring->fCircleYCenter;
         Float_t theta,phi;
 	//----------------------------------------------------------------------------------
-        hit->nSector               = fDigiMap->getInterpolatedSectorThetaPhi(x,y,theta,phi);
+        hit->nSector               = fDigiPar->getInterpolatedSectorThetaPhi(x,y,theta,phi);
         hit->fTheta                = theta;
         hit->fPhi                  = phi;
 	hit->fRich700NofRichCals   = ring->fHits.size();
@@ -531,10 +531,10 @@ void HRich700RingFinderHough::AddRing(HRich700Ring* ring)
 	hit->fRich700CircleChi2    = ring->fCircleChi2;
 
 	hit->setXY(x,y);
-        Int_t pmtID = fDigiMap->getPMTId(x,y);
+        Int_t pmtID = fDigiPar->getPMTId(x,y);
 	if(pmtID!=-1){
 
-	    HRich700PmtData* data = fDigiMap->getPMTData(pmtID);
+	    HRich700PmtData* data = fDigiPar->getPMTData(pmtID);
 	    if(data){
 		hit->setRingCenterX(data->fIndX);
 		hit->setRingCenterY(data->fIndY);

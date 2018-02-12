@@ -125,3 +125,32 @@ Bool_t HRich700RingFinderPar::getParams(HParamList* l)
     if(!( l->fill("fMaxCutCOP"       , &fMaxCutCOP       ))) return kFALSE;
     return kTRUE;
 }
+
+std::string HRich700RingFinderPar::getStringForParTxtFile()
+{
+    stringstream ss;
+
+    ss << "##############################################################################" << endl;
+    ss << "# Class:   HRich700RingFinderPar" << endl;
+    ss << "# Context: Rich700RingFinderParProduction" << endl;
+    ss << "##############################################################################" << endl;
+    ss << "[Rich700RingFinderPar]" << endl;
+    ss << "//----------------------------------------------------------------------------" << endl;
+    ss << "fNofParts:  Int_t  " << fNofParts << endl;
+    ss << "fMaxDistance:  Float_t " << fMaxDistance << endl;
+    ss << "fMinDistance:  Float_t  " << fMinDistance << endl;
+    ss << "fMinRadius:  Float_t  " << fMinRadius << endl;
+    ss << "fMaxRadius:  Float_t  " << fMaxRadius << endl;
+    ss << "fNofBinsX:  Int_t  " << fNofBinsX << endl;
+    ss << "fNofBinsY:  Int_t  " << fNofBinsY << endl;
+    ss << "fHTCut:  Int_t  " << fHTCut << endl;
+    ss << "fNofBinsR:  Int_t  " << fNofBinsR << endl;
+    ss << "fHTCutR:  Int_t  " << fHTCutR << endl;
+    ss << "fMinNofHitsInArea:  Int_t  " << fMinNofHitsInArea << endl;
+    ss << "fUsedHitsAllCut:  Float_t  " << fUsedHitsAllCut << endl;
+    ss << "fRmsCoeffCOP:  Float_t  " << fRmsCoeffCOP << endl;
+    ss << "fMaxCutCOP:  Float_t  " << fMaxCutCOP << endl;
+    ss << "##############################################################################" << endl;
+
+    return ss.str();
+}

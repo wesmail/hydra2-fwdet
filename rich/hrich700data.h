@@ -8,6 +8,7 @@
 using namespace std;
 
 #include "TObject.h"
+#include "hrich700pmttypeenum.h"
 
 class HRich700Hit {
 public:
@@ -33,16 +34,17 @@ public:
 
 class HRich700PmtData {
 public:
-	Double_t fX;
-	Double_t fY;
-	Double_t fZ;
-	Int_t fIndX;
-	Int_t fIndY;
-	Int_t fPmtId;
-	Int_t fSector;
-        Double_t fTheta;
-        Double_t fPhi;
+	Double_t fX; // PMT center X position in [mm]
+	Double_t fY; // PMT center Y position in [mm]
+	Double_t fZ; // PMT center Z position in [mm]
+	Int_t fIndX; // index X of PMT
+	Int_t fIndY; // index Y of PMT
+	Int_t fPmtId; // PMT ID
+    HRich700PmtTypeEnum fPmtType; // type of PMT (QE curve)
+	Int_t fSector; // Sector number
+    Double_t fTheta; // theta for track matching
+    Double_t fPhi; // phi for track matching
 };
 
 
-#endif 
+#endif
