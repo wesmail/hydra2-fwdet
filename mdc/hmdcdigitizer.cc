@@ -1057,33 +1057,46 @@ Int_t HMdcDigitizer::execute(void) {
       trkNum = fGeant->getTrack();
 
       //---------------------------------------------------------------------
+      // identify delta electrons
+      Bool_t isDelta      = kFALSE;
+      Float_t mom         = 0;
+      Int_t   generator   = 0;
+
+      HGeantKine* primary = HGeantKine::getPrimary(trkNum,(HLinearCategory*)fGeantKineCat);
+      if(primary) { // primary
+	  mom       = primary->getTotalMomentum() ;
+	  generator = primary->getGeneratorInfo();
+	  if( primary->getID() == ionID ||                                                    // beam ions simulated
+	     ( useDeltaMomSelection && primary->getID() == 3 && mom <momMaxDeltaElecCut)  ||  // any electron < momCut (shooting with kine generator)
+	     (!useDeltaMomSelection && primary->getID() == 3 && generator ==-3 )              // delta electrons input file source id ==-3
+	    ) isDelta = kTRUE;
+      } else {
+         Error("execute()","No primary for trk = %i found!",trkNum);
+      }
+      //---------------------------------------------------------------------
+
+      //---------------------------------------------------------------------
       // time shift for delta electrons
       if(useDeltaElectrons)
       {
-	  HGeantKine* primary = HGeantKine::getPrimary(trkNum,(HLinearCategory*)fGeantKineCat);
-	  if(primary) { // primary
-	      Float_t mom     = primary->getTotalMomentum() ;
-	      Int_t generator = primary->getGeneratorInfo();
-	      if( primary->getID() == ionID ||                                                    // beam ions simulated
-		 ( useDeltaMomSelection && primary->getID() == 3 && mom <momMaxDeltaElecCut)  ||  // any electron < momCut (shooting with kine generator)
-		 (!useDeltaMomSelection && primary->getID() == 3 && generator ==-3 )              // delta electrons input file source id ==-3
-		)
-	      {
-		  Float_t t0offset = 0;
-		  itDelta = mDeltaTrackT0.find(primary);
-		  if(itDelta != mDeltaTrackT0.end()) t0offset = itDelta->second;
-		  else {
-		      Error("execute()","No primary in delta map for trk = %i found! Should not happen!",trkNum);
-                       primary->print();
-		  }
-		  if(mom < momMinDeltaCut[loc[0]]) continue;
-		  if(fProbDeltaAccepted<1){
-                      if(gRandom->Rndm() < fProbDeltaAccepted) continue; // adjust yield of delta electrons
-		  }
-		  tof+=t0offset;
-		  fGeant->setHit(xcoord, ycoord, tof, ptot);  // change also TOF in of geant object to allow matching by tof with cal1 in tracking later
+	  if(isDelta)
+	  {
+	      Float_t t0offset = 0;
+	      itDelta = mDeltaTrackT0.find(primary);
+	      if(itDelta != mDeltaTrackT0.end()) t0offset = itDelta->second;
+	      else {
+		  Error("execute()","No primary in delta map for trk = %i found! Should not happen!",trkNum);
+		  primary->print();
 	      }
-	  } else { Error("execute()","No primary for trk = %i found!",trkNum);}
+	      if(mom < momMinDeltaCut[loc[0]]) continue;
+	      if(fProbDeltaAccepted<1){
+		  if(gRandom->Rndm() < fProbDeltaAccepted) continue; // adjust yield of delta electrons
+	      }
+	      tof+=t0offset;
+	      fGeant->setHit(xcoord, ycoord, tof, ptot);  // change also TOF in of geant object to allow matching by tof with cal1 in tracking later
+	  }
+      } else { // skipp all deltaelectrons
+	  if(isDelta) continue;
       }
       //---------------------------------------------------------------------
 
