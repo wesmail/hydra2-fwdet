@@ -121,6 +121,7 @@ Int_t writeVertex(TString infile,TString outfile,Int_t nEvents)
     }
 
     if(!loop.setInput("-*,+HStart2Hit,+HParticleEvtInfo")) {
+    //if(!loop.setInput("")) {
 	cout<<"READBACK: ERROR : cannot read input !"<<endl;
 	exit(1);
     } // read all categories
@@ -132,11 +133,14 @@ Int_t writeVertex(TString infile,TString outfile,Int_t nEvents)
     if(nEvents < entries && nEvents >= 0 ) entries = nEvents;
 
 
-    HTaskSet *masterTaskSet = gHades->getTaskSet("real");
+    HTaskSet *masterTaskSet = gHades->getTaskSet("all");
 
     HMdcVertexWriter* vertexwriter = new HMdcVertexWriter("HMdcVertexWriter","HMdcVertexWriter");
     vertexwriter->setUserEventSelection(eventSelection);
-    vertexwriter->setVertexType(3);
+    //vertexwriter->setVertexType(5); // HGeant (switch geant info on in input and remove eventselection)
+    //vertexwriter->setVertexType(3); // particleCandVertex
+    vertexwriter->setVertexType(4,0.138795,0.665113); // z from ClusterVertex:  apr12 day108 Mean X = 0.138795,Mean Y = 0.665113
+
     vertexwriter->setOutputFile(outfile);
 
     masterTaskSet->add(vertexwriter);

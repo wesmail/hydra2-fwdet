@@ -118,8 +118,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     printf("Setting configuration...+++\n");
 
     TString asciiParFile     = "";
-    //TString rootParFile      = "./param_gen8/allParam_APR12_gen8_embedding_gen1_08022016.root";
-    TString rootParFile      = "/cvmfs/hades.gsi.de/param/embedding/apr12/allParam_APR12_gen8_embedding_gen1_08022016.root";
+    TString rootParFile      = "/cvmfs/hades.gsi.de/param/embedding/apr12/allParam_APR12_gen9_embedding_gen1_17112017.root";
     TString paramSource      = "root"; // root, ascii, oracle
 
     TString outFileSuffix    = "_embedding_dst_apr12.root";
@@ -129,6 +128,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     Bool_t doExtendedFit     = kTRUE; // switch on/off fit for initial params of segment fitter (10 x slower!)
     Bool_t doStartCorrection = kTRUE;  // kTRUE (default)=  use run by run start corrections
     Bool_t doMetaMatch       = kFALSE;  // default : kTRUE, kFALSE switch off metamatch in clusterfinder
+    Bool_t useOffVertex      = kTRUE;  // default : kTRUE,  kTRUE=use off vertex procedure  (apr12 gen8:kFALSE, gen9:kTRUE)
     Bool_t doMetaMatchScale  = kTRUE;
     Bool_t useWireStat       = kTRUE;
     Float_t metaScale        = 1.5;
@@ -137,7 +137,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     Bool_t doRICHDeltaElectron= kFALSE; // kFALSE : suppress inserted delta electrons
 
     TString beamtime         = "apr12";
-    TString paramRelease     = "APR12SIM_dst_gen8a";// "07-FEB-2016 00:00:00";  // 07-FEB-2016 00:00:00  (before OLGA added new LayerCorrPar!)
+    TString paramRelease     = "APR12SIM_dst_gen9";// "07-FEB-2016 00:00:00";  // 07-FEB-2016 00:00:00  (before OLGA added new LayerCorrPar!)
     //####################################################################
     //####################################################################
 
@@ -356,7 +356,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     if(kParamFile) {
 
 	TDatime time;
-        TString paramfilename= Form("allParam_APR12_gen8_embedding_gen1_%02i%02i%i",time.GetDay(),time.GetMonth(),time.GetYear());  // without .root
+        TString paramfilename= Form("allParam_APR12_gen9_embedding_gen1_%02i%02i%i",time.GetDay(),time.GetMonth(),time.GetYear());  // without .root
 
 
 	if(gSystem->AccessPathName(Form("%s.root",paramfilename.Data())) == 0){
@@ -471,6 +471,7 @@ Int_t analysisDST(TString inFile,TString inFileGeant, TString outdir,Int_t nEven
     //--------------------------------------------------------------------
     //  special settings
     HMdcTrackDSet::setTrackParam(beamtime);
+    HMdcTrackDSet::setFindOffVertTrkFlag(useOffVertex);
     if(!doMetaMatch)HMdcTrackDSet::setMetaMatchFlag(kFALSE,kFALSE);  //do not user meta match in clusterfinder
     if(doMetaMatchScale)HMetaMatchF2::setScaleCut(metaScale,metaScale,metaScale); // (tof,rpc,shower) increase matching window, but do not change normalization of MetaQA
     if(useWireStat) HMdcCalibrater1::setUseWireStat(kTRUE);

@@ -86,23 +86,22 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     gHades->getSrcKeeper()->addSourceFile("analysisDST.cc");
     gHades->getSrcKeeper()->addSourceFile("treeFilter.h");
     gHades->getSrcKeeper()->addSourceFile("HMoveRichSector.h");
-    gHades->getSrcKeeper()->addSourceFile("sendScript.sh");
+    gHades->getSrcKeeper()->addSourceFile("sendScript_SL.sh");
 
 
     //####################################################################
     //######################## CONFIGURATION #############################
     printf("Setting configuration...+++\n");
 
-    //TString asciiParFile     = "";
-    TString asciiParFile     = "./param/HMdc_calparraw_layergeompar_layercorrpar_05092015.txt";
-    TString rootParFile      = "/cvmfs/hades.gsi.de/param/real/apr12/allParam_APR12_gen8_10072015.root";
-    TString paramSource      = "ascii,root"; // root, ascii, oracle
+    TString asciiParFile     = "";
+    TString rootParFile      = "/cvmfs/hades.gsi.de/param/real/apr12/allParam_APR12_gen9_27092017.root"; // gen9test(from ora:now, no ascii)
+    TString paramSource      = "root"; // root, ascii, oracle
+    //TString paramSource      = "oracle"; // root, ascii, oracle
 
     TString outFileSuffix    = "_dst_apr12.root";
 
     TString beamtime         = "apr12";
-    TString paramrelease     = "APR12_dst_gen8";  // now, APR12_gen2_dst APR12_gen5_dst
-    //TString paramrelease     = "now";  // now, APR12_gen2_dst
+    TString paramrelease     = "APR12_dst_gen9";  // now,
 
     Int_t  refId             = -1; //
     Bool_t kParamFile        = kFALSE;
@@ -110,6 +109,7 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     Bool_t doStartCorrection = kTRUE;  // kTRUE (default)=  use run by run start corrections
     Bool_t doRotateRich      = kFALSE;
     Bool_t doMetaMatch       = kFALSE;  // default : kTRUE, kFALSE switch off metamatch in clusterfinder
+    Bool_t useOffVertex      = kTRUE;  // default : kTRUE,  kTRUE=use off vertex procedure  (apr12 gen8:kFALSE, gen9:kTRUE)
     Bool_t doMetaMatchScale  = kTRUE;
     Bool_t useWireStat       = kTRUE;
     Float_t metaScale        = 1.5;
@@ -251,7 +251,7 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
 
     if(kParamFile) {
         TDatime time;
-        TString paramfilename= Form("allParam_APR12_gen8_%02i%02i%i",time.GetDay(),time.GetMonth(),time.GetYear());  // without .root
+        TString paramfilename= Form("allParam_APR12_gen9_%02i%02i%i",time.GetDay(),time.GetMonth(),time.GetYear());  // without .root
 
 	if(gSystem->AccessPathName(Form("%s.root",paramfilename.Data())) == 0){
 	    gSystem->Exec(Form("rm -f %s.root",paramfilename.Data()));
@@ -346,7 +346,9 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     masterTaskSet->add(richTasks);
     if(doRotateRich)masterTaskSet->add(new HMoveRichSector("moveRichSector","moveRichSector"));
     masterTaskSet->add(showerTasks);
+
     masterTaskSet->add(mdcTasks);
+
     masterTaskSet->add(splineTasks);
     masterTaskSet->add(pParticleCandFiller);
     masterTaskSet->add(pParticleCleaner);
@@ -362,6 +364,7 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     //--------------------------------------------------------------------
     //  special settings
     HMdcTrackDSet::setTrackParam(beamtime);
+    HMdcTrackDSet::setFindOffVertTrkFlag(useOffVertex);
     if(!doMetaMatch)HMdcTrackDSet::setMetaMatchFlag(kFALSE,kFALSE);  //do not user meta match in clusterfinder
     if(doMetaMatchScale)HMetaMatchF2::setScaleCut(metaScale,metaScale,metaScale); // (tof,rpc,shower) increase matching window, but do not change normalization of MetaQA
     if(useWireStat) HMdcCalibrater1::setUseWireStat(kTRUE);

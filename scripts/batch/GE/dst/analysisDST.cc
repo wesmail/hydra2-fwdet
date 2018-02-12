@@ -67,7 +67,7 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     gHades->makeCounter(10);
     gHades->setBeamTimeID(Particle::kApr12);
     gHades->getSrcKeeper()->addSourceFile("analysisDST.cc");
-    gHades->getSrcKeeper()->addSourceFile("sendScript.sh");
+    gHades->getSrcKeeper()->addSourceFile("sendScript_SL.sh");
 
 
     //####################################################################
@@ -89,12 +89,13 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     TString asciiParFile = "";
     TString rootParFile = "/cvmfs/hades.gsi.de/param/sim/apr12/allParam_APR12_sim_run_12001_gen8_27012016.root";
     TString paramSource = "root"; // root, ascii, oracle
-    TString paramRelease = "APR12SIM_dst_gen8a"; // 27012016
+    TString paramRelease = "APR12SIM_dst_gen9"; // 07112017
 
 
     Bool_t kParamFile        = kFALSE;
     Bool_t doExtendedFit     = kTRUE; // switch on/off fit for initial params of segment fitter (10 x slower!)
     Bool_t doMetaMatch       = kFALSE;  // default : kTRUE, kFALSE switch off metamatch in clusterfinder
+    Bool_t useOffVertex      = kFALSE;  // default : kTRUE,  kTRUE=use off vertex procedure  (apr12 gen8:kFALSE, gen9:kTRUE)
     Bool_t doMetaMatchScale  = kTRUE;
     Bool_t useWireStat       = kTRUE;
     Float_t metaScale        = 1.5;
@@ -360,6 +361,7 @@ Int_t analysisDST(TString inFile, TString outdir,Int_t nEvents=1, Int_t startEvt
     //if (qaMaker) masterTaskSet->add(qaMaker);
 
     HMdcTrackDSet::setTrackParam(beamtime);
+    HMdcTrackDSet::setFindOffVertTrkFlag(useOffVertex);
     if(!doMetaMatch)HMdcTrackDSet::setMetaMatchFlag(kFALSE,kFALSE);  //do not user meta match in clusterfinder
     if(doMetaMatchScale)HMetaMatchF2::setScaleCut(metaScale,metaScale,metaScale); // (tof,rpc,shower) increase matching window, but do not change normalization of MetaQA
 

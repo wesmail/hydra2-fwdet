@@ -72,6 +72,36 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 
     PReaction *r =0 ;
 
+    if(type.CompareTo("hypertriton")   == 0){
+
+
+	//Add a bunch of dummy particles
+	makeStaticData()->AddParticle          (120,"Hypertriton", 2.991);
+	makeStaticData()->SetParticleTotalWidth("Hypertriton",0.005);
+	makeStaticData()->SetParticleBaryon    ("Hypertriton",3);
+
+
+	T1 = 0.1; // Manuel (26.9.2017)
+	//T1 = 0.100; // test
+	PFireball *source = new PFireball("Hypertriton",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
+	source->setTrueThermal(kTRUE);
+	source->Print();
+
+	PParticle *K0S=new PParticle("Hypertriton");
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
+	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
+
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // two particles in the final state
+    }
+
     if(type.CompareTo("lambda")   == 0){
         T1 = 0.090;
 	//T1 = 0.100; // test
@@ -260,10 +290,36 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
     }
 
+    if(type.CompareTo("t")   == 0){
+	T1 = 0.070;
+	T2 = 0.0;
+	fractionT1 = 1.;
+	anisoA2    = 0.;
+	anisoA4    = 0.;
+	blast      = 0.3;
+
+	PFireball *source = new PFireball("t",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
+	source->setTrueThermal(kTRUE);
+	source->Print();
+
+	PParticle *K0S=new PParticle("t");
+
+	PParticle **K0Ss = new PParticle* [2];
+	K0Ss[0] = source;
+	K0Ss[1] = K0S;
+
+	PChannel  *K0Sc=new PChannel(K0Ss,1,1);
+
+	PChannel  **cc = new PChannel* [1];
+	cc[0] = K0Sc ;
+
+	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
+    }
+
     if(type.CompareTo("pi-")   == 0){
 	T1 = 0.049;
 	T2 = 0.089;
-	fractionT1 = 0.89;
+	fractionT1 = 0.98; // changed 4.4.2017 from 0.89
 	anisoA2    = 0.;
 	anisoA4    = 0.;
 	PFireball *source = new PFireball("pi-",Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
@@ -288,7 +344,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 
 	T1 = 0.049;
 	T2 = 0.089;
-	fractionT1 = 0.89;
+	fractionT1 = 0.98; // changed 4.4.2017 from 0.89
 	anisoA2    = 0.;
 	anisoA4    = 0.;
 
@@ -310,8 +366,8 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	r=new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),1,rootOut,0,calcVertex,asciiOut); // 1 particle in the final state
     }
 
-    if(type.CompareTo("w")   == 0 ||      //   vector meson -> e+ + e-
-       type.CompareTo("phi") == 0 ||
+    if(//type.CompareTo("w")   == 0 ||      //   vector meson -> e+ + e-
+       //type.CompareTo("phi") == 0 ||
        type.CompareTo("rho0")== 0
       ) {
 
@@ -342,10 +398,50 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),2,rootOut,0,calcVertex,asciiOut);
     }
 
+    if(type.CompareTo("w")   == 0 ||      //   vector meson -> e+ + e-
+       type.CompareTo("phi") == 0 )
+    {
+	PFireball *source=new PFireball((Char_t*)type.Data(),Eb,T1,T2,fractionT1,blast,anisoA2,anisoA4,flowV1,flowV2);
+	source->setTrueThermal(kTRUE);
+
+	source->Print();
+	PParticle *omeg = new PParticle(type.Data());
+
+	PParticle **s  = new PParticle* [2];
+	s[0] = source;
+	s[1] = omeg;
+
+	PChannel  *c1   = new PChannel(s,1,1);
+	PParticle *ep   = new PParticle("e+");
+	PParticle *em   = new PParticle("e-");
+
+	// BW only
+	TString command(Form("loop:[%s]->SetM({w_bw}->SampleTotalMass())",type.Data()));
+	Double_t m = makeStaticData()->GetParticleMass(type.Data());
+	Double_t w = makeStaticData()->GetParticleTotalWidth(type.Data());
+	TString bwCutoff(Form("if ( ([%s]->M() > %.3f + %.3f * 4. ) || ( [%s]->M() < %.3f - %.3f * 4.) )",
+			      type.Data(), m, w, type.Data(), m, w));
+
+	command += "; " + bwCutoff + " goto loop";
+	c1->Do((char*)command.Data());
+
+	PParticle **decay  = new PParticle* [3];
+	decay[0] = omeg;
+	decay[1] = ep;
+	decay[2] = em;
+
+	PChannel *c2    = new PChannel(decay,2,1);
+	PChannel  **cc = new PChannel* [2];
+	cc[0] = c1;
+	cc[1] = c2;
+
+	r = new PReaction(cc,Form("%s/%s",outdir.Data(),outfile.Data()),2,rootOut,0,calcVertex,asciiOut);
+    }
+
     if(type.CompareTo("pi0")==0 ) {          // pi0 -> g + e- + e+
 	T1 = 0.049;
 	T2 = 0.089;
-	fractionT1 = 0.89;
+	fractionT1 = 0.98; // changed 4.4.2017 from 0.89
 	anisoA2    = 0.;
 	anisoA4    = 0.;
 
@@ -546,6 +642,7 @@ int loop(TString outdir="",TString outfile="",TString type="w", Int_t nEvents=10
 	   type.CompareTo("phiKK")    != 0 &&
 	   type.CompareTo("p")        != 0 &&
 	   type.CompareTo("d")        != 0 &&
+	   type.CompareTo("t")        != 0 &&
 	   type.CompareTo("pi-")      != 0 &&
 	   type.CompareTo("pi+")      != 0
 	  )
