@@ -362,6 +362,10 @@ void HParticleCandSim::Streamer(TBuffer &R__b)
       R__b.WriteArray(fGeantTrackRich, 3);
       R__b.WriteArray(fGeantTrackMeta, 4);
       R__b.WriteArray(fGeantTrackShower, 4);
+      R__b.WriteArray(fGeantTrackInnerMdc,2);
+      R__b.WriteArray(fGeantTrackOuterMdc,2);
+      R__b.WriteArray(fGeantTrackInnerMdcN,2);
+      R__b.WriteArray(fGeantTrackOuterMdcN,2);
       R__b.SetByteCount(R__c, kTRUE);
    }
 }
