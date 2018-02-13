@@ -545,6 +545,7 @@ void HParticleCand::Streamer(TBuffer &R__b)
       else                 fRingChi2 =-1000;
       R__b >> fMetaMatchQuality;
       if(R__v > 1) R__b >> fMetaMatchQualityShower;
+      else                 fMetaMatchQualityShower = -1;
       if(R__v > 3){
 	  R__b >> fMetaMatchRadius;
 	  R__b >> fMetaMatchRadiusShower;
@@ -566,7 +567,7 @@ void HParticleCand::Streamer(TBuffer &R__b)
 	  R__b >> fDistanceToMetaHitOrg;
       } else {
 	  fBetaOrg = fBeta;
-          fMomentumOrg = fMomentumOrg;
+          fMomentumOrg = fMomentum;
           fDistanceToMetaHitOrg = fDistanceToMetaHit;
       }
       R__b >> fShowerSum0;
@@ -577,6 +578,9 @@ void HParticleCand::Streamer(TBuffer &R__b)
       else                 fEmcFlags=0;
 
       if(R__v > 1) R__b >> fSelectedMeta;
+      else                 fSelectedMeta =-1;
+
+      R__b >> fMetaInd;
 
       if(R__v == 5 ) {
 	  Short_t tmpInd=-1;
@@ -661,8 +665,8 @@ void HParticleCand::Streamer(TBuffer &R__b)
       R__b << fShowerInd;
       R__b << fTofHitInd;
       R__b << fTofClstInd;
-      R__b << fWires;
       R__b << fLayers;
+      R__b << fWires;
       R__b << fmetaAddress;
       R__b.SetByteCount(R__c, kTRUE);
    }
