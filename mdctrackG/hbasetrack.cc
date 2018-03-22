@@ -13,6 +13,9 @@
 
 #include "hbasetrack.h"
 #include <iostream>
+
+#include "TBuffer.h"
+
 ClassImp(HBaseTrack)
 using namespace std;
 

@@ -1,5 +1,7 @@
 #include "htofhit.h"
 
+#include "TBuffer.h"
+
 //*-- Modified 14/11/2001 by D.Zovinec
 
 //_HADES_CLASS_DESCRIPTION 

@@ -6,6 +6,8 @@ using namespace std;
 #include <iostream>
 #include <iomanip>
 
+#include "TBuffer.h"
+
 //_HADES_CLASS_DESCRIPTION 
 //////////////////////////////////////////////////////////////////////////////
 //

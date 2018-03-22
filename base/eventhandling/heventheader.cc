@@ -1,5 +1,8 @@
 #include "heventheader.h"
-//*-- Author : Manuel Sanchez 
+
+#include "TBuffer.h"
+
+//*-- Author : Manuel Sanchez
 //*-- Modified : 30/03/2000 by R. Holzmann
 //*-- Modified : 24/03/98 by Manuel Sanchez
 //*-- Copyright : GENP (Univ. Santiago de Compostela)

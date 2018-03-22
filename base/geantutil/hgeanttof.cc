@@ -26,6 +26,8 @@
 //
 #include "hgeanttof.h"
 
+#include "TBuffer.h"
+
 ClassImp(HGeantTof)
 
 HGeantTof::HGeantTof(void) {

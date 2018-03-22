@@ -10,6 +10,8 @@
 
 #include "hstart2hit.h"
 
+#include "TBuffer.h"
+
 ClassImp(HStart2Hit)
 
 

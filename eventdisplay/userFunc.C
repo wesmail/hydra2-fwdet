@@ -102,7 +102,7 @@ Bool_t isGoodEvent(){
 
 }
 
-static Bool_t selectLeptonsBeta(HParticleCand* pcand)
+Bool_t selectLeptonsBeta(HParticleCand* pcand)
 {
     //  selection function for lepton candidates.
 
@@ -138,7 +138,7 @@ static Bool_t selectLeptonsBeta(HParticleCand* pcand)
     }
     return kFALSE;
 }
-static Bool_t selectLeptonsBetaNoFitMDC12(HParticleCand* pcand)
+Bool_t selectLeptonsBetaNoFitMDC12(HParticleCand* pcand)
 {
     //  selection function for lepton candidates.
 
@@ -174,7 +174,7 @@ static Bool_t selectLeptonsBetaNoFitMDC12(HParticleCand* pcand)
     }
     return kFALSE;
 }
-static Bool_t selectLeptonsBetaNoFitMDC2(HParticleCand* pcand)
+Bool_t selectLeptonsBetaNoFitMDC2(HParticleCand* pcand)
 {
     //  selection function for lepton candidates.
 
@@ -253,7 +253,7 @@ Bool_t selectLeptonsSharp2Mom(HParticleCand* pcand)
 
 }
 
-static Bool_t selectHadrons(HParticleCand* pcand)
+Bool_t selectHadrons(HParticleCand* pcand)
 {
     //  selection function for lepton candidates.
 
@@ -302,7 +302,7 @@ static Bool_t selectHadronsNoFitMDC12(HParticleCand* pcand)
     }
     return kFALSE;
 }
-static Bool_t selectHadronsNoFitMDC2(HParticleCand* pcand)
+Bool_t selectHadronsNoFitMDC2(HParticleCand* pcand)
 {
     //  selection function for lepton candidates.
 
@@ -328,7 +328,7 @@ static Bool_t selectHadronsNoFitMDC2(HParticleCand* pcand)
 }
 
 
-static Bool_t rejectEvent()
+Bool_t rejectEvent()
 {
     // USER FUNCTION:
     //

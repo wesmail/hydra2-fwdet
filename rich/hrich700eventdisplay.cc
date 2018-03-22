@@ -128,7 +128,7 @@ Int_t HRich700EventDisplay::execute()
     cout << "HRich700EventDisplay::execute eventNum " << fEventNum << endl;
 
     Bool_t isDrawCurrentEvent = kFALSE;
-    HRichHitSim* richHit = static_cast<HRichHitSim*>(fCatRichHit->getObject(0));
+    //HRichHitSim* richHit = static_cast<HRichHitSim*>(fCatRichHit->getObject(0));
    // if (richHit != NULL) {
 	isDrawCurrentEvent = kTRUE;
 	fNofDrawnEvents++;

@@ -134,10 +134,10 @@ Bool_t loadHadesGeom(TString geomFile="GeomManager_Sep08_rpc.root")
 	result = name(regMDC);
 	if(result != "") {
             Int_t m = -1;
-	    if(name = "D1C4")      m = 0;
-            else if(name = "D2C4") m = 1;
-	    else if(name = "D3C4") m = 2;
-	    else if(name = "D4C4") m = 3;
+	    if(name == "D1C4")      m = 0;
+            else if(name == "D2C4") m = 1;
+	    else if(name == "D3C4") m = 2;
+	    else if(name == "D4C4") m = 3;
 	    else {
 		cout<<"Volume name = "<<name.Data()<<" not found!"<<endl;
 		exit(1);

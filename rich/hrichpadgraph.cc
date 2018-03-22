@@ -17,6 +17,8 @@
 
 #include "hrichpadgraph.h"
 
+#include "TBuffer.h"
+
 #include <iomanip>
 #include <iostream>
 

@@ -30,6 +30,8 @@
 
 #include "hmdcseg.h"
 
+#include "TBuffer.h"
+
 HMdcSeg::HMdcSeg(void) {
   Clear();
 }

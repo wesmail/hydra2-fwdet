@@ -10,7 +10,7 @@
 export HADDIR   := $(shell pwd)
 MYHADDIR        :=
 INSTALL_DIR     ?= /misc/hadessoftware/etch32/install/hydra-dev
-export USES_RFIO       ?= yes
+export USES_RFIO       ?= no
 export USES_GFORTRAN   ?= yes
 export USES_ORACLE     ?= yes
 

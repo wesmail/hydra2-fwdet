@@ -1,5 +1,7 @@
 #include "hgeantrich.h"
 
+#include "TBuffer.h"
+
 //
 //*-- Author : Romain Holzmann (r.holzmann@gsi.de)
 //*-- Modified : 1999/10/07 by Witold Przygoda (przygoda@psja1.if.uj.edu.pl)

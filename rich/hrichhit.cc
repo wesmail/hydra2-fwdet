@@ -17,6 +17,8 @@
 
 #include "hrichhit.h"
 
+#include "TBuffer.h"
+
 #include <iomanip>
 #include <iostream>
 

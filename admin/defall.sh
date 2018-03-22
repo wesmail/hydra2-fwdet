@@ -1,33 +1,44 @@
-#!/usr/local/bin/bash
+#!/bin/sh
+###############################################################################
+#
+#  Hades Software Environment Setup Script (Bourne shell family version)
+#
+#  Each Software Collection should have it dedicated verion of this script.
+#  They can be distinguished e.g. by the used paths.
+#
+#  Author: Simon Lang, GSI, 30.09.2006
+#
+###############################################################################
 
-############################################################
-# defall.sh
-# set ALL basic environment variables for hydra
-# Date: 18 Feb 2004 J.Markert
-############################################################
-## --------------------------------------------------
-##  checking for right method to call the script
-## --------------------------------------------------
+. SCRIPTSADMIN/hsc-functions.sh
 
-if [ `basename $0` = defall.sh ]
-then
-    echo
-    echo use a leading " . " to call the `basename $0` script!
-    echo -e "exiting ...\n"
-    exit
-fi
-# added 06 May 2004 P.Zumbruch
-############################################################
+hsc_checkContext
 
-myvers=dev
-mybase=/misc/halo
-mypath=${mybase}/anal
+# Root, and dependent packages
+export ROOTSYS=
 
-export PATH=${mybase}/valgrind/bin:$PATH  # valgrind: memory debugging tool
-export CVSROOT=${mybase}/repos/anal
-. rootlogin 400-03
-. oraenv
-. ${mypath}/${myvers}/hadenv.sh -H ${mypath} -M ${mypath}/${myvers} -l "none" ${myvers}
-. ${mypath}/${myvers}/onlinenv
-. ${mypath}/${myvers}/rfioenv.sh
-#. ${mypath}/${myvers}/distenv.sh     # distributed compiling
+# Global Hydra Location
+export HADDIR=
+export ROOT_INCLUDE_PATH=${HADDIR}/include
+
+# Private Hydra Location - not used by default
+#export MYHADDIR=/e.g./somewhere/in/my/home/directory
+#export ROOT_INCLUDE_PATH=${MYHADDIR}/include:${HADDIR}/include
+
+# Oracle
+export ORACLE_HOME=
+export ORA_USER=
+
+# CERNLIB - for HGeant
+export CERN_ROOT=
+
+# PLUTO
+export PLUTODIR=
+
+# RFIO support
+export ADSM_BASE_NEW=
+
+hsc_setEnvironment
+hsc_shortPrintout
+
+hsc_finalizeScript

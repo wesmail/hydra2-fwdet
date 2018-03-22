@@ -1,5 +1,7 @@
 #include "htofcluster.h"
 
+#include "TBuffer.h"
+
 //*-- Author : D.Zovinec
 //*-- Modified: 14/02/2002 D.Zovinec
 //*-- Modified: 23/09/2002 D.Zovinec

@@ -21,6 +21,8 @@ using namespace std;
 #include <ctype.h>
 #include <stdlib.h>
 
+#include "TBuffer.h"
+
 ClassImp(HTrbLookupChan)
 ClassImp(HTrbLookupBoard)
 ClassImp(HTrbLookup)

@@ -59,7 +59,7 @@ void HRich700DigiPar::printParam(void)
     printf("fPmtSensSize          = %f \n" , fPmtSensSize);
     printf("fCollectionEfficiency = %f \n" , fCollectionEfficiency);
     printf("fCrossTalkProbability = %f \n" , fCrossTalkProbability);
-    printf("fNofNoiseHits         = %f \n" , fNofNoiseHits);
+    printf("fNofNoiseHits         = %i \n" , fNofNoiseHits);
     printf("----------------------------------------------------------------------\n");
 
 

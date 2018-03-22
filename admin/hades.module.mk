@@ -155,6 +155,17 @@ install:
 		$(INSTALL) -m 755 $(PC_DIR)/$(PCM_FILE_NAME) $(INSTALL_DIR)/lib;		\
 	fi
 
+	@set -e;								\
+	if [ $(findstring libHydra.so,$(SO_FILE)) ]; then     			\
+	for d in $(BASE_PCM) ; do						\
+	dir="$$d"Dict_rdict.pcm ;						\
+	if [ -f $(PC_DIR)/$$dir ]; then						\
+		$(ECHO) "$(INSTALL) -m 755 $(PC_DIR)/$$dir $(INSTALL_DIR)/lib";	\
+		$(INSTALL) -m 755 $(PC_DIR)/$$dir $(INSTALL_DIR)/lib;		\
+	fi;							 		\
+	done;									\
+	fi
+
 	@set -e;							\
 	if [ "x$(HEADER_FILES)" = "x" ]; then				\
 		$(ECHO) -ne "ERROR: ";					\
@@ -185,6 +196,15 @@ deinstall:
 	$(RM) -f $(INSTALL_DIR)/lib/$(SO_FILE_NAME);			\
 	$(RM) -f $(INSTALL_DIR)/lib/$(PCM_FILE_NAME)
 
+	@set -e;								\
+	if [ $(findstring libHydra.so,$(SO_FILE)) ]; then     			\
+	for d in $(BASE_PCM) ; do						\
+	dir="$$d"Dict_rdict.pcm ;						\
+	if [ -f $(INSTALL_DIR)/lib/$$dir ]; then				\
+		$(RM) -f $(INSTALL_DIR)/lib/$$dir;				\
+	fi;									\
+	done;									\
+	fi
 
 # delete all but the source and dependency files
 clean:
@@ -226,8 +246,11 @@ $(PC_DIR)/%.$(CDF_EXT).$(F77_EXT): %.$(CDF_EXT)
 # create (precompile) Cint dictionary source file based on LinkDef.h file
 $(PC_DIR)/%Dict.$(CXX_EXT): %LinkDef.$(HEADER_EXT) $(DICT_INPUT_FILE_NAMES)
 	@$(ECHO) "==> $(LIB_NAME) : Creating Dictionary $@"
+        ifneq ($(ROOTMAJVERSION),5)
+	$(ROOTCINT) -f $@ -noIncludePaths $(ROOTCINT_FLAGS) $(notdir $(filter $(dir $<)%.$(HEADER_EXT),$(DICT_INPUT_FILES))) $<
+        else
 	$(ROOTCINT) -f $@ $(ROOTCINT_FLAGS) $(filter $(dir $<)%.$(HEADER_EXT),$(DICT_INPUT_FILES)) $<
-
+        endif
 
 ifeq ($(strip $(shell $(CXX) -dumpversion)),2.95.4) 
 

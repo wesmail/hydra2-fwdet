@@ -28,6 +28,8 @@
 
 #include "hrichcalsim.h"
 
+#include "TBuffer.h"
+
 ClassImp(HRichCalSim)
 
     HRichCalSim::HRichCalSim():

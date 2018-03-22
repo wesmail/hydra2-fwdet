@@ -22,6 +22,8 @@
 
 #include "hgeantrpc.h"
 
+#include "TBuffer.h"
+
 ClassImp(HGeantRpc)
 
 HGeantRpc::HGeantRpc(void) {

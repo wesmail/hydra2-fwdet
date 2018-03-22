@@ -1,5 +1,7 @@
 #include "hgeantmdc.h"
 
+#include "TBuffer.h"
+
 //*-- Author : Romain Holzmann, GSI
 //*-- Modified : 1/12/2000 by Romain Holzmann
 //*-- Copyright : GSI, Darmstadt

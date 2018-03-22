@@ -51,6 +51,7 @@ ifdef PLUTODIR
 HYDRA_LIBS += -lPluto
 endif
 
+BASE_PCM=Correlation DataSource DataStruct EventHandling EvtServer GeantUtil Geometry RuntimeDb Util Haddef
 
 
 ### variables related to third party software #################################
@@ -456,8 +457,14 @@ ifeq ($(strip $(USES_X11)),yes)
 endif
 
 # C, C++ and Fortran preprocessor flags
-#CPP_FLAGS += -DR__GLIBC -DDEBUG_LEVEL=$(DEBUG_LEVEL)  -std=c++11
 CPP_FLAGS += -DR__GLIBC -DDEBUG_LEVEL=$(DEBUG_LEVEL)
+
+ROOTMAJVERSION=$(shell $(ROOTCONFIG) --version | cut -d "." -f 1)
+
+ifneq ($(ROOTMAJVERSION),5)
+CPP_FLAGS += -std=c++11
+endif
+
 CPP_FLAGS += $(addprefix -I,$(call cleanlist,$(INC_DIRS)))
 FPP_FLAGS += $(addprefix -I,$(call cleanlist,$(INC_DIRS)))
 

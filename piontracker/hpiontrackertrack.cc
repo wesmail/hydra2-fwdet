@@ -10,6 +10,7 @@
 #include "hpiontrackertrack.h"
 
 #include "TVector3.h"
+#include "TBuffer.h"
 
 ClassImp(HPionTrackerTrack)
 

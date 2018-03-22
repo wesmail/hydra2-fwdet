@@ -13,6 +13,8 @@
 using namespace std;
 #include "hmdcslopes.h"
 
+#include "TBuffer.h"
+
 HMdcSlopes::HMdcSlopes(void)
 {
 	// Default constructor

@@ -1,5 +1,6 @@
 #include "hlocateddataobject.h"
 #include "TClass.h"
+#include "TBuffer.h"
 
 //*-- Author : Manuel Sanchez
 //*-- Modified : 9/11/1998

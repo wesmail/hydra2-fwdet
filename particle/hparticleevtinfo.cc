@@ -12,6 +12,8 @@
 
 #include "hparticleevtinfo.h"
 
+#include "TBuffer.h"
+
 // ----------------------------------------------------------------------------
 
 ClassImp(HParticleEvtInfo)

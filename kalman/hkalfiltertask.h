@@ -155,31 +155,31 @@ public:
 
     virtual Int_t                getTrackNum     () const            { return kalsys->getTrackNum(); }
 
-    virtual void   setConstField      (Bool_t constField)                       { (kalsys) ?   kalsys->setConstField(constField) : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setConstField      (Bool_t constField)                       { (kalsys) ?   kalsys->setConstField(constField) : Warning("setConstField()","%s", noKalman.Data()); }
 
     virtual void   setCounterStep     (Int_t  c)                                { counterstep = c; }
 
     virtual void   setDafPars         (Double_t chi2cut, const Double_t *T, Int_t n) { kalsys->setDafPars(chi2cut, &T[0], n); }
 
-    virtual void   setDirection       (Bool_t dir)                              { (kalsys) ? kalsys->setDirection(dir)          : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setDirection       (Bool_t dir)                              { (kalsys) ? kalsys->setDirection(dir)          : Warning("setConstField()","%s",  noKalman.Data()); }
 
-    virtual void   setDoEnerLoss      (Bool_t dedx)                             { (kalsys) ? kalsys->setDoEnerLoss(dedx)        : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setDoEnerLoss      (Bool_t dedx)                             { (kalsys) ? kalsys->setDoEnerLoss(dedx)        : Warning("setConstField()","%s",  noKalman.Data()); }
 
-    virtual void   setDoMultScat      (Bool_t ms)                               { (kalsys) ? kalsys->setDoMultScat(ms)          : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setDoMultScat      (Bool_t ms)                               { (kalsys) ? kalsys->setDoMultScat(ms)          : Warning("setConstField()","%s",  noKalman.Data()); }
 
     virtual void   setDoPid           (Int_t pid[], Int_t n);
 
     virtual void   setErrors          (Double_t dx, Double_t dy, Double_t dtx, Double_t dty, Double_t dmom);
 
-    virtual void   setFillPointsArrays(Bool_t fill)                             { (kalsys) ? kalsys->setFillPointsArrays(fill)  : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setFillPointsArrays(Bool_t fill)                             { (kalsys) ? kalsys->setFillPointsArrays(fill)  : Warning("setConstField()","%s",  noKalman.Data()); }
 
     virtual void   setFillSites       (Bool_t fill)                             { bFillSites = fill; }
 
-    virtual void   setFieldMap        (HMdcTrackGField *fMap, Double_t scale)   { (kalsys) ? kalsys->setFieldMap(fMap, scale)   : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setFieldMap        (HMdcTrackGField *fMap, Double_t scale)   { (kalsys) ? kalsys->setFieldMap(fMap, scale)   : Warning("setConstField()","%s",  noKalman.Data()); }
 
-    virtual void   setFieldVector     (const TVector3 &B)                       { (kalsys) ? kalsys->setFieldVector(B)          : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setFieldVector     (const TVector3 &B)                       { (kalsys) ? kalsys->setFieldVector(B)          : Warning("setConstField()","%s",  noKalman.Data()); }
 
-    virtual void   setFilterMethod    (Kalman::filtMethod type)                 { (kalsys) ? kalsys->setFilterMethod(type)      : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setFilterMethod    (Kalman::filtMethod type)                 { (kalsys) ? kalsys->setFilterMethod(type)      : Warning("setConstField()","%s",  noKalman.Data()); }
 
     virtual Bool_t setFilterPars      (Bool_t wire, Bool_t daf, Bool_t comp);
 
@@ -193,11 +193,11 @@ public:
 
     virtual void   setMdcMaterials    (TObjArray *mats) { materials = mats; }
 
-    virtual void   setNumIterations   (Int_t kalRuns)                           { (kalsys) ? kalsys->setNumIterations(kalRuns)  : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setNumIterations   (Int_t kalRuns)                           { (kalsys) ? kalsys->setNumIterations(kalRuns)  : Warning("setConstField()","%s",  noKalman.Data()); }
 
     virtual void   setPid             (Int_t (*fPid)(HMdcTrkCand*)) { fGetPid = fPid; }
 
-    virtual void   setRotation        (Kalman::kalRotateOptions rotate)         { (kalsys) ? kalsys->setRotation(rotate)        : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setRotation        (Kalman::kalRotateOptions rotate)         { (kalsys) ? kalsys->setRotation(rotate)        : Warning("setConstField()","%s",  noKalman.Data()); }
 
     virtual void   setRungeKuttaParams(Float_t initialStpSize,
 				       Float_t stpSizeDec, Float_t stpSizeInc,
@@ -205,9 +205,9 @@ public:
 				       Float_t minPrec, Float_t maxPrec,
 				       Int_t maxNumStps, Int_t maxNumStpsPCA,
 				       Float_t maxDst, Double_t minLngthCalcQ) {
-	(kalsys) ? kalsys->setRungeKuttaParams(initialStpSize, stpSizeDec, stpSizeInc, maxStpSize, minStpSize, minPrec, maxPrec, maxNumStps, maxNumStpsPCA, maxDst, minLngthCalcQ)       : Warning("setRungeKuttaParams()",  noKalman.Data()); }
+	(kalsys) ? kalsys->setRungeKuttaParams(initialStpSize, stpSizeDec, stpSizeInc, maxStpSize, minStpSize, minPrec, maxPrec, maxNumStps, maxNumStpsPCA, maxDst, minLngthCalcQ)       : Warning("setRungeKuttaParams()","%s",  noKalman.Data()); }
 
-    virtual void   setSmoothing       (Bool_t smooth)                           { (kalsys) ? kalsys->setSmoothing(smooth)       : Warning("setConstField()",  noKalman.Data()); }
+    virtual void   setSmoothing       (Bool_t smooth)                           { (kalsys) ? kalsys->setSmoothing(smooth)       : Warning("setConstField()","%s",  noKalman.Data()); }
 
     virtual void   setUseGeantPid     (Bool_t geant)                            { bGeantPid = geant; }
 

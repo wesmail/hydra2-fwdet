@@ -346,12 +346,23 @@ void rootlogon(TString additional_libs           = "",
 
    gSystem->SetFlagsOpt( "-O2" );
 
+#if ROOT_VERSION_CODE  > ROOT_VERSION(6,0,0)
+   gSystem->SetMakeSharedLib(
+      "cd $BuildDir; "
+      "g++ -std=c++11 -c $Opt -pipe -Wall -fPIC -pthread $IncludePath $SourceFiles; "
+      "g++ $ObjectFiles -shared -Wl,-soname,$LibName.so "
+      "-O $LinkedLibs -o $SharedLib" );
+#else
    gSystem->SetMakeSharedLib(
       "cd $BuildDir; "
       "g++ -c $Opt -pipe -Wall -fPIC -pthread $IncludePath $SourceFiles; "
       "g++ $ObjectFiles -shared -Wl,-soname,$LibName.so "
       "-O $LinkedLibs -o $SharedLib" );
-   //----------------------------------------------------------------
+#endif
+
+
+
+      //----------------------------------------------------------------
 
 
    //----------------------------------------------------------------
