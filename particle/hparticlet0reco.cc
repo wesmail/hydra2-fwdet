@@ -97,7 +97,7 @@ Int_t HParticleT0Reco::execute(){
             HParticleCand* pCand;
 	    for(Int_t j=0;j<candCat->getEntries();j++)
 	    {
-		pCand = (HParticleCand*)candCat->getObject(j);
+		pCand = dynamic_cast<HParticleCand*>(candCat->getObject(j));
 		if(!pCand) continue;
 		HParticleCandSim* csim = dynamic_cast<HParticleCandSim*>(pCand);
 		if(csim){
@@ -461,7 +461,7 @@ void HParticleT0Reco::fill()
     {
 	for(Int_t j=0;j<candCat->getEntries();j++)
 	{
-	    pCand = (HParticleCand*)candCat->getObject(j);
+	    pCand = dynamic_cast<HParticleCand*>(candCat->getObject(j));
 	    if(!pCand) continue;
 
 	    if(fUseFlagged) {
@@ -564,7 +564,7 @@ void HParticleT0Reco::setPIDs() {
     {
 	for(Int_t j=0;j<candCat->getEntries();j++)
 	{
-	    pCand = (HParticleCand*)candCat->getObject(j);
+	    pCand = dynamic_cast<HParticleCand*>(candCat->getObject(j));
 	    if(!pCand) continue;
 	    pCand->setPID(-1);
 	    if(fUseFlagged) {
@@ -637,13 +637,13 @@ void HParticleT0Reco::correctBeta()
     HParticleCand* pCand=0;
     if(candCat) {
 	for(Int_t j=0;j<candCat->getEntries();j++){
-	    pCand = (HParticleCand*)candCat->getObject(j);
+	    pCand = dynamic_cast<HParticleCand*>(candCat->getObject(j));
 	    if(!pCand) continue;
 	    betas.push_back(getBeta(pCand));
 	}
 
 	for(Int_t j=0;j<candCat->getEntries();j++){
-	    pCand = (HParticleCand*)candCat->getObject(j);
+	    pCand = dynamic_cast<HParticleCand*>(candCat->getObject(j));
 	    if(!pCand) continue;
 	    if(pCand->getBeta()!=-1 && pCand->isFlagAND(4,
 							Particle::kIsAcceptedHitInnerMDC,

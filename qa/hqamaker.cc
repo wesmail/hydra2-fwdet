@@ -2064,7 +2064,7 @@ void HQAMaker::fillHistPid()
    varHists->particleCand_n_Var->Fill(nEvent, nDataObjs);
 
    //----------------- loop over particleCand -----------------------
-   while (NULL != (pCand = static_cast<HParticleCand*>(iterParticleCand->Next()))) { //ParticleCandIter
+   while (NULL != (pCand = dynamic_cast<HParticleCand*>(iterParticleCand->Next()))) { //ParticleCandIter
       // strong RICH cut
       // getRingNumPads()  and average ampl ( getRingAmplitude() / getRingNumPads()
       // very strong condition, will select mainly doubly hits of conversion pairs.
@@ -2593,7 +2593,7 @@ void HQAMaker::fillMassSpectrum()
 
     iterParticleCand->Reset();
 
-    while (NULL != (pCand = static_cast<HParticleCand*>(iterParticleCand->Next())))
+    while (NULL != (pCand = dynamic_cast<HParticleCand*>(iterParticleCand->Next())))
     {
 	hists->hparticle_mass ->Fill(sqrt(pCand->getMass2())*pCand->getCharge());
 

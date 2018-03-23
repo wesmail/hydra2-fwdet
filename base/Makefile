@@ -164,7 +164,9 @@ SOURCE_FILES +=	util/hdebug.cc				\
 	        util/hsuexemacro.cc    			\
 		util/hsuprogress.cc			\
 		util/hsudummyrec.cc    			\
-		util/hgeantfilter.cc
+		util/hgeantfilter.cc                    \
+		util/hvirtualcand.cc                    \
+		util/hvirtualcandsim.cc
 
 # addtional source files related to RFIO
 ifeq ($(strip $(USES_RFIO)),yes)

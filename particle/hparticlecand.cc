@@ -345,22 +345,6 @@ Float_t HParticleCand::getRprime(Float_t xBeam,Float_t yBeam) {
     return fR + xBeam * TMath::Sin(phi) - yBeam * TMath::Cos(phi);
 }
 
-Float_t HParticleCand::getMomentumPID(Int_t pid)
-{
-    // returns the momentum of the candidate taking
-    // into account the charge of the provided PID  ( mom*charge)
-    // In the track reconstruction by default all
-    // momenta are recontructed using charge = 1
-
-    if(fMomentum == -1) return fMomentum;
-
-    Float_t mom      = fMomentum;
-    Int_t chrg       = TMath::Abs(HPhysicsConstants::charge(pid));
-    if(chrg > 0) mom = mom*chrg;
-
-    return mom;
-}
-
 Float_t HParticleCand::getMomentumCorrectionPID(Int_t pid)
 {
     // return the momentum correction for the candidate
@@ -510,6 +494,156 @@ void HParticleCand::Streamer(TBuffer &R__b)
    UInt_t R__s, R__c;
    if (R__b.IsReading()) {
       Version_t R__v = R__b.ReadVersion(&R__s, &R__c); if (R__v) { }
+      if (R__v < 11) { OldStreamer(R__b, R__v); return; }
+      HVirtualCand::Streamer(R__b);
+      R__b >> fFlags;
+      R__b >> fPID;
+      R__b >> fSector;
+      R__b >> fSystem;
+      R__b >> fRingCorr;
+      R__b >> fIndex;
+      R__b >> fDistanceToMetaHit;
+      R__b >> fMdcdEdx;
+      R__b >> fTofdEdx;
+      R__b >> fInnerSegmentChi2;
+      R__b >> fOuterSegmentChi2;
+      R__b >> fAngleToNearbyFittedInner;
+      R__b >> fAngleToNearbyUnfittedInner;
+      R__b >> fRingNumPads;
+      R__b >> fRingAmplitude;
+      R__b >> fRingHouTra;
+      R__b >> fRingPatternMatrix;
+      R__b >> fRingCentroid;
+      R__b >> fRichPhi;
+      R__b >> fRichTheta;
+      if(R__v > 8) R__b >> fRingChi2;
+      else                 fRingChi2 =-1000;
+      R__b >> fMetaMatchQuality;
+      if(R__v > 1) R__b >> fMetaMatchQualityShower;
+      else                 fMetaMatchQualityShower = -1;
+      if(R__v > 3){
+	  R__b >> fMetaMatchRadius;
+	  R__b >> fMetaMatchRadiusShower;
+      } else {
+            fMetaMatchRadius=-1;
+	    fMetaMatchRadiusShower=-1;
+      }
+      if(R__v > 6){
+	  R__b >> fRkMetaDx;
+	  R__b >> fRkMetaDy;
+      } else {
+            fRkMetaDx=-1000;
+	    fRkMetaDy=-1000;
+      }
+
+      if(R__v > 7){
+	  R__b >> fBetaOrg;
+	  R__b >> fMomentumOrg;
+	  R__b >> fDistanceToMetaHitOrg;
+      } else {
+	  fBetaOrg = fBeta;
+          fMomentumOrg = fMomentum;
+          fDistanceToMetaHitOrg = fDistanceToMetaHit;
+      }
+      R__b >> fShowerSum0;
+      R__b >> fShowerSum1;
+      R__b >> fShowerSum2;
+
+      if(R__v > 9) R__b >> fEmcFlags;
+      else                 fEmcFlags=0;
+
+      if(R__v > 1) R__b >> fSelectedMeta;
+      else                 fSelectedMeta =-1;
+
+      R__b >> fMetaInd;
+
+      if(R__v == 5 ) {
+	  Short_t tmpInd=-1;
+	  R__b >> tmpInd;
+	  fRichInd  = (tmpInd&(0xFF))-1;
+	  fRichBTInd= (tmpInd>>8&(0xFF))-1;
+      } else {
+	  if(R__v > 5){
+	      R__b >> fRichInd;
+              R__b >> fRichBTInd;
+	  } else {
+	      R__b >> fRichInd;
+	      fRichBTInd =-1;
+	  }
+      }
+
+      R__b >> fInnerSegInd;
+      R__b >> fOuterSegInd;
+      R__b >> fRpcInd;
+      R__b >> fShowerInd;
+      R__b >> fTofHitInd;
+      R__b >> fTofClstInd;
+      if(R__v > 2) R__b >> fLayers; else fLayers = 0;
+      if(R__v > 4) R__b >> fWires;  else fWires  = 0;
+      if(R__v > 4) R__b >> fmetaAddress;  else fmetaAddress = 0;
+
+      R__b.CheckByteCount(R__s, R__c, HParticleCand::IsA());
+   } else {
+      R__c = R__b.WriteVersion(HParticleCand::IsA(), kTRUE);
+      HVirtualCand::Streamer(R__b);
+      R__b << fFlags;
+      R__b << fPID;
+      R__b << fSector;
+      R__b << fSystem;
+      R__b << fRingCorr;
+      R__b << fIndex;
+      R__b << fDistanceToMetaHit;
+      R__b << fMdcdEdx;
+      R__b << fTofdEdx;
+      R__b << fInnerSegmentChi2;
+      R__b << fOuterSegmentChi2;
+      R__b << fAngleToNearbyFittedInner;
+      R__b << fAngleToNearbyUnfittedInner;
+      R__b << fRingNumPads;
+      R__b << fRingAmplitude;
+      R__b << fRingHouTra;
+      R__b << fRingPatternMatrix;
+      R__b << fRingCentroid;
+      R__b << fRichPhi;
+      R__b << fRichTheta;
+      R__b << fRingChi2;
+      R__b << fMetaMatchQuality;
+      R__b << fMetaMatchQualityShower;
+      R__b << fMetaMatchRadius;
+      R__b << fMetaMatchRadiusShower;
+      R__b << fRkMetaDx;
+      R__b << fRkMetaDy;
+      R__b << fBetaOrg;
+      R__b << fMomentumOrg;
+      R__b << fDistanceToMetaHitOrg;
+      R__b << fShowerSum0;
+      R__b << fShowerSum1;
+      R__b << fShowerSum2;
+      R__b << fEmcFlags;
+      R__b << fSelectedMeta;
+      R__b << fMetaInd;
+      R__b << fRichInd;
+      R__b << fRichBTInd;
+      R__b << fInnerSegInd;
+      R__b << fOuterSegInd;
+      R__b << fRpcInd;
+      R__b << fShowerInd;
+      R__b << fTofHitInd;
+      R__b << fTofClstInd;
+      R__b << fLayers;
+      R__b << fWires;
+      R__b << fmetaAddress;
+      R__b.SetByteCount(R__c, kTRUE);
+   }
+}
+
+void HParticleCand::OldStreamer(TBuffer &R__b, Int_t version)
+{
+   // Stream an object of class HParticleCand.
+
+   UInt_t R__s, R__c;
+   if (R__b.IsReading()) {
+      Version_t R__v = R__b.ReadVersion(&R__s, &R__c); if (R__v) { }
       TLorentzVector::Streamer(R__b);
       R__b >> fFlags;
       R__b >> fPID;
@@ -608,70 +742,5 @@ void HParticleCand::Streamer(TBuffer &R__b)
       if(R__v > 4) R__b >> fmetaAddress;  else fmetaAddress = 0;
 
       R__b.CheckByteCount(R__s, R__c, HParticleCand::IsA());
-   } else {
-      R__c = R__b.WriteVersion(HParticleCand::IsA(), kTRUE);
-      TLorentzVector::Streamer(R__b);
-      R__b << fFlags;
-      R__b << fPID;
-      R__b << fSector;
-      R__b << fSystem;
-      R__b << fCharge;
-      R__b << fTofRec;
-      R__b << fRingCorr;
-      R__b << fIndex;
-      R__b << fBeta;
-      R__b << fMomentum;
-      R__b << fMass2;
-      R__b << fPhi;
-      R__b << fTheta;
-      R__b << fR;
-      R__b << fZ;
-      R__b << fChi2;
-      R__b << fDistanceToMetaHit;
-      R__b << fMdcdEdx;
-      R__b << fTofdEdx;
-      R__b << fInnerSegmentChi2;
-      R__b << fOuterSegmentChi2;
-      R__b << fAngleToNearbyFittedInner;
-      R__b << fAngleToNearbyUnfittedInner;
-      R__b << fRingNumPads;
-      R__b << fRingAmplitude;
-      R__b << fRingHouTra;
-      R__b << fRingPatternMatrix;
-      R__b << fRingCentroid;
-      R__b << fRichPhi;
-      R__b << fRichTheta;
-      R__b << fRingChi2;
-      R__b << fMetaMatchQuality;
-      R__b << fMetaMatchQualityShower;
-      R__b << fMetaMatchRadius;
-      R__b << fMetaMatchRadiusShower;
-      R__b << fRkMetaDx;
-      R__b << fRkMetaDy;
-      R__b << fBetaOrg;
-      R__b << fMomentumOrg;
-      R__b << fDistanceToMetaHitOrg;
-      R__b << fShowerSum0;
-      R__b << fShowerSum1;
-      R__b << fShowerSum2;
-      R__b << fEmcFlags;
-      R__b << fSelectedMeta;
-      R__b << fMetaInd;
-      R__b << fRichInd;
-      R__b << fRichBTInd;
-      R__b << fInnerSegInd;
-      R__b << fOuterSegInd;
-      R__b << fRpcInd;
-      R__b << fShowerInd;
-      R__b << fTofHitInd;
-      R__b << fTofClstInd;
-      R__b << fLayers;
-      R__b << fWires;
-      R__b << fmetaAddress;
-      R__b.SetByteCount(R__c, kTRUE);
    }
 }
-
-
-
-

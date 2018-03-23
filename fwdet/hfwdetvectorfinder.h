@@ -48,6 +48,7 @@ public:
     void clear();
 
 private:
+    HCategory* pKine;                       // Kine category for sim
     HCategory* pStrawHits;                  // Input array of straw hits
     HCategory* pRpcHits;                    // Input array of rpc hits
     HCategory* pFwDetCand;                  // Output array of candidates
@@ -128,10 +129,12 @@ private:
     void selectTracks(Int_t ipass);
     Double_t refit(Int_t patt, HFwDetCand *track, Int_t *hinds, Double_t *pars, TMatrixDSym *cov, Int_t *lr);
     void addTrack(Int_t ista0, HFwDetCand *tr1, HFwDetCand *tr2,
-		  Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2);
+                  Int_t indx1, Int_t indx2, Double_t *parOk, Double_t c2, TMatrixDSym &w2);
 
     Int_t matchRpcHit(Double_t * params, Double_t z);
     Float_t calcDriftRadius(Float_t t) const;
+
+    Bool_t fillFwDetCandSim(HFwDetCand * part, Int_t track);
 
     ClassDef(HFwDetVectorFinder,0);
 };

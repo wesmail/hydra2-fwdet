@@ -1388,7 +1388,7 @@ Bool_t HGeantKine::isInTrackAcceptanceFWBit(Int_t & nrpc)
     // in each of eight double-layers must be registered.
     // Hit in RPC is need to reconstruct momentum, but not for the track.
 
-    nrpc = getNFwDetHitsRpc();
+    nrpc = getNFWRpcLayer();
 
     for (int i = 0; i < 16; i += 2)
     {
@@ -1405,7 +1405,7 @@ Bool_t HGeantKine::isInTrackAcceptanceFWDecayBit(Int_t & nrpc)
     // in each of eight double-layers must be registered.
     // Hit in RPC is need to reconstruct momentum, but not for the track.
 
-    nrpc = getNFwDetHitsRpc();
+    nrpc = getNFWRpcLayer();
 
     UInt_t acc2 = acceptance2 & 0xFFFF;
 
@@ -1413,6 +1413,8 @@ Bool_t HGeantKine::isInTrackAcceptanceFWDecayBit(Int_t & nrpc)
 
     if(d)
     {
+        nrpc = d->getNFWRpcLayer();
+
         UInt_t acc2_d = 0x0;
         d->getStrawLayers(acc2_d);
         acc2 |= acc2_d;

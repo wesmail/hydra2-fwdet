@@ -612,7 +612,7 @@ Int_t HParticleEvtInfoFiller::execute(void)
 
 
 	pParticleCandIter->Reset();
-	while ((particle_cand = (HParticleCand*)pParticleCandIter->Next()))
+	while ((particle_cand = dynamic_cast<HParticleCand*>(pParticleCandIter->Next())))
 	{
 	    ++ particle_cands[particle_cand->getSector()];
 	    if(particle_cand->isFlagBit(Particle::kIsUsed))

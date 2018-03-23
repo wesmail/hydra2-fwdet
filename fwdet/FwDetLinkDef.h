@@ -31,10 +31,10 @@
 #pragma link C++ class HFwDetRpcHitFinder;
 #pragma link C++ class HFwDetRpcHitFinderPar;
 
+#pragma link C++ class HFwDetCand-;
+#pragma link C++ class HFwDetCandSim-;
 #pragma link C++ class HFwDetVectorFinder;
 #pragma link C++ class HFwDetVectorFinderPar;
-#pragma link C++ class HFwDetCand;
-#pragma link C++ class HFwDetCandSim;
 
 #pragma link C++ global catFwDetStrawCal;
 #pragma link C++ global catFwDetScinCal;

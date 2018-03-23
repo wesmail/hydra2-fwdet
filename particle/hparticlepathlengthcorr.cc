@@ -97,7 +97,7 @@ Int_t HParticlePathLengthCorr::execute()
 
     if(candCat) {
 	for(Int_t i=0;i<candCat->getEntries();i++) {
-	    pCand = (HParticleCand*)candCat->getObject(i);
+	    pCand = dynamic_cast<HParticleCand*>(candCat->getObject(i));
 	    if(!pCand) continue;
 	    if(pCand->getBeta()!=-1 && pCand->isFlagAND(4,
 							Particle::kIsAcceptedHitInnerMDC,

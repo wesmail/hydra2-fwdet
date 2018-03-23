@@ -12,6 +12,7 @@
 
 #include "hades.h"
 #include "hcategory.h"
+#include "hcategorymanager.h"
 #include "hlinearcategory.h"
 #include "hevent.h"
 #include "fwdetdef.h"
@@ -24,6 +25,7 @@
 #include "hfwdetvectorfinderpar.h"
 #include "hfwdetcand.h"
 #include "hfwdetcandsim.h"
+#include "hgeantkine.h"
 #include "hgeominterface.h"
 #include "hgeomrootbuilder.h"
 #include "hgeomvolume.h"
@@ -98,7 +100,7 @@ Bool_t HFwDetVectorFinder::init()
     }
 
     // GEANT input data
-    HCategory* pKine = gHades->getCurrentEvent()->getCategory(catGeantKine); 
+    pKine = gHades->getCurrentEvent()->getCategory(catGeantKine); 
     if (pKine) 
     {
         isSimulation = kTRUE;
@@ -862,7 +864,7 @@ printf("        pars=%f %f %f %f\n", pars[0], pars[1], pars[2], pars[3]);
         if (isSimulation)
         {
             HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) pStrawHits->getObject(fUzHit[ipl]);
-            ((HFwDetCandSim*)track)->addHitTrack(hit->getTrack());
+            ((HFwDetCandSim*)track)->addGeantHitTrack(hit->getTrack());
         }
 
         if (lowRes) continue;
@@ -919,9 +921,12 @@ void HFwDetVectorFinder::setTrackId(HFwDetCand *vec)
 
     // to have a valid ID more than half of the tracks must have the same ID
     if (currentMax > nhits/2)
-        ((HFwDetCandSim*) vec)->setTrack(arg_max);
+    {
+        fillFwDetCandSim(vec, arg_max);
+    }
     else
-        ((HFwDetCandSim*) vec)->setTrack(-1);
+        fillFwDetCandSim(vec, -1);
+
 }
 
 void HFwDetVectorFinder::findLine(Int_t patt, Double_t *pars)
@@ -1142,10 +1147,10 @@ void HFwDetVectorFinder::highRes()
             {
                 rpchit = (HFwDetRpcHit*) pRpcHits->getObject(hitno);
                 tof_grad = rpchit->getTof() / rpchit->getZ();
-                vec->setTof(rpchit->getTof());
+                vec->setTofRec(rpchit->getTof());
                 vec->setDistance(rpchit->getDistance());
                 if (isSimulation)
-                    ((HFwDetCandSim*) vec)->setRpcTrack(rpchit->getTrack());
+                    ((HFwDetCandSim*) vec)->setGeantTrackRpc(rpchit->getTrack());
             }
 
             current_track = vec;
@@ -1212,11 +1217,11 @@ void HFwDetVectorFinder::highRes()
                 HFwDetCand * hc = addVector(m, cs.pattern, cs.chi2, cs.pars, kFALSE);
                 if (hc)
                 {
-                    hc->setTof(current_track->getTof());
+                    hc->setTofRec(current_track->getTofRec());
                     hc->setDistance(current_track->getDistance());
                     if (isSimulation)
-                        ((HFwDetCandSim*) hc)->setRpcTrack(
-                            ((HFwDetCandSim*) current_track)->getRpcTrack());
+                        ((HFwDetCandSim*) hc)->setGeantTrackRpc(
+                            ((HFwDetCandSim*) current_track)->getGeantTrackRpc());
                 }
             }
         }
@@ -1319,23 +1324,24 @@ Int_t vec_cnt = 0;
         {
             if (!fVectors[ist][iv]) continue;
 
-            HFwDetCand* cal = (HFwDetCand*) pFwDetCand->getNewSlot(loc);
+            HFwDetCand* cand = (HFwDetCand*) pFwDetCand->getNewSlot(loc);
 
-            if (cal)
+            if (cand)
             {
                 if (isSimulation)
-                    cal = (HFwDetCand*) new(cal) HFwDetCandSim(*(HFwDetCandSim*)(fVectors[ist][iv]));
+                    cand = (HFwDetCand*) new(cand) HFwDetCandSim(*(HFwDetCandSim*)(fVectors[ist][iv]));
                 else
-                    cal = new(cal) HFwDetCand(*(fVectors[ist][iv]));
-                cal->SetUniqueID(ist);
-                setTrackId(cal);
+                    cand = new(cand) HFwDetCand(*(fVectors[ist][iv]));
+                cand->SetUniqueID(ist);
+                cand->setHadesParams();
+                setTrackId(cand);
 #ifdef VERBOSE_MODE1
                 if (isel)
                 {
                     if (isSimulation)
-                        ((HFwDetCandSim*)cal)->print();
+                        ((HFwDetCandSim*)cand)->print();
                     else
-                        cal->print();
+                        cand->print();
                     ++vec_cnt;
                 }
 #endif
@@ -1518,7 +1524,7 @@ void HFwDetVectorFinder::addTrack(Int_t m0, HFwDetCand *tr1, HFwDetCand *tr2, In
         if (isSimulation)
         {
             HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) pStrawHits->getObject(fVectors[0][indx1]->getHitIndex(i));
-            ((HFwDetCandSim*)track)->addHitTrack(hit->getTrack());
+            ((HFwDetCandSim*)track)->addGeantHitTrack(hit->getTrack());
         }
         if (b[i]) track->setLRbit(i);
     }
@@ -1531,16 +1537,21 @@ void HFwDetVectorFinder::addTrack(Int_t m0, HFwDetCand *tr1, HFwDetCand *tr2, In
         if (isSimulation)
         {
             HFwDetStrawCalSim *hit = (HFwDetStrawCalSim*) pStrawHits->getObject(fVectors[1][indx2]->getHitIndex(i));
-            ((HFwDetCandSim*)track)->addHitTrack(hit->getTrack());
+            ((HFwDetCandSim*)track)->addGeantHitTrack(hit->getTrack());
         }
         if (b[i]) track->setLRbit(lim1 + i);
     }
 
-    track->setTof(fVectors[0][indx1]->getTof());
+    if (isSimulation)
+    {
+        ((HFwDetCandSim*)track)->calcGeantCorrTrackIds();
+    }
+
+    track->setTofRec(fVectors[0][indx1]->getTofRec());
     track->setDistance(fVectors[0][indx1]->getDistance());
     if (isSimulation)
-        ((HFwDetCandSim*) track)->setRpcTrack(
-            ((HFwDetCandSim*) fVectors[0][indx1])->getRpcTrack());
+        ((HFwDetCandSim*) track)->setGeantTrackRpc(
+            ((HFwDetCandSim*) fVectors[0][indx1])->getGeantTrackRpc());
 
     fVectors[nModules].push_back(track);
 
@@ -1563,7 +1574,7 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
 
 //         if (tr->getNofHits() != nVecMin) continue;   // FIXME before was two tracks (m0 and m1), now we have up to 16, how to validate proper track?
         Double_t qual = tr->getNofHits() +
-        (499 - TMath::Min(tr->getChi2()/tr->getNDF(),499.0)) / 500;
+        (499.0 - TMath::Min(Double_t(tr->getChi2()/tr->getNDF()),499.0)) / 500;
         c2merge.insert(pair<Double_t,Int_t>(-qual,i));
     }
 
@@ -1615,12 +1626,12 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
             if (isSimulation)
             {
                 HFwDetCandSim* trs = (HFwDetCandSim*)tr;
-                trs->setPx1(px);
-                trs->setPy1(py);
-                trs->setPz1(pz);
-                trs->setX1(x);
-                trs->setY1(y);
-                trs->setZ1(z);
+                trs->setGeantPx1(px);
+                trs->setGeantPy1(py);
+                trs->setGeantPz1(pz);
+                trs->setGeantX1(x);
+                trs->setGeantY1(y);
+                trs->setGeantZ1(z);
             }
 
             hidx = tr->getHitIndex(tr->getNofHits()-1);
@@ -1630,16 +1641,16 @@ void HFwDetVectorFinder::selectTracks(Int_t ipass)
             if (isSimulation)
             {
                 HFwDetCandSim* trs = (HFwDetCandSim*)tr;
-                trs->setPx2(px);
-                trs->setPy2(py);
-                trs->setPz2(pz);
-                trs->setX2(x);
-                trs->setY2(y);
-                trs->setZ2(z);
+                trs->setGeantPx2(px);
+                trs->setGeantPy2(py);
+                trs->setGeantPz2(pz);
+                trs->setGeantX2(x);
+                trs->setGeantY2(y);
+                trs->setGeantZ2(z);
             }
         }
 
-        if (tr->getTof() != -1.0)
+        if (tr->getTofRec() != 0.0)
             tr->calc4vectorProperties(0.0);
         else
             tr->calc4vectorProperties(1.0, 0.0);
@@ -1741,12 +1752,12 @@ Double_t HFwDetVectorFinder::refit(Int_t patt, HFwDetCand *track, Int_t *hinds, 
     TVectorD b(4);
 
     //Double_t plane = track->getPointZ(); // unused
-    Double_t tof = track->getTof();
+    Double_t tof = track->getTofRec();
     Double_t tofl = track->getDistance();
 
     Double_t tof_grad = 0.0;
 
-    if (tof != -1.0)
+    if (tof != 0.0)
     {
         tof_grad = tof / tofl;
     }
@@ -1760,7 +1771,7 @@ Double_t HFwDetVectorFinder::refit(Int_t patt, HFwDetCand *track, Int_t *hinds, 
 
         Float_t time = hit->getTime();
 
-        if (tof != -1.0)
+        if (tof != 0.0)
         {
             Float_t drift_time = time - tof_grad * fZ[i];
             fDrift[i] = calcDriftRadius(drift_time);
@@ -1867,6 +1878,74 @@ Float_t HFwDetVectorFinder::calcDriftRadius(Float_t r) const
 
     Float_t dt = dt_p[0] + dt_p[1]*r + dt_p[2]*r2 + dt_p[3]*r3 + dt_p[4]*r4;
     return dt;
+}
+
+Bool_t HFwDetVectorFinder::fillFwDetCandSim(HFwDetCand* cand, Int_t track)
+{
+    if (!isSimulation)
+        return kFALSE;
+
+    HFwDetCandSim * part = static_cast<HFwDetCandSim*>(cand);
+    if (part && pKine)
+    {
+        HGeantKine* kine = 0;
+        if(track > 0)
+        {
+            kine     = HCategoryManager::getObject(kine, pKine, track-1);
+            if (kine)
+            {
+                Float_t px,py,pz;
+                Float_t vx,vy,vz;
+                Float_t geninfo,geninfo1,geninfo2,genweight;
+                Int_t   parentTr,medium,mechanism,pid,parentPid=-1,grandparentTr=0,grandparentPid=-1;
+                pid = kine->getID();
+                kine->getMomentum (px,py,pz);
+                kine->getVertex   (vx,vy,vz);
+                kine->getCreator  (parentTr,medium,mechanism);
+                kine->getGenerator(geninfo,genweight);
+                kine->getGenerator(geninfo,geninfo1,geninfo2);
+                if(parentTr > 0)
+                {
+                    kine          = HCategoryManager::getObject(kine,pKine,parentTr-1);
+                    parentPid     = kine->getID();
+                    grandparentTr = kine->getParentTrack();
+                    if (grandparentTr > 0)
+                    {
+                        kine           = HCategoryManager::getObject(kine,pKine,grandparentTr-1);
+                        grandparentPid = kine->getID();
+                    }
+                }
+
+                part->setGeantPID(pid);
+                part->setGeantTrack(track);
+                part->setGeantxMom(px);
+                part->setGeantyMom(py);
+                part->setGeantzMom(pz);
+                part->setGeantxVertex(vx);
+                part->setGeantyVertex(vy);
+                part->setGeantzVertex(vz);
+                part->setGeantParentTrackNum(parentTr);
+                part->setGeantParentPID(parentPid);
+                part->setGeantGrandParentTrackNum(grandparentTr);
+                part->setGeantGrandParentPID(grandparentPid);
+                part->setGeantCreationMechanism(mechanism);
+                part->setGeantMediumNumber(medium);
+                part->setGeantGeninfo  (geninfo);
+                part->setGeantGeninfo1 (geninfo1);
+                part->setGeantGeninfo2 (geninfo2);
+                part->setGeantGenweight(genweight);
+            } else
+            {
+                Error("fillParticleCandSim()","NULL pointer received for kine object of trackNum = %i", track);
+                return kFALSE;
+            }
+
+        } else if (track == gHades->getEmbeddingRealTrackId())
+        { // REAL data track
+            part->setGeantTrack(track);
+        }
+    }
+    return kTRUE;
 }
 
 ClassImp(HFwDetVectorFinder);

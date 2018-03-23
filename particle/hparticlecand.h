@@ -6,15 +6,14 @@
 #include "TClonesArray.h"
 #include "TLorentzVector.h"
 
+#include "hvirtualcand.h"
 #include "hparticledef.h"
+
 using namespace Particle;
 
-class HParticleCand : public TLorentzVector
+class HParticleCand : public HVirtualCand
 {
 protected:
-
-
-
     Int_t       fFlags;		             // bit flags for cleaning
     //Int_t sumval;
     //  |32|31|30|29|28|27|26|25|24|23|22|21|20|19|18|17|16|15|14|13|12|11|10|9|8|7|6|5|4|3|2|1|
@@ -23,21 +22,9 @@ protected:
     Short_t     fSector;                     // sector information from MDC (0..5)                              (3bit) 0-7
     Short_t     fSystem;                     // 0 == TOFino, 1 == TOF                                           (2bit) 0-3
 
-    // track properties
-    Short_t     fCharge;                     // particle's charge (+1,-1)                                       (1bit) 0-1
-    Short_t     fTofRec;                     // 0 -> time-of-flight reconstruction was not succesfull,          (2bit) 0-3
-                                             // 1 -> tof+mdc dEdx, 2 -> only tof dEdx, 3 -> only Mdc dEdx
     UShort_t    fRingCorr;                   // ring - mdc correlation
     Short_t     fIndex;                      // index in category
 
-    SmallFloat  fBeta;                       // particle's beta
-    SmallFloat  fMomentum;                   // particle's momentum [MeV]
-    SmallFloat  fMass2;                      // particle's mass^2 [MeV^2]
-    SmallFloat  fPhi;                        // track's phi in cave coordinates (0..360 deg)
-    SmallFloat  fTheta;                      // track's theta in cave coordinates (0..90 deg)
-    SmallFloat  fR;                          // distance of closest point to beamline [mm]
-    SmallFloat  fZ;                          // z coordinate of closest point to beamline [mm]
-    SmallFloat  fChi2;                       // tracking chi^2 (1e6 == tracking failed)
     SmallFloat  fDistanceToMetaHit;          // track's distance to meta hit [mm]
 
     SmallFloat  fMdcdEdx;                    // Mdc dE/dx for inner and outer segment
@@ -102,18 +89,8 @@ public:
         ,fPID(-1)
 	,fSector(-1)
 	,fSystem(-1)
-	,fCharge(0)
-	,fTofRec(0)
 	,fRingCorr(0)
 	,fIndex(-1)
-	,fBeta(-1)
-	,fMomentum(-1)
-	,fMass2(-1)
-	,fPhi(-1)
-	,fTheta(-1)
-	,fR(-1)
-	,fZ(-1)
-	,fChi2(-1)
 	,fDistanceToMetaHit(-1)
 	,fMdcdEdx(-1)
 	,fTofdEdx(-1)
@@ -189,18 +166,8 @@ public:
 	void    setSector(Int_t s)                        { fSector = s;               }
 	void    setSystem(Int_t s)                        { fSystem = s;               }
 	void    setRingCorr(UShort_t rc)                  { fRingCorr = rc;            }
-	void    setTofRec(Short_t tr)                     { fTofRec = tr;              }
 	void    setMdcdEdx(Float_t d)                     { fMdcdEdx = d;              }
 	void    setTofdEdx(Float_t d)                     { fTofdEdx = d;              }
-	void    setCharge(Short_t c)                      { fCharge = c;               }
-	void    setBeta(Float_t b)                        { fBeta = b;                 }
-	void    setMomentum(Float_t m)                    { fMomentum = m;             }
-	void    setMass2(Float_t m)                       { fMass2 = m;                }
-	void    setPhi(Float_t p)                         { fPhi = p;                  }
-	void    setTheta(Float_t t)                       { fTheta = t;                }
-	void    setR(Float_t r)                           { fR = r;                    }
-	void    setZ(Float_t z)                           { fZ = z;                    }
-	void    setChi2(Float_t c)                        { fChi2 = c;                 }
 	void    setDistanceToMetaHit(Float_t d)           { fDistanceToMetaHit = d;    }
 	void    setInnerSegmentChi2(Float_t c)            { fInnerSegmentChi2 = c;    }
 	void    setOuterSegmentChi2(Float_t c)            { fOuterSegmentChi2 = c;    }
@@ -262,19 +229,8 @@ public:
 	Short_t getSystemUsed()                 const     { return ( isRpcClstUsed() || isShowerUsed() ) ?  0 :  ( ( isTofHitUsed() || isTofClstUsed() ) ? 1 : -1 ); }
 	UShort_t getRingCorr()                  const     { return fRingCorr;          }
 	Bool_t  isRichMatch(eMatching match)    const     { return (fRingCorr&match) == 0 ? kFALSE:kTRUE; }
-	Short_t getTofRec()                     const     { return fTofRec;            }
 	Float_t getMdcdEdx()                    const     { return fMdcdEdx;           }
 	Float_t getTofdEdx()                    const     { return fTofdEdx;           }
-	Short_t getCharge()                     const     { return fCharge;            }
-	Float_t getBeta()                       const     { return fBeta;              }
-	Float_t getMomentum()                   const     { return fMomentum;          }
-	Float_t getMass2()                      const     { return fMass2;             }
-        Float_t getMass ()                      const     { return fMass2 == -1 ?  -1 : ( fMass2 < 0 ? TMath::Sqrt(-fMass2) : TMath::Sqrt(fMass2) ) ; }
-	Float_t getPhi()                        const     { return fPhi;               }
-	Float_t getTheta()                      const     { return fTheta;             }
-	Float_t getR()                          const     { return fR;                 }
-	Float_t getZ()                          const     { return fZ;                 }
-	Float_t getChi2()                       const     { return fChi2;              }
 	Float_t getDistanceToMetaHit()          const     { return fDistanceToMetaHit; }
         Float_t getTof()                        const     { return fBeta>0 ? fDistanceToMetaHit/(fBeta*300.) : -1; }
         Float_t getTofNorm(Float_t dist=2100)   const     { return fBeta>0 ? (fDistanceToMetaHit/(fBeta*300.)) * dist/fDistanceToMetaHit : -1; }
@@ -345,17 +301,6 @@ public:
             return -1;
 	}
 
-
-	void calc4vectorProperties(Double_t mass = 0.51099892)
-	{
-	    // first, transform from spherical to cartesian coordinates
-	    SetXYZM( TMath::Abs(fMomentum) * TMath::Sin( TMath::DegToRad() * fTheta )
-		    * TMath::Cos( TMath::DegToRad() * fPhi ),
-		    TMath::Abs(fMomentum) * TMath::Sin( TMath::DegToRad() * fTheta )
-		    * TMath::Sin( TMath::DegToRad() * fPhi ),
-		    TMath::Abs(fMomentum) * TMath::Cos( TMath::DegToRad() * fTheta ),
-		    mass );
-	}
         Float_t getDeltaTheta(){ return  (fRichInd ==-1) ? -1000 : fRichTheta - fTheta; }                                         // delta theta Rich-RK
 	Float_t getDeltaPhi()  { return  (fRichInd ==-1) ? -1000 : ( fRichPhi - fPhi ) * TMath::Sin(TMath::DegToRad() * fTheta);} // delta phi Rich-RK
         Float_t getRichMatchingQuality() {
@@ -373,7 +318,6 @@ public:
 	Float_t getZprime(Float_t xBeam,Float_t yBeam);
 	Float_t getRprime(Float_t xBeam,Float_t yBeam);
 
-        Float_t getMomentumPID          (Int_t pid);
         Float_t getMomentumCorrectionPID(Int_t pid);
         Float_t getCorrectedMomentumPID (Int_t pid);
         Float_t getMass2PID(Int_t pid);
@@ -480,7 +424,8 @@ public:
 	Int_t getMetaModule(UInt_t hit) {  if(hit<2){ return (fmetaAddress>>(hit*11+7)&(0xF))-1; } else return -1; }
 	Int_t getMetaCell  (UInt_t hit) {  if(hit<2){ return (fmetaAddress>>(hit*11)&(0x7F))-1;  } else return -1; }
 
-	ClassDef(HParticleCand,10)  // A simple track of a particle
+    void OldStreamer(TBuffer &R__b, Int_t version);
+	ClassDef(HParticleCand,11)  // A simple track of a particle
 };
 
 

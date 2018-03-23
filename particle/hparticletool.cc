@@ -34,6 +34,7 @@
 #include "hgeantshower.h"
 #include "hgeantrpc.h"
 
+#include "hvirtualcand.h"
 #include "hparticlecand.h"
 #include "hparticlecandsim.h"
 #include "hparticlepairmaker.h"
@@ -1184,7 +1185,7 @@ void  HParticleTool::getTLorentzVector(HGeantKine* kine, TLorentzVector& vec,Int
     vec.SetPxPyPzE(xmom,ymom,zmom,TMath::Sqrt(mass*mass + xmom*xmom + ymom*ymom + zmom*zmom));
 }
 
-void  HParticleTool::fillTLorentzVector(TLorentzVector& v,HParticleCand* cand,Float_t mass)
+void  HParticleTool::fillTLorentzVector(TLorentzVector& v,HVirtualCand* cand,Float_t mass)
 {
     // fill v from cand. cand will be unmodified.
     // user has to provide the mass. if the candidate has
@@ -1209,7 +1210,7 @@ void  HParticleTool::fillTLorentzVector(TLorentzVector& v,HParticleCand* cand,Fl
 
 }
 
-void  HParticleTool::fillTLorentzVector(TLorentzVector& v,HParticleCand* cand,Int_t pid,Bool_t correctMom)
+void  HParticleTool::fillTLorentzVector(TLorentzVector& v,HVirtualCand* cand,Int_t pid,Bool_t correctMom)
 {
     // fill v from cand. cand will be unmodified.
     // user has to provide the PID. if the candidate has
@@ -1223,7 +1224,8 @@ void  HParticleTool::fillTLorentzVector(TLorentzVector& v,HParticleCand* cand,In
     Float_t mass = HPhysicsConstants::mass(pid);
     Float_t mom  = cand->getMomentumPID(pid);
 
-    if(correctMom) mom = cand->getCorrectedMomentumPID(pid);
+    HParticleCand * pcand = dynamic_cast<HParticleCand*>(cand);
+    if(pcand && correctMom && cand) mom = pcand->getCorrectedMomentumPID(pid);
 
     if(mom != -1){
 	v.SetXYZM( mom * TMath::Sin( TMath::DegToRad() * cand->getTheta())

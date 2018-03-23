@@ -4,6 +4,7 @@
 #include "Rtypes.h"
 
 #include "hfwdetcand.h"
+#include "hvirtualcandsim.h"
 #include "haddef.h"
 #include "fwdetdef.h"
 
@@ -12,99 +13,99 @@
 #include "TMatrixDSym.h"
 #include "TObject.h"
 
-class HFwDetCandSim: public HFwDetCand
+class HFwDetCandSim: public HFwDetCand, public HVirtualCandSim
 {
+private:
+    // sim info
+    Int_t   fGeantTrackRpc;             // GEANT track number in FwDet RPC
+
+    Double_t fGeantPx1;                 // momentum of the hit in the first straw
+    Double_t fGeantPy1;
+    Double_t fGeantPz1;
+
+    Double_t fGeantPx2;                 // momentum of the hit in the last straw
+    Double_t fGeantPy2;
+    Double_t fGeantPz2;
+
+    Double_t fGeantX1;                  // position of the hit in the first straw
+    Double_t fGeantY1;
+    Double_t fGeantZ1;
+
+    Double_t fGeantX2;                  // position of the hit in the last straw
+    Double_t fGeantY2;
+    Double_t fGeantZ2;
+
+    Int_t fGeantTrackInds[FWDET_STRAW_MAX_VPLANES];  // hit indices in planes
+
 public:
     HFwDetCandSim();
     virtual ~HFwDetCandSim();
 
-    Int_t getTrack() const { return fTrack; }
-    Int_t getRpcTrack() const { return fRpcTrack; }
+    Int_t    getGeantTrackRpc() const { return fGeantTrackRpc; }
+    Double_t getGeantPx1() const { return fGeantPx1; }
+    Double_t getGeantPy1() const { return fGeantPy1; }
+    Double_t getGeantPz1() const { return fGeantPz1; }
+    Double_t getGeantPx2() const { return fGeantPx2; }
+    Double_t getGeantPy2() const { return fGeantPy2; }
+    Double_t getGeantPz2() const { return fGeantPz2; }
+    Double_t getGeantX1() const { return fGeantX1; }
+    Double_t getGeantY1() const { return fGeantY1; }
+    Double_t getGeantZ1() const { return fGeantZ1; }
+    Double_t getGeantX2() const { return fGeantX2; }
+    Double_t getGeantY2() const { return fGeantY2; }
+    Double_t getGeantZ2() const { return fGeantZ2; }
 
-    Double_t getPx1() const { return fPx1; }
-    Double_t getPy1() const { return fPy1; }
-    Double_t getPz1() const { return fPz1; }
-    Double_t getPx2() const { return fPx2; }
-    Double_t getPy2() const { return fPy2; }
-    Double_t getPz2() const { return fPz2; }
-    Double_t getX1() const { return fX1; }
-    Double_t getY1() const { return fY1; }
-    Double_t getZ1() const { return fZ1; }
-    Double_t getX2() const { return fX2; }
-    Double_t getY2() const { return fY2; }
-    Double_t getZ2() const { return fZ2; }
+    void setGeantTrackRpc(Int_t a) { fGeantTrackRpc = a; }
+    void setGeantPx1(Double_t px) { fGeantPx1 = px; }
+    void setGeantPy1(Double_t py) { fGeantPy1 = py; }
+    void setGeantPz1(Double_t pz) { fGeantPz1 = pz; }
+    void setGeantPx2(Double_t px) { fGeantPx2 = px; }
+    void setGeantPy2(Double_t py) { fGeantPy2 = py; }
+    void setGeantPz2(Double_t pz) { fGeantPz2 = pz; }
+    void setGeantX1(Double_t x) { fGeantX1 = x; }
+    void setGeantY1(Double_t y) { fGeantY1 = y; }
+    void setGeantZ1(Double_t z) { fGeantZ1 = z; }
+    void setGeantX2(Double_t x) { fGeantX2 = x; }
+    void setGeantY2(Double_t y) { fGeantY2 = y; }
+    void setGeantZ2(Double_t z) { fGeantZ2 = z; }
 
-    void setTrack(Int_t track) { fTrack = track; }
-    void setRpcTrack(Int_t track) { fRpcTrack = track; }
+    inline Float_t getGeantTx() const;
+    inline Float_t getGeantTy() const;
 
-    void setPx1(Double_t px) { fPx1 = px; }
-    void setPy1(Double_t py) { fPy1 = py; }
-    void setPz1(Double_t pz) { fPz1 = pz; }
-    void setPx2(Double_t px) { fPx2 = px; }
-    void setPy2(Double_t py) { fPy2 = py; }
-    void setPz2(Double_t pz) { fPz2 = pz; }
-    void setX1(Double_t x) { fX1 = x; }
-    void setY1(Double_t y) { fY1 = y; }
-    void setZ1(Double_t z) { fZ1 = z; }
-    void setX2(Double_t x) { fX2 = x; }
-    void setY2(Double_t y) { fY2 = y; }
-    void setZ2(Double_t z) { fZ2 = z; }
+    inline Int_t addGeantHitTrack(Int_t track);
 
-    inline Float_t getSimTx() const;
-    inline Float_t getSimTy() const;
+    void print(UChar_t mask = 0xff) const;
 
-    inline Int_t addHitTrack(Int_t track);
-
-    void print() const;
+    Int_t calcGeantCorrTrackIds();
 
 private:
-    Int_t fTrack;       // track number
-    Int_t fRpcTrack;    // the same but for RPC
 
-    Double_t fPx1;      // momentum of the hit in the first straw
-    Double_t fPy1;
-    Double_t fPz1;
-
-    Double_t fPx2;      // momentum of the hit in the last straw
-    Double_t fPy2;
-    Double_t fPz2;
-
-    Double_t fX1;       // position of the hit in the first straw
-    Double_t fY1;
-    Double_t fZ1;
-
-    Double_t fX2;       // position of the hit in the last straw
-    Double_t fY2;
-    Double_t fZ2;
-
-    Int_t fTrackInds[FWDET_STRAW_MAX_VPLANES];  // hit indices in planes
-
-    ClassDef(HFwDetCandSim, 1);
+    ClassDef(HFwDetCandSim, 2);
 };
 
-Float_t HFwDetCandSim::getSimTx() const
+Float_t HFwDetCandSim::getGeantTx() const
 {
     // Calculates simulated Tx slope
-    Float_t dz = fZ2 - fZ1;
-    Float_t dx = fX2 - fX1;
+    Float_t dz = fGeantZ2 - fGeantZ1;
+    Float_t dx = fGeantX2 - fGeantX1;
     return dx/dz;
 }
 
-Float_t HFwDetCandSim::getSimTy() const
+Float_t HFwDetCandSim::getGeantTy() const
 {
     // Calculates simulated Ty slope
-    Float_t dz = fZ2 - fZ1;
-    Float_t dy = fY2 - fY1;
+    Float_t dz = fGeantZ2 - fGeantZ1;
+    Float_t dy = fGeantY2 - fGeantY1;
     return dy/dz;
 }
 
-Int_t HFwDetCandSim::addHitTrack(Int_t track)
+Int_t HFwDetCandSim::addGeantHitTrack(Int_t track)
 {
     Int_t fNhits = getNofHits();
     if (!fNhits)
         return 0;
 
-    fTrackInds[fNhits-1] = track;
+    fGeantTrackInds[fNhits-1] = track;
     return fNhits;
 }
 

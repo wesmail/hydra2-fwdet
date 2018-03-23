@@ -44,6 +44,8 @@
 
 #pragma link C++ class HGeantFilter;
 #pragma link C++ class HHitFilter;
+#pragma link C++ class HVirtualCand-;
+#pragma link C++ class HVirtualCandSim-;
 
 #pragma link C++ class HSUExeMacro;
 #pragma link C++ class HSUProgress;

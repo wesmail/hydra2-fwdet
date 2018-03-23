@@ -269,11 +269,9 @@ void HParticleCandSim::print(UInt_t selection)
 
     if( (selection>>4) & 0x01){
 
-	cout<<"Geant PID     : "<<setw(12)<<fGeantPID         <<", trk      : "<<setw(12)<<fGeantTrack            <<", parPID     : "<<setw(12)<< fGeantParentPID           <<", parTrk     : "<<setw(12)<<fGeantParentTrackNum       <<", grndParPID : "<<setw(12)<<fGeantGrandParentPID  <<", grndParTrk : "<<setw(12)<<fGeantGrandParentTrackNum <<endl;
-	cout<<"Generator     : "<<setw(12)<<fGeantgeninfo     <<", 1        : "<<setw(12)<<fGeantgeninfo1         <<", 2          : "<<setw(12)<<fGeantgeninfo2             <<", weight     : "<<setw(12)<<fGeantgenweight<<endl;
+    HVirtualCandSim::print(selection);
+
 	cout<<"ghost track   : "<<setw(12)<<isGhostTrack()    <<", in RICH  : "<<setw(12)<<isInDetector(kIsInRICH)<<", in iMDC    : "<<setw(12)<<isInDetector(kIsInInnerMDC)<<", in oMDC    : "<<setw(12)<<isInDetector(kIsInOuterMDC)<<", in TOF     : "<<setw(12)<<isInDetector(kIsInTOF)<<", in RPC     : "<<setw(12)<<isInDetector(kIsInRPC)<<", in SHOWER: "<<setw(12)<<isInDetector(kIsInSHOWER)<<endl;
-	cout<<"Geant Mom     : "<<setw(12)<<getGeantTotalMom()<<", xmom     : "<<setw(12)<<fGeantxMom             <<", ymom       : "<<setw(12)<< fGeantyMom                <<", zmom       : "<<fGeantzMom<<endl;
-	cout<<"Geant Vertex  : "<<setw(12)<<fGeantxVertex     <<", "<<setw(12)<< fGeantyVertex <<", "<< fGeantzVertex <<endl;
         cout<<"Geant MDC i tr: "<<setw(6) <<fGeantTrackInnerMdc[0]   <<" ("<<setw(3)<<(Int_t)fGeantTrackInnerMdcN[0] <<"), "<<setw(6)<<fGeantTrackInnerMdc  [1] <<" ( "<<setw(3)<<(Int_t)fGeantTrackInnerMdcN  [1] <<")" <<endl;
         cout<<"Geant MDC o tr: "<<setw(6) <<fGeantTrackOuterMdc[0]   <<" ("<<setw(3)<<(Int_t)fGeantTrackOuterMdcN[0] <<"), "<<setw(6)<<fGeantTrackOuterMdc  [1] <<" ( "<<setw(3)<<(Int_t)fGeantTrackOuterMdcN  [1] <<")" <<endl;
         cout<<"Geant META  tr: "<<setw(12)<<fGeantTrackMeta  [0]     <<", "<<setw(12)<<fGeantTrackMeta  [1] <<", "<<setw(12)<<fGeantTrackMeta  [2] <<", "<<setw(12)<<fGeantTrackMeta  [3]  <<endl;
@@ -285,6 +283,57 @@ void HParticleCandSim::print(UInt_t selection)
 }
 
 void HParticleCandSim::Streamer(TBuffer &R__b)
+{
+   // Stream an object of class HParticleCandSim.
+
+   UInt_t R__s, R__c;
+   if (R__b.IsReading()) {
+      Version_t R__v = R__b.ReadVersion(&R__s, &R__c); if (R__v) { }
+      if (R__v < 4) { OldStreamer(R__b, R__v); return; }
+      HVirtualCandSim::Streamer(R__b);
+      HParticleCand::Streamer(R__b);
+      if(R__v > 1){
+	  R__b.ReadStaticArray((int*)fGeantTrackRich);
+	  R__b.ReadStaticArray((int*)fGeantTrackMeta);
+          R__b.ReadStaticArray((int*)fGeantTrackShower);
+      } else {
+	  for (Int_t i = 0; i < 3; ++i) fGeantTrackRich[i] = -1;
+	  for (Int_t i = 0; i < 4; ++i) {
+	      fGeantTrackMeta  [i] = -1;
+              fGeantTrackShower[i] = -1;
+          }
+      }
+
+      if(R__v > 2){
+	  R__b.ReadStaticArray((int*)fGeantTrackInnerMdc);
+	  R__b.ReadStaticArray((int*)fGeantTrackOuterMdc);
+	  R__b.ReadStaticArray((char*)fGeantTrackInnerMdcN);
+	  R__b.ReadStaticArray((char*)fGeantTrackOuterMdcN);
+      } else {
+	  for (Int_t i = 0; i < 2; ++i) {
+	      fGeantTrackInnerMdc[i] = -1;
+	      fGeantTrackOuterMdc[i] = -1;
+	      fGeantTrackInnerMdcN[i] = 0;
+	      fGeantTrackOuterMdcN[i] = 0;
+	  }
+      }
+     R__b.CheckByteCount(R__s, R__c, HParticleCandSim::IsA());
+   } else {
+      R__c = R__b.WriteVersion(HParticleCandSim::IsA(), kTRUE);
+      HVirtualCandSim::Streamer(R__b);
+      HParticleCand::Streamer(R__b);
+      R__b.WriteArray(fGeantTrackRich, 3);
+      R__b.WriteArray(fGeantTrackMeta, 4);
+      R__b.WriteArray(fGeantTrackShower, 4);
+      R__b.WriteArray(fGeantTrackInnerMdc,2);
+      R__b.WriteArray(fGeantTrackOuterMdc,2);
+      R__b.WriteArray(fGeantTrackInnerMdcN,2);
+      R__b.WriteArray(fGeantTrackOuterMdcN,2);
+      R__b.SetByteCount(R__c, kTRUE);
+   }
+}
+
+void HParticleCandSim::OldStreamer(TBuffer &R__b, Int_t version)
 {
    // Stream an object of class HParticleCandSim.
 
@@ -337,37 +386,5 @@ void HParticleCandSim::Streamer(TBuffer &R__b)
 	  }
       }
      R__b.CheckByteCount(R__s, R__c, HParticleCandSim::IsA());
-   } else {
-      R__c = R__b.WriteVersion(HParticleCandSim::IsA(), kTRUE);
-      HParticleCand::Streamer(R__b);
-      R__b << fGeantPID;
-      R__b << fGeantTrack;
-      R__b << fGeantCorrTrackIds;
-      R__b << fGeantxMom;
-      R__b << fGeantyMom;
-      R__b << fGeantzMom;
-      R__b << fGeantxVertex;
-      R__b << fGeantyVertex;
-      R__b << fGeantzVertex;
-      R__b << fGeantParentTrackNum;
-      R__b << fGeantParentPID;
-      R__b << fGeantGrandParentTrackNum;
-      R__b << fGeantGrandParentPID;
-      R__b << fGeantCreationMechanism;
-      R__b << fGeantMediumNumber;
-      R__b << fGeantgeninfo;
-      R__b << fGeantgeninfo1;
-      R__b << fGeantgeninfo2;
-      R__b << fGeantgenweight;
-      R__b.WriteArray(fGeantTrackRich, 3);
-      R__b.WriteArray(fGeantTrackMeta, 4);
-      R__b.WriteArray(fGeantTrackShower, 4);
-      R__b.WriteArray(fGeantTrackInnerMdc,2);
-      R__b.WriteArray(fGeantTrackOuterMdc,2);
-      R__b.WriteArray(fGeantTrackInnerMdcN,2);
-      R__b.WriteArray(fGeantTrackOuterMdcN,2);
-      R__b.SetByteCount(R__c, kTRUE);
    }
 }
-
-

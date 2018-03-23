@@ -1,4 +1,6 @@
 
+#include "hparticlecandsim.h"
+
 #include "hparticlepair.h"
 #include "hparticletool.h"
 #include "hphysicsconstants.h"
@@ -17,7 +19,7 @@ ClassImp(HParticlePair)
 //
 // HParticlePair
 //
-// a pair build of 2 HParticleCand objects. Opening Angle + Vertex variables
+// a pair build of 2 HVirtualCand objects. Opening Angle + Vertex variables
 // are calulated when the pair is set.  With static HParticlePair::setDoMomentumCorrection(Bool_t doit)
 // Particle momenta are corrected for energyloss (default: kTRUE).
 //
@@ -40,14 +42,14 @@ Bool_t HParticlePair::isSimulation()
 {
     // checks if pair is created by sim objects
 
-    HParticleCand* c = 0;
+    HVirtualCand* c = 0;
 
     if     (fcand[0]) c = fcand[0];
     else if(fcand[1]) c = fcand[1];
 
     if(c){
 	TString n = c->ClassName();
-	if(n.CompareTo("HParticleCandSim") == 0){ return kTRUE; }
+	if(n.CompareTo("HVirtualCandSim") == 0){ return kTRUE; }
     }
 
     if(fpair[0] && fpair[0]->getIsSimulation()) return kTRUE;
@@ -118,7 +120,7 @@ Bool_t  HParticlePair::calcVectors(Int_t pid1,Int_t pid2,Int_t motherpid,HGeomVe
     // sets fPID1,fPID2,fMotherPID and fills lorentz vectors
     // opening Angle etc.
 
-    if( (!fcand[0] && !fpair[0]) || (!fcand[1] && !fpair[1])    ) { Error("calcVectors()","Candidates not yet filled! Skipped!"); return kFALSE; }
+    if( (!fcand[0] && !fpair[0]) || (!fcand[1] && !fpair[1]) ) { Error("calcVectors()","Candidates not yet filled! Skipped!"); return kFALSE; }
 
     fPID[0]    = pid1;
     fPID[1]    = pid2;
@@ -146,11 +148,11 @@ Bool_t  HParticlePair::calcVectors(Int_t pid1,Int_t pid2,Int_t motherpid,HGeomVe
     return kTRUE;
 }
 
-HParticleCandSim* HParticlePair::getFirstDaughter()
+HVirtualCandSim* HParticlePair::getFirstDaughter()
 {
     // returns the pointer to the first valid daughter
     // returns 0 if no valid daughter is found
-    HParticleCandSim* c =0;
+    HVirtualCandSim* c =0;
     if(getCandSim(0)) return getCandSim(0);
     if(getCandSim(1)) return getCandSim(1);
 
@@ -328,7 +330,7 @@ void HParticlePair::getSourceInfo(Int_t index,Int_t& parentTrack,Int_t& grandPar
 
     if(!fIsSimulation) return;
 
-    HParticleCandSim* c = 0;
+    HVirtualCandSim* c = 0;
 
     if     (index == -1)              c = getFirstDaughter();
     else if(index >= 0 && index < 3 ) c = getCandSim(index);
@@ -350,8 +352,12 @@ void    HParticlePair::setTruePair()
     if(getCandSim(0) && getCandSim(1))
     {
 	if(getCandSim(0)->getGeantParentTrackNum() > 0 && getCandSim(0)->getGeantParentTrackNum() == getCandSim(1)->getGeantParentTrackNum()) {    // decay in GEANT
-	    if(!getCandSim(0)->isGhostTrack() ) fstatusFlags = fstatusFlags|0x01;
-            if(!getCandSim(1)->isGhostTrack() ) fstatusFlags = fstatusFlags|0x02;
+        HParticleCandSim * pcandsim0 = dynamic_cast<HParticleCandSim*>(getCandSim(0));
+        HParticleCandSim * pcandsim1 = dynamic_cast<HParticleCandSim*>(getCandSim(1));
+        if(pcandsim0) { if(!pcandsim0->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
+        else                                         { fstatusFlags = fstatusFlags|0x01; }
+        if(pcandsim1) { if(!pcandsim1->isGhostTrack()) fstatusFlags = fstatusFlags|0x02; }
+        else                                         { fstatusFlags = fstatusFlags|0x02; }
 	    return;
 	}
 
@@ -364,12 +370,18 @@ void    HParticlePair::setTruePair()
 	   geninfo_1  == geninfo_2                      &&  // sourceID
 	   geninfo2_1 == geninfo2_2                         // parentindex if more than 1 decay of the same source is in the event
 	  ) {
-	    if(!getCandSim(0)->isGhostTrack() ) fstatusFlags = fstatusFlags|0x01;
-	    if(!getCandSim(1)->isGhostTrack() ) fstatusFlags = fstatusFlags|0x02;
+            HParticleCandSim * pcandsim0 = dynamic_cast<HParticleCandSim*>(getCandSim(0));
+            HParticleCandSim * pcandsim1 = dynamic_cast<HParticleCandSim*>(getCandSim(1));
+            if(pcandsim0) { if(!pcandsim0->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
+            else                                         { fstatusFlags = fstatusFlags|0x01; }
+            if(pcandsim1) { if(!pcandsim1->isGhostTrack()) fstatusFlags = fstatusFlags|0x02; }
+            else                                         { fstatusFlags = fstatusFlags|0x02; }
+	    return;
 	}
 
 	return;
     }
+
 
     if(getCandSim(0) && fpair[1])
     {
@@ -383,8 +395,10 @@ void    HParticlePair::setTruePair()
 	fpair[1]->getSourceInfo(-1,parentTrack,grandparentTrack,geninfo_1,geninfo1_1,geninfo2_1);
 
 	if(grandparentTrack > 0 && getCandSim(0)->getGeantParentTrackNum() == grandparentTrack) {    // decay in GEANT
-	    if(!getCandSim(0)->isGhostTrack() ) fstatusFlags = fstatusFlags|0x01;
-            if(fpair[1]->isTruePair())          fstatusFlags = fstatusFlags|0x02;
+        HParticleCandSim * pcandsim0 = dynamic_cast<HParticleCandSim*>(getCandSim(0));
+        if(pcandsim0) { if(!pcandsim0->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
+        else                                         { fstatusFlags = fstatusFlags|0x01; }
+        if(fpair[1]->isTruePair())                  fstatusFlags = fstatusFlags|0x02;
 	    return;
 	}
 
@@ -395,8 +409,10 @@ void    HParticlePair::setTruePair()
 	   geninfo_1  == geninfo_2                      &&  // sourceID
 	   geninfo2_1 == geninfo2_2                         // parentindex if more than 1 decay of the same source is in the event
 	  ) {
-	    if(!getCandSim(0)->isGhostTrack() ) fstatusFlags = fstatusFlags|0x01;
-	    if(fpair[1]->isTruePair())          fstatusFlags = fstatusFlags|0x02;
+        HParticleCandSim * pcandsim0 = dynamic_cast<HParticleCandSim*>(getCandSim(0));
+        if(pcandsim0) { if(!pcandsim0->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
+        else                                         { fstatusFlags = fstatusFlags|0x01; }
+        if(fpair[1]->isTruePair())                  fstatusFlags = fstatusFlags|0x02;
 	}
 
 	return;
@@ -414,8 +430,10 @@ void    HParticlePair::setTruePair()
 	fpair[0]->getSourceInfo(-1,parentTrack,grandparentTrack,geninfo_1,geninfo1_1,geninfo2_1);
 
 	if(grandparentTrack > 0 && getCandSim(1)->getGeantParentTrackNum() == grandparentTrack) {    // decay in GEANT
-	    if(!getCandSim(1)->isGhostTrack() ) fstatusFlags = fstatusFlags|0x01;
-            if(fpair[0]->isTruePair())          fstatusFlags = fstatusFlags|0x02;
+        HParticleCandSim * pcandsim0 = dynamic_cast<HParticleCandSim*>(getCandSim(0));
+        if(pcandsim0) { if(!pcandsim0->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
+        else                                         { fstatusFlags = fstatusFlags|0x01; }
+        if(fpair[0]->isTruePair())                  fstatusFlags = fstatusFlags|0x02;
 	    return;
 	}
 
@@ -426,8 +444,10 @@ void    HParticlePair::setTruePair()
 	   geninfo_1  == geninfo_2                      &&  // sourceID
 	   geninfo2_1 == geninfo2_2                         // parentindex if more than 1 decay of the same source is in the event
 	  ) {
-	    if(!getCandSim(1)->isGhostTrack() ) fstatusFlags = fstatusFlags|0x01;
-	    if(fpair[0]->isTruePair())          fstatusFlags = fstatusFlags|0x02;
+        HParticleCandSim * pcandsim0 = dynamic_cast<HParticleCandSim*>(getCandSim(0));
+        if(pcandsim0) { if(!pcandsim0->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
+        else                                         { fstatusFlags = fstatusFlags|0x01; }
+        if(fpair[0]->isTruePair())                  fstatusFlags = fstatusFlags|0x02;
 	}
 
 	return;
@@ -474,8 +494,8 @@ void    HParticlePair::setTruePair()
 
 }
 
-Bool_t  HParticlePair::setPair(HParticleCand* cnd1,Int_t pid1,
-			       HParticleCand* cnd2,Int_t pid2,
+Bool_t  HParticlePair::setPair(HVirtualCand* cnd1,Int_t pid1,
+			       HVirtualCand* cnd2,Int_t pid2,
 			       Int_t motherpid,UInt_t pairflags,HGeomVector& vertex)
 {
     // sets pairflags , candidates and calls
@@ -495,7 +515,7 @@ Bool_t  HParticlePair::setPair(HParticleCand* cnd1,Int_t pid1,
 }
 
 Bool_t  HParticlePair::setPair(HParticlePair* cnd1,Int_t pid1,
-			       HParticleCand* cnd2,Int_t pid2,
+			       HVirtualCand* cnd2,Int_t pid2,
 			       Int_t motherpid,UInt_t pairflags,HGeomVector& vertex)
 {
     // sets pairflags , candidates and calls
@@ -529,7 +549,7 @@ Bool_t  HParticlePair::setPair(HParticlePair* cnd1,Int_t pid1,
     fpair[0]      = cnd1;
     fpair[1]      = cnd2;
     fcand[0]      = 0;
-    fcand[0]      = 0;
+    fcand[1]      = 0;
     fIsSimulation = isSimulation();
 
 
@@ -538,7 +558,6 @@ Bool_t  HParticlePair::setPair(HParticlePair* cnd1,Int_t pid1,
 
     return calcVectors(pid1,pid2,motherpid,vertex);
 }
-
 
 void HParticlePair::printFlags()
 {
@@ -607,9 +626,8 @@ void  HParticlePair::print(UInt_t selection)
     if( (selection>>0) & 0x01){
 	if(fcand[0]) fcand[0]->print();
 	if(fcand[1]) fcand[1]->print();
-        if(fpair[0]) fpair[0]->print(1);
+    if(fpair[0]) fpair[0]->print(1);
 	if(fpair[1]) fpair[1]->print(1);
-
     }
 
     if( (selection>>1) & 0x01){
@@ -623,15 +641,20 @@ void  HParticlePair::print(UInt_t selection)
     }
 
     if( ( (selection>>2) & 0x01) && fcand[0] && fcand[1]){
-	cout<<"    RICH     : " <<setw(3)<<fcand[0]->getRichInd()    <<" "<<setw(3)<< fcand[1]->getRichInd()<<endl;
-	cout<<"    InnerMDC : " <<setw(3)<<fcand[0]->getInnerSegInd()<<" "<<setw(3)<< fcand[1]->getInnerSegInd()<<endl;
-	cout<<"    OuterMDC : " <<setw(3)<<fcand[0]->getOuterSegInd()<<" "<<setw(3)<< fcand[1]->getOuterSegInd()<<endl;
-	cout<<"    META     : " <<setw(3)<<fcand[0]->getMetaHitInd() <<" "<<setw(3)<<fcand[1]->getMetaHitInd()<<" "<<setw(3)<<fcand[0]->getSelectedMeta()<<" "<<setw(3)<<fcand[1]->getSelectedMeta()<<endl;
-	cout<<" systemUsed1 : "<<setw(3)<<fcand[0]->getSystemUsed()        <<", systemUsed2 : "<<setw(3)<<fcand[1]->getSystemUsed()<<endl;
-	cout<<" isTofClst1  : "<<setw(3)<<(Int_t)fcand[0]->isTofClstUsed() <<", isTofClst2  : "<<setw(3)<<(Int_t)fcand[1]->isTofClstUsed()<<endl;
-	cout<<" isTofHit1   : "<<setw(3)<<(Int_t)fcand[0]->isTofHitUsed()  <<", isTofHit2   : "<<setw(3)<<(Int_t)fcand[1]->isTofHitUsed()<<endl;
-	cout<<" isRpcClst1  : "<<setw(3)<<(Int_t)fcand[0]->isRpcClstUsed() <<", isRpcClst2  : "<<setw(3)<<(Int_t)fcand[1]->isRpcClstUsed()<<endl;
-	cout<<" isShower1   : "<<setw(3)<<(Int_t)fcand[0]->isShowerUsed()  <<", isShower2   : "<<setw(3)<<(Int_t)fcand[1]->isShowerUsed()<<endl;
+        HParticleCandSim * _fcand0 = dynamic_cast<HParticleCandSim*>(fcand[0]);
+        HParticleCandSim * _fcand1 = dynamic_cast<HParticleCandSim*>(fcand[1]);
+        if (_fcand0 && _fcand1)
+        {
+            cout<<"    RICH     : " <<setw(3)<<_fcand0->getRichInd()    <<" "<<setw(3)<< _fcand1->getRichInd()<<endl;
+            cout<<"    InnerMDC : " <<setw(3)<<_fcand0->getInnerSegInd()<<" "<<setw(3)<< _fcand1->getInnerSegInd()<<endl;
+            cout<<"    OuterMDC : " <<setw(3)<<_fcand0->getOuterSegInd()<<" "<<setw(3)<< _fcand1->getOuterSegInd()<<endl;
+            cout<<"    META     : " <<setw(3)<<_fcand0->getMetaHitInd() <<" "<<setw(3)<<_fcand1->getMetaHitInd()<<" "<<setw(3)<<_fcand0->getSelectedMeta()<<" "<<setw(3)<<_fcand1->getSelectedMeta()<<endl;
+            cout<<" systemUsed1 : "<<setw(3)<<_fcand0->getSystemUsed()        <<", systemUsed2 : "<<setw(3)<<_fcand1->getSystemUsed()<<endl;
+            cout<<" isTofClst1  : "<<setw(3)<<(Int_t)_fcand0->isTofClstUsed() <<", isTofClst2  : "<<setw(3)<<(Int_t)_fcand1->isTofClstUsed()<<endl;
+            cout<<" isTofHit1   : "<<setw(3)<<(Int_t)_fcand0->isTofHitUsed()  <<", isTofHit2   : "<<setw(3)<<(Int_t)_fcand1->isTofHitUsed()<<endl;
+            cout<<" isRpcClst1  : "<<setw(3)<<(Int_t)_fcand0->isRpcClstUsed() <<", isRpcClst2  : "<<setw(3)<<(Int_t)_fcand1->isRpcClstUsed()<<endl;
+            cout<<" isShower1   : "<<setw(3)<<(Int_t)_fcand0->isShowerUsed()  <<", isShower2   : "<<setw(3)<<(Int_t)_fcand1->isShowerUsed()<<endl;
+        }
     }
 
     if( (selection>>3) & 0x01){

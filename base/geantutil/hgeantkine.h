@@ -346,7 +346,7 @@ public:
 
   //-----------------------------------------------------------------------
   // acceptance2 bits  FWDET
-  void    setStrawLayers(UInt_t io,UInt_t layers)      { acceptance2 |=(layers&(0xFFFF));}
+  void    setStrawLayers(UInt_t layers)                { acceptance2 |=(layers&(0xFFFF));}
   void    setStrawLayer (UInt_t lay)                   { acceptance2 |=  ( 0x01 << (lay) );}
   void    unsetAllStrawLayers()                        { acceptance2 &= ~0xFFFF; }
   static void setStrawLayer(UInt_t lay,UInt_t& layers) { layers |=  ( 0x01 << (lay) ); }

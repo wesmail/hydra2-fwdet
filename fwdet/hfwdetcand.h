@@ -6,13 +6,15 @@
 #include "haddef.h"
 #include "fwdetdef.h"
 
+#include "hvirtualcand.h"
+
 #include "TBits.h"
 #include "TLorentzVector.h"
 #include "TMatrixDSym.h"
 #include "TMath.h"
 #include "TObject.h"
 
-class HFwDetCand: public TLorentzVector
+class HFwDetCand: public HVirtualCand
 {
 public:
     HFwDetCand();
@@ -20,21 +22,13 @@ public:
 
     Int_t    getNofHits() const { return fNhits; }
     Int_t    getNDF()     const { return fNDF; }
-    Double_t getChi2()    const { return fChi2; }
     Double_t getPointX()  const { return refVec.X(); }
     Double_t getPointY()  const { return refVec.Y(); }
     Double_t getPointZ()  const { return refVec.Z(); }
     Double_t getDirTx()   const { return dirVec.X(); }
     Double_t getDirTy()   const { return dirVec.Y(); }
 
-
-    Float_t  getTof()          const { return fTof; }
     Float_t  getDistance()     const { return fDistance; }
-    Double_t getZ()            const { return getHadesParam(0); }
-    Double_t getR()            const { return getHadesParam(1); }
-    Double_t getTheta()        const { return getHadesParam(2); }
-    Double_t getPhi()          const { return getHadesParam(3); }
-    void     getHadesParams(Double_t *params) const;
 
     Int_t getHitIndex(Int_t ihit) const { return fHitInds[ihit]; }
     const TBits &getLR() const { return fLRbits; }
@@ -42,9 +36,7 @@ public:
     TMatrixDSym getCovarMatr() const;
 
     void  setNDF     (Int_t ndf)  { fNDF = ndf; }
-    void  setChi2    (Double_t c2){ fChi2 = c2; }
     void  setPointZ  (Double_t z) { refVec.SetZ(z); }
-    void  setTof     (Double_t t) { fTof = t; }
     void  setDistance(Double_t l) { fDistance = l; }
     void  setLRbit   (Int_t indx) { fLRbits.SetBitNumber(indx); }
 
@@ -58,26 +50,23 @@ public:
 
     void  print() const;
 
-private:
-    Double_t getHadesParam(Int_t ipar) const;
+    void  setHadesParams();
 
 private:
     Int_t fNhits;           // number of hits
     Int_t fNDF;             // number of degrees of freedom
-    Int_t fHitInds[FWDET_STRAW_MAX_VPLANES];  // hit indices in planes
+    Int_t fHitInds[FWDET_STRAW_MAX_VPLANES];  //[fNhits] hit indices in planes
 
-    Float_t fTof;           // associated Tof, -1.0 if none
     Float_t fDistance;      // distance of flight
 
     Double32_t fCovar[10];  // covar. matrix
-    Double32_t fChi2;       // chi2
 
     TVector3 dirVec;        // direction vector (momentum)
     TVector3 refVec;        // reference vector (anchor)
 
     TBits fLRbits;          // bit pattern for left-right drift direction choice (L "-", R "+")
 
-    ClassDef(HFwDetCand, 1);
+    ClassDef(HFwDetCand, 2);
 };
 
 #endif

@@ -30,6 +30,7 @@ class HMdcClusFit;
 class HMdcWireFit;
 class HMdcClus;
 class HGeomVector;
+class HVirtualCand;
 class HParticleCand;
 class HParticleCandSim;
 class HParticlePair;
@@ -79,8 +80,8 @@ public:
     static  Int_t      getCloseCandidates(HParticleCand* cand,vector<HParticleCand*>& vcand,vector<Float_t >& vopeninAngle,Float_t oACut=15., Bool_t sameSector=kTRUE, Bool_t skipSameSeg=kTRUE);
     static  Int_t      getCloseCandidatesSegInd(HParticleCand* cand, vector<Int_t>& vSeg,Float_t oACut,Bool_t sameSector, Bool_t skipSameSeg);
     static  void       getTLorentzVector(HGeantKine* kine, TLorentzVector& vec,Int_t pid=-1);
-    static  void       fillTLorentzVector(TLorentzVector& v,HParticleCand* cand,Float_t mass);
-    static  void       fillTLorentzVector(TLorentzVector& v,HParticleCand* cand,Int_t pid,Bool_t correctMom=kTRUE);
+    static  void       fillTLorentzVector(TLorentzVector& v,HVirtualCand* cand,Float_t mass);
+    static  void       fillTLorentzVector(TLorentzVector& v,HVirtualCand* cand,Int_t pid,Bool_t correctMom=kTRUE);
     static  Float_t    getLabPhiDeg(TLorentzVector& vec);
     static  Float_t    calcRichQA(HMdcSeg* seg, HRichHit* hit);
     static  Float_t    calcRichQA(HMdcSeg* seg, Float_t richTheta,Float_t richPhi);

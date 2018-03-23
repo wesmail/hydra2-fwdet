@@ -40,7 +40,7 @@ private:
     map<Int_t, vector<HParticleCand*> > mInnerMdctoCand;     //!  inner Seg   lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mOuterMdctoCand;     //!  outer Seg   lookup   detector hit ind -> list of candidates using this hit
     map<Int_t, vector<HParticleCand*> > mRichtoCand;         //!  RICH hit    lookup   detector hit ind -> list of candidates using this hit
-    map<HParticleCand*,vector<HParticlePair*> > mCandtoPair; //!  candidate   lookup   candidate        -> list of pairs using this candidate
+    map<HVirtualCand*,vector<HParticlePair*> > mCandtoPair; //!  candidate   lookup   candidate        -> list of pairs using this candidate
 
 
 
@@ -109,8 +109,8 @@ public:
     // filter functions
     void  filterPairsVector(vector<HParticlePair*>& filterpairs,UInt_t flag=0);
     void  filterPairsVector(vector<HParticlePair*>& filterpairs,vector<UInt_t>& flags);
-    Int_t filterCandidates (HParticleCand* cand,vector<HParticleCand*>& candidates,UInt_t flag=0,Float_t oAngle=-1);
-    Int_t filterCandidates (HParticleCand* cand,vector<HParticlePair*>& filterpairs,UInt_t flag=0,Float_t oAngle=-1);
+    Int_t filterCandidates (HVirtualCand* cand,vector<HVirtualCand*>& candidates,UInt_t flag=0,Float_t oAngle=-1);
+    Int_t filterCandidates (HVirtualCand* cand,vector<HParticlePair*>& filterpairs,UInt_t flag=0,Float_t oAngle=-1);
 
     //--------------------------------------------------------------------------
     // lookup functions

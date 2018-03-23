@@ -548,7 +548,7 @@ Int_t HParticleTrackSorter::flagAccepted(vector <candidateSort*>& all_candidates
 	if(rejectQuality(cand, byQuality))      continue;
 	++ ctAcceptQuality;
 
-	pcand = (HParticleCand*) pParticleCandCat->getObject(cand->ind_Cand);
+	pcand = dynamic_cast<HParticleCand*>(pParticleCandCat->getObject(cand->ind_Cand));
 	if(!pcand) {
 	    Error("HParticleTrackSorter::flagAccepted()","NULL pointer retrieved for HParticleCand at index %i",cand->ind_Cand);
 	    continue;
@@ -702,7 +702,7 @@ Int_t HParticleTrackSorter::setFlagsDouble(vector<candidateSort*>& daughter, HPa
     HParticleCand* cand;
     for(UInt_t i = 0; i < daughter.size(); ++ i)
     {  // loop over list and set flags
-	cand = (HParticleCand*) pParticleCandCat->getObject(daughter[i]->ind_Cand);
+	cand = dynamic_cast<HParticleCand*>(pParticleCandCat->getObject(daughter[i]->ind_Cand));
 	if(!cand) {
 	    Error("HParticleTrackSorter::setFlagsDouble()","NULL pointer retrieved for HParticleCand at index %i",daughter[i]->ind_Cand);
 	    continue;
@@ -756,7 +756,7 @@ Bool_t HParticleTrackSorter::flagEmcClusters()
         HParticleCand* cand = 0;
 	n = pParticleCandCat->getEntries();
 	for(Int_t i = 0; i < n; i ++){
-	    cand = (HParticleCand*) pParticleCandCat->getObject(i);
+	    cand = dynamic_cast<HParticleCand*>(pParticleCandCat->getObject(i));
 	    if(cand->isFlagBit(Particle::kIsUsed) ){
 		Int_t ind = cand->getEmcInd();
 		if(ind>=0){
@@ -781,7 +781,7 @@ Int_t HParticleTrackSorter::fillInput(vector < candidateSort* >& all_candidates)
 
     candidateSort* cand;
     iterParticleCandCat->Reset();
-    while ((pCand = (HParticleCand *)iterParticleCandCat->Next()) != 0 )
+    while ((pCand = dynamic_cast<HParticleCand*>(iterParticleCandCat->Next())) != 0 )
     {
 
 	if(pCand->isFlagBit(Particle::kIsUsed))
@@ -925,7 +925,7 @@ void HParticleTrackSorter::printCand(candidateSort* cand, Int_t i,TString spacer
 	<<", RKRKMETARadius: "  <<(cand->RK_Chi2 != -1 && cand->RK_META_match_Radius != -1 ? cand->RK_Chi2*cand->RK_META_match_Radius : -1)
 	<<", isRingRK: "<<(Int_t) cand->RICH_RK_Corr
 	<<endl;
-    HParticleCand* pcand = (HParticleCand*) pParticleCandCat->getObject(cand->ind_Cand);
+    HParticleCand* pcand = dynamic_cast<HParticleCand*>(pParticleCandCat->getObject(cand->ind_Cand));
     if(cand)
     {
 	cout<<spacer.Data()<<flush;
@@ -949,7 +949,7 @@ void HParticleTrackSorter::printEvent(TString comment)
 	<<endl;
     HParticleCand* pcand;
     iterParticleCandCat->Reset();
-    while ((pcand = (HParticleCand *)iterParticleCandCat->Next()) != 0 )
+    while ((pcand = dynamic_cast<HParticleCand*>(iterParticleCandCat->Next())) != 0 )
     {
 	cout <<setw(6)<<ctcand<<" "<<flush;
 	pcand->print();
@@ -968,7 +968,7 @@ void HParticleTrackSorter::resetFlags(Bool_t flag, Bool_t reject, Bool_t used, B
     if(!iterParticleCandCat) return;
     HParticleCand* pCand;
     iterParticleCandCat->Reset();
-    while ((pCand = (HParticleCand *) iterParticleCandCat->Next()) != 0) // begin of ParticleCand iterator
+    while ((pCand = dynamic_cast<HParticleCand*>(iterParticleCandCat->Next())) != 0) // begin of ParticleCand iterator
     {
 	if(flag){
 	    if((pCand->isFlagBit(Particle::kIsUsed) && used)  ||
@@ -991,7 +991,7 @@ void HParticleTrackSorter::selection(Bool_t (*function)(HParticleCand* ))
     if(!iterParticleCandCat) return;
     HParticleCand* pCand;
     iterParticleCandCat->Reset();
-    while ((pCand = (HParticleCand *) iterParticleCandCat->Next()) != 0) // begin of ParticleCand iterator
+    while ((pCand = dynamic_cast<HParticleCand*>(iterParticleCandCat->Next())) != 0) // begin of ParticleCand iterator
     {
 	if( pCand->isFlagBit(Particle::kIsUsed)) { continue;} // do not touch already used objects!
 	if(!pCand->select(function)) {pCand->setFlagBit(Particle::kIsRejected); }
@@ -1116,7 +1116,7 @@ void  HParticleTrackSorter::backupFlags(Bool_t onlyFlags)
     HParticleCand* pCand ;
     iterParticleCandCat->Reset();
 
-    while ((pCand = (HParticleCand *)iterParticleCandCat->Next()) != 0 )
+    while ((pCand = dynamic_cast<HParticleCand*>(iterParticleCandCat->Next())) != 0 )
     {
          old_flags.push_back(pCand->getFlagField());
     }
@@ -1171,7 +1171,7 @@ Bool_t  HParticleTrackSorter::restoreFlags(Bool_t onlyFlags)
 
     vector<Int_t>::iterator iter;
     iter = old_flags.begin();
-    while ((pCand = (HParticleCand *)iterParticleCandCat->Next()) != 0 )
+    while ((pCand = dynamic_cast<HParticleCand*>(iterParticleCandCat->Next())) != 0 )
     {
 	if(iter != old_flags.end()){
 	    pCand->setFlagField(*iter);
@@ -1428,7 +1428,7 @@ Int_t HParticleTrackSorter::selectBest(HParticleTrackSorter::ESwitch byQuality, 
 	    index_RPC.push_back(cand->ind_RPC);
 	}
 
-	HParticleCand* pcand = (HParticleCand*) pParticleCandCat->getObject(cand->ind_Cand);
+	HParticleCand* pcand = dynamic_cast<HParticleCand*>(pParticleCandCat->getObject(cand->ind_Cand));
 	if(!pcand) {
 	    Error("HParticleTrackSorter::selectBest()","NULL pointer retrieved for HParticleCand at index %i",cand->ind_Cand);
 	    continue;

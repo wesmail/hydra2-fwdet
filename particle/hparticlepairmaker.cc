@@ -621,8 +621,8 @@ void HParticlePairMaker::nextEvent()
 	    //  book the candidate -> pair lists
 	    for(UInt_t i = 0; i < fpairs.size(); i++){
 		HParticlePair* pair = &(fpairs[i]);
-		cand1 = pair->getCand(0);
-		cand2 = pair->getCand(1);
+		cand1 = dynamic_cast<HParticleCand*>(pair->getCand(0));
+		cand2 = dynamic_cast<HParticleCand*>(pair->getCand(1));
 
 
 		//-------------------------------------------------------
@@ -702,7 +702,7 @@ void HParticlePairMaker::filterPairsVector(vector<HParticlePair*>& filterpairs,v
     }
 }
 
-Int_t HParticlePairMaker::filterCandidates(HParticleCand* cand,vector<HParticleCand*>& candidates,UInt_t flag,Float_t oAngle)
+Int_t HParticlePairMaker::filterCandidates(HVirtualCand* cand,vector<HVirtualCand*>& candidates,UInt_t flag,Float_t oAngle)
 {
     // vector candidates with all candidates which have been combined into pairs.
     // if flag == 0 no filtering will be done. Filtering takes place on pairs.
@@ -714,7 +714,7 @@ Int_t HParticlePairMaker::filterCandidates(HParticleCand* cand,vector<HParticleC
 
     candidates.clear();
 
-    map<HParticleCand*,vector<HParticlePair*> >::iterator it = mCandtoPair.find(cand);
+    map<HVirtualCand*,vector<HParticlePair*> >::iterator it = mCandtoPair.find(cand);
     if(it != mCandtoPair.end()){
 	vector<HParticlePair*>& v = it->second;
 
@@ -732,7 +732,7 @@ Int_t HParticlePairMaker::filterCandidates(HParticleCand* cand,vector<HParticleC
     return -1;
 }
 
-Int_t HParticlePairMaker::filterCandidates (HParticleCand* cand,vector<HParticlePair*>& filterpairs,UInt_t flag,Float_t oAngle)
+Int_t HParticlePairMaker::filterCandidates (HVirtualCand* cand,vector<HParticlePair*>& filterpairs,UInt_t flag,Float_t oAngle)
 {
     // Fills vector filterpairs with all pairs which share cand.
     // if flag == 0 no filtering will be done. Filtering takes place on pairs.
@@ -743,7 +743,7 @@ Int_t HParticlePairMaker::filterCandidates (HParticleCand* cand,vector<HParticle
     // has not been found at all (should not happen).
 
     filterpairs.clear();
-    map<HParticleCand*,vector<HParticlePair*> >::iterator it = mCandtoPair.find(cand);
+    map<HVirtualCand*,vector<HParticlePair*> >::iterator it = mCandtoPair.find(cand);
     if(it != mCandtoPair.end()){
 	vector<HParticlePair*>& v = it->second;
         for(UInt_t i = 0 ; i < v.size(); i++){
