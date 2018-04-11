@@ -4,8 +4,6 @@
 #include "hvirtualcand.h"
 #include "hvirtualcandsim.h"
 #include "hparticletool.h"
-#include "hfwdetcand.h"
-#include "hfwdetcandsim.h"
 #include "hgeomvector.h"
 #include "hgeantkine.h"
 #include "TLorentzVector.h"
