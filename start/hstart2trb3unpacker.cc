@@ -35,7 +35,7 @@ using namespace std;
 
 ClassImp(HStart2Trb3Unpacker)
 
-HStart2Trb3Unpacker::HStart2Trb3Unpacker(UInt_t id) : HTrb3Unpacker(id) {
+HStart2Trb3Unpacker::HStart2Trb3Unpacker(UInt_t id) : HTrb3TdcUnpacker(id) {
   // constructor
   pRawCat = NULL;
   timeRef = kTRUE;
@@ -114,17 +114,12 @@ Int_t HStart2Trb3Unpacker::execute(void) {
 
   // correct for reference time here!
   if (timeRef) {
-     for (unsigned n=0;n<numTDC();n++) {
-        if (!getTDC(n)->correctRefTimeCh(0)) {
-           Error("decode", "time-correction for tdc %04x failed!!! Evt Nr : %i SubEvtId: %x",
-                          (unsigned) getTDC(n)->getTrbAddr(), nEvt, subEvtId);
-           return -1;
-        }
-     }
+     if (!correctRefTimeCh(0)) 
+        return -1;
   }
 
-  for (unsigned ntdc=0;ntdc<numTDC();ntdc++) {
-     HTrb3TdcUnpacker* tdc = getTDC(ntdc);
+  for (UInt_t ntdc=0;ntdc<numTDC();ntdc++) {
+     TDC* tdc = getTDC(ntdc);
 
     // check the lookup table
     HStart2Trb3LookupTdc *board = lookup->getTdc(tdc->getTrbAddr());

@@ -36,7 +36,7 @@ protected:
   TList* parVersions;   // List of container names with the versions
   TString refRun;       //! name of the reference run for initialization
 public:
-  HRun() {}
+  HRun() : parVersions(0) {}
   HRun(const Text_t* name,const Text_t* refName="");
   HRun(Int_t r,Int_t rr=-1);
   HRun(HRun &run);

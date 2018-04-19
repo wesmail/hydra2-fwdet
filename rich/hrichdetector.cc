@@ -43,6 +43,7 @@ HRichDetector::HRichDetector(void) : HDetector("Rich", "The RICH detector")
 
    maxModules = 1;
    modules    = new TArrayI(RICH_MAX_SECTORS);
+   maxComponents = RICH700_MAX_PMT; // JAM2018 must set this if you want to work with geometry parameter!
 
 }
 
@@ -102,6 +103,23 @@ HCategory* HRichDetector::buildSimMatrixCat(const Text_t* classname,
    return category;
 }
 
+// new JAM2017
+HCategory* HRichDetector::build700MatrixCat(const Text_t* classname,
+                                 const Float_t fillRate)
+{
+
+   HMatrixCategory *category = NULL;
+   Int_t ini[2];
+
+   ini[0] = RICH700_MAX_PMT+1; // indices in database are from 1 to RICH700_MAX_PMT, ignore 0 slot here!
+   ini[1] = RICH700_MAX_PMTPIXELS+1; // indices in database are from 1 to RICH700_MAX_PMTPIXELS, ignore 0 slot here!
+
+   category = new HMatrixCategory(classname, 2, ini, fillRate);
+   return category;
+}
+
+
+
 HCategory* HRichDetector::buildCategory(Cat_t cat)
 {
    switch (cat) {
@@ -115,6 +133,9 @@ HCategory* HRichDetector::buildCategory(Cat_t cat)
          return buildMatrixCat("HRichDirClus", 0.5);
       case catRichHitHdr          :
          return buildLinearCat("HRichHitHeader");
+      case catRich700Raw          :
+    	  return build700MatrixCat("HRich700Raw",1);
+
       default:
          return NULL;
    }

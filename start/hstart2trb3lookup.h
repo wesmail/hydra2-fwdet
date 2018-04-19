@@ -87,7 +87,9 @@ public:
                      Int_t maxTrbnetAddress = Trbnet::kStartTrb3MaxTrbnetAddress);
    ~HStart2Trb3Lookup();
    HStart2Trb3LookupTdc* getTdc(Int_t trbnetAddress) {
-      return (HStart2Trb3LookupTdc*)(array->At(trbnetAddress - arrayOffset));
+      if ((arrayOffset <= trbnetAddress) && (trbnetAddress <= (array->GetSize() + arrayOffset)))
+         return (HStart2Trb3LookupTdc*)(array->At(trbnetAddress - arrayOffset));
+      return 0;
    }
    HStart2Trb3LookupTdc* operator[](Int_t i) {
       return static_cast<HStart2Trb3LookupTdc*>((*array)[i]);

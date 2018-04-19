@@ -24,6 +24,11 @@
 #include "hrichthresholdpar.h"
 #include "hrich700digipar.h"
 #include "hrich700ringfinderpar.h"
+
+#include "hrich700trb3lookup.h"
+#include "hrich700thresholdpar.h"
+#include "hrich700geompar.h"
+
 #include "hruntimedb.h"
 
 #include <string.h>
@@ -81,6 +86,18 @@ HRichContFact::setAllContainers()
                                   "Rich RingFinder Parameters",
                                   ""));
 
+
+   containers->Add(new HContainer("Rich700Trb3Lookup",
+                                    "Rich700 Trb3 Lookup Parameters",
+                                    "Rich700Trb3LookupProduction"));
+
+   containers->Add(new HContainer("Rich700ThresholdPar",
+                                       "Rich700 Trb3 Threshold Parameters",
+                                       "Rich700ThresholdProduction"));
+   containers->Add(new HContainer("Rich700GeomPar",
+                     "Geometry parameters of the new RICH 700",
+                     "GeomProduction"));
+
 }
 
 HParSet*
@@ -106,5 +123,13 @@ HRichContFact::createContainer(HContainer* c)
       return new HRich700DigiPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
    if (0 == strncmp(name, "Rich700RingFinderPar", strlen("Rich700RingFinderPar")))
       return new HRich700RingFinderPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
+
+   if (0 == strncmp(name, "Rich700Trb3Lookup", strlen("Rich700Trb3Lookup")))
+        return new HRich700Trb3Lookup(c->getConcatName().Data(), c->GetTitle(), c->getContext());
+   if (0 == strncmp(name, "Rich700ThresholdPar", strlen("Rich700ThresholdPar")))
+          return new HRich700ThresholdPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
+   if (strcmp(name,"Rich700GeomPar")==0)
+       return new HRich700GeomPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+
    return 0;
 }

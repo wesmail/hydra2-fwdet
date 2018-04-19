@@ -72,7 +72,9 @@ public:
                  Int_t maxTrbnetAddress = Trbnet::kEmcTrb3MaxTrbnetAddress);
    ~HEmcTrb3Lookup(void);
    HEmcTrb3LookupBoard* getBoard(Int_t trbnetAddress) {
-     return (HEmcTrb3LookupBoard*)(array->At(trbnetAddress - arrayOffset));
+     if ((arrayOffset <= trbnetAddress) && (trbnetAddress <= (array->GetSize() + arrayOffset)))
+       return (HEmcTrb3LookupBoard*)(array->At(trbnetAddress - arrayOffset));
+     return 0;
    }
    HEmcTrb3LookupBoard* operator[](Int_t i) {
      return static_cast<HEmcTrb3LookupBoard*>((*array)[i]);

@@ -2,11 +2,11 @@
 #define HEMCTRB3UNPACKER_H
 
 #include "hlocation.h"
-#include "htrb3unpacker.h"
+#include "htrb3tdcunpacker.h"
 
 class HEmcTrb3Lookup;
 
-class HEmcTrb3Unpacker: public HTrb3Unpacker {
+class HEmcTrb3Unpacker: public HTrb3TdcUnpacker {
 protected:
    HLocation loc;           // location of raw cell object
    HEmcTrb3Lookup* lookup;  // TRB3 lookup table

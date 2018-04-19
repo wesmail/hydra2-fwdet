@@ -32,7 +32,7 @@ public:
    HCategory *buildLinearCat(const Text_t* classname, const Int_t   size = 1000);
    HCategory *buildMatrixCat(const Text_t* classname, const Float_t fillRate);
    HCategory *buildSimMatrixCat(const Text_t* classname, const Float_t fillRate, const Int_t size = 200);
-
+   HCategory *build700MatrixCat(const Text_t* classname, const Float_t fillRate);
 
    HTask*     buildTask(const Text_t name[], const Option_t* opt = "");
    HCategory* buildCategory(Cat_t cat);

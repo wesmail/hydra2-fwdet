@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 
+#include "TBuffer.h"
 using namespace std;
 
 // ROOT's IO and RTTI stuff is added here

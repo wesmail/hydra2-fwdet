@@ -2,11 +2,11 @@
 #define HSTART2TRB3UNPACKER_H
 
 #include "hlocation.h"
-#include "htrb3unpacker.h"
+#include "htrb3tdcunpacker.h"
 
 class HStart2Trb3Lookup;
 
-class HStart2Trb3Unpacker: public HTrb3Unpacker {
+class HStart2Trb3Unpacker: public HTrb3TdcUnpacker {
 protected:
    HLocation loc;              // location of raw cell object
    HStart2Trb3Lookup* lookup;  // TRB3 lookup table

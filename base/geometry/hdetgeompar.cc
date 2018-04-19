@@ -131,7 +131,7 @@ HDetGeomPar::HDetGeomPar(const Char_t* name,const Char_t* title,
     }
   } else {
     if (gHades) Error("HDetGeomPar(...)",
-                      "Detector not found");
+                      "Detector %s not found", detName);
     modules=0;
     refVolumes=0;
     shapes=0;

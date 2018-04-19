@@ -12,12 +12,8 @@
 #define HTRB3UNPACKER_H
 
 #include "hldunpack.h"
-#include "htrb3tdcunpacker.h"
 #include <vector>
 #include "TString.h"
-
-class HTrb3Calpar;
-class HTrbnetAddressMapping;
 
 class HTrb3Unpacker : public HldUnpack {
 
@@ -31,9 +27,6 @@ protected:
   Int_t  debugFlag;                     //! allows to print subevent information to the STDOUT
   Bool_t quietMode;                     //! do not print errors!
   Bool_t reportCritical;                //! report critical errors!
-
-  HTrb3Calpar* calpar;                   //! TDC calibration parameters 
-  std::vector<HTrb3TdcUnpacker*> fTDCs;  //! vector of TDC unpackers
 
 public:
   Int_t getSubEvtId(void) const { return subEvtId; }
@@ -52,17 +45,12 @@ public:
 
   virtual Int_t  execute(void){ return 0;};
   virtual Bool_t init(void){ return kFALSE; };
-  virtual Bool_t reinit(void);
-
-  void createTDC(UInt_t id1, HTrb3CalparTdc*);
-  void addTDC(HTrb3TdcUnpacker* tdc);
-
-  UInt_t numTDC() const { return fTDCs.size(); }
-  HTrb3TdcUnpacker* getTDC(UInt_t indx) const { return fTDCs[indx]; }
+  virtual Bool_t reinit(void) { return kTRUE; };
 
 protected:
-  void   clearAll(void);
+  virtual void   clearAll(void);
   Bool_t decode(void);
+  virtual Bool_t decodeData(UInt_t trbaddr, UInt_t n, UInt_t * data) { return kFALSE; }
 
   ClassDef(HTrb3Unpacker,0); //Base class for TRB3 unpackers
 };

@@ -49,6 +49,7 @@ HDetector::HDetector(void) {
   //Constructor
   maxSectors=6;
   maxModules=0;
+  maxComponents=0;
   modules=0;
 }
 
@@ -56,6 +57,7 @@ HDetector::HDetector(const Text_t* name,const Text_t* title) : TNamed(name,title
   //Constructor with name
   maxSectors=6;
   maxModules=0;
+  maxComponents=0;
   modules=0;
 }
 

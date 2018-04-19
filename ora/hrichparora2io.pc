@@ -19,6 +19,14 @@ using namespace std;
 #include "hrichcalpar.h"
 #include "hrichcalparcell.h"
 #include "hrichthresholdpar.h"
+
+#include "hrich700trb3lookup.h"
+#include "hrich700thresholdpar.h"
+#include "hrich700geompar.h"
+
+#include "hgeomcompositevolume.h"
+#include "hora2geomdetversion.h"
+
 #include "richdef.h"
 #include "TClass.h"
 #include <iostream>
@@ -27,6 +35,9 @@ using namespace std;
 
 #define SQLCA_STORAGE_CLASS extern
 #define ORACA_STORAGE_CLASS extern
+
+// JAM2018: enable this one to get verbose output when reading geometry parameter
+//#define JAM_GEO_DEBUG 1
 
 // Oracle communication area
 #include <oraca.h>
@@ -43,7 +54,11 @@ ClassImp(HRichParOra2Io)
 #define RICH_MAXSECT 6
 #define RICH_MAXPADS 4900
 
-HRichParOra2Io::HRichParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC) {
+#define RICH700_MAXPMT 576
+
+
+
+HRichParOra2Io::HRichParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC), geomVers(0) {
   // constructor
   // sets the name of the I/O class "HRichParIo"
   // gets the pointer to the connection class
@@ -68,6 +83,9 @@ Bool_t HRichParOra2Io::init(HParSet* pPar,Int_t* set) {
   if (strcmp(name,"HRichMappingPar")==0) return read(((HRichMappingPar*)pPar),set);
   if (strcmp(name,"HRichCalPar")==0) return read(((HRichCalPar*)pPar),set);
   if (strcmp(name,"HRichThresholdPar")==0) return read(((HRichThresholdPar*)pPar),set);
+  if (strcmp(name,"HRich700Trb3Lookup")==0) return read(((HRich700Trb3Lookup*)pPar),set);
+  if (strcmp(name,"HRich700ThresholdPar")==0) return read(((HRich700ThresholdPar*)pPar),set);
+  if (strcmp(name,"HRich700GeomPar")==0) return read(((HRich700GeomPar*)pPar),set);
   cout<<"No read-interface to Oracle for parameter container "
       <<pPar->GetName()<<endl;
   return kFALSE;
@@ -84,6 +102,12 @@ Int_t HRichParOra2Io::write(HParSet* pPar) {
      return writePar((HRichCalPar*)pPar);
   if (!strcmp(name,"HRichThresholdPar"))
      return writePar((HRichThresholdPar*)pPar);
+  if (!strcmp(name,"HRich700Trb3Lookup"))
+      return writePar((HRich700Trb3Lookup*)pPar);
+  if (!strcmp(name,"HRich700ThresholdPar"))
+       return writePar((HRich700ThresholdPar*)pPar);
+  if (!strcmp(name,"HRich700GeomPar")) 
+	  return writeAlignment((HRich700GeomPar*)pPar);
   cout<<"No write-interface to Oracle for parameter container "
       <<pPar->GetName()<<endl;
   return 0;
@@ -141,24 +165,40 @@ Bool_t HRichParOra2Io::getVersion(HParSet* pPar,Int_t& version) {
              INTO :vers, :since, :until
            FROM rich_ana2.rich_calpar_vers_at_date
            WHERE context_id = :context;
-  } else {
-    if (strcmp(containerClass,"HRichMappingPar")==0) {
+  } 
+  else if (strcmp(containerClass,"HRichMappingPar")==0) {
       EXEC SQL SELECT version,
                       hanadate.date_to_number(valid_since),
                       hanadate.date_to_number(valid_until)
                INTO :vers, :since, :until
              FROM rich_ana2.rich_mappingpar_vers_at_date
              WHERE context_id = :context;
-    } else {
-      if (strcmp(containerClass,"HRichThresholdPar")==0) {
+    } 
+  else if (strcmp(containerClass,"HRichThresholdPar")==0) {
         EXEC SQL SELECT version,
                         hanadate.date_to_number(valid_since),
                         hanadate.date_to_number(valid_until)
                  INTO :vers, :since, :until
                FROM rich_ana2.rich_thresholdpar_vers_at_date;
       }
-    }
-  } 
+   else if (strcmp(containerClass,"HRich700Trb3Lookup")==0) {
+            EXEC SQL SELECT version,
+                            hanadate.date_to_number(valid_since),
+                            hanadate.date_to_number(valid_until)
+                     INTO :vers, :since, :until
+                   FROM rich_ana2.rich700_lookup_vers_at_date 
+                   WHERE context_id = :context;
+            
+            
+   }
+   else if (strcmp(containerClass,"HRich700ThresholdPar")==0) {
+              EXEC SQL SELECT version,
+                              hanadate.date_to_number(valid_since),
+                              hanadate.date_to_number(valid_until)
+                       INTO :vers, :since, :until
+                     FROM rich_ana2.rich700_threshold_vers_at_date
+                     WHERE context_id = :context;
+   }
   version=vers;
   oraSet->versDate[0]=since;
   oraSet->versDate[1]=until;
@@ -321,6 +361,242 @@ Bool_t HRichParOra2Io::read(HRichThresholdPar* pPar, Int_t* set) {
 }
 
 
+Bool_t HRichParOra2Io::read(HRich700Trb3Lookup* pPar, Int_t* set) {
+    // reads the rich700 trb3 unpacker lookup table and fills container JAM 2017
+
+
+    Int_t oraVersion=-1;
+    Bool_t rc=getVersion(pPar,oraVersion);
+
+    // JAM
+    std::cout<<" HRichParOra2Io::read(HRich700Trb3Lookup* ) has oraVersion:"<<oraVersion<<", rc="<<rc<< std::endl;
+
+    if (oraVersion<0) return kFALSE;
+    if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+    pPar->clear();
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+	int  address[RICH700_MAXPIXELS];
+	int  chan[RICH700_MAXPIXELS];
+	int  pmt[RICH700_MAXPIXELS];
+	int  pixel[RICH700_MAXPIXELS];
+    } lookup;
+    EXEC SQL END DECLARE SECTION;
+    vers=oraVersion;
+    EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HRich700Trb3Lookup*)");
+    EXEC SQL WHENEVER NOT FOUND CONTINUE;
+    EXEC SQL SELECT trbnet_address, channel, pmt_id, pmt_pixel
+    INTO :lookup
+    FROM rich_ana2.rich700_trb3lookup_data_view
+	WHERE vers_id = :vers;
+	Int_t nData=sqlca.sqlerrd[2];
+	for (Int_t i=0;i<nData;i++) {
+	    pPar->fill(lookup.address[i],lookup.chan[i],
+		       lookup.pmt[i],lookup.pixel[i]);
+	}
+	if (nData>0) {
+	    setChanged(pPar,oraVersion);
+	    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+	    rc=kTRUE;
+	} else {
+	    pPar->setInputVersion(-1,inputNumber);
+	    rc=kFALSE;
+	}
+	std::cout<<" HRichParOra2Io::read(HRich700Trb3Lookup* ) has read "<<nData<<" rows"<< std::endl;
+
+
+
+
+	return rc;
+}
+
+
+
+Bool_t HRichParOra2Io::read(HRich700ThresholdPar* pPar, Int_t* set) {
+    // reads the rich700 trb3 unpacker pixel threshold table and fills container JAM 2017
+    Int_t oraVersion=-1;
+    Bool_t rc=getVersion(pPar,oraVersion);
+
+    // JAM
+    std::cout<<" HRichParOra2Io::read(HRich700ThresholdPar* ) has oraVersion:"<<oraVersion<<", rc="<<rc<< std::endl;
+
+    if (oraVersion<0) return kFALSE;
+    if (oraVersion>=0&&rc==kFALSE) return kTRUE;
+    pPar->clear();
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    int vers;
+    struct {
+	int  pmt[RICH700_MAXPIXELS];
+	int  pixel[RICH700_MAXPIXELS];
+	float tmin [RICH700_MAXPIXELS];
+	float tmax [RICH700_MAXPIXELS];
+	float totmin [RICH700_MAXPIXELS];
+	float totmax [RICH700_MAXPIXELS];
+	int  flag[RICH700_MAXPIXELS];
+
+    } thresholds;
+    EXEC SQL END DECLARE SECTION;
+    vers=oraVersion;
+    EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HRich700ThresholdPar*)");
+    EXEC SQL WHENEVER NOT FOUND CONTINUE;
+    EXEC SQL SELECT pmt_id, pmt_pixel, t_min, t_max, tot_min, tot_max, status
+    INTO :thresholds
+    FROM rich_ana2.rich700_threshold_data_view
+	WHERE vers_id = :vers;
+	Int_t nData=sqlca.sqlerrd[2];
+	for (Int_t i=0;i<nData;i++) {
+	    pPar->setPixelThreshold(
+				    thresholds.pmt[i],thresholds.pixel[i],
+				    thresholds.tmin[i],thresholds.tmax[i], thresholds.totmin[i],thresholds.totmax[i],
+				    thresholds.flag[i]
+				   );
+	}
+	if (nData>0) {
+	    setChanged(pPar,oraVersion);
+	    cout<<pPar->GetName()<<" initialized from Oracle"<<endl;
+	    rc=kTRUE;
+	} else {
+	    pPar->setInputVersion(-1,inputNumber);
+	    rc=kFALSE;
+	}
+	std::cout<<" HRichParOra2Io::read(HRich700ThresholdPar* ) has read "<<nData<<" rows"<< std::endl;
+
+	return rc;
+}
+
+
+
+Bool_t HRichParOra2Io::read(HRich700GeomPar* pPar, Int_t* set) {
+    // reads the geometry of the Forward Wall and fills the Rich700GeomPar container
+    Bool_t allFound=kTRUE;
+    Int_t detId=-1;
+
+    if (!geomVers) {
+#ifdef JAM_GEO_DEBUG
+	std::cout<<" HRichParOra2Io::read(HRich700GeomPar* ) has detector name "<<pPar->getDetectorName()<< std::endl;
+#endif
+
+	detId=getDetectorId(pPar->getDetectorName());
+
+#ifdef JAM_GEO_DEBUG
+	std::cout<<" HRichParOra2Io::read(HRich700GeomPar* ) has detector id "<<detId<< std::endl;
+#endif
+	geomVers=new HOra2GeomDetVersion(pPar->getDetectorName(),detId);
+
+#ifdef JAM_GEO_DEBUG
+	std::cout<<" HRichParOra2Io::read(HRich700GeomPar* ) has geomVers:"<<geomVers->GetName()<< std::endl;
+	geomVers->Print();
+#endif
+    } else {
+	detId=geomVers->getDetectorId();
+    }
+    if (detId<=0) {
+	allFound=kFALSE;
+	delete geomVers;
+	geomVers=0;
+    }
+    if (detId>0&&pPar->isFirstInitialization()) {
+	if (!readModGeomNames(pPar) || !readCompGeomNames(pPar)) {
+	    allFound=kFALSE;
+	    pPar->clear();
+	} else addGeomOraSet(pPar);
+    }
+    if (allFound) allFound=readDetectorGeometry(pPar,set,geomVers);
+    return allFound;
+}
+
+Bool_t HRichParOra2Io::readModGeomNames(HRich700GeomPar* pPar) {
+  // sets the geometry object name of the module and creates the reference volume if not existing
+  Bool_t allFound=kFALSE;
+  TString modName=pPar->getDetectorName();
+  modName.ToUpper();
+  HModGeomPar* pMod=pPar->getModule(-1,0);
+  
+  if (pMod) {
+    pMod->SetName(modName);
+    pMod->setRefName(modName);
+    HGeomCompositeVolume* refMod=pPar->getRefVolume(0);
+    
+    if (refMod==0) {
+#ifdef JAM_GEO_DEBUG
+      std::cout<<" HRichParOra2Io::readModGeomNames(HRich700GeomPar* ) creates new refmod with "<<pPar->getNumComponents() <<" components and name "<<modName.Data()<< std::endl;
+#endif
+      refMod=new HGeomCompositeVolume(pPar->getNumComponents());
+      refMod->SetName(modName);
+      pPar->addRefVolume(refMod,0);
+    }
+    pMod->setVolume(refMod);
+    allFound=kTRUE;
+  }
+  return allFound;
+}
+
+Bool_t HRichParOra2Io::readCompGeomNames(HRich700GeomPar* pPar) {
+  // reads the names of all cells in the geometry tables
+  EXEC SQL BEGIN DECLARE SECTION;
+    struct {
+      int cell [RICH700_MAX_PMT];
+      varchar oname[RICH700_MAX_PMT][9];
+    } lrecG;
+  EXEC SQL END DECLARE SECTION;
+  EXEC SQL WHENEVER SQLERROR DO showSqlError("readCompGeomNames(...)");
+  EXEC SQL WHENEVER NOT FOUND CONTINUE;
+  EXEC SQL SELECT pmt_id, geom_obj_name
+    INTO :lrecG
+    FROM rich_ana2.rich700_pmt
+    WHERE geom_obj_name IS NOT NULL;
+  Int_t nCells=sqlca.sqlerrd[2];
+#ifdef JAM_GEO_DEBUG  
+  std::cout<<" HRichParOra2Io::readCompGeomNames(HRich700GeomPar* ) finds "<<nCells<<" cells."<< std::endl;
+#endif  
+
+  for(Int_t k=0;k<nCells;k++) {
+    HModGeomPar* pMod=pPar->getModule(-1,0);
+
+#ifdef JAM_GEO_DEBUG
+    if(!pMod)
+    {
+    	 std::cout<<" HRichParOra2Io::readCompGeomNames(HRich700GeomPar* ) can not find first module! "<< std::endl;
+    	 return kFALSE;
+    }
+    std::cout<<" HRichParOra2Io::readCompGeomNames(HRich700GeomPar* ) has first module "<<pMod->GetName()<< std::endl;
+#endif    	
+
+    HGeomCompositeVolume* pRefMod=pMod->getRefVolume();
+
+#ifdef JAM_GEO_DEBUG  
+    if(!pRefMod)
+    {
+    	std::cout<<" HRichParOra2Io::readCompGeomNames(HRich700GeomPar* ) can not find reference volume! "<< std::endl;
+    	return kFALSE;
+     }
+    std::cout<<" HRichParOra2Io::readCompGeomNames(HRich700GeomPar* ) has reference volume "<<pRefMod->GetName()<< std::endl;
+#endif
+    
+    lrecG.oname[k].arr[lrecG.oname[k].len]='\0';
+    HGeomVolume* volu=pRefMod->getComponent((lrecG.cell[k]-1));
+
+#ifdef JAM_GEO_DEBUG    
+    if(!volu)
+        {
+    		std::cout<<" HRichParOra2Io::readCompGeomNames(HRich700GeomPar* ) can not find component volume "<<k <<", id:" << (lrecG.cell[k]-1) << std::endl;
+        	return kFALSE;
+        }
+#endif          
+    volu->SetName((Char_t*)(lrecG.oname[k].arr));
+#ifdef JAM_GEO_DEBUG
+      std::cout<<" HRichParOra2Io::readCompGeomNames(HRich700GeomPar* ) sets component volume name to"<<volu->GetName()<< std::endl;
+#endif 
+  }
+  return (nCells>0) ? kTRUE : kFALSE;
+}
+
+
+
+
 Int_t HRichParOra2Io::createVers(HParSet* pPar) {
   // creates a new version for the parameters
   // returns the new version
@@ -359,8 +635,7 @@ Int_t HRichParOra2Io::createVers(HParSet* pPar) {
            VALUES (:vers, :context, :run, :creator, :descript);
       END;
     END-EXEC;
-  } else {
-    if (strcmp(contName,"HRichMappingPar")==0) {
+   } else if (strcmp(contName,"HRichMappingPar")==0) {
       EXEC SQL EXECUTE
         BEGIN
           SELECT rich_ana2.rich_par_query.next_version INTO :vers FROM DUAL;
@@ -369,7 +644,24 @@ Int_t HRichParOra2Io::createVers(HParSet* pPar) {
              VALUES (:vers, :context, :run, :creator, :descript);
         END;
       END-EXEC;
-    }
+    } else if (strcmp(contName,"HRich700Trb3Lookup")==0) {
+          EXEC SQL EXECUTE
+            BEGIN
+              SELECT rich_ana2.rich_par_query.next_version INTO :vers FROM DUAL;
+              INSERT INTO rich_ana2.rich700_trb3lookup_vers 
+      	            (vers_id, orig_context_id, run_id, author, description)
+                 VALUES (:vers, :context, :run, :creator, :descript);
+            END;
+          END-EXEC;
+    } else if (strcmp(contName,"HRich700ThresholdPar")==0) {
+        EXEC SQL EXECUTE
+          BEGIN
+            SELECT rich_ana2.rich_par_query.next_version INTO :vers FROM DUAL;
+            INSERT INTO rich_ana2.rich700_threshold_vers 
+    	            (vers_id, orig_context_id, run_id, author, description)
+               VALUES (:vers, :context, :run, :creator, :descript);
+          END;
+        END-EXEC;
   }
   cout<<"Oracle version for "<<pPar->GetName()<<" created:  "<<vers<<endl;
   return vers;
@@ -583,3 +875,130 @@ not_found:
   pPar->setChanged(kFALSE);
   return -1;
 }
+
+
+Int_t HRichParOra2Io::writePar(HRich700Trb3Lookup* pPar) {
+  // creates a new version and writes the lookup table to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   rows_to_insert;
+    int   vers[RICH700_MAXPIXELS];
+    int   address[RICH700_MAXPIXELS];
+    int   chan[RICH700_MAXPIXELS];
+    int   pmt[RICH700_MAXPIXELS];
+    int   pixel[RICH700_MAXPIXELS];
+  EXEC SQL END DECLARE SECTION;
+  Int_t nChan=0;
+  Int_t arrayOffset=pPar->getArrayOffset();
+  for(Int_t t=0;t<pPar->getSize();t++) {
+	  HRich700Trb3LookupTdc* tdc=(*pPar)[t];
+    if (tdc) {
+      nChan=0;
+      for(Int_t c=0;c<tdc->getSize();c++) {
+    	  HRich700Trb3LookupChan& rChan=(*tdc)[c];
+        if (rChan.getPMT()!=-1 && rChan.getPixel()!=-1) {
+          vers[nChan]=version;
+          address[nChan]=arrayOffset+t;
+          chan[nChan]=c;
+          pmt[nChan]=rChan.getPMT();
+          pixel[nChan]=rChan.getPixel();
+          nChan++;
+        }
+      }
+      
+      // JAM TODO: insert pmt, pixid into data table   
+      // since we directly map pmt and pixel, no further query function is needed now
+      rows_to_insert=nChan;
+     
+      EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+      EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+      EXEC SQL FOR :rows_to_insert
+           //CALL rich_ana2.rich700_par_query.get_pixel_id(:col, :row, :pmt, :pmt_pixel);
+      INSERT INTO rich_ana2.rich700_trb3lookup_data
+                  (vers_id, trbnet_address, channel_id, pmt_id, pmt_pixel)
+             VALUES (:vers, 
+            	     :address,
+            	     :chan,
+            	     :pmt,
+            	     :pixel);
+      cout<<"Trbnet-address "<<"0x"<<hex<<(arrayOffset+t)<<dec<<":  "<<rows_to_insert<<" rows inserted\n";
+    }
+  }
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HRich700Trb3Lookup*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+
+Int_t HRichParOra2Io::writePar(HRich700ThresholdPar* pPar) {
+  // JAM 1-Nov-2017: creates a new version and writes the threshold  table to Oracle
+  Int_t version=createVers(pPar);
+  if (version==-1) return -1;
+  EXEC SQL BEGIN DECLARE SECTION;
+    int   rows_to_insert;
+    int   vers[RICH700_MAXPIXELS];
+    int   pmt[RICH700_MAXPIXELS];
+    int   pixel[RICH700_MAXPIXELS];
+    float tmin [RICH700_MAXPIXELS];
+    float tmax [RICH700_MAXPIXELS];
+    float totmin [RICH700_MAXPIXELS];
+    float totmax [RICH700_MAXPIXELS];
+    int  flag[RICH700_MAXPIXELS];
+    
+  EXEC SQL END DECLARE SECTION;
+  
+    
+  HLocation loc;
+  loc.set(2,0,0);
+  HRich700PixelThreshold* pCell=0;
+  Int_t nCell=0;
+  for (Int_t p = 1; p <= RICH700_MAX_PMT; ++p) {
+      loc[0] = p;
+      for (Int_t q = 1; q <= RICH700_MAX_PMTPIXELS; ++q) {
+	  loc[1] = q;
+	  pCell = static_cast<HRich700PixelThreshold*>(pPar->getObject(loc));
+	  if (NULL != pCell) {
+	      if(pCell->getFlag() == -1) continue; // skip non configured pixels with default flag
+	      vers[nCell]=version;
+	      pmt[nCell]=pCell->getPMT();
+	      pixel[nCell]=pCell->getPixel();
+	      tmin [nCell]=pCell->getT_Min();
+	      tmax [nCell]=pCell->getT_Max();
+	      totmin [nCell]=pCell->getTot_Min();
+	      totmax [nCell]=pCell->getTot_Max();
+	      flag[nCell]=pCell->getFlag();
+	      nCell++;
+	  } // pCell
+      } //pix
+  } //pmt
+
+  if (nCell==0) return -1;
+  rows_to_insert=nCell;
+  EXEC SQL WHENEVER SQLERROR GOTO errorfound;
+  EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
+  EXEC SQL FOR :rows_to_insert
+  INSERT INTO rich_ana2.rich700_threshold_data
+      (vers_id, pmt_id, pmt_pixel, par_0, par_1, par_2, par_3, status)
+      VALUES (:vers, :pmt, :pixel, :tmin, :tmax, :totmin, :totmax, :flag);
+
+
+  cout<<"HRich700ThresholdPar inserted "<<rows_to_insert<<" rows to table rich_ana2.rich700_threshold_data\n";
+  commit();
+  pPar->setChanged(kFALSE);
+  return version;
+errorfound:
+  showSqlError("writePar(HRich700ThresholdPar*)");
+  rollback();
+  pPar->setChanged(kFALSE);
+  return -1;
+}
+
+
+
+

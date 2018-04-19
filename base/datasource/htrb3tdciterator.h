@@ -8,12 +8,12 @@ class HTrb3TdcIterator {
 
       enum { DummyEpoch = 0xffffffff };
 
-      uint32_t*  fBuf;        //! pointer on raw data
-      unsigned   fBuflen;     //! length of raw data
-      bool       fSwapped;    //! true if raw data are swapped
+      UInt_t*  fBuf;        //! pointer on raw data
+      UInt_t   fBuflen;     //! length of raw data
+      Bool_t       fSwapped;    //! true if raw data are swapped
 
       HTrb3TdcMessage  fMsg;  //! current message
-      uint32_t  fCurEpoch;    //! current epoch
+      UInt_t  fCurEpoch;    //! current epoch
 
       // base::LocalStampConverter  fConv;   //! use to covert time stamps in seconds
 
@@ -32,7 +32,7 @@ class HTrb3TdcIterator {
          // fConv.SetTimeSystem(11+32, HTrb3TdcMessage::coarseUnit());
       }
 
-      void assign(uint32_t* buf, unsigned len, bool swapped = true)
+      void assign(UInt_t* buf, UInt_t len, Bool_t swapped = true)
       {
          fBuf = buf;
          fBuflen = len;
@@ -43,24 +43,24 @@ class HTrb3TdcIterator {
          fCurEpoch = DummyEpoch;
       }
 
-//      void assign(hadaq::RawSubevent* subev, unsigned indx, unsigned datalen)
+//      void assign(hadaq::RawSubevent* subev, UInt_t indx, UInt_t datalen)
 //      {
 //         if (subev!=0)
 //            assign(subev->GetDataPtr(indx), datalen, subev->IsSwapped());
 //      }
 
       /** One should call method to set current reference epoch */
-      void setRefEpoch(uint32_t epoch)
+      void setRefEpoch(UInt_t epoch)
       {
          //fConv.MoveRef(((uint64_t) epoch) << 11);
       }
 
-      bool next()
+      Bool_t next()
       {
-         if (fBuf==0) return false;
+         if (fBuf==0) return kFALSE;
 
          if (fSwapped)
-            fMsg.assign((((uint8_t *) fBuf)[0] << 24) | (((uint8_t *) fBuf)[1] << 16) | (((uint8_t *) fBuf)[2] << 8) | (((uint8_t *) fBuf)[3]));
+            fMsg.assign((((UChar_t *) fBuf)[0] << 24) | (((UChar_t *) fBuf)[1] << 16) | (((UChar_t *) fBuf)[2] << 8) | (((UChar_t *) fBuf)[3]));
          else
             fMsg.assign(*fBuf);
 
@@ -69,7 +69,7 @@ class HTrb3TdcIterator {
          fBuf++;
          if (--fBuflen == 0) fBuf = 0;
 
-         return true;
+         return kTRUE;
       }
 
       /** Returns 39-bit value, which combines epoch and coarse counter.
@@ -77,26 +77,26 @@ class HTrb3TdcIterator {
       uint64_t getMsgStamp() const
       { return (isCurEpoch() ? ((uint64_t) fCurEpoch) << 11 : 0) | (fMsg.isHitMsg() ? fMsg.getHitTmCoarse() : 0); }
 
-      inline double getMsgTimeCoarse() const
+      inline Double_t getMsgTimeCoarse() const
       { return getMsgStamp() * HTrb3TdcMessage::coarseUnit();  /*fConv.ToSeconds(getMsgStamp()) */; }
 
-      inline double getMsgTimeFine() const
+      inline Double_t getMsgTimeFine() const
       { return fMsg.isHitMsg() ? HTrb3TdcMessage::simpleFineCalibr(fMsg.getHitTmFine()) : 0.; }
 
       HTrb3TdcMessage& msg() { return fMsg; }
 
       /** Returns true, if current epoch was assigned */
-      bool isCurEpoch() const { return fCurEpoch != DummyEpoch; }
+      Bool_t isCurEpoch() const { return fCurEpoch != DummyEpoch; }
 
       /** Clear current epoch value */
       void clearCurEpoch() { fCurEpoch = DummyEpoch; }
 
       /** Return value of current epoch */
-      uint32_t getCurEpoch() const { return fCurEpoch; }
+      UInt_t getCurEpoch() const { return fCurEpoch; }
 
       void printmsg()
       {
-         double tm = -1.;
+         Double_t tm = -1.;
          if (msg().isHitMsg() || msg().isEpochMsg())
             tm = getMsgTimeCoarse() - getMsgTimeFine();
          msg().print(tm);

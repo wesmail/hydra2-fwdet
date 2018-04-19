@@ -22,7 +22,9 @@ namespace Trbnet {
         kStartTrb3MinTrbnetAddress  = 0x5000,
         kStartTrb3MaxTrbnetAddress  = 0x50ff,
         kEmcTrb3MinTrbnetAddress  = 0x6000,
-        kEmcTrb3MaxTrbnetAddress  = 0x67ff
+        kEmcTrb3MaxTrbnetAddress  = 0x67ff,
+        kRICHTrb3MinTrbnetAddress  = 0x7000,
+        kRICHTrb3MaxTrbnetAddress  = 0x7FFF
   };
 }
 

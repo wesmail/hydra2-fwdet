@@ -29,7 +29,7 @@
 ClassImp(HParVersion)
 ClassImp(HRun)
 
-HParVersion::HParVersion(const Text_t* name) : TNamed(name,"version info") {
+HParVersion::HParVersion(const Text_t* name) : TNamed(name,"version info"){
   // constructor with the name of the container
   rootVersion=0;
   for(Int_t i=0;i<3;i++) {inputVersions[i]=-1;}

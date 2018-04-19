@@ -63,6 +63,12 @@ SOURCE_FILES := hrichanalysis.cc		\
 		hrich700ringfinderideal.cc 	\
 		hrich700ringfittercop.cc 	\
 		hrich700ringfinderhough.cc 	\
+		hrich700trb3lookup.cc \
+		hrich700trb3unpacker.cc \
+		hrich700pixelthreshold.cc \
+		hrich700thresholdpar.cc \
+		hrich700raw.cc \
+		hrich700geompar.cc \
 		hrich700recoqa.cc \
 		hrich700digiparcreator.cc
 

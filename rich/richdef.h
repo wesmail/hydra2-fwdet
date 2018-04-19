@@ -27,6 +27,12 @@
 #define RICH_CHANNEL_OFFSET  14
 #define RICH_CHARGE_OFFSET   0
 
+// JAM2017: new for rich700 reconstruction
+#define RICH700_MAX_TDCCHANNELS 	32
+#define RICH700_MAX_PMTPIXELS		64
+#define RICH700_MAX_PMT 			576
+#define RICH700_MAXPIXELS (RICH700_MAX_PMT * RICH700_MAX_PMTPIXELS)
+
 
 #include "haddef.h"
 
@@ -36,7 +42,7 @@ const Cat_t catRichHit            = RICH_OFFSET + 2;
 const Cat_t catRichHitHdr         = RICH_OFFSET + 3;
 const Cat_t catRichDirClus        = RICH_OFFSET + 4;
 const Cat_t catRichTrack          = RICH_OFFSET + 5;
-
+const Cat_t catRich700Raw          = RICH_OFFSET + 6;
 
 #endif
 

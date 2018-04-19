@@ -20,6 +20,8 @@
 #include "hrichparrootfileio.h"
 #include "richdef.h"
 
+#include "hrich700geompar.h"
+
 using namespace std;
 
 
@@ -66,6 +68,15 @@ HRichParRootFileIo::init(HParSet* pPar, Int_t* set)
       }
       if (0 == strncmp(name, "RichMappingParameters", strlen("RichMappingParameters"))) {
          return read(pPar);
+      }
+      if (0 == strncmp(name, "Rich700Trb3Lookup", strlen("Rich700Trb3Lookup"))) {
+	  return read(pPar);
+      }
+      if (0 == strncmp(name, "Rich700ThresholdPar", strlen("Rich700ThresholdPar"))) {
+	  return read(pPar);
+      }
+      if (0 ==strncmp(name,"Rich700GeomPar",strlen("Rich700GeomPar"))){
+	  return HDetParRootFileIo::read((HRich700GeomPar*)pPar,set);
       }
    }
    Error("init", "initialization of %s not possible from ROOT file!", name);

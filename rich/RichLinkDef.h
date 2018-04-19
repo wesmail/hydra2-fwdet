@@ -60,7 +60,23 @@
 #pragma link C++ class HRich700RecoQa;
 #pragma link C++ class HRich700TaskSet;
 
+#pragma link C++ class HRich700Trb3LookupChan;
+#pragma link C++ class HRich700Trb3LookupTdc;
+#pragma link C++ class HRich700Trb3Lookup;
+
+#pragma link C++ class HRich700PixelThreshold;
+#pragma link C++ class HRich700ThresholdPar;
+
+#pragma link C++ class HRich700GeomPar;
+
+#pragma link C++ class HRich700Trb3Unpacker;
+#pragma link C++ class HRich700Raw;
+#pragma link C++ class HRich700hit_t;
+#pragma link C++ class  std::vector <HRich700hit_t>;
+
+
 #pragma link C++ global catRichRaw;
+#pragma link C++ global catRich700Raw;
 #pragma link C++ global catRichCal;
 #pragma link C++ global catRichHit;
 #pragma link C++ global catRichHitHdr;

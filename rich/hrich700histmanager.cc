@@ -437,7 +437,7 @@ void HRich700HistManager::SaveCanvasToImage(
 		const string& outputDir,
 		const string& options)
 {
-	for (unsigned int i = 0; i < fCanvases.size(); i++) {
+	for (UInt_t i = 0; i < fCanvases.size(); i++) {
 		RichUtils::SaveCanvasAsImage(fCanvases[i], outputDir, options);
 	}
 }

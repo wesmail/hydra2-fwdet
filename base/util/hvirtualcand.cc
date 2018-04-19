@@ -1,6 +1,7 @@
 #include "hvirtualcand.h"
 #include "hphysicsconstants.h"
 
+#include "TBuffer.h"
 
 // ROOT's IO and RTTI stuff is added here
 ClassImp(HVirtualCand)
