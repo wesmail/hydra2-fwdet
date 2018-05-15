@@ -34,140 +34,282 @@ using namespace std;
 
 ClassImp(HEmcTrb3Unpacker)
 
-HEmcTrb3Unpacker::HEmcTrb3Unpacker(UInt_t id): HTrb3TdcUnpacker(id) {
-  // constructor
-  pRawCat = NULL;
-  timeRef = kTRUE;
+// JAM: this little switch will enable that we also take single leading edges into account
+//#define EMC_USE_LEADING_WITHOUT_TRAILING_EDGES 1
+
+// JAM: this little switch will enable that we also take single trailing edges into account
+//#define EMC_USE_TRAILING_WITHOUT_LEADING_EDGES 1
+
+// switch on filtering of tdc messages with first time window as defined below
+#define EMC_USE_TIME_WINDOW 1
+
+// first time window to filter out some unusable hits. units are nanoseconds relative to trigger (channel 0)
+#define EMC_TIME_MIN -500.0
+#define EMC_TIME_MAX  500.0
+// TODO: optionally put this into some parameter container.
+
+HEmcTrb3Unpacker::HEmcTrb3Unpacker(UInt_t id) :
+  HTrb3TdcUnpacker(id), fLookup(0), fTimeRef(kTRUE) ,fTimeShift(0.)
+{
+    // constructor
+    pRawCat = NULL;
+    fDet    = NULL;
 }
 
 Bool_t HEmcTrb3Unpacker::init(void) {
-  // creates the raw category and gets the pointer to the TRB3 lookup table
+    // creates the raw category and gets the pointer to the TRB3 lookup table
 
-  HEmcDetector* det = (HEmcDetector*)gHades->getSetup()->getDetector("Emc");
-  if (!det) {
-    Error("init", "No EMC Detector found.");
-    return kFALSE;
-  }
-  pRawCat = det->buildCategory(catEmcRaw);
-  if (!pRawCat) return kFALSE;
-
-  loc.set(2, 0, 0);
-
-  lookup = (HEmcTrb3Lookup*)(gHades->getRuntimeDb()->getContainer("EmcTrb3Lookup"));
-  if (!lookup) {
-    Error("init", "No Pointer to parameter container EmcTrb3Lookup.");
-    return kFALSE;
-  }
-
-  if (NULL == trbNetUnpacker) {
-    if (gHades->getDataSource()) {
-      HDataSource* source = gHades->getDataSource();
-      if (source->InheritsFrom("HldSource")) {
-        trbNetUnpacker = ((HldSource *)gHades->getDataSource())->getTrbNetUnpacker();
-      } else {
-        Warning("init", "DataSource not inherited from HldSource! trbNetUnpacker == 0 ");
-      }
-    } else {
-      Warning("init", "Could not retrieve DataSource! trbNetUnpacker == 0 ");
+    fDet = (HEmcDetector*) gHades->getSetup()->getDetector("Emc");
+    if (!fDet) {
+        Error("init", "No EMC Detector found.");
+        return kFALSE;
     }
-  }
+    pRawCat = fDet->buildCategory(catEmcRaw);
+    if (!pRawCat)
+        return kFALSE;
 
-  if (!trbNetUnpacker->init()) {
-    Error("init()", "Failed to initialize HTrbNetUnpacker!");
-    return kFALSE;
-  }
+    fLoc.set(2, 0, 0);
 
-  return kTRUE;
+    fLookup = (HEmcTrb3Lookup*) (gHades->getRuntimeDb()->getContainer(
+            "EmcTrb3Lookup"));
+    if (!fLookup) {
+        Error("init", "No Pointer to parameter container EmcTrb3Lookup.");
+        return kFALSE;
+    }
+
+    if (NULL == trbNetUnpacker) {
+        if (gHades->getDataSource()) {
+            HDataSource* source = gHades->getDataSource();
+            if (source->InheritsFrom("HldSource")) {
+                trbNetUnpacker =
+                        ((HldSource *) gHades->getDataSource())->getTrbNetUnpacker();
+            } else {
+                Warning("init",
+                        "DataSource not inherited from HldSource! trbNetUnpacker == 0 ");
+            }
+        } else {
+            Warning("init",
+                    "Could not retrieve DataSource! trbNetUnpacker == 0 ");
+        }
+    }
+
+    if (!trbNetUnpacker->init()) {
+        Error("init()", "Failed to initialize HTrbNetUnpacker!");
+        return kFALSE;
+    }
+
+    return kTRUE;
 }
 
 Int_t HEmcTrb3Unpacker::execute(void) {
-  HEmcRaw *pRaw = 0;  // pointer to Raw category
-  if (gHades->isCalibration()) {
-    //calibration event
-    return 1;
-  }
-
-  if (gHades->getCurrentEvent()->getHeader()->getId() == 0xe) {
-    //scaler event
-    return 1;
-  }
-
-  // if there is no data, do not try to analyze it
-  // pSubEvt - make sure that there is something for decoding
-  if (!pSubEvt) return 1;
-
-  Int_t nEvt = gHades->getCurrentEvent()->getHeader()->getEventSeqNumber();
-
-  // decodes the subevent and fill arrays, see: htrb3unpacker.h
-  if (!decode()) {
-     Error("decode", "subsubevent decoding failed!!! Evt Nr : %i SubEvtId: %x", nEvt, subEvtId);
-     return -1;
-  }
-
-  // correct for reference time here!
-  if (timeRef) {
-     if (!correctRefTimeCh(0))
-        return -1;
-  }
-
-  for (UInt_t ntdc=0;ntdc<numTDC();ntdc++) {
-    TDC* tdc = getTDC(ntdc);
-
-    // check the lookup table
-    HEmcTrb3LookupBoard *board = lookup->getBoard(tdc->getTrbAddr());
-    if (!board) {
-       Warning("execute", "Evt Nr : %i  SubEvId: %x (%i) unpacked but TDC Board not in lookup table",
-                         nEvt, getSubEvtId(), getSubEvtId());
+    if (gHades->isCalibration()) {
+        //calibration event
         return 1;
     }
 
-    // fill the raw category for EMC detector
-    for (UInt_t i = 1; i < tdc->numChannels(); i++) {
+    if (gHades->getCurrentEvent()->getHeader()->getId() == 0xe) {
+        //scaler event
+        return 1;
+    }
 
-        HTrb3TdcUnpacker::ChannelRec& rec = tdc->getCh(i);
+    // if there is no data, do not try to analyze it
+    // pSubEvt - make sure that there is something for decoding
+    if (!pSubEvt)
+        return 1;
 
-        // ignore channels without rising hits
-        if (rec.rising_mult < 1) continue;
+    Int_t nEvt = gHades->getCurrentEvent()->getHeader()->getEventSeqNumber();
 
-        HEmcTrb3LookupChan *chan = board->getChannel(i);
+    // decodes the subevent and fill arrays, see: htrb3unpacker.h
+    if (!decode()) {
+        Error("decode",
+                "subsubevent decoding failed!!! Evt Nr : %i SubEvtId: %x", nEvt,
+                subEvtId);
+        return -1;
+    }
 
-        if (chan==0) {
-           Warning("execute", "Missing channel %u in lookup table", i); 
-           continue;
+    // correct for reference time here!
+    if (fTimeRef) {
+        if (!correctRefTimeCh(0))
+            return -1;
+    }
+
+    for (UInt_t ntdc = 0; ntdc < numTDC(); ntdc++) {
+        HTrb3TdcUnpacker::TDC* tdc = getTDC(ntdc);
+
+        // check the lookup table
+        HEmcTrb3LookupBoard *board = fLookup->getBoard(tdc->getTrbAddr());
+        if (!board) {
+            if (debugFlag > 0)
+                Warning("execute",
+                        "Evt Nr : %i  SubEvId: %x (%i) unpacked but TDC Board 0x%x not in lookup table",
+                        nEvt, getSubEvtId(), getSubEvtId(), tdc->getTrbAddr());
+            continue;
         }
 
-        chan->getAddress(loc[0], loc[1]);
-        // if channel not exist in lookup-table, ignore it
-        if (loc[0] < 0) continue;
+        // fill the raw category for EMC detector
+        for (UInt_t i = 1; i < tdc->numChannels(); i++) {
 
-        // from here we got access to TDC channel and should map it to EMC channel
-        pRaw = (HEmcRaw*)pRawCat->getObject(loc);
-        if (!pRaw) {
-           pRaw = (HEmcRaw *)pRawCat->getSlot(loc);
-           if (pRaw) {
-              pRaw = new(pRaw) HEmcRaw;
-              pRaw->setAddress(loc[0], loc[1]);
-           } else {
-              Error("execute()", "Can't get slot mod=%i, chan=%i", loc[0], loc[1]);
-              return -1;
-           }
+            HTrb3TdcUnpacker::ChannelRec& theRecord = tdc->getCh(i);
+            //         if (debugFlag > 1) Warning("execute", "JJJJ Record of channel %d has multiplicities -  rising:%d falling:%d \n",
+            //             i, (int)theRecord.rising_mult, (int) theRecord.falling_mult);
+
+// ignore channels without rising hits already here
+#ifndef EMC_USE_TRAILING_WITHOUT_LEADING_EDGES
+            if (theRecord.rising_mult < 1)
+                continue;
+#endif
+            HEmcTrb3LookupChan *chan = board->getChannel(i);
+            if (chan == 0) {
+                Warning("execute", "Missing channel %u in lookup table", i);
+                continue;
+            }
+            chan->getAddress(fLoc[0], fLoc[1]);
+            // if channel not exist in lookup-table, ignore it
+            if (fLoc[0] < 0)
+                continue;
+            // exclude all not defined and broken channels
+            if (!chan->isDefinedChannel() || chan->isBrokenChannel())
+                continue;
+            Bool_t fastchannel = chan->isFastChannel();
+            if(fastchannel && chan->isSlowChannel())
+            {
+                Warning("execute", "NEVER COME HERE - channel %u has both fast and slow property! skip it..", i);
+                    continue;
+            }
+
+#ifdef EMC_USE_TIME_WINDOW
+            // later we may get this from parameter container or other setup file. For the moment  fix it
+            Double_t tmin = EMC_TIME_MIN;
+            Double_t tmax = EMC_TIME_MAX;
+#endif
+            UInt_t lix = 0;
+            for (lix = 0; lix < theRecord.rising_mult; ++lix) {
+                Double_t tm0 = theRecord.rising_tm[lix] * 1e9;
+                if (debugFlag > 0)
+                    Warning("execute", "JJJJ current hit leading: tm0:%e, apply time shift:%e", tm0, fTimeShift);
+                tm0 +=fTimeShift;
+
+
+
+#ifdef EMC_USE_TIME_WINDOW
+                if ((tm0 < tmin) || (tm0 > tmax)) {
+                    if (debugFlag > 0)
+                        Warning("execute",
+                                "JJJJ Rejecting leading hit outside tmin:%e or tmax:%e",
+                                tmin, tmax);
+                    continue; // leading edge outside the time window
+                }
+
+#endif
+                // now look for corresponding trailing edge:
+                if (lix < theRecord.falling_mult) {
+                    Double_t tm1 = theRecord.falling_tm[lix] * 1e9;
+                    if (debugFlag > 0)
+                        Warning("execute", "JJJJ current hit falling: tm1:%e, apply time shift:%e",
+                                tm1, fTimeShift);
+                    tm1 +=fTimeShift;
+
+
+#ifdef EMC_USE_TIME_WINDOW
+                    if ((tm1 < tmin) || (tm1 > tmax)) {
+                        if (debugFlag > 0)
+                            Warning("execute",
+                                    "JJJJ Rejecting trailing hit outside tmin:%e or tmax:%e",
+                                    tmin, tmax);
+
+#ifdef EMC_USE_LEADING_WITHOUT_TRAILING_EDGES
+                        tm1=0.0; // still we take incomplete leading edge
+#else
+                        continue; // skip both leading and trailing
+#endif
+                    } // if ((tm1 < tmin) || (tm1 > tmax))
+
+
+#endif
+                    //
+                    // TODO: optional filter out hits that do not fulfill the time threshold parameter
+                    //Double_t tot=tm1-tm0;
+                    // however, this can be also done in subsequent calibrator object
+
+/////// ACCEPTED HITS ARE HERE //////////////////////////////////
+                    // regular case with leading/trailing edges of ChannelRec in order
+                    if (addRawHit(tm0, tm1, fastchannel) != 0)
+                        continue; // we will skip this if this channel is not mapped to detector cell
+
+////////// END ACCEPTED HITS/////////////////////////////////////
+                } // if lix<theRecord.falling_mul
+                else {
+#ifdef EMC_USE_LEADING_WITHOUT_TRAILING_EDGES
+                    // here we treat hist with only leading edges, no corresponding trailing edge
+                    // such hit will deliver tot width of -1
+                    if(addRawHit(tm0, 0.0, fastchannel)!=0)
+                    continue;
+#endif
+                }
+            } // for lix
+
+////////////// optional now check for single trailing edges?
+#ifdef EMC_USE_TRAILING_WITHOUT_LEADING_EDGES
+
+            for (UInt_t tix=lix; tix< theRecord.falling_mult; ++tix)
+            {
+                Double_t tm1=theRecord.falling_tm[tix]*1e9;
+
+#ifdef EMC_USE_TIME_WINDOW
+                    if ((tm1 < tmin) || (tm1 > tmax)) {
+
+                        if (debugFlag > 0)
+                            Warning("execute",
+                                    "JJJJ Rejecting trailing hit outside tmin:%e or tmax:%e",
+                                    tmin, tmax);
+                        continue;
+#endif
+
+                if(addRawHit(0.0, tm1, fastchannel)!=0)
+                                  continue;
+            }
+             ////////////////////
+#endif
+/////////////// end single trailing edges
+
+
+        } // loop over TDC channels
+    } // loop over TDC
+    return 1;
+}
+
+Int_t HEmcTrb3Unpacker::addRawHit(Double_t t_leading, Double_t t_trailing,
+        Bool_t isfastchannel) {
+
+    // from here we got access to TDC channel and should map it to EMC channel
+    HEmcRaw* raw = (HEmcRaw*) pRawCat->getObject(fLoc);
+    if (!raw) {
+        raw = (HEmcRaw *) pRawCat->getSlot(fLoc);
+        if (raw) {
+	    raw = new (raw) HEmcRaw;
+            Char_t row,col;
+	    fDet->getRowCol(fLoc[1],row,col);
+            raw->setAddress(fLoc[0], fLoc[1],row,col);
         } else {
-           Error("execute()", "Slot already exists for mod=%i, chan=%i", loc[0], loc[1]);
-           return -1;
+            if (debugFlag > 0)
+                Warning("addRawHit()", "Can't get slot mod=%i, chan=%i",
+                        fLoc[0], fLoc[1]);
+            return -1;
         }
-        // fill ...
-        Int_t m = rec.rising_mult;
-        if (m > 10) m = 10; // no more than 10 times stored
+    } else {
+        Error("execute()", "Slot already exists for mod=%i, chan=%i", fLoc[0],
+                fLoc[1]);
+        return -1;
+    }
 
-        for (Int_t chmult = 0; chmult < m; chmult++) {
-           if (debugFlag > 0)
-              printf("--filling data TDC:%04x ch:%2d loc0:%2d loc1:%2d xtime: %10.8f\n",
-                    tdc->getTrbAddr(), i, loc[0], loc[1], rec.rising_tm[chmult]);
-
-           pRaw->setTimeAndWidth(rec.rising_tm[chmult], 123 /*trbADC[i][chmult]*/);
-       }
-     } // loop over TDC channels
-  } // loop over TDC
-  return 1;
+    isfastchannel ?
+            raw->addFastHit(t_leading, t_trailing) :
+            raw->addSlowHit(t_leading, t_trailing);
+    if (debugFlag > 1)
+        Warning("addRawHit",
+                "JJJJ ADDING %s hit for mod:%d chan:%d tm0:%e tm1:%e",
+                (isfastchannel ? "fast" : "slow"), fLoc[0], fLoc[1], t_leading,
+                t_trailing);
+    return 0;
 }
 

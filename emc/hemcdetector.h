@@ -9,8 +9,11 @@ private:
   Int_t numCells;     // number of cells (without spares)
 
 public:
+
+  static const Int_t cellMap[163];
+
   HEmcDetector(void);
-  ~HEmcDetector(void);
+  virtual ~HEmcDetector(void);
 
   HCategory *buildCategory(Cat_t cat);
   HCategory *buildMatrixCategory(const Text_t *,Float_t );
@@ -24,6 +27,13 @@ public:
 
   static Int_t getCell(const Char_t row, const Char_t col);
   static void  getRowCol(const Int_t cell, Char_t& row, Char_t& col); 
+
+  /** evaluate cell id in database from mounting position (number) of the ecal modules*/
+  static Int_t getCellFromPosition(Int_t pos);
+
+  /** evaluate mounting position (number) of the ecal modules from cell id in the database lookup table*/
+  static Int_t getPositionFromCell(Int_t system);
+
 
   ClassDef(HEmcDetector,0) // EMC detector class
 };

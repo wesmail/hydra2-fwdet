@@ -150,20 +150,21 @@ Bool_t HEmcParOra2Io::read(HEmcTrb3Lookup* pPar) {
       int  channel[EMC_MAXCELLS];
       int  module[EMC_MAXCELLS];
       int  cell[EMC_MAXCELLS];
+      int  flag[EMC_MAXCELLS];
     } lookup;
   EXEC SQL END DECLARE SECTION;
   vers=oraVersion;
   EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HEmcTrb3Lookup*)");
   EXEC SQL WHENEVER NOT FOUND CONTINUE;
   EXEC SQL SELECT trbnet_address, channel,
-                  module, cell
+                  module, cell, flag
            INTO :lookup
            FROM emc_ana2.trb3lookup_data_view
            WHERE vers_id = :vers;
   Int_t nData=sqlca.sqlerrd[2];
   for (Int_t i=0;i<nData;i++) {
     pPar->fill(lookup.address[i],lookup.channel[i],
-               lookup.module[i]-1,lookup.cell[i]);
+               lookup.module[i]-1,lookup.cell[i], lookup.flag[i]);
   }
   rc=kTRUE;
   if (nData>0) {
@@ -447,6 +448,7 @@ Int_t HEmcParOra2Io::writePar(HEmcTrb3Lookup* pPar) {
     int   channel[EMC_MAXCELLS];
     int   module[EMC_MAXCELLS];
     int   cell[EMC_MAXCELLS];
+    int   flag[EMC_MAXCELLS];
   EXEC SQL END DECLARE SECTION;
   Int_t nChan=0;
   Int_t arrayOffset=pPar->getArrayOffset();
@@ -461,6 +463,9 @@ Int_t HEmcParOra2Io::writePar(HEmcTrb3Lookup* pPar) {
           channel[nChan]=t;
           module[nChan]=rChan.getSector()+1;
           cell[nChan]=rChan.getCell();
+          flag[nChan]=rChan.getFlag();
+//          printf("HEmcParOra2Io::writePar %d- address:0x%x c:%d mod:%d cell:%d flag:%d\n", 
+//        		  nChan,  address[nChan],  channel[nChan], module[nChan], cell[nChan], flag[nChan]);
           nChan++;
         }
       }
@@ -471,9 +476,9 @@ Int_t HEmcParOra2Io::writePar(HEmcTrb3Lookup* pPar) {
   EXEC SQL WHENEVER NOT FOUND GOTO errorfound;
   EXEC SQL FOR :rows_to_insert
   INSERT INTO emc_ana2.trb3lookup_data
-              (vers_id, trbnet_address, channel_id, cell_id)
+              (vers_id, trbnet_address, channel_id, cell_id, channel_flag)
        VALUES (:vers, :address, :channel,
-               emc_ana2.emc_par_query.get_cell_id(:module,:cell));
+               emc_ana2.emc_par_query.get_cell_id(:module,:cell), :flag);
   cout<<rows_to_insert<<" rows inserted\n";
   commit();
   pPar->setChanged(kFALSE);

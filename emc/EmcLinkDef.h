@@ -6,6 +6,7 @@
 
 #pragma link C++ class HEmcDetector;
 
+#pragma link C++ class HEmcHit_t;
 #pragma link C++ class HEmcRaw;
 #pragma link C++ class HEmcCal;
 #pragma link C++ class HEmcCluster;
