@@ -52,7 +52,7 @@ struct HTrb3TdcMessage {
       Bool_t isHit1Msg() const { return getKind() == tdckind_Hit1;}
 
       /** not used yet*/
-      Bool_t isHit2Msg() const { return getKind() == tdckind_Hit1;}
+      Bool_t isHit2Msg() const { return getKind() == tdckind_Hit2;}
 
       Bool_t isEpochMsg() const { return getKind() == tdckind_Epoch; }
       Bool_t isDebugMsg() const { return getKind() == tdckind_Debug; }
