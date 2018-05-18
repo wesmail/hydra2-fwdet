@@ -4,6 +4,7 @@
 //*-- Modified : 23/01/2004 A.Sadovski
 //*-- Modified : 04/01/2005 Jacek Otwinowski
 //*-- Modified : 08/02/2005 A.Sadovski
+//*-- Modified : 08/05/2018 Rafał Lalik
 #ifndef HQAHISTOGRAMS_H
 #define HQAHISTOGRAMS_H
 
@@ -42,6 +43,7 @@ private:
    virtual void bookHistTof();
    virtual void bookHistRpc();
    virtual void bookHistWall();
+   virtual void bookHistEmc();
 
    virtual void bookHistRichMDC();
 
@@ -234,6 +236,32 @@ public:
    TH1F *hWallHitNumIII;   //!Number of hits III quarter
    TH1F *hWallHitNumIV;    //!Number of hits IV  quarter
 
+   // EMC
+   // * RAW
+   TH1I * hEmcRawMult;          //! Multiplicty
+   TH1I * hEmcRawPattern;       //! N_counts vs cell+200*sector (cell is 1-163)
+   TH2I * hEmcRawTimeCell;      //! time_fast1 vs cell+200*sector
+   TH2I * hEmcRawWidthCell;     //! time_slow1-time_fast1 vs cell+200*sector
+   // * CAL
+   TH1I * hEmcCalMult;          //! multiplicity
+   TH1I * hEmcCalTime;          //! time
+   TH1I * hEmcCalEnergy;        //! energy
+   TH2I * hEmcCalTimeCell;      //! time vs cell+200*sector
+   TH2I * hEmcCalEnergyCell;    //! ene vs cell+200*sector
+   TH1I * hEmcCalCol;           //! N_counts vs phi
+   TH1I * hEmcCalRow;           //! N_counts vs theta
+   TH2I * hEmcCalRowCol;        //! theta vs phi
+   // * CLUSTER
+   TH1I * hEmcClusMult;         //! multiplicity per event 1D
+   TH1I * hEmcClusSize;         //! number of modules in cluster 1D
+   TH1I * hEmcClusTime;         //! 1D
+   TH1I * hEmcClusEnergy;       //! 1D
+   TH2I * hEmcClusTimeCell;     //! time vs cell+200*sector
+   TH2I * hEmcClusEnergyCell;   //! energy vs cell+200*sector
+   TH1I * hEmcClusPhi;          //! N_counts vs phi
+   TH1I * hEmcClusTheta;        //! N_counts vs theta
+   TH2I * hEmcClusThetaPhi;     //!
+   TH2I * hEmcClusXYlab;        //! 2D 
 
    //Tracking  sector-vise TOF/SHOWER-TOFINO
    TH1F *trackingSpline_sys0[6];      //! Spline     tracking MDC12-3(4)

@@ -12,7 +12,6 @@ protected:
    HEmcTrb3Lookup* fLookup;  // TRB3 lookup table
    Bool_t fTimeRef;          // use reference time ?
    Double_t fTimeShift;      //shift all times by a constant (to positive). Pendant to trb2 unpacker timeShift JAM
-   HEmcDetector*  fDet;      //!
 public:
    HEmcTrb3Unpacker(UInt_t id = 0);
    virtual ~HEmcTrb3Unpacker(void) {}

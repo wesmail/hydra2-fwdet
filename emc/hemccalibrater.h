@@ -5,17 +5,24 @@
 
 class HCategory;
 class HIterator;
-class HEmcDetector;
 class HEmcCalPar;
+class HEmcCellStatusPar;
+class HEmcCalibraterPar;
+
+#define WITHCALQA
 
 class HEmcCalibrater : public HReconstructor {
 protected:
-  HCategory *pRawCat;   // pointer to the raw data
-  HCategory *pCalCat;   // pointer to the cal data
-  HIterator *iter;      // iterator on raw data.
+  HCategory *pRawCat;   //! pointer to the raw data
+  HCategory *pCalCat;   //! pointer to the cal data
+#ifdef WITHCALQA
+  HCategory *pQACat;    //! pointer to the cal data
+#endif
+  HIterator *iter;      //! iterator on raw data.
   HLocation loc;        // location for new cal object
-  HEmcDetector *pDet;   // pointer to Emc detector
-  HEmcCalPar *pCalpar;  // pointer to calibration parameters
+  HEmcCalPar *pCalpar;  //! pointer to calibration parameters
+  HEmcCellStatusPar *pStatuspar;    //! pointer to calibration parameters
+  HEmcCalibraterPar *pCalibpar;     //! pointer to calibrater params
   Int_t embedding;      // flag is set if real data should be embedded into simulation data
 public:
   HEmcCalibrater(void);

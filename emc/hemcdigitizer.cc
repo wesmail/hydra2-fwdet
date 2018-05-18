@@ -191,7 +191,7 @@ Int_t HEmcDigitizer::execute(void) {
         celltrack* celltr = new celltrack;
         celltr->reset();
         celltr->trackEn   = pCal->getEnergy();
-        celltr->gtime     = pCal->getTime1();
+        celltr->gtime     = pCal->getTime();
         celltr->gtrack    = gHades->getEmbeddingRealTrackId();
         cellobjects[ind]->ctracks.push_back(celltr);
       }
@@ -304,7 +304,7 @@ Int_t HEmcDigitizer::execute(void) {
       // ------  energy -------------
       cal->setEnergy(energy);
       cal->setSigmaEnergy(sigmaE);
-      if(cal->getEnergy() < energyDepositCut) cal->setStatus1(-1);  // Energy deposit < threshold in this cell
+      if(cal->getEnergy() < energyDepositCut) cal->setStatus(-1);  // Energy deposit < threshold in this cell
 
       // ------  time and track numbers ------
       // Take track number and time from track when sum. of energy deposit exceed threshold
@@ -317,9 +317,9 @@ Int_t HEmcDigitizer::execute(void) {
         if (energySum > energyDepositCut) break;
       }
       if(!cdata->isEmbeddedReal || gHades->getEmbeddingRealTrackId() != celltr->gtrack) {
-        cal->setTime1(gRandom->Gaus(celltr->gtime,sigmaT) - startTimeSmearing);
-        cal->setTime1Track(celltr->gtrack);
-        cal->setSigmaTime1(sigmaT);
+        cal->setTime(gRandom->Gaus(celltr->gtime,sigmaT) - startTimeSmearing);
+        cal->setTimeTrack(celltr->gtrack);
+        cal->setSigmaTime(sigmaT);
       } // else keep time and sigma from real hit
       
       // ------ sort by enegry  ---------------

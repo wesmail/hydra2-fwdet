@@ -395,8 +395,8 @@ void HMetaMatchF2::makeOuterSegMatch(HMdcTrkCand* pTrkCand) {
         Float_t qual2 = quality2Emc(fEmcHitsSec[nEmc],pmodgeom,xSegCr,ySegCr);
         if(qual2>quality2EMCCut[sector]) continue; //??????????????????????????????
         insertQual(qual2,indexEmcHitSec[nEmc],nEmcMatched,qual2EmcAr,emcInd);
-        Short_t status = fEmcHitsSec[nEmc]->getStatus1();
-        if(status >= 0) fEmcHitsSec[nEmc]->setStatus1(++status);
+        Short_t status = fEmcHitsSec[nEmc]->getStatus();
+        if(status >= 0) fEmcHitsSec[nEmc]->setStatus(++status);
       }
       for(Int_t nEmc=0; nEmc<nEmcClusSec;nEmc++) {
         Float_t qual2 = quality2EmcClus(fEmcClusSec[nEmc],xSegCr,ySegCr);
@@ -799,7 +799,7 @@ void HMetaMatchF2::collectEmcHits(void) {
   Int_t ncals = fCatEmc->getEntries();
   for(Int_t ind=0;ind<ncals;ind++) {
     HEmcCal *pEmcCal = (HEmcCal*)fCatEmc->getObject(ind);
-    if(pEmcCal->getStatus1() < 0) continue;              // Energy < energyCut for sim.data
+    if(pEmcCal->getStatus() < 0) continue;              // Energy < energyCut for sim.data
     Int_t sec = pEmcCal->getSector();
     fEmcHits[sec][nEmcHits[sec]]        = pEmcCal;
     indexEmcHit[sec][nEmcHits[sec]]     = ind;

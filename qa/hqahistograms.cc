@@ -245,6 +245,29 @@ void HQAHistograms::resetPointers()
    hWallXY         = 0;
 
 
+   hEmcRawMult          = 0;
+   hEmcRawPattern       = 0;
+   hEmcRawTimeCell      = 0;
+   hEmcRawWidthCell     = 0;
+   hEmcCalMult          = 0;
+   hEmcCalTime          = 0;
+   hEmcCalEnergy        = 0;
+   hEmcCalTimeCell      = 0;
+   hEmcCalEnergyCell    = 0;
+   hEmcCalCol           = 0;
+   hEmcCalRow           = 0;
+   hEmcCalRowCol        = 0;
+   hEmcClusMult         = 0;
+   hEmcClusSize         = 0;
+   hEmcClusTime         = 0;
+   hEmcClusEnergy       = 0;
+   hEmcClusTimeCell     = 0;
+   hEmcClusEnergyCell   = 0;
+   hEmcClusPhi          = 0;
+   hEmcClusTheta        = 0;
+   hEmcClusThetaPhi     = 0;
+   hEmcClusXYlab        = 0;
+
    //---- Tracking histograms
    splineTrack_scat           = 0;
    splineTrack_massCharge     = 0;
@@ -443,6 +466,7 @@ void HQAHistograms::bookHist()
    bookHistRpc();
    bookHistShower();
    bookHistWall();
+   bookHistEmc();
    bookHistMatching();
    bookHistTracking();
    bookHistRichMDC();
@@ -1252,6 +1276,56 @@ void HQAHistograms::bookHistWall()
    ////histProfTofino->TH1::SetStats(kFALSE);
 
 }
+
+void HQAHistograms::bookHistEmc()
+{
+   hEmcRawMult = new TH1I("hEmcRawMult", "RAW Multiplicty;Multiplcity;Counts", 50, 0, 50);
+   hEmcRawPattern = new TH1I("hEmcRawPattern", "RAW Multiplicity;Cell-Sector;Counts", 1200, 0, 1200);
+   hEmcRawTimeCell = new TH2I("hEmcRawTimeCell", "RAW Time;Cell-Sector;Time", 1200, 0, 1200, 500, -500, 500);
+   hEmcRawWidthCell = new TH2I("hEmcRawWidthCell", "RAW Width;Cell-Sector;Width", 1200, 0, 1200, 100, 0, 1000);
+   hEmcCalMult = new TH1I("hEmcCalMult", "CAL Multiplcity;Multiplcity;Counts", 50, 0, 50);
+   hEmcCalTime = new TH1I("hEmcCalTime", "CAL Time;Time;Counts", 1000, -500, 500);
+   hEmcCalEnergy = new TH1I("hEmcCalEnergy", "CAL Energy;Energy;Counts", 100, 0, 1000);
+   hEmcCalTimeCell = new TH2I("hEmcCalTimeCell", "CAL Time;Cell-Sector;Time", 1200, 0, 1200, 500, -500, 500);
+   hEmcCalEnergyCell = new TH2I("hEmcCalEnergyCell", "CAL Energy;Cell-Sector;Energy", 1200, 0, 1200, 100, 0, 5000);
+   hEmcCalCol = new TH1I("hEmcCalCol", "CAL Col;Column,Counts", 17, 0, 17);
+   hEmcCalRow = new TH1I("hEmcCalRow", "CAL Row;Row;Counts", 15, 0, 15);
+   hEmcCalRowCol = new TH2I("hEmcCalRowCol", "CAL Row vs Col;Col;Row", 6*18, 0, 6*18, 15, 0, 15);
+   hEmcClusMult = new TH1I("hEmcClusMult", "CLUS Multiplcity;Multiplcity;Counts", 50, 0, 50);
+   hEmcClusSize = new TH1I("hEmcClusSize", "CLUS Size;Size;Counts", 25, 0, 25);
+   hEmcClusTime = new TH1I("hEmcClusTime", "CLUS Time;Time;Counts", 500, -500, 500);
+   hEmcClusEnergy = new TH1I("hEmcClusEnergy", "CLUS Energy;Energy;Counts", 100, 0, 5000);
+   hEmcClusTimeCell = new TH2I("hEmcClusTimeCell", "CLUS Time;Cell-Sector;Time", 1200, 0, 1200, 500, -500, 500);
+   hEmcClusEnergyCell = new TH2I("hEmcClusEnergyCell", "CLUS Energy;Cell-Sector;Energy", 1200, 0, 1200, 100, 0, 5000);
+   hEmcClusPhi = new TH1I("hEmcClusPhi", "CLUS Phi;Phi;Counts", 360, 0, 360);
+   hEmcClusTheta = new TH1I("hEmcClusTheta", "CLUS Theta;Theta;Counts", 90, 0, 90);
+   hEmcClusThetaPhi = new TH2I("hEmcClusThetaPhi", "CLUS Theta vs Phi;Phi;Theta", 360, 0, 260, 90, 0, 90);
+   hEmcClusXYlab = new TH2I("hEmcClusXYlab", "CLUS X-Y;X;Y", 100, -10000, 10000, 100, -10000, 10000);
+
+   histList->Add(hEmcRawMult, "emc--");
+   histList->Add(hEmcRawPattern, "emc--");
+   histList->Add(hEmcRawTimeCell, "emc--");
+   histList->Add(hEmcRawWidthCell, "emc--");
+   histList->Add(hEmcCalMult, "emc--");
+   histList->Add(hEmcCalTime, "emc--");
+   histList->Add(hEmcCalEnergy, "emc--");
+   histList->Add(hEmcCalTimeCell, "emc--");
+   histList->Add(hEmcCalEnergyCell, "emc--");
+   histList->Add(hEmcCalCol, "emc--");
+   histList->Add(hEmcCalRow, "emc--");
+   histList->Add(hEmcCalRowCol, "emc--");
+   histList->Add(hEmcClusMult, "emc--");
+   histList->Add(hEmcClusSize, "emc--");
+   histList->Add(hEmcClusTime, "emc--");
+   histList->Add(hEmcClusEnergy, "emc--");
+   histList->Add(hEmcClusTimeCell, "emc--");
+   histList->Add(hEmcClusEnergyCell, "emc--");
+   histList->Add(hEmcClusPhi, "emc--");
+   histList->Add(hEmcClusTheta, "emc--");
+   histList->Add(hEmcClusThetaPhi, "emc--");
+   histList->Add(hEmcClusXYlab, "emc--");
+}
+
 
 void HQAHistograms::bookHistRichMDC()
 {

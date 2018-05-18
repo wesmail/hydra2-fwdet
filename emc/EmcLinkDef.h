@@ -9,10 +9,12 @@
 #pragma link C++ class HEmcHit_t;
 #pragma link C++ class HEmcRaw;
 #pragma link C++ class HEmcCal;
+#pragma link C++ class HEmcCalQA;
+#pragma link C++ class HEmcHitQA_t;
+#pragma link C++ class HEmcHitMatchQA_t;
+#pragma link C++ class HEmcCalSim;
 #pragma link C++ class HEmcCluster;
 #pragma link C++ class HEmcClusterSim;
-
-#pragma link C++ class HEmcCalSim;
 
 #pragma link C++ class HEmcContFact;
 #pragma link C++ class HEmcParRootFileIo;
@@ -27,6 +29,9 @@
 #pragma link C++ class HEmcGeomPar;
 #pragma link C++ class HEmcCellGeomPar;
 #pragma link C++ class HEmcDigiPar;
+#pragma link C++ class HEmcCalibraterPar;
+#pragma link C++ class HEmcCellStatusPar;
+
 
 #pragma link C++ class HEmcTaskSet;
 #pragma link C++ class HEmcTrb3Unpacker;
@@ -37,6 +42,7 @@
 
 #pragma link C++ global catEmcRaw;
 #pragma link C++ global catEmcCal;
+#pragma link C++ global catEmcCalQA;
 #pragma link C++ global catEmcCluster;
 
 #endif

@@ -53,6 +53,11 @@ using namespace std;
 #include "walldef.h"
 #include "hwallraw.h"
 #include "hwallhit.h"
+#include "emcdef.h"
+#include "hemcdetector.h"
+#include "hemcraw.h"
+#include "hemccal.h"
+#include "hemccluster.h"
 #include "hmdctrackgdef.h"
 //---- QA includes
 #include "hqaoutputps.h"
@@ -172,6 +177,9 @@ void HQAMaker::initIteratorPointers()
    iterRpcCluster    = NULL;
    iterFwRaw         = NULL;
    iterFwHit         = NULL;
+   iterEmcRaw        = NULL;
+   iterEmcCal        = NULL;
+   iterEmcClus       = NULL;
    iterSplineTrk     = NULL;
    iterRungeKuttaTrk = NULL;
    iterMetaMatch     = NULL;
@@ -376,6 +384,17 @@ Bool_t HQAMaker::getIteratorPointers()
    if (catFwHit)
       iterFwHit = (HIterator *)catFwHit->MakeIterator("native");
 
+   // EMC
+   HCategory *cEmcRaw = event->getCategory(catEmcRaw);
+   if (cEmcRaw)
+      iterEmcRaw = (HIterator *)cEmcRaw->MakeIterator("native");
+   HCategory *cEmcCal = event->getCategory(catEmcCal);
+   if (cEmcCal)
+      iterEmcCal = (HIterator *)cEmcCal->MakeIterator("native");
+   HCategory *cEmcClus = event->getCategory(catEmcCluster);
+   if (cEmcClus)
+      iterEmcClus = (HIterator *)cEmcClus->MakeIterator("native");
+
    // Shower
    // in case of Simulation MetaMatching is using catShowerHitTofTrack
    // we have to make sure that we use the same cat
@@ -546,6 +565,7 @@ Int_t HQAMaker::execute()
          fillHistRpc();
          fillHistShower();
 	 fillHistWall();
+         fillHistEmc();
          fillHistMatching();
          fillHistSpline();
          fillHistRungeKutta();
@@ -1567,7 +1587,116 @@ void HQAMaker::fillHistWall()
 
 }
 
+void HQAMaker::fillHistEmc()
+{
+   HEmcRaw * emcRaw = 0;
+   HEmcCal * emcCal = 0;
+   HEmcCluster * emcClus = 0;
 
+   Int_t multRaw = 0;
+   Int_t multRawF = 0;
+   Int_t multCal = 0;
+   Int_t multClus = 0;
+
+   Float_t time, width;
+   Float_t phi, theta;
+   Float_t x, y;
+
+   if (iterEmcRaw) {
+      iterEmcRaw->Reset();
+
+      while ((emcRaw = (HEmcRaw*) iterEmcRaw->Next()) != 0) {
+         multRawF = emcRaw->getFastMultiplicity();
+
+         if (multRawF <= 0) continue;
+         ++multRaw;
+
+	 Int_t sector, cell;
+	 Char_t row, col;
+         emcRaw->getAddress(sector, cell, row, col);
+
+         UChar_t position = HEmcDetector::getPositionFromCell(cell);
+
+         hists->hEmcRawPattern->Fill(sector * 200 + position);
+
+         emcRaw->getFastTimeAndWidth(0, time, width);
+         hists->hEmcRawTimeCell->Fill(sector * 200 + position, time);
+         hists->hEmcRawWidthCell->Fill(sector * 200 + position, width);
+      }
+      hists->hEmcRawMult->Fill(multRaw);
+   }
+
+   if (iterEmcCal) {
+      iterEmcCal->Reset();
+
+      while ((emcCal = (HEmcCal*) iterEmcCal->Next()) != 0) {
+         Char_t sector, col, row;
+         UChar_t cell;
+         emcCal->getAddress(sector, cell, row, col);
+         if (sector < 0)
+             continue;
+
+         ++multCal;
+
+         UChar_t position = HEmcDetector::getPositionFromCell(cell);
+
+         time = emcCal->getTime();
+         width = emcCal->getEnergy();
+
+         hists->hEmcCalTime->Fill(time);
+         hists->hEmcCalEnergy->Fill(width);
+
+         hists->hEmcCalTimeCell->Fill(sector * 200 + position, time);
+         hists->hEmcCalEnergyCell->Fill(sector * 200 + position, width);
+
+         hists->hEmcCalCol->Fill(col);
+         hists->hEmcCalRow->Fill(row);
+         hists->hEmcCalRowCol->Fill(col, row);
+      }
+      hists->hEmcCalMult->Fill(multCal);
+   }
+
+   if (iterEmcClus) {
+      iterEmcClus->Reset();
+
+      while ((emcClus = (HEmcCluster*) iterEmcClus->Next()) != 0) {
+         Int_t sector, cell;
+         sector = emcClus->getSector();
+         cell = emcClus->getCell();
+
+         if (sector < 0)
+             continue;
+
+         ++multClus;
+
+         UChar_t position = HEmcDetector::getPositionFromCell(cell);
+
+         hists->hEmcClusSize->Fill(emcClus->getNCells());
+
+         time = emcClus->getTime();
+         width = emcClus->getEnergy();
+
+         hists->hEmcClusTime->Fill(time);
+         hists->hEmcClusEnergy->Fill(width);
+
+         hists->hEmcClusTimeCell->Fill(sector * 200 + position, time);
+         hists->hEmcClusEnergyCell->Fill(sector * 200 + position, width);
+
+         phi = emcClus->getPhi();
+         theta = emcClus->getTheta();
+
+         hists->hEmcClusPhi->Fill(phi);
+         hists->hEmcClusTheta->Fill(theta);
+         hists->hEmcClusThetaPhi->Fill(phi, theta);
+
+         x = emcClus->getXLab();
+         y = emcClus->getYLab();
+
+         hists->hEmcClusXYlab->Fill(x, y);
+      }
+      hists->hEmcClusMult->Fill(multClus);
+   }
+}
 
 
 

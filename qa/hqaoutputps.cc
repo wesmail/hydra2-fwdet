@@ -83,6 +83,8 @@ void HQAOutputPS::writeHist(TList *histList)
    while (TH1 *h = (TH1*) next()) {
       if (!strcmp(h->ClassName(), "TH1F"))
          ((TH1F*)h)->Write();
+      else if (!strcmp(h->ClassName(), "TH1I"))
+            ((TH1I*)h)->Write();
       else if (!strcmp(h->ClassName(), "TH2F"))
          ((TH2F*)h)->Write();
       else if (!strcmp(h->ClassName(), "TProfile"))
@@ -130,6 +132,8 @@ void HQAOutputPS::writeHist(TList *histList1, TList *histList2, TString fnamePS)
          }
          if (!strcmp(h->ClassName(), "TH1F"))
             ((TH1F*)h)->Write();
+         else if (!strcmp(h->ClassName(), "TH1I"))
+            ((TH1I*)h)->Write();
          else if (!strcmp(h->ClassName(), "TH2F"))
             ((TH2F*)h)->Write();
          else if (!strcmp(h->ClassName(), "TProfile"))
@@ -164,6 +168,8 @@ void HQAOutputPS::writeHist(TList *histList1, TList *histList2, TString fnamePS)
 
       if (!strcmp(h->ClassName(), "TH1F"))
          ((TH1F*)h)->Write();
+      else if (!strcmp(h->ClassName(), "TH1I"))
+            ((TH1I*)h)->Write();
       else if (!strcmp(h->ClassName(), "TH2F"))
          ((TH2F*)h)->Write();
       else if (!strcmp(h->ClassName(), "TProfile"))

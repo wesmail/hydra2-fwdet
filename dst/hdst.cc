@@ -36,6 +36,7 @@
 #include "hlatchunpacker.h"
 #include "htboxunpacker.h"
 #include "hpiontrackertrb3unpacker.h"
+#include "hemctrb3unpacker.h"
 //-------------------------------------
 
 
@@ -76,6 +77,7 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
     else if(beamtime.CompareTo("aug11_3sec")==0);
     else if(beamtime.CompareTo("apr12")     ==0);
     else if(beamtime.CompareTo("jul14")     ==0);
+    else if(beamtime.CompareTo("aug18")     ==0);
     else {
         ::Error("","Beam time = '%s' not supported !",beamtime.Data());
         exit(1);
@@ -120,6 +122,7 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
                 else if(beamtime.CompareTo("aug11_3sec")==0) mdcMods[s][m] = mdcMods_aug11_3sec[s][m];
                 else if(beamtime.CompareTo("apr12")     ==0) mdcMods[s][m] = mdcMods_apr12[s][m];
                 else if(beamtime.CompareTo("jul14")     ==0) mdcMods[s][m] = mdcMods_apr12[s][m];
+                else if(beamtime.CompareTo("aug18")     ==0) mdcMods[s][m] = mdcMods_apr12[s][m];
                 else {
                     ::Error("","Beam time = %s not supported !",beamtime.Data());
                     exit(1);
@@ -164,6 +167,8 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
             spec->getDetector("Start")->setModules(-1,nStartModsApr12);
         } else if (beamtime.CompareTo("jul14") ==0) {
             spec->getDetector("Start")->setModules(-1,nStartModsJul14);
+        } else if (beamtime.CompareTo("aug18") ==0) {
+            spec->getDetector("Start")->setModules(-1,nStartModsJul14);
         }
 
     }
@@ -183,7 +188,7 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
     if(detectors.Contains("tof"))   {spec->addDetector(new HTofDetector);    ::Info("","Adding TOF");   }
     if(detectors.Contains("rpc"))   {spec->addDetector(new HRpcDetector);    ::Info("","Adding RPC");   }
     if(detectors.Contains("shower")){spec->addDetector(new HShowerDetector); ::Info("","Adding SHOWER");}
-    else if(detectors.Contains("emc")) {spec->addDetector(new HEmcDetector); ::Info("","Adding EMC");}
+    if(detectors.Contains("emc"))   {spec->addDetector(new HEmcDetector);    ::Info("","Adding EMC");}
 
     for (Int_t is=0; is<6; is++) {
         if(detectors.Contains("rich"))  spec->getDetector("Rich")  ->setModules(is,richMods);
@@ -191,7 +196,7 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
         if(detectors.Contains("tof"))   spec->getDetector("Tof")   ->setModules(is,tofMods);
         if(detectors.Contains("rpc"))   spec->getDetector("Rpc")   ->setModules(is,rpcMods);
         if(detectors.Contains("shower"))spec->getDetector("Shower")->setModules(is,showerMods);
-        else if(detectors.Contains("emc"))spec->getDetector("Emc")->setModules(is,emcMods);
+        if(detectors.Contains("emc"))   spec->getDetector("Emc")   ->setModules(is,emcMods);
     }
 }
 void HDst::setupParameterSources(TString parsource,TString asciiParFile,TString rootParFile,TString histDate)
@@ -384,6 +389,7 @@ void HDst::setupUnpackers(TString beamtime,TString detectors,Bool_t correctINL)
     if     (beamtime.CompareTo("aug11")      ==0);
     else if(beamtime.CompareTo("apr12")      ==0);
     else if(beamtime.CompareTo("jul14")      ==0);
+    else if(beamtime.CompareTo("aug18")      ==0);
     else {
         ::Error("","Beam time = %s not supported !",beamtime.Data());
         exit(1);
@@ -762,7 +768,158 @@ void HDst::setupUnpackers(TString beamtime,TString detectors,Bool_t correctINL)
             }
         }
         cout<<endl;
+    }
+    else if(beamtime == "aug18") {
+        ::Info("", "Using aug18 setup");
 
+        Int_t mdcUnpackers   [12] = {0x1100,0x1110,0x1120,0x1130,0x1140,0x1150,0x1000,0x1010,0x1020,0x1030,0x1040,0x1050};
+        Int_t rpcUnpackers   [3]  = {0x8400,0x8410,0x8420};
+        Int_t startUnpackers [1]      = {0x8800};         // CTS-Hub
+        Int_t startUnpackersTrb3 [2]  = {0x8880,0x8890};  // start+hodo
+        Int_t pionTrackerUnpackers[2] = {0x8900,0x8910};
+        Int_t tofUnpackers   [1]  = {0x8600};        //
+        Int_t wallUnpackers  [1]  = {0x8700};        //
+        Int_t showerUnpackers[6]  = {0x3200,0x3210,0x3220,0x3230,0x3240,0x3250}; //
+        Int_t richUnpackers  [3]  = {0x8300,0x8310,0x8320};
+        Int_t emcUnpackers   [6] = {0x8A00,0x8A01,0x8A02,0x8A03,0x8A04,0x8A05};
+
+        if(detectors.Contains("wall")) {
+            ::Info("", "Adding WALL unpackers");
+
+            for(UInt_t i=0; i<(sizeof(wallUnpackers)/sizeof(Int_t)); i++)
+            {
+                cout<<hex<<wallUnpackers[i]<<", "<<dec<<flush;
+                HWallTrb2Unpacker* wallUnpacker=new HWallTrb2Unpacker(wallUnpackers[i]);
+                wallUnpacker->setQuietMode();
+                wallUnpacker->removeTimeRef();
+                source->addUnpacker( wallUnpacker);
+            }
+            cout<<endl;
+        }
+
+        if(detectors.Contains("latch")) {source->addUnpacker( new HLatchUnpacker(startUnpackers[0]) ); ::Info("", "Adding LATCH unpacker");}
+        if(detectors.Contains("tbox"))  {source->addUnpacker( new HTBoxUnpacker(startUnpackers[0]) );  ::Info("", "Adding TBOX unpacker");}
+
+        if(detectors.Contains("rich")){
+            ::Info("", "Adding RICH unpackers");
+
+            for(UInt_t i=0; i<(sizeof(richUnpackers)/sizeof(Int_t)); i++){
+                cout<<hex<<richUnpackers[i]<<", "<<dec<<flush;
+                source->addUnpacker( new HRichUnpacker(richUnpackers[i]) );
+            }
+            cout<<endl;
+        }
+
+        if(detectors.Contains("mdc")){
+            ::Info("", "Adding MDC unpackers");
+
+            for(UInt_t i=0; i<(sizeof(mdcUnpackers)/sizeof(Int_t)); i++) {
+                cout<<hex<<mdcUnpackers[i]<<", "<<dec<<flush;
+                HMdcUnpacker* mdc_unpacker = new HMdcUnpacker(  mdcUnpackers[i], kFALSE );
+                mdc_unpacker->setQuietMode(kTRUE,kFALSE);
+
+                mdc_unpacker->setFillDataWord(kFALSE);
+                mdc_unpacker->setFillOepStatus(kTRUE);
+                mdc_unpacker->setPersistencyDataword(kTRUE);
+                mdc_unpacker->setPersistencyOepStatusData(kFALSE);
+                source->addUnpacker( (HMdcUnpacker*)mdc_unpacker );
+            }
+            cout<<endl;
+        }
+
+        if(detectors.Contains("shower")){
+            ::Info("", "Adding SHOWER unpackers");
+
+            for(UInt_t i=0; i<(sizeof(showerUnpackers)/sizeof(Int_t)); i++) {
+                cout<<hex<<showerUnpackers[i]<<", "<<dec<<flush;
+                source->addUnpacker( new HShowerUnpacker(showerUnpackers[i]) );
+            }
+            cout<<endl;
+        }
+
+        if(detectors.Contains("tof")){
+            ::Info("", "Adding TOF unpackers");
+
+            for(UInt_t i=0; i<(sizeof(tofUnpackers)/sizeof(Int_t)); i++){
+                cout<<hex<<tofUnpackers[i]<<", "<<dec<<flush;
+                HTofTrb2Unpacker *tofUnp = new HTofTrb2Unpacker(tofUnpackers[i]);
+                tofUnp->setDebugFlag(0);
+                //tofUnp->setQuietMode();
+                if(correctINL)tofUnp->setcorrectINL();
+                tofUnp->removeTimeRef();
+                source->addUnpacker( tofUnp );
+            }
+            cout<<endl;
+        }
+
+        if(detectors.Contains("start")){
+            ::Info("", "Adding START unpackers");
+
+	  /*
+            for(UInt_t i=0; i<(sizeof(startUnpackers)/sizeof(Int_t)); i++){
+                cout<<hex<<startUnpackers[i]<<", "<<dec<<flush;
+                HStart2Trb2Unpacker *startUnp = new HStart2Trb2Unpacker(startUnpackers[i]);
+                startUnp->setDebugFlag(0);
+                startUnp->setcorrectINL();
+                //startUnp->setQuietMode();
+                //startUnp->disableTimeRef(); // new since apr12 , only for cosmics
+                source->addUnpacker( startUnp );
+            }
+	  */
+            for(UInt_t i=0; i<(sizeof(startUnpackersTrb3)/sizeof(Int_t)); i++){
+                cout<<hex<<startUnpackersTrb3[i]<<", "<<dec<<flush;
+                HStart2Trb3Unpacker *startUnp = new HStart2Trb3Unpacker(startUnpackersTrb3[i]);
+                startUnp->setDebugFlag(0);
+		startUnp->setQuietMode();
+                startUnp->setCTSId(0x8000);
+                source->addUnpacker( startUnp );
+            }
+            cout<<endl;
+        }
+
+        if(detectors.Contains("piontracker")){
+            ::Info("", "Adding PionTracker unpackers");
+
+            for(UInt_t i=0; i<(sizeof(pionTrackerUnpackers)/sizeof(Int_t)); i++){
+                cout<<hex<<pionTrackerUnpackers[i]<<", "<<dec<<flush;
+                HPionTrackerTrb3Unpacker *pionTrackerUnp = new HPionTrackerTrb3Unpacker(pionTrackerUnpackers[i]);
+                pionTrackerUnp->setDebugFlag(0);
+                pionTrackerUnp->setQuietMode();
+                source->addUnpacker( pionTrackerUnp );
+            }
+            cout<<endl;
+        }
+
+        if(detectors.Contains("rpc")){
+            ::Info("", "Adding RPC unpackers");
+            for(UInt_t i=0; i<(sizeof(rpcUnpackers)/sizeof(Int_t)); i++){
+
+                cout<<hex<<rpcUnpackers[i]<<", "<<dec<<flush;
+                HRpcTrb2Unpacker *rpcTrb2Unpacker = new HRpcTrb2Unpacker(rpcUnpackers[i]);
+                //rpcTrb2Unpacker->setQuietMode();
+                rpcTrb2Unpacker->setDebugFlag(0);
+                if(correctINL)rpcTrb2Unpacker->setcorrectINL();
+                source->addUnpacker(rpcTrb2Unpacker);
+            }
+            cout<<endl;
+        }
+
+        if(detectors.Contains("emc"))
+        {
+            ::Info("", "Adding Emc unpackers");
+            for (UInt_t i=0; i<(sizeof(emcUnpackers)/sizeof(Int_t)); i++)
+            {
+                cout<<hex<<emcUnpackers[i]<<", "<<dec<<flush;
+                HEmcTrb3Unpacker * emcUnp =
+                    new HEmcTrb3Unpacker(emcUnpackers[i]);
+                emcUnp->setMinAddress(0x6000);
+                emcUnp->setMaxAddress(0x6060);
+                emcUnp->setDebugFlag(0);
+                emcUnp->setQuietMode();
+                source->addUnpacker( emcUnp );
+            }
+            cout << endl;
+        }
     }
 
     else {

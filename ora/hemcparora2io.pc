@@ -35,7 +35,7 @@ ClassImp(HEmcParOra2Io)
 
 #define EMC_MAXSEC           6
 #define EMC_MAXSECCELLS    163
-#define EMC_MAXCELLS       978
+#define EMC_MAXCELLS       1956 //978 * 2 because we have 2 channels per cell
 #define EMC_MAXGEOMCELLS   164
 
 HEmcParOra2Io::HEmcParOra2Io(HOra2Conn* pC) : HDetParOra2Io(pC) {
@@ -194,12 +194,16 @@ Bool_t HEmcParOra2Io::read(HEmcCalPar* pPar, Int_t* set) {
       float tdcOffset[EMC_MAXCELLS];
       float adcSlope[EMC_MAXCELLS];
       float adcOffset[EMC_MAXCELLS];
+      float timeWalkCorr_1[EMC_MAXCELLS];
+      float timeWalkCorr_2[EMC_MAXCELLS];
+      float timeWalkCorr_3[EMC_MAXCELLS];
     } cal;
+    
   EXEC SQL END DECLARE SECTION;
   vers=oraVersion;
   EXEC SQL WHENEVER SQLERROR DO showSqlError("read(HEmcCalPar*,Int_t*)");
   EXEC SQL WHENEVER NOT FOUND CONTINUE;
-  EXEC SQL SELECT module, cell, tdc_slope, tdc_offset, adc_slope, adc_offset 
+  EXEC SQL SELECT module, cell, tdc_slope, tdc_offset, adc_slope, adc_offset, time_walk_1, time_walk_2, time_walk_3
            INTO :cal
            FROM emc_ana2.calpar_data_view
            WHERE vers_id = :vers;
@@ -209,7 +213,8 @@ Bool_t HEmcParOra2Io::read(HEmcCalPar* pPar, Int_t* set) {
     m=cal.module[i]-1;
     if (set[m]) {
       (*pPar)[m][cal.cell[i]].fill(cal.tdcSlope[i],cal.tdcOffset[i],
-                                   cal.adcSlope[i],cal.adcOffset[i]);
+                                   cal.adcSlope[i],cal.adcOffset[i],
+                                   cal.timeWalkCorr_1[i], cal.timeWalkCorr_2[i], cal.timeWalkCorr_3[i]);
       initModules->AddAt(1,m);
     }
   }
@@ -502,6 +507,9 @@ Int_t HEmcParOra2Io:: writePar(HEmcCalPar* pPar) {
     float tdcOffset[EMC_MAXSECCELLS];
     float adcSlope[EMC_MAXSECCELLS];
     float adcOffset[EMC_MAXSECCELLS];
+    float timeWalkCorr_1[EMC_MAXCELLS];
+    float timeWalkCorr_2[EMC_MAXCELLS];
+    float timeWalkCorr_3[EMC_MAXCELLS];
     int rows_to_insert;
   EXEC SQL END DECLARE SECTION;
   Int_t nCell=0;
@@ -525,6 +533,9 @@ Int_t HEmcParOra2Io:: writePar(HEmcCalPar* pPar) {
         tdcOffset[nCell]=rCell.getTdcOffset();
         adcSlope[nCell]=rCell.getAdcSlope();
         adcOffset[nCell]=rCell.getAdcOffset();
+        timeWalkCorr_1[nCell]=rCell.getTwcPar1();
+        timeWalkCorr_2[nCell]=rCell.getTwcPar2();
+        timeWalkCorr_3[nCell]=rCell.getTwcPar3();
         nCell++;
       }     
     }
@@ -534,9 +545,9 @@ Int_t HEmcParOra2Io:: writePar(HEmcCalPar* pPar) {
     EXEC SQL WHENEVER NOT FOUND GOTO not_found;
     EXEC SQL FOR :rows_to_insert
       INSERT INTO emc_ana2.calpar_data
-      (vers_id, cell_id, tdc_slope, tdc_offset, adc_slope, adc_offset )
+      (vers_id, cell_id, tdc_slope, tdc_offset, adc_slope, adc_offset,  time_walk_1, time_walk_2, time_walk_3)
         VALUES (:vers, emc_ana2.emc_par_query.get_cell_id(:module,:cell),
-                :tdcSlope, :tdcOffset, :adcSlope, :adcOffset);
+                :tdcSlope, :tdcOffset, :adcSlope, :adcOffset, :timeWalkCorr_1, :timeWalkCorr_2, :timeWalkCorr_3);
     cout<<"Sector "<<s<<"    "<<rows_to_insert<<" rows inserted\n";
   }
   commit();

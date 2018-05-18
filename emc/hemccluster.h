@@ -13,8 +13,6 @@ protected:
   Float_t energy;         // energy deposited in the cluster
   Float_t cellEnergy;     // energy deposited in the tower (cell) which has maximal energy deposit
   Float_t time;           // mean time weighted by energy
-  Float_t sigmaEnergy;    // error of "energy"
-  Float_t sigmaTime;      // error of "time"  
   Float_t xmod;           // X coordinate in Module system [mm]
   Float_t ymod;           // Y coordinate in Module system [mm]
   Float_t sigmaXYmod;     // error of Xmod (Ymod)  (these values are the same)
@@ -26,14 +24,14 @@ protected:
   UInt_t flags;           // user's bit flag                  ... |6|5|4|3|2|1|
                           //                                               s a    a=active  s=sorter flag kIsUsed in HParticleCand
   UChar_t cellList[24];   // list of cells in cluster
-  
+
   Short_t rpcIndex;       // index of correlated HRpcCluster
   UChar_t nMatchedCells;  // number of EMC cells matched with RPC
   UChar_t nMatchedTracks; // number of matched tracks (HParticleCand)
   Float_t qualityDThDPh;  // quality of anglular matching with RPC: it is two dimensional taking into account
                           // the difference between two angles divided by anglular error
   Float_t qualityDTime;   // quality of time matching with RPC: the difference between times divided by time error
-  
+
 public:
   HEmcCluster(void) :
     sector(-1),
@@ -43,8 +41,6 @@ public:
     energy(0.),
     cellEnergy(0.),
     time(0.),
-    sigmaEnergy(0.),
-    sigmaTime(0.),
     xmod(0.),
     ymod(0.),
     sigmaXYmod(0.),
@@ -64,14 +60,12 @@ public:
   }
   ~HEmcCluster(void){}
 
-  // Functions getVariable  
+  // Functions getVariable
   Char_t getSector(void)          const         {return sector;}
   UChar_t getCell(void)           const         {return cell;}
   Short_t getIndex(void)          const         {return index;}
   Float_t getEnergy(void)         const         {return energy;}
   Float_t getTime(void)           const         {return time;}
-  Float_t getSigmaEnergy(void)    const         {return sigmaEnergy ;}
-  Float_t getSigmaTime(void)      const         {return sigmaTime;}
   Float_t getMaxEnergy(void)      const         {return cellEnergy;}
   Float_t getXMod(void)           const         {return xmod;}
   Float_t getYMod(void)           const         {return ymod;}
@@ -88,28 +82,26 @@ public:
   UChar_t getTotalNCells(void)    const         {return ncells;}
   Bool_t  ifActive(void)          const         {return flags & 0x01;     }
   Bool_t  isUsedInParticleCand(void) const      {return (flags>>1) & 0x01;}
-  
+
   // Matching with rpc
   Short_t getRpcIndex(void)       const         {return rpcIndex;}
   Float_t getQualDThDPh(void)     const         {return qualityDThDPh;}
   Float_t getQualDTime(void)      const         {return qualityDTime;}
   UChar_t getNMatchedCells(void)  const         {return nMatchedCells;}
   UChar_t getNMatchedTracks(void) const         {return nMatchedTracks;}
-  
+
   void    setRpcIndex(Short_t i)                {rpcIndex = i;}
   void    setQualDThDPh(Float_t q)              {qualityDThDPh = q;}
   void    setQualDTime(Float_t q)               {qualityDTime  = q;}
   void    setNMatchedCells(UChar_t n)           {nMatchedCells = n;}
-  
+
   void    addMatchedTrack(void)                 {if(nMatchedTracks < 255) nMatchedTracks++;}
- 
+
   // Functions setVariable
   void    setSector(Char_t s)                   {sector      = s;}
   void    setIndex(Short_t ind)                 {index       = ind;}
   void    setEnergy(Float_t e)                  {energy      = e;}
   void    setTime(Float_t t)                    {time        = t;}
-  void    setSigmaEnergy(Float_t e)             {sigmaEnergy = e;}
-  void    setSigmaTime(Float_t t)               {sigmaTime   = t;}
   void    setMaxEnergy(Float_t e)               {cellEnergy  = e;}
   void    setXYMod(Float_t x,Float_t y)         {xmod=x; ymod=y;}
   void    setSigmaXYMod(Float_t sigma)          {sigmaXYmod=sigma;}

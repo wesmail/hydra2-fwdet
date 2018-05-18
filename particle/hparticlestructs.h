@@ -640,8 +640,6 @@ public:
     Float_t dy;          // Deviation in Y-coordinate
     Float_t energy;      // energy deposited in the cluster
     Float_t time;        // mean time weighted by energy
-    Float_t sigmaEnergy; // error of "energy"
-    Float_t sigmaTime;   // error of "time"
     Int_t   ncells;      // number of cells in the cluster
     Bool_t  isMatchedRpc;// is the cluster matched to RPC (pos+time)
 
@@ -654,8 +652,6 @@ public:
 	dy          = -1;
 	energy      = -1;
 	time        = -1;
-	sigmaEnergy = -1;
-	sigmaTime   = -1;
 	ncells      = -1;
         isMatchedRpc =kFALSE;
     }
@@ -698,8 +694,6 @@ public:
 	if(hit){
 	    energy       = hit->getEnergy();
 	    time         = hit->getTime();
-	    sigmaEnergy  = hit->getSigmaEnergy();
-	    sigmaTime    = hit->getSigmaTime();
 	    ncells       = hit->getNCells();
 	    indRpc       = hit->getRpcIndex();
 	    isMatchedRpc = hit->getNMatchedCells() > 0 ? kTRUE: kFALSE;

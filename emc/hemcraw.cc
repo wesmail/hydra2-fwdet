@@ -13,35 +13,35 @@
 ClassImp(HEmcHit_t)
 ClassImp(HEmcRaw)
 
-Double_t HEmcRaw::getFastTimeLeading(UInt_t n)
+Float_t HEmcRaw::getFastTimeLeading(UInt_t n) const 
 {
     if (n > NTIMESEMCRAW -1)
         return -1.;
     return fFastHits[n].getLeadingTime();
 }
 
-Double_t HEmcRaw::getSlowTimeLeading(UInt_t n)
+Float_t HEmcRaw::getSlowTimeLeading(UInt_t n) const
 {
     if (n > NTIMESEMCRAW -1)
         return -1.;
     return fSlowHits[n].getLeadingTime();
 }
 
-Double_t HEmcRaw::getFastTimeTrailing(UInt_t n)
+Float_t HEmcRaw::getFastTimeTrailing(UInt_t n) const
 {
     if (n > NTIMESEMCRAW -1)
         return -1.;
     return fFastHits[n].getTrailingTime();
 }
 
-Double_t HEmcRaw::getSlowTimeTrailing(UInt_t n)
+Float_t HEmcRaw::getSlowTimeTrailing(UInt_t n) const
 {
     if (n > NTIMESEMCRAW -1)
         return -1.;
     return fSlowHits[n].getTrailingTime();
 }
 
-Double_t HEmcRaw::getFastWidth(UInt_t n)
+Float_t HEmcRaw::getFastWidth(UInt_t n) const
 {
     if (n > NTIMESEMCRAW -1)
         return -1.;
@@ -49,20 +49,20 @@ Double_t HEmcRaw::getFastWidth(UInt_t n)
 
 }
 
-Double_t HEmcRaw::getSlowWidth(UInt_t n)
+Float_t HEmcRaw::getSlowWidth(UInt_t n) const
 {
     if (n > NTIMESEMCRAW -1)
         return -1.;
     return fSlowHits[n].getToT();
 }
 
-void HEmcRaw::getFastTimeAndWidth(UInt_t n, Double_t& t, Double_t& w)
+void HEmcRaw::getFastTimeAndWidth(UInt_t n, Float_t& t, Float_t& w) const
 {
     t = getFastTimeLeading(n);
     w = getFastWidth(n);
 }
 
-void HEmcRaw::getSlowTimeAndWidth(UInt_t n, Double_t& t, Double_t& w)
+void HEmcRaw::getSlowTimeAndWidth(UInt_t n, Float_t& t, Float_t& w) const
 {
     t = getSlowTimeLeading(n);
     w = getSlowWidth(n);

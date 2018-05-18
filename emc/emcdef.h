@@ -6,7 +6,8 @@
 
 const Cat_t catEmcRaw     = EMC_OFFSET;
 const Cat_t catEmcCal     = EMC_OFFSET+1;
-const Cat_t catEmcCluster = EMC_OFFSET+2;
+const Cat_t catEmcCalQA   = EMC_OFFSET+2;
+const Cat_t catEmcCluster = EMC_OFFSET+3;
 
 const Int_t emcMaxRows       = 15;   // maximum number of rows
 const Int_t emcMaxColumns    = 17;   // maximum number of columns

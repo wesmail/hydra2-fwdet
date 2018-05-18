@@ -81,6 +81,7 @@ private:
    void fillHistRpc();
    void fillHistShower();
    void fillHistWall();
+   void fillHistEmc();
    void fillHistSpline();
    void fillHistRungeKutta();
    void fillHistRichMDC();
@@ -124,6 +125,9 @@ private:
    HIterator *iterShoHit;        //! HShowerHit iterator
    HIterator *iterFwRaw;         //! HWallRaw iterator
    HIterator *iterFwHit;         //! HWallHit iterator
+   HIterator *iterEmcRaw;        //! HEmcRaw iterator
+   HIterator *iterEmcCal;        //! HEmcCal iterator
+   HIterator *iterEmcClus;       //! HEmcClus iterator
    HIterator *iterSplineTrk;     //! HSplineTrack iterator
    HIterator *iterRungeKuttaTrk; //! HSplineTrack iterator
    HIterator *iterMetaMatch;     //! HMetaMatch iterator

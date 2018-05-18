@@ -32,26 +32,25 @@ using namespace std;
 
 ClassImp(HEmcDetector) // Emc detector class
 
-
 const Int_t HEmcDetector::cellMap[163] = {  // 17 x 15
-        6,   7,   8,   9,  10,
-        23,  24,  25,  26,  27,
-        39,  40,  41,  42,  43,  44,  45,
-        56,  57,  58,  59,  60,  61,  62,
-        72,  73,  74,  75,  76,  77,  78,  79,  80,
-        89,  90,  91,  92,  93,  94,  95,  96,  97,
-        106, 107, 108, 109, 110, 111, 112, 113, 114,
-        122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132,
-        139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149,
-        155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167,
-        172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184,
-        188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202,
-        205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219,
-        221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237,
-        238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254
+                                    6,   7,   8,   9,  10,
+                                   23,  24,  25,  26,  27,
+                              39,  40,  41,  42,  43,  44,  45,
+                              56,  57,  58,  59,  60,  61,  62,
+                         72,  73,  74,  75,  76,  77,  78,  79,  80,
+                         89,  90,  91,  92,  93,  94,  95,  96,  97,
+                        106, 107, 108, 109, 110, 111, 112, 113, 114,
+                   122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132,
+                   139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149,
+              155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167,
+              172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184,
+         188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202,
+         205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219,
+    221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237,
+    238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254
 };
 
-
+Int_t HEmcDetector::posMap[255] = {0}; // need to initialize it for sake of the linker JAM
 
 HEmcDetector::HEmcDetector(void) : HDetector("Emc","The Emc detector") {
   // constructor
@@ -61,6 +60,11 @@ HEmcDetector::HEmcDetector(void) : HDetector("Emc","The Emc detector") {
   maxComponents=emcMaxRows*emcMaxColumns; // including spares (needed for parameter containers)
   numCells=163;
   modules = new TArrayI(getMaxSectors());
+
+  for (int i = 0; i < 255; ++i) 
+    posMap[i] = -1; 
+  for (int i = 0; i < 163; ++i) 
+    posMap[cellMap[i]] = i;
 }
 
 HEmcDetector::~HEmcDetector(void) {
@@ -78,18 +82,15 @@ HCategory *HEmcDetector::buildMatrixCategory(const Text_t* classname, Float_t fi
   HMatrixCategory* category = NULL;
   Int_t* sizes2  = new Int_t[2];
 
-
   if (strcmp(classname,"HGeantEmc")==0) {
     sizes2[0]= getMaxSectors();
     sizes2[1]= MAXTRKEMC;
     category = new HMatrixCategory(classname,2,sizes2,fillRate);   
-  }
-  else if (strcmp(classname,"HEmcRaw")==0) {
+  } else if (strcmp(classname,"HEmcRaw")==0) {
      sizes2[0]=getMaxSectors();
      sizes2[1]=emcMaxRows*emcMaxColumns;
      category = new HMatrixCategory(classname,2,sizes2,fillRate);
-   }
-    else if (strcmp(classname,"HEmcCal")==0 || strcmp(classname,"HEmcCalSim")==0) {
+  } else if (strcmp(classname,"HEmcCal")==0 || strcmp(classname,"HEmcCalSim")==0) {
     sizes2[0]=getMaxSectors();
     sizes2[1]=emcMaxRows*emcMaxColumns;
     category = new HMatrixCategory(classname,2,sizes2,fillRate);
@@ -119,6 +120,9 @@ HCategory *HEmcDetector::buildCategory(Cat_t cat) {
       break;
     case catEmcCal :
       pcat = buildMatrixCategory("HEmcCal",0.5);
+      break;
+    case catEmcCalQA :
+      pcat = buildMatrixCategory("HEmcCalQA",0.5);
       break;
     case catEmcCluster :
 //      pcat = buildLinearCategory("HEmcCluster",0.5);
@@ -178,23 +182,17 @@ Int_t HEmcDetector::getMaxSecInSetup(void) {
   return maxSec;
 }
 
-
 Int_t HEmcDetector::getCellFromPosition(Int_t pos)
 {
-    pos-=1; // ecal mounting numbers start with 1
-    if (pos >= 0 and pos < 163)
-        return cellMap[pos];
-    return -1;
+  pos-=1; // ecal mounting numbers start with 1
+  if (pos >= 0 && pos < 163)
+    return cellMap[pos];
+  return -1;
 }
 
-Int_t HEmcDetector::getPositionFromCell(Int_t system)
+Int_t HEmcDetector::getPositionFromCell(Int_t cell)
 {
-        for(int i=0; i<163; ++i)
-        {
-            if (cellMap[i]==system)
-                return i+1; // ecal mounting numbers start with 1
-        }
-        return -1;
+  if (cell >= 0 && cell < 255)
+    return posMap[cell]+1;
+  return -1;
 }
-
-

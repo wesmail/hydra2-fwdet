@@ -12,22 +12,25 @@ LIB_NAME := Emc
 SOURCE_FILES := hemcdetector.cc         \
                 hemcraw.cc              \
                 hemccal.cc              \
+                hemccalqa.cc            \
                 hemccalsim.cc           \
                 hemccluster.cc          \
-                hemcclustersim.cc          \
+                hemcclustersim.cc       \
                 hemctaskset.cc          \
-		hemctrb3unpacker.cc	\
-		hemccalibrater.cc	\
+                hemctrb3unpacker.cc     \
+                hemccalibrater.cc       \
+                hemccalibraterpar.cc    \
                 hemcdigitizer.cc        \
                 hemcclusterf.cc         \
-		hemccontfact.cc		\
-		hemcparrootfileio.cc	\
-		hemcparasciifileio.cc	\
-		hemctrb3lookup.cc	\
-		hemccalpar.cc		\
-		hemcgeompar.cc		\
-		hemccellgeompar.cc	\
-		hemcdigipar.cc
+                hemccontfact.cc         \
+                hemcparrootfileio.cc    \
+                hemcparasciifileio.cc   \
+                hemctrb3lookup.cc       \
+                hemccalpar.cc           \
+                hemcgeompar.cc          \
+                hemccellgeompar.cc      \
+                hemccellstatuspar.cc    \
+                hemcdigipar.cc
 
 include $(HADDIR)/hades.def.mk
 include $(HADDIR)/hades.module.mk

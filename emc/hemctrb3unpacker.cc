@@ -49,29 +49,26 @@ ClassImp(HEmcTrb3Unpacker)
 // TODO: optionally put this into some parameter container.
 
 HEmcTrb3Unpacker::HEmcTrb3Unpacker(UInt_t id) :
-  HTrb3TdcUnpacker(id), fLookup(0), fTimeRef(kTRUE) ,fTimeShift(0.)
-{
+        HTrb3TdcUnpacker(id), fLookup(0), fTimeRef(kTRUE) ,fTimeShift(0.) {
     // constructor
     pRawCat = NULL;
-    fDet    = NULL;
 }
 
 Bool_t HEmcTrb3Unpacker::init(void) {
     // creates the raw category and gets the pointer to the TRB3 lookup table
 
-    fDet = (HEmcDetector*) gHades->getSetup()->getDetector("Emc");
-    if (!fDet) {
+    HEmcDetector* det = (HEmcDetector*) gHades->getSetup()->getDetector("Emc");
+    if (!det) {
         Error("init", "No EMC Detector found.");
         return kFALSE;
     }
-    pRawCat = fDet->buildCategory(catEmcRaw);
+    pRawCat = det->buildCategory(catEmcRaw);
     if (!pRawCat)
         return kFALSE;
 
     fLoc.set(2, 0, 0);
 
-    fLookup = (HEmcTrb3Lookup*) (gHades->getRuntimeDb()->getContainer(
-            "EmcTrb3Lookup"));
+    fLookup = (HEmcTrb3Lookup*) (gHades->getRuntimeDb()->getContainer("EmcTrb3Lookup"));
     if (!fLookup) {
         Error("init", "No Pointer to parameter container EmcTrb3Lookup.");
         return kFALSE;
@@ -150,8 +147,6 @@ Int_t HEmcTrb3Unpacker::execute(void) {
         for (UInt_t i = 1; i < tdc->numChannels(); i++) {
 
             HTrb3TdcUnpacker::ChannelRec& theRecord = tdc->getCh(i);
-            //         if (debugFlag > 1) Warning("execute", "JJJJ Record of channel %d has multiplicities -  rising:%d falling:%d \n",
-            //             i, (int)theRecord.rising_mult, (int) theRecord.falling_mult);
 
 // ignore channels without rising hits already here
 #ifndef EMC_USE_TRAILING_WITHOUT_LEADING_EDGES
@@ -262,11 +257,11 @@ Int_t HEmcTrb3Unpacker::execute(void) {
                             Warning("execute",
                                     "JJJJ Rejecting trailing hit outside tmin:%e or tmax:%e",
                                     tmin, tmax);
-                        continue;
+			continue;
 #endif
 
                 if(addRawHit(0.0, tm1, fastchannel)!=0)
-                                  continue;
+		    continue;
             }
              ////////////////////
 #endif
@@ -287,8 +282,8 @@ Int_t HEmcTrb3Unpacker::addRawHit(Double_t t_leading, Double_t t_trailing,
         raw = (HEmcRaw *) pRawCat->getSlot(fLoc);
         if (raw) {
 	    raw = new (raw) HEmcRaw;
-            Char_t row,col;
-	    fDet->getRowCol(fLoc[1],row,col);
+	    Char_t row,col;
+	    HEmcDetector::getRowCol(fLoc[1],row,col);
             raw->setAddress(fLoc[0], fLoc[1],row,col);
         } else {
             if (debugFlag > 0)
@@ -296,10 +291,6 @@ Int_t HEmcTrb3Unpacker::addRawHit(Double_t t_leading, Double_t t_trailing,
                         fLoc[0], fLoc[1]);
             return -1;
         }
-    } else {
-        Error("execute()", "Slot already exists for mod=%i, chan=%i", fLoc[0],
-                fLoc[1]);
-        return -1;
     }
 
     isfastchannel ?
@@ -312,4 +303,3 @@ Int_t HEmcTrb3Unpacker::addRawHit(Double_t t_leading, Double_t t_trailing,
                 t_trailing);
     return 0;
 }
-

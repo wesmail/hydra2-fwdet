@@ -27,13 +27,19 @@ void HEmcCalParCell::clear() {
   tdcOffset = 0.F;
   adcSlope  = 1.F;
   adcOffset = 0.F;
+  twcPar1   = 0.F;
+  twcPar2   = 0.F;
+  twcPar3   = 0.F;
 }
 
-void HEmcCalParCell::fill(Float_t ts, Float_t to, Float_t as, Float_t ao) {
+void HEmcCalParCell::fill(Float_t ts, Float_t to, Float_t as, Float_t ao, Float_t t1, Float_t t2, Float_t t3) {
   tdcSlope = ts;
   tdcOffset = to;
   adcSlope = as;
   adcOffset = ao;
+  twcPar1 = t1;
+  twcPar2 = t2;
+  twcPar3 = t3;
 }
 
 void HEmcCalParCell::fill(Float_t* data) {
@@ -41,6 +47,9 @@ void HEmcCalParCell::fill(Float_t* data) {
   tdcOffset = data[1];
   adcSlope  = data[2];
   adcOffset = data[3];
+  twcPar1   = data[4];
+  twcPar2   = data[5];
+  twcPar3   = data[6];
 }
 
 void HEmcCalParCell::fill(HEmcCalParCell& r) {
@@ -48,6 +57,9 @@ void HEmcCalParCell::fill(HEmcCalParCell& r) {
   tdcOffset = r.getTdcOffset();
   adcSlope  = r.getAdcSlope();
   adcOffset = r.getAdcOffset();
+  twcPar1   = r.getTwcPar1();
+  twcPar2   = r.getTwcPar2();
+  twcPar3   = r.getTwcPar3();
 }
 
 
@@ -86,8 +98,11 @@ HEmcCalPar::HEmcCalPar(const Char_t* name, const Char_t* title,
 
 HEmcCalPar::~HEmcCalPar() {
   // destructor
-  array->Delete();
-  delete array;
+  if(array)
+  {
+      array->Delete();
+      delete array;
+  }
 }
 
 Bool_t HEmcCalPar::init(HParIo* inp, Int_t* set) {
@@ -117,46 +132,73 @@ void HEmcCalPar::clear() {
 void HEmcCalPar::printParams() {
   // prints the calibration parameters
   printf("Calibration parameters for the Emc\n");
-  printf("sector  cell  TdcSlope  TdcOffset  AdcSlope  AdcOffset\n");
-  Float_t data[4];
+  printf(" sector(1...6)   position(1...163)  TdcSlope  TdcOffset  AdcSlope  AdcOffset  Twc0  Twc1  Twc2\n");
+  Float_t data[7];
+  Int_t mountpos=-1;
   for (Int_t i = 0; i < getSize(); i++) {
     HEmcCalParSec& sec = (*this)[i];
     for (Int_t j = 0; j < sec.getSize(); j++) {
       HEmcCalParCell& cell = sec[j];
       cell.getData(data);
-      printf("%4i %4i %10.5f %10.3f %10.5f %10.3f\n",
-             i, j, data[0], data[1], data[2], data[3]);
+      mountpos=HEmcDetector::getPositionFromCell(j);
+      if(mountpos<=0) continue;
+      printf("%4i %4i %10.5f %10.3f %10.5f %10.3f %10.3f %10.3f %10.3f\n",
+             i+1, j, data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
     }
   }
 }
 
 void HEmcCalPar::readline(const Char_t *buf, Int_t *set) {
   // decodes one line read from ASCII file I/O
-  Int_t sector, cell;
-  Float_t data[4] = {0.F, 0.F, 0.F, 0.F};
-  sscanf(buf, "%i%i%f%f%f%f", &sector, &cell, &data[0], &data[1], &data[2], &data[3]);
-  if (!set[sector]) return;
-  (*this)[sector][cell].fill(data);
-  set[sector] = 999;
+  Int_t sector, cell, position;
+  Float_t data[7] = {0.F, 0.F, 0.F, 0.F, 0.F, 0.F, 0.F};
+  Int_t n = sscanf(buf, "%i%i%f%f%f%f%f%f%f",
+         &sector, &position, &data[0], &data[1], &data[2], &data[3], &data[4], &data[5], &data[6]);
+  if (n<9)
+  {
+      Error("readline", "Not enough values in line %s\n", buf);
+  }
+  else if (n>9)
+  {
+      Error("readline", "Too many values in line %s\n", buf);
+  }
+  else
+  {
+
+    sector-=1; // correct for sector range 1...6 in file
+    if(sector<0 || sector>5) return;
+    if (!set[sector]) return;
+    cell=HEmcDetector::getCellFromPosition(position);
+    if(cell<0)
+    {
+      Error("readline", "EMC cell not defined for mounting position  %d\n", position);
+      return;
+    }
+    (*this)[sector][cell].fill(data);
+    set[sector] = 999;
+  }
 }
 
 void HEmcCalPar::putAsciiHeader(TString& header) {
   // puts the ascii header to the string used in HEmcParAsciiFileIo
   header = "# Calibration parameters for the Emc\n"
            "# Format:\n"
-           "# sector   cell   TdcSlope  TdcOffset AdcSlope  AdcOffset\n";
+           "# sector(1...6)   position(1...163)   TdcSlope  TdcOffset AdcSlope  AdcOffset  Twc0  Twc1  Twc2\n";
 }
 
 void HEmcCalPar::write(fstream& fout) {
   Text_t buf[155];
-  Float_t data[4];
+  Float_t data[7];
+  Int_t mountpos=-1;
   for (Int_t i = 0; i < getSize(); i++) {
     HEmcCalParSec& sector = (*this)[i];
     for (Int_t j = 0; j < sector.getSize(); j++) {
       HEmcCalParCell& cell = sector[j];
       cell.getData(data);
-      sprintf(buf, "%4i %4i %10.5f %10.3f %10.5f %10.3f\n",
-              i, j, data[0], data[1], data[2], data[3]);
+      mountpos=HEmcDetector::getPositionFromCell(j);
+      if(mountpos<=0) continue;
+      sprintf(buf, "%4i %4i %10.5f %10.3f %10.5f %10.3f %10.3f %10.3f %10.3f\n",
+              i+1, mountpos, data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
       fout<<buf;
     }
   }  

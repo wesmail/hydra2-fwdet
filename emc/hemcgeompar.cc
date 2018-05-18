@@ -8,8 +8,11 @@
 
 using namespace std;
 #include "hemcgeompar.h"
+#include "hades.h"
+#include "hspectrometer.h"
 #include "hpario.h"
 #include "hdetpario.h"
+#include "hemcdetector.h"
 #include <iostream> 
 #include <iomanip>
 
@@ -19,6 +22,13 @@ HEmcGeomPar::HEmcGeomPar(const Char_t* name,const Char_t* title,
                                const Char_t* context)
             : HDetGeomPar(name,title,context,"Emc") {
   // constructor calling the base class constructor with the detector name
+  HEmcDetector* det=(HEmcDetector*)(gHades->getSetup()->getDetector("Emc"));
+  if (det) {
+    maxCells=det->getNumCells();
+  } else {
+    maxCells=0;
+    Error("HEmcGeomPar","EMC detector not defined in setup");
+  }
 }
 
 Bool_t HEmcGeomPar::init(HParIo* inp,Int_t* set) {

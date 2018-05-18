@@ -10,12 +10,16 @@ protected:
   Int_t   rpcTrack;       // GEANT track number of matched RPC cluster
   Int_t   listTracks[5];  // list of GEANT track numbers sorted by energy
   Float_t trackEnergy[5]; // energy deposit for the each track
-  
+  Float_t sigmaEnergy;    // error of "energy"
+  Float_t sigmaTime;      // error of "time"
+
 public:
   HEmcClusterSim() :
     nTracks(0),
     totMult(0),
-    rpcTrack(0)
+    rpcTrack(0),
+    sigmaEnergy(0.),
+    sigmaTime(0.)
   {
     for(Int_t i=0;i<5;i++) {
       listTracks[i]  = 0;
@@ -24,16 +28,21 @@ public:
   }
 
   ~HEmcClusterSim() {}
-    
+
   void    setTrack(Int_t trackNumber, Float_t energy);
   void    setRpcTrack(Int_t tr) {rpcTrack = tr;}
- 
+
   Short_t getNTracks(void)          const  {return nTracks;}
   Int_t   getTrack(Short_t n=0)     const  {return n>=0&&n<nTracks ? listTracks[n]  : 0;}
   Float_t getTrackEnergy(Short_t n) const  {return n>=0&&n<nTracks ? trackEnergy[n] : 0.F;}
   Short_t getTotMult(void)          const  {return totMult;}
   Int_t   getRpcTrack(void)         const  {return rpcTrack;}
-  
+  Float_t getSigmaEnergy(void)      const  {return sigmaEnergy ;}
+  Float_t getSigmaTime(void)        const  {return sigmaTime;}
+
+  void    setSigmaEnergy(Float_t e)        {sigmaEnergy = e;}
+  void    setSigmaTime(Float_t t)          {sigmaTime   = t;}
+
   ClassDef(HEmcClusterSim,1) // EMC cluster data class
 };
 

@@ -5,7 +5,7 @@ using namespace std;
 #include "hiterator.h"
 #include "hruntimedb.h"
 #include "hspectrometer.h"
-#include "hemcdetector.h" 
+#include "hemcdetector.h"
 #include "hgeantemc.h"
 #include "hevent.h"
 #include "hcategory.h"
@@ -23,7 +23,7 @@ using namespace std;
 #include <iomanip>
 
 //*-- Author   : V. Pechenov
-//*-- Modified : 
+//*-- Modified : R. Lalik (07.05.2018)
 
 /////////////////////////////////////////////////////////////////////
 //
@@ -44,17 +44,17 @@ using namespace std;
 //  dt0 = tc - V*dc    - t0
 //  dt  = (tc - V*dc) - (tp - V*dp) ,
 //  where
-//   V = 0.30 ns/cell 
+//   V = 0.30 ns/cell
 //   cells "c" and "p" are neighboring cells
 //   dc and dp  are distances to the cell which has maximal energy deposit (cell from step "0"), units are cells
 //   tc and tp  are measured times in cells "c" and "p"
 //  Cells accepted for the cluster must fulfill conditions
-//    dtmin < dt0 < dtmax 
+//    dtmin < dt0 < dtmax
 //     &&
 //    dtmin < dt < dtmax
-// 
+//
 //  Matching to RPC
-//  Matching by theta, phi and time 
+//  Matching by theta, phi and time
 //  Cluster is marked as matched with RPC if at least one cell in the steps "0" and "1" has a matching with RPC
 //
 /////////////////////////////////////////////////////////////////////
@@ -75,8 +75,8 @@ void HEmcClusterF::initData(void) {
   dThetaSigOffset  = 0.1;   // (thetaEmc-thetaRpc)/sigmaDTheta+dThSigOffset
   dThetaScale      = 1.61;  // dTheta = dThetaSigOffset/dThetaScale
   dTimeOffset      = 0.03;  // [ns] (time1 - timeRpcN + dTimeOffset)/sigmaDTof;
-  dTimeCut         = 3.;    // Nsigma cut for matchin in time 
-  dThdPhCut        = 3.6;   // Nsigma cut for matching in angles  
+  dTimeCut         = 3.;    // Nsigma cut for matchin in time
+  dThdPhCut        = 3.6;   // Nsigma cut for matching in angles
   // Cluster finder parameters:
   cellToCellSpeed  = 0.3;   // [ns/cell]
   distOffset       = 0.9;
@@ -91,33 +91,33 @@ Bool_t HEmcClusterF::init(void) {
 
   gHades->getRuntimeDb()->getContainer("EmcGeomPar");
 
-  HEmcDetector* emc = (HEmcDetector*)(gHades->getSetup()->getDetector("Emc"));  
+  HEmcDetector* emc = (HEmcDetector*)(gHades->getSetup()->getDetector("Emc"));
   if (emc == NULL) {
     Error("HEmcClusterF::init()","No Emc Detector");
-    return kFALSE;  
-  }  
+    return kFALSE;
+  }
 
   HCategory* fGeantKineCat = gHades->getCurrentEvent()->getCategory(catGeantKine);
   if (fGeantKineCat) { isSimulation = kTRUE;  }
   else               { isSimulation = kFALSE; }
-  
-  fEmcCalCat = gHades->getCurrentEvent()->getCategory(catEmcCal);  
+
+  fEmcCalCat = gHades->getCurrentEvent()->getCategory(catEmcCal);
   if (!fEmcCalCat) {
     Error("HEmcClusterF::init()","Cal EMC input missing");
     return kFALSE;
   }
-  
-  fRpcCat = gHades->getCurrentEvent()->getCategory(catRpcCluster);  
+
+  fRpcCat = gHades->getCurrentEvent()->getCategory(catRpcCluster);
   if (!fRpcCat) {
     Warning("HEmcClusterF::init()","Cluster RPC input missing");
     return kFALSE;
   }
 
   //Build the Cluster category
-  fClusterCat = gHades->getCurrentEvent()->getCategory(catEmcCluster);  
+  fClusterCat = gHades->getCurrentEvent()->getCategory(catEmcCluster);
   if (!fClusterCat) {
     if(isSimulation) { fClusterCat = emc->buildMatrixCategory("HEmcClusterSim",0.5); }
-    else             { fClusterCat = emc->buildMatrixCategory("HEmcCluster",0.5); } 
+    else             { fClusterCat = emc->buildMatrixCategory("HEmcCluster",0.5); }
     gHades->getCurrentEvent()->addCategory(catEmcCluster,fClusterCat,"Emc");
     fClusterCat->setPersistency(kTRUE);
   }
@@ -149,14 +149,14 @@ Bool_t HEmcClusterF::reinit(void) {
       cellXmod[c] = p->getX();
       cellYmod[c] = p->getY();
       *p = labTrans[s].transFrom(*p);
-      
+
       // Calc. theta and phi of module(cell)
       Double_t xy2      =  p->getX()*p->getX() + p->getY()*p->getY();
       Double_t xyz2     = xy2 + p->getZ()*p->getZ();
       thetaEmcLab[s][c] = TMath::ATan2(TMath::Sqrt(xy2),p->getZ())*TMath::RadToDeg();
       phiEmcLab[s][c]   = TMath::ATan2(p->getY(),p->getX())*TMath::RadToDeg();
       if(phiEmcLab[s][c] < 0.) phiEmcLab[s][c] += 360.;
-      
+
       // Calc. errors of theta and phi
       sigmaTheta[s][c]    = p->getZ()/xyz2 * sigmaXYmod * TMath::RadToDeg();
       sigmaPhi[s][c]      = 1./TMath::Sqrt(xy2) * sigmaXYmod * TMath::RadToDeg();
@@ -168,23 +168,24 @@ Bool_t HEmcClusterF::reinit(void) {
 Int_t HEmcClusterF::execute(void) {
   Int_t nEmcCal = fEmcCalCat->getEntries();
   for(Int_t sec=0;sec<6;sec++) {
+    HEmcCalSim * calsim = 0;
     memset(flagUsed,-1,emcMaxComponents);
-    
+
     // Collect HEmcCal in one sector
     for(Int_t e=0; e<nEmcCal; e++) {
       HEmcCal* cal = (HEmcCal*)fEmcCalCat->getObject(e);
       if(sec != cal->getSector()) continue;
       // Test status:
-      if(cal->getStatus1() < 0) continue;              // Energy < energyCut for sim.data
+      if(cal->getStatus() < 0) continue;              // Energy < energyCut for sim.data
       Float_t ener = cal->getEnergy();
       if(ener <= 0.) continue; // !!!???
-      
+
       Int_t cell       = cal->getCell();
       energy[cell]     = ener;
       pSecECells[cell] = cal;
       flagUsed[cell]   = 0;
     }
-    
+
     // Cluster finder:
     while(kTRUE) {
       Int_t   cell  = maxEnergyCell();
@@ -203,7 +204,9 @@ Int_t HEmcClusterF::execute(void) {
       HRpcCluster* pRpcClusF = rpcMatch(cal,qualityDThDPh,qualityDTime);
       if(pRpcClusF != NULL) nMatchedCells++;
 
-      Float_t time0       = cal->getTime1();
+      Float_t time0       = cal->getTime();
+
+      calsim = dynamic_cast<HEmcCalSim*>(cal);
 
       listClustCell[0]    = cell;
       pClustCells[0]      = cal;
@@ -213,15 +216,21 @@ Int_t HEmcClusterF::execute(void) {
       Float_t clustEnergy = 0.;
       Float_t clustEnErr  = 0.;
       Float_t timeSum     = time0*energy[cell];
-      Float_t timeError   = TMath::Power(cal->getSigmaTime1()*energy[cell],2); 
+      Float_t timeError   = 0.;
+      if (calsim)
+              timeError   = TMath::Power(calsim->getSigmaTime()*energy[cell],2);
 
       while(ind<size) {
 //        Float_t timeN = pClustCells[ind]->getTime1();
         Int_t cind     = listClustCell[ind];
         clustEnergy   += energy[cind];
-        clustEnErr    += pClustCells[ind]->getSigmaEnergy()*pClustCells[ind]->getSigmaEnergy();
+        if (calsim)
+        {
+            HEmcCalSim * calsim_ind = dynamic_cast<HEmcCalSim*>(pClustCells[ind]);
+            clustEnErr    += calsim_ind->getSigmaEnergy()*calsim_ind->getSigmaEnergy();
+        }
         Float_t distN  = ind==0 ? 0. : calcDist(cal,pClustCells[ind]);
-        Float_t tCorrN = pClustCells[ind]->getTime1() - cellToCellSpeed*(distN - distOffset);
+        Float_t tCorrN = pClustCells[ind]->getTime() - cellToCellSpeed*(distN - distOffset);
         if(distN<1.9) {
           HGeomVector *pemc = emcCellsLab[sec][cind];
           HGeomVector vc(pemc->getX(),pemc->getY(),pemc->getZ());
@@ -241,14 +250,19 @@ Int_t HEmcClusterF::execute(void) {
 
           Float_t dist0   = calcDist(cal,cali);
 
-          Float_t tCorrI  = cali->getTime1() - cellToCellSpeed*(dist0- distOffset);
-          Float_t dT0corr = tCorrI - time0;
+          Float_t tCorrI = 0.0;
+          Float_t dT0corr = 0.0;
+          if (calsim)
+          {
+             tCorrI  = cali->getTime() - cellToCellSpeed*(dist0 - distOffset);
+             dT0corr = tCorrI - time0;
+          }
           if(dT0corr < timeCutMin || dT0corr > timeCutMax) continue;  // 0.6
           if(ind > 0) {
            Float_t dTcorr = tCorrI - tCorrN;
 //           Float_t dTcorr = cali->getTime1()-timeN - cellToCellSpeed*distOffset;
-            if(dTcorr  < timeCutMin || dTcorr  > timeCutMax) continue; 
-          }       
+            if(dTcorr  < timeCutMin || dTcorr  > timeCutMax) continue;
+          }
           //======== Add to cluster ========================
           Float_t qualityDThDPhI,qualityDTimeI;
           HRpcCluster* pRpcClus = rpcMatch(cali,qualityDThDPhI,qualityDTimeI);
@@ -265,8 +279,12 @@ Int_t HEmcClusterF::execute(void) {
             }
           }
 
-          timeSum        += tCorrI*energy[celli]; 
-          timeError      += TMath::Power(cali->getSigmaTime1()*energy[celli],2);           
+          timeSum        += tCorrI*energy[celli];
+          if (isSimulation)
+          {
+            HEmcCalSim * calsim = dynamic_cast<HEmcCalSim*>(pSecECells[celli]);
+            timeError += TMath::Power(calsim->getSigmaTime()*energy[celli],2);
+          }
           flagUsed[celli] = 1;
 
           listClustCell[size] = celli;
@@ -280,7 +298,7 @@ Int_t HEmcClusterF::execute(void) {
       timeSum  /= clustEnergy;
       timeError = TMath::Sqrt(timeError)/clustEnergy;
       xPos     /= posNorm;
-      yPos     /= posNorm; 
+      yPos     /= posNorm;
       pos      /= posNorm;
       errXYPos = sigmaXYmod*TMath::Sqrt(errXYPos)/posNorm;
 
@@ -294,17 +312,21 @@ Int_t HEmcClusterF::execute(void) {
         Warning("execute","S.%i No HEmcCluster slot available",sec+1);
         return 1;
       }
-      
+
       for(Int_t s=0;s<size;s++) pClustCells[s]->setClusterIndex(clustIndex);
       pCluster = isSimulation ? (HEmcCluster*)(new(pCluster) HEmcClusterSim) : new(pCluster) HEmcCluster;
       pCluster->setSector(sec);
       pCluster->setCellList(size,listClustCell);
       pCluster->setIndex(clustIndex);
       pCluster->setMaxEnergy(energy[cell]);
-      pCluster->setEnergy(clustEnergy);
-      pCluster->setSigmaEnergy(TMath::Sqrt(clustEnErr));
       pCluster->setTime(timeSum);
-      pCluster->setSigmaTime(timeError);
+      pCluster->setEnergy(clustEnergy);
+      HEmcClusterSim * clsim = dynamic_cast<HEmcClusterSim*>(pCluster);
+      if (clsim)
+      {
+        clsim->setSigmaEnergy(TMath::Sqrt(clustEnErr));
+        clsim->setSigmaTime(timeError);
+      }
       pCluster->setXYMod(xPos,yPos);
       pCluster->setSigmaXYMod(errXYPos);
       pCluster->setXYZLab(pos.getX(),pos.getY(),pos.getZ());
@@ -316,16 +338,16 @@ Int_t HEmcClusterF::execute(void) {
       pCluster->setPhi(phi);
       pCluster->setCellList(size,listClustCell);
       if(pRpcClusF != NULL) {
-        pCluster->setRpcIndex(pRpcClusF->getIndex());    
+        pCluster->setRpcIndex(pRpcClusF->getIndex());
         pCluster->setQualDThDPh(qualityDThDPh);
-        pCluster->setQualDTime(qualityDTime); 
+        pCluster->setQualDTime(qualityDTime);
         pCluster->setNMatchedCells(nMatchedCells);
       }
-      
+
       if(isSimulation) { // For sim output:
         HEmcClusterSim* pClusterSim = (HEmcClusterSim*)pCluster;
         map<Int_t,Float_t>clTrackEnergy;  // For simulation only
-        for(Int_t ind=0;ind<size;ind++) { 
+        for(Int_t ind=0;ind<size;ind++) {
           HEmcCalSim* cal = (HEmcCalSim*)pClustCells[ind];
           Int_t ntr = cal->getNTracks();
           if(ntr < 1) continue; // Real track iEmbedded track
@@ -336,14 +358,14 @@ Int_t HEmcClusterF::execute(void) {
         }
 //?        Int_t nTracksInCluster = clTrackEnergy.size();
 
-      // Sort tracks by enegy deposit 
+      // Sort tracks by enegy deposit
       vector<pair<Int_t,Float_t> > vEn(clTrackEnergy.begin(),clTrackEnergy.end());
-      if(vEn.size() > 1) sort(vEn.begin(),vEn.end(),cmpEnergy);      
+      if(vEn.size() > 1) sort(vEn.begin(),vEn.end(),cmpEnergy);
       for(UInt_t i = 0; i < vEn.size(); i++) pClusterSim->setTrack(vEn[i].first,vEn[i].second);
       if(pRpcClusF != NULL) pClusterSim->setRpcTrack(((HRpcClusterSim*)pRpcClusF)->getTrack());
 //?  Float_t clTrMaxEnergy = vEn[0].second;
-//?  Int_t   trackMaxEng   = vEn[0].first;        
- 
+//?  Int_t   trackMaxEng   = vEn[0].first;
+
       }
     }
   }
@@ -354,24 +376,27 @@ HRpcCluster* HEmcClusterF::rpcMatch(HEmcCal* cal,Float_t &qualityDThDPh,Float_t 
 
   Int_t   sec       = cal->getSector();
   Int_t   cell      = cal->getCell();
-  Float_t time1     = cal->getTime1();
+  Float_t time      = cal->getTime();
   Float_t thEmc     = thetaEmcLab[sec][cell];
   Float_t phEmc     = phiEmcLab[sec][cell];
   Float_t sigmaTh   = sigmaTheta[sec][cell];
   Float_t sigmaPh   = sigmaPhi[sec][cell];
-  Float_t sigmaTm1  = cal->getSigmaTime1();
+  HEmcCalSim * calsim  = dynamic_cast<HEmcCalSim*>(cal);
+  Float_t sigmaTm   = 0.0;
+  if (calsim)
+    sigmaTm = calsim->getSigmaTime();
   HGeomVector *pemc = emcCellsLab[sec][cell];
 
   qualityDThDPh     = 1000.;
   qualityDTime      = 1000.;
   HRpcCluster* out  = NULL;
-  
+
   Int_t   nRpc = fRpcCat->getEntries();
   for(Int_t n=0;n<nRpc;n++) {
     HRpcCluster* rpc = (HRpcCluster*)fRpcCat->getObject(n);
     if(rpc->getSector() != sec) continue;
 
-    // Propagate track to the EMC and calculate TOF (timeRpc) to the EMC module 
+    // Propagate track to the EMC and calculate TOF (timeRpc) to the EMC module
     Float_t xrl,yrl,zrl;
     rpc->getXYZLab(xrl,yrl,zrl);
     Float_t sigTof     = rpc->getTOFRMS();
@@ -386,10 +411,10 @@ HRpcCluster* HEmcClusterF::rpcMatch(HEmcCal* cal,Float_t &qualityDThDPh,Float_t 
     Float_t dThSig = ((thEmc -rpc->getTheta())/sigmaTh + dThetaSigOffset)/dThetaScale;
     Float_t dPhSig = (phEmc - rpc->getPhi())/sigmaPh;
     Float_t dThdPh = TMath::Sqrt(dThSig*dThSig + dPhSig*dPhSig);  // O-shaped cut
-    
+
     // Calculate quality of matching for time (dTOFc)
-    Float_t sigmaDTof = TMath::Sqrt(sigmaTm1*sigmaTm1 + sigTof*sigTof);
-    Float_t dTOFc  = (time1 - timeRpc + dTimeOffset)/sigmaDTof;
+    Float_t sigmaDTof = TMath::Sqrt(sigmaTm*sigmaTm + sigTof*sigTof);
+    Float_t dTOFc  = (time - timeRpc + dTimeOffset)/sigmaDTof;
 
     // Test matching
     if(TMath::Abs(dTOFc) > dTimeCut || dThdPh > dThdPhCut) continue ;

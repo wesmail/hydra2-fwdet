@@ -7,11 +7,10 @@ class HEmcDetector : public HDetector {
 
 private:
   Int_t numCells;     // number of cells (without spares)
+  static const Int_t cellMap[163]; 
+  static Int_t posMap[255];
 
 public:
-
-  static const Int_t cellMap[163];
-
   HEmcDetector(void);
   virtual ~HEmcDetector(void);
 
@@ -26,14 +25,13 @@ public:
   Int_t getMaxSecInSetup(void);
 
   static Int_t getCell(const Char_t row, const Char_t col);
-  static void  getRowCol(const Int_t cell, Char_t& row, Char_t& col); 
+  static void  getRowCol(const Int_t cell, Char_t& row, Char_t& col);
 
-  /** evaluate cell id in database from mounting position (number) of the ecal modules*/
+  /** evaluate cell id in database from mounting position (number) of the ecal modules */
   static Int_t getCellFromPosition(Int_t pos);
 
-  /** evaluate mounting position (number) of the ecal modules from cell id in the database lookup table*/
-  static Int_t getPositionFromCell(Int_t system);
-
+  /** evaluate mounting position (number) of the ecal modules from cell id in the database lookup table */
+  static Int_t getPositionFromCell(Int_t cell);
 
   ClassDef(HEmcDetector,0) // EMC detector class
 };

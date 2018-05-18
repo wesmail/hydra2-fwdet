@@ -15,8 +15,6 @@ using namespace std;
 #define EMC_CHANNEL_SLOWBIT         (0x1 << 1)
 #define EMC_CHANNEL_BROKENBIT       (0x1 << 7)
 
-
-
 class HEmcTrb3LookupChan : public TObject {
 protected:
     Int_t  sector;    // sector number
@@ -24,7 +22,7 @@ protected:
     UChar_t flag;     // tdc channel mode flag
 public:
     HEmcTrb3LookupChan(void)  {clear();}
-    ~HEmcTrb3LookupChan(void) {}
+    virtual ~HEmcTrb3LookupChan(void) {}
     Int_t   getSector()    { return sector;}
     Int_t   getCell()      { return cell;}
     UChar_t getFlag()	   { return flag;}
@@ -36,7 +34,7 @@ public:
     void   setBrokenChannel(Bool_t on) { on ? (flag |=EMC_CHANNEL_BROKENBIT) : (flag &= ~EMC_CHANNEL_BROKENBIT); }
     void   setFastChannel(Bool_t on)   { on ? (flag |=EMC_CHANNEL_FASTBIT)   : (flag &= ~EMC_CHANNEL_FASTBIT); }
 
-    void   getAddress(Int_t& s, Int_t& c) { s = sector; c = cell; }
+    void   getAddress(Int_t& s, Int_t& c) const { s = sector; c = cell; }
     void   fill(Int_t s, Int_t c, UChar_t f) { sector = s; cell = c; flag = f; }
     void   fill(HEmcTrb3LookupChan& r) { sector = r.getSector(); cell = r.getCell(); flag	= r.getFlag(); }
     void   setSector(const Int_t s) {sector = s;}
@@ -53,7 +51,7 @@ protected:
     TObjArray* array;   // pointer array containing HEmcTrb3LookupChan objects
 public:
     HEmcTrb3LookupBoard(void);
-    ~HEmcTrb3LookupBoard(void);
+    virtual ~HEmcTrb3LookupBoard(void);
     Int_t getSize()  { return array ? array->GetLast() + 1 : 0; }
     HEmcTrb3LookupChan* getChannel(Int_t c) { if (c >= 0 && c < getSize()) return &((*this)[c]); else return 0; }
     HEmcTrb3LookupChan& operator[](Int_t i) { return *static_cast<HEmcTrb3LookupChan*>((*array)[i]); }
@@ -72,7 +70,7 @@ public:
 		   const Char_t* context = "EmcTrb3LookupProduction",
 		   Int_t minTrbnetAddress = Trbnet::kEmcTrb3MinTrbnetAddress,
 		   Int_t maxTrbnetAddress = Trbnet::kEmcTrb3MaxTrbnetAddress);
-    ~HEmcTrb3Lookup(void);
+    virtual ~HEmcTrb3Lookup(void);
     HEmcTrb3LookupBoard* getBoard(Int_t trbnetAddress) {
 	if ((arrayOffset <= trbnetAddress) && (trbnetAddress <= (array->GetSize() + arrayOffset)))
 	    return (HEmcTrb3LookupBoard*)(array->At(trbnetAddress - arrayOffset));

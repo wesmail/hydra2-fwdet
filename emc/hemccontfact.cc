@@ -13,6 +13,8 @@
 #include "hemccalpar.h"
 #include "hemcgeompar.h"
 #include "hemccellgeompar.h"
+#include "hemccellstatuspar.h"
+#include "hemccalibraterpar.h"
 #include "hemcdigipar.h"
 
 ClassImp(HEmcContFact)
@@ -40,16 +42,24 @@ void HEmcContFact::setAllContainers(void) {
                    "EmcCalParProduction"));
   containers->Add(
     new HContainer("EmcGeomPar",
-		   "Geometry parameters of the Emc Detector",
-		   "GeomProduction"));
+                   "Geometry parameters of the Emc Detector",
+                   "GeomProduction"));
   containers->Add(
     new HContainer("EmcCellGeomPar",
-		   "Emc cell geometry parameters",
-		   "GeomProduction"));
+                   "Emc cell geometry parameters",
+                   "GeomProduction"));
+  containers->Add(
+    new HContainer("EmcCellStatusPar",
+                   "Emc cell geometry parameters",
+                   "GeomProduction"));
+  containers->Add(
+    new HContainer("EmcCalibraterPar",
+                   "Emc calibrater parameters",
+                   "EmcCalibraterProduction"));
   containers->Add(
     new HContainer("EmcDigiPar",
-		   "Emc digitization parameters",
-		   "EmcDigiProduction"));
+                   "Emc digitization parameters",
+                   "EmcDigiProduction"));
 }
 
 HParSet* HEmcContFact::createContainer(HContainer* c) {
@@ -65,8 +75,11 @@ HParSet* HEmcContFact::createContainer(HContainer* c) {
     return new HEmcGeomPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
   if (strcmp(name,"EmcCellGeomPar")==0)
     return new HEmcCellGeomPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+  if (strcmp(name,"EmcCellStatusPar")==0)
+    return new HEmcCellStatusPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
+  if (strcmp(name,"EmcCalibraterPar")==0)
+    return new HEmcCalibraterPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
   if (strcmp(name,"EmcDigiPar")==0)
     return new HEmcDigiPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
   return 0;
 }
-

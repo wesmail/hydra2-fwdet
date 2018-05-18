@@ -21,14 +21,9 @@ void HEmcCal::clear(void) {
   sector       = -1;
   row          = -1;
   column       = -1;
-  time1        = -999.F;
-  time2        = -999.F;
+  time         = -999.F;
   energy       = -999.F;
-  sigmaEnergy  = 0.F;
-  sigmaTime1   = 0.F;
-  sigmaTime2   = 0.F;
   isRpcMatch   = kFALSE;
-  statusTime1  = 0;
-  statusTime2  = 0;
   clusterIndex = -1;
+  statusTime   = 0;
 }
