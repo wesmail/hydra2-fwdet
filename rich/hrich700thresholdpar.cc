@@ -116,7 +116,7 @@ Bool_t HRich700ThresholdPar::readline(const Char_t * buf) {
 	if (7 == n) {
 		rc = setPixelThreshold(pmt, pix, t_min, t_max, tot_min, tot_max, flag);
 	} else {
-		if (n < 4)
+		if (n < 7)
 			Error("readline", "Not enough values in line %s\n", buf);
 		else
 			Error("readline", "Too many values in line %s\n", buf);

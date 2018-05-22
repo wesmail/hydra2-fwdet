@@ -76,7 +76,6 @@ public:
 
    static const size_t maxchan = 65;
    struct TDC {
-
       UInt_t pSubEvtId;
       UInt_t fTdcId;
       UInt_t nChan;
@@ -89,14 +88,8 @@ public:
          fTdcId(0),
          nChan(numchannels), fNcalibr(0) {}
 
-
-
       void clear()
       {
-    	  // JAM: never clear the identity of the TDC unit!
-         //pSubEvtId = 0;
-         //fTdcId = 0;
-    	 //////////////////////////////////////////
          for (UInt_t i = 0; i < nChan; ++i)
              fCh[i].clear();
       }
@@ -104,8 +97,6 @@ public:
       UInt_t getTrbAddr() const { return fTdcId; }
       UInt_t numChannels() const { return nChan; }
       ChannelRec& getCh(UInt_t n) { return fCh[n]; }
-
-     
 
       Int_t correctRefTimeCh(UInt_t refch = 0)
       {
@@ -147,12 +138,11 @@ protected:
 
    void setCalibrationSource(UInt_t s) { nCalSrc = s; }
 
-   Bool_t   scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datalen);
+   Bool_t scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datalen);
    Bool_t correctRefTimeCh(UInt_t ch = 0);
 
-   void setMinAddress(UInt_t trbnetaddress){fMinAddress=trbnetaddress;}
-   void setMaxAddress(UInt_t trbnetaddress){fMaxAddress=trbnetaddress;}
-
+   void setMinAddress(UInt_t trbnetaddress) { fMinAddress=trbnetaddress; }
+   void setMaxAddress(UInt_t trbnetaddress) { fMaxAddress=trbnetaddress; }
 
 protected:
    void clearAll();
