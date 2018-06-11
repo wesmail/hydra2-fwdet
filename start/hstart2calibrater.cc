@@ -156,6 +156,8 @@ Int_t HStart2Calibrater::execute(void)
       loc[0] = mod;
       loc[1] = strip;
 
+      if(!calpar->isInTable(mod,strip)) continue;
+
       if (loc[0] >= 0) {
          pCal = (HStart2Cal*)calCat->getObject(loc);
          if (!pCal) {
@@ -172,7 +174,7 @@ Int_t HStart2Calibrater::execute(void)
             return -1;
          }
 
-         // get the calibration parameters
+	 // get the calibration parameters
          HStart2CalparCell &pPar = (*calpar)[mod][strip];
          pPar.getData(parCellData);
 

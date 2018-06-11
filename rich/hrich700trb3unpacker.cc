@@ -139,42 +139,40 @@ if (NULL == trbNetUnpacker) {
   return kTRUE;
 }
 
-
-
-
-
-
-
 Bool_t HRich700Trb3Unpacker::reinit(void) {
-	// Called in the beginning of each run, used here to initialize TDC unpacker
-	// if TDCs processors are not yet created, use parameter to instantiate them
-// JAM note that parameter containers are not yet initialized when init is called, so tdc unpackers must be created here!
-	//printf("7777777777777777 HRich700Trb3Unpacker::reinit ....\n");
+    // Called in the beginning of each run, used here to initialize TDC unpacker
+    // if TDCs processors are not yet created, use parameter to instantiate them
+    // if auto register TDC feature is used in setup of unpackers (by setting
+    // setMinAddress()+setMaxAddress() manually)
 
-
-	if (numTDC() == 0) // configure the tdcs only the first time we come here:
-			{
-		// here evaluate which subevents are configured in lookup table:
-		Int_t numslots = fLookup->getSize();
-		//fLookup->printParam();	 // DEBUG
-		fLookup->resetTdcIterator();
-		for (int slot = 0; slot < numslots; ++slot) {
-			Int_t trbnetaddress = fLookup->getNextTdcAddress();
-			if (trbnetaddress) {
-				Int_t tindex=addTDC(trbnetaddress, RICH700_MAX_TDCCHANNELS+1);
-				Info("reinit", "Added TDC 0x%04x with %d channels from HRich700Trb3Lookup to map index %d",
-						trbnetaddress, RICH700_MAX_TDCCHANNELS+1,tindex);
-			}
+    if (numTDC() == 0) // configure the tdcs only the first time we come here:
+    {
+	if (fMinAddress == 0 && fMaxAddress == 0)
+	{
+	    // here evaluate which subevents are configured in lookup table:
+	    Int_t numslots = fLookup->getSize();
+	    fLookup->resetTdcIterator();
+	    for (Int_t slot = 0; slot < numslots; ++slot) {
+		Int_t trbnetaddress = fLookup->getNextTdcAddress();
+		if (trbnetaddress) {
+		    Int_t tindex=addTDC(trbnetaddress, RICH700_MAX_TDCCHANNELS+1);
+		    Info("reinit", "Added TDC 0x%04x with %d channels from HRich700Trb3Lookup to map index %d",
+			 trbnetaddress, RICH700_MAX_TDCCHANNELS+1,tindex);
 		}
+	    }
 
-		// JAM here set the expected range for the automatic adding of TDC structures:
-		 setMinAddress(fLookup->getArrayOffset());
-		 setMaxAddress(fLookup->getArrayOffset() + fLookup->getSize());
+	    // here set the expected range for the automatic adding of TDC structures:
+	    setMinAddress(fLookup->getArrayOffset());
+	    setMaxAddress(fLookup->getArrayOffset() + fLookup->getSize());
+	    nCalSrc=3; // just in case this parameter will be used someday
+	    fUseTDCFromLookup = kTRUE; // do not use auto register if set in
 
-		 nCalSrc=3; // just in case this parameter will be used someday
+	} else {
+	    Info("reinit", "TDCs will be added in auto register mode between min address 0x%04x and max address 0x%04x!",fMinAddress,fMaxAddress);
 	}
-	// we do not call reinit of superclass, since we do not use tdc calibration parameters in hydra anymore!
-	return kTRUE;
+    }
+    // we do not call reinit of superclass, since we do not use tdc calibration parameters in hydra anymore!
+    return kTRUE;
 }
 
 

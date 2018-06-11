@@ -18,6 +18,7 @@ public:
 
    Bool_t init(void);
    Int_t execute(void);
+   Bool_t reinit(void);
 
    void disableTimeRef(void) {
      timeRef = kFALSE ;

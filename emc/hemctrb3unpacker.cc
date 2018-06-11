@@ -49,9 +49,9 @@ ClassImp(HEmcTrb3Unpacker)
 // TODO: optionally put this into some parameter container.
 
 HEmcTrb3Unpacker::HEmcTrb3Unpacker(UInt_t id) :
-        HTrb3TdcUnpacker(id), fLookup(0), fTimeRef(kTRUE) ,fTimeShift(0.) {
-    // constructor
-    pRawCat = NULL;
+        HTrb3TdcUnpacker(id), fLookup(0), fTimeRef(kTRUE) ,fTimeShift(650.) {
+	// constructor
+	pRawCat = NULL;
 }
 
 Bool_t HEmcTrb3Unpacker::init(void) {
@@ -98,6 +98,47 @@ Bool_t HEmcTrb3Unpacker::init(void) {
     return kTRUE;
 }
 
+Bool_t HEmcTrb3Unpacker::reinit(void)
+{
+    // Called in the beginning of each run, used here to initialize TDC unpacker
+    // if TDCs processors are not yet created, use parameter to instantiate them
+    // if auto register TDC feature is used in setup of unpackers (by setting
+    // setMinAddress()+setMaxAddress() manually)
+
+    if (numTDC() == 0 )  // configure the tdcs only the first time we come here (do not if autoregister is used):
+    {
+	if (fMinAddress == 0 && fMaxAddress == 0)
+	{
+	    // here evaluate which subevents are configured in lookup table:
+	    Int_t numTDC = fLookup->getSize();
+	    Int_t offset = fLookup->getArrayOffset() ;
+	    for (Int_t slot = 0; slot < numTDC; ++slot) {
+
+		Int_t trbnetaddress = offset+slot;
+
+		HEmcTrb3LookupBoard* tdc = fLookup->getBoard(trbnetaddress);
+		if(tdc){
+		    Int_t nChan = tdc->getSize();
+		    if (trbnetaddress) {
+			Int_t tindex = addTDC(trbnetaddress,nChan);
+			Info("reinit", "Added TDC 0x%04x with %d channels from HEmcTrb3Lookup to map index %d",
+			     trbnetaddress, nChan,tindex);
+		    }
+		}
+	    }
+
+	    // set the expected range for the automatic adding of TDC structures:
+	    setMinAddress(fLookup->getArrayOffset());
+	    setMaxAddress(fLookup->getArrayOffset() + fLookup->getSize());
+	    fUseTDCFromLookup = kTRUE; // do not use auto register if set in
+	} else {
+            Info("reinit", "TDCs will be added in auto register mode between min address 0x%04x and max address 0x%04x!",fMinAddress,fMaxAddress);
+	}
+    }
+    // we do not call reinit of superclass, since we do not use tdc calibration parameters in hydra anymore!
+    return kTRUE;
+}
+
 Int_t HEmcTrb3Unpacker::execute(void) {
     if (gHades->isCalibration()) {
         //calibration event
@@ -125,10 +166,15 @@ Int_t HEmcTrb3Unpacker::execute(void) {
     }
 
     // correct for reference time here!
+    // we don't check for proper time reference correction
+    // to avoid event skipping
+    // this must be done better in future but now is a good workaround
+
     if (fTimeRef) {
-        if (!correctRefTimeCh(0))
-            return -1;
+        correctRefTimeCh(0);
     }
+
+    const Double_t timeUnit=1e9;
 
     for (UInt_t ntdc = 0; ntdc < numTDC(); ntdc++) {
         HTrb3TdcUnpacker::TDC* tdc = getTDC(ntdc);
@@ -143,7 +189,7 @@ Int_t HEmcTrb3Unpacker::execute(void) {
             continue;
         }
 
-        // fill the raw category for EMC detector
+	// fill the raw category for EMC detector
         for (UInt_t i = 1; i < tdc->numChannels(); i++) {
 
             HTrb3TdcUnpacker::ChannelRec& theRecord = tdc->getCh(i);
@@ -159,13 +205,17 @@ Int_t HEmcTrb3Unpacker::execute(void) {
                 continue;
             }
             chan->getAddress(fLoc[0], fLoc[1]);
-            // if channel not exist in lookup-table, ignore it
+
+	    // if channel not exist in lookup-table, ignore it
             if (fLoc[0] < 0)
                 continue;
-            // exclude all not defined and broken channels
+
+	    // exclude all not defined and broken channels
             if (!chan->isDefinedChannel() || chan->isBrokenChannel())
                 continue;
-            Bool_t fastchannel = chan->isFastChannel();
+
+
+	    Bool_t fastchannel = chan->isFastChannel();
             if(fastchannel && chan->isSlowChannel())
             {
                 Warning("execute", "NEVER COME HERE - channel %u has both fast and slow property! skip it..", i);
@@ -179,12 +229,10 @@ Int_t HEmcTrb3Unpacker::execute(void) {
 #endif
             UInt_t lix = 0;
             for (lix = 0; lix < theRecord.rising_mult; ++lix) {
-                Double_t tm0 = theRecord.rising_tm[lix] * 1e9;
+                Double_t tm0 = theRecord.rising_tm[lix] * timeUnit;
                 if (debugFlag > 0)
                     Warning("execute", "JJJJ current hit leading: tm0:%e, apply time shift:%e", tm0, fTimeShift);
                 tm0 +=fTimeShift;
-
-
 
 #ifdef EMC_USE_TIME_WINDOW
                 if ((tm0 < tmin) || (tm0 > tmax)) {
@@ -198,7 +246,7 @@ Int_t HEmcTrb3Unpacker::execute(void) {
 #endif
                 // now look for corresponding trailing edge:
                 if (lix < theRecord.falling_mult) {
-                    Double_t tm1 = theRecord.falling_tm[lix] * 1e9;
+                    Double_t tm1 = theRecord.falling_tm[lix] * timeUnit;
                     if (debugFlag > 0)
                         Warning("execute", "JJJJ current hit falling: tm1:%e, apply time shift:%e",
                                 tm1, fTimeShift);
@@ -248,7 +296,7 @@ Int_t HEmcTrb3Unpacker::execute(void) {
 
             for (UInt_t tix=lix; tix< theRecord.falling_mult; ++tix)
             {
-                Double_t tm1=theRecord.falling_tm[tix]*1e9;
+                Double_t tm1=theRecord.falling_tm[tix] * timeUnit;
 
 #ifdef EMC_USE_TIME_WINDOW
                     if ((tm1 < tmin) || (tm1 > tmax)) {

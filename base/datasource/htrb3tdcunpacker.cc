@@ -24,7 +24,7 @@
 #include "heventheader.h"
 
 HTrb3TdcUnpacker::HTrb3TdcUnpacker(UInt_t id) : HTrb3Unpacker(id), 
-   calpar(0), nCalSrc(0), fMinAddress(0), fMaxAddress(0)
+   calpar(0), nCalSrc(0), fMinAddress(0), fMaxAddress(0), fUseTDCFromLookup(kFALSE)
 {
    fCalpars.clear();
    fTDCs.clear();
@@ -69,6 +69,7 @@ Int_t HTrb3TdcUnpacker::addTDC(UInt_t trbaddr, size_t numchannels)
     return tdcindex;
 }
 
+
 Bool_t HTrb3TdcUnpacker::scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datalen)
 {
     HTrb3TdcIterator iter;
@@ -78,7 +79,6 @@ Bool_t HTrb3TdcUnpacker::scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datale
     HTrb3TdcMessage& msg = iter.msg();
 
     UInt_t cnt(0);
-
     while (iter.next()) {
 
 	cnt++;
@@ -92,21 +92,23 @@ Bool_t HTrb3TdcUnpacker::scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datale
         {
             try
             {
-                tdc_index = fTDCsMap.at((UInt_t) trbaddr);
+		tdc_index = fTDCsMap.at((UInt_t) trbaddr);
                 last_trbaddr = trbaddr;
-                if (!isQuietMode())
+		if (!isQuietMode())
                     fprintf(stderr, "HTrb3TdcUnpacker::scanTdcData finds tdcindex %d for trbnetaddress 0x%x .\n", tdc_index, trbaddr);
             }
             catch (const std::exception& e)
             {
-                if((fMinAddress!=0 || fMaxAddress!=0) && (fMinAddress<=trbaddr) && (fMaxAddress>=trbaddr))
-                {
-                    // here check that we have really an expected tdc and not a hub packet! In this case we add dynamically
-                    tdc_index = addTDC(trbaddr);
-                    last_trbaddr = trbaddr;
-                    if (!isQuietMode())
-                        fprintf(stderr, "HTrb3TdcUnpacker::scanTdcData has added new trbnetaddress 0x%x to tdcindex %d \n",trbaddr, tdc_index);
-                }
+		if((fMinAddress<=trbaddr) && (fMaxAddress>=trbaddr))
+		{
+		    if( !fUseTDCFromLookup && fMinAddress!=0 && fMaxAddress!=0){
+			// here check that we have really an expected tdc and not a hub packet! In this case we add dynamically
+			tdc_index = addTDC(trbaddr);
+			cout << "   Info<HTrb3TdcUnpacker::scanTdcData()>: Added new trbnetaddress 0x"<<hex<<trbaddr<<" to tdcindex " << dec <<tdc_index<< endl;
+		    }
+
+		    last_trbaddr = trbaddr;
+		}
                 else
                 {
                     if (!isQuietMode())
@@ -259,8 +261,7 @@ Bool_t HTrb3TdcUnpacker::correctRefTimeCh(UInt_t refch)
 {
     for (UInt_t i = 0; i < fTDCs.size(); ++i)
     {
-        Bool_t rc = fTDCs[i].correctRefTimeCh(refch);
-        if (!rc) return kFALSE;
+        fTDCs[i].correctRefTimeCh(refch);
     }
     return kTRUE;
 }

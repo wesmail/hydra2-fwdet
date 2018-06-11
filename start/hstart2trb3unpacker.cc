@@ -61,12 +61,6 @@ Bool_t HStart2Trb3Unpacker::init(void) {
      return kFALSE;
   }
 
-  calpar = (HStart2Trb3Calpar*)(gHades->getRuntimeDb()->getContainer("Start2Trb3Calpar"));
-  if (!calpar) {
-     Error("init", "No Pointer to parameter container Start2Trb3Calpar.");
-     return kFALSE;
-  }
-
   if (NULL == trbNetUnpacker) {
     if (gHades->getDataSource()) {
       HDataSource* source = gHades->getDataSource();
@@ -88,7 +82,48 @@ Bool_t HStart2Trb3Unpacker::init(void) {
   return kTRUE;
 }
 
+Bool_t HStart2Trb3Unpacker::reinit(void)
+{
+    // Called in the beginning of each run, used here to initialize TDC unpacker
+    // if TDCs processors are not yet created, use parameter to instantiate them
+    // if auto register TDC feature is used in setup of unpackers (by setting
+    // setMinAddress()+setMaxAddress() manually)
+
+    if (numTDC() == 0 )  // configure the tdcs only the first time we come here (do not if autoregister is used):
+    {
+	if (fMinAddress == 0 && fMaxAddress == 0)
+	{
+	    // here evaluate which subevents are configured in lookup table:
+	    Int_t numTDC = lookup->getSize();
+	    Int_t offset = lookup->getArrayOffset() ;
+
+	    for (Int_t slot = 0; slot < numTDC; ++slot) {
+		Int_t trbnetaddress = offset+slot;
+		HStart2Trb3LookupTdc* tdc = lookup->getTdc(trbnetaddress);
+		if(tdc){
+		    Int_t nChan = tdc->getSize();
+		    if (trbnetaddress) {
+			Int_t tindex = addTDC(trbnetaddress,nChan);
+			Info("reinit", "Added TDC 0x%04x with %d channels from HStart2Trb3Lookup to map index %d",
+			     trbnetaddress, nChan,tindex);
+		    }
+		}
+	    }
+
+	    // set the expected range for the automatic adding of TDC structures:
+	    setMinAddress(lookup->getArrayOffset());
+	    setMaxAddress(lookup->getArrayOffset() + lookup->getSize());
+	    fUseTDCFromLookup = kTRUE; // do not use auto register if set in
+	} else {
+            Info("reinit", "TDCs will be added in auto register mode between min address 0x%04x and max address 0x%04x!",fMinAddress,fMaxAddress);
+	}
+    }
+    // we do not call reinit of superclass, since we do not use tdc calibration parameters in hydra anymore!
+    return kTRUE;
+}
+
 Int_t HStart2Trb3Unpacker::execute(void) {
+
   HStart2Raw *pRaw = 0;  // pointer to Raw category
   if (gHades->isCalibration()) {
     //calibration event
@@ -113,9 +148,12 @@ Int_t HStart2Trb3Unpacker::execute(void) {
   }
 
   // correct for reference time here!
+  // we don't check for proper time reference correction
+  // to avoid event skipping
+  // this must be done better in future but now is a good workaround
+
   if (timeRef) {
-     if (!correctRefTimeCh(0)) 
-        return -1;
+     correctRefTimeCh(0);
   }
 
   for (UInt_t ntdc=0;ntdc<numTDC();ntdc++) {

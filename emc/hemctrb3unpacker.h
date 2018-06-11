@@ -17,6 +17,7 @@ public:
    virtual ~HEmcTrb3Unpacker(void) {}
 
    Bool_t init(void);
+   Bool_t reinit(void);
    Int_t execute(void);
 
    void disableTimeRef(void) {

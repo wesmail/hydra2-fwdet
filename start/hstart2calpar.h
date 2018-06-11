@@ -114,6 +114,8 @@ public:
    void readline(const Char_t*, Int_t*);
    void putAsciiHeader(TString&);
    Bool_t writeline(Char_t*, Int_t, Int_t);
+
+   Bool_t isInTable(Int_t mod,Int_t strip, Bool_t silent=kFALSE);
    ClassDef(HStart2Calpar, 1) // Container for the START2 calibration parameters
 };
 

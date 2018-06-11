@@ -1,5 +1,6 @@
 
 #include "hdst.h"
+#include "htrbnetdef.h"
 
 //------- detectors -------------------
 #include "hspectrometer.h"
@@ -775,7 +776,7 @@ void HDst::setupUnpackers(TString beamtime,TString detectors,Bool_t correctINL)
         Int_t mdcUnpackers   [12] = {0x1100,0x1110,0x1120,0x1130,0x1140,0x1150,0x1000,0x1010,0x1020,0x1030,0x1040,0x1050};
         Int_t rpcUnpackers   [3]  = {0x8400,0x8410,0x8420};
         Int_t startUnpackers [1]      = {0x8800};         // CTS-Hub
-        Int_t startUnpackersTrb3 [2]  = {0x8880,0x8890};  // start+hodo
+        Int_t startUnpackersTrb3 [1]  = {0x8880}; //start
         Int_t pionTrackerUnpackers[2] = {0x8900,0x8910};
         Int_t tofUnpackers   [1]  = {0x8600};        //
         Int_t wallUnpackers  [1]  = {0x8700};        //
@@ -805,7 +806,10 @@ void HDst::setupUnpackers(TString beamtime,TString detectors,Bool_t correctINL)
 
             for(UInt_t i=0; i<(sizeof(richUnpackers)/sizeof(Int_t)); i++){
                 cout<<hex<<richUnpackers[i]<<", "<<dec<<flush;
-                source->addUnpacker( new HRichUnpacker(richUnpackers[i]) );
+                HRichUnpacker* unp = new HRichUnpacker(richUnpackers[i]);
+		//unp->setMinAddress(Trbnet::kRichTrb3MinTrbnetAddress);   // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
+		//unp->setMaxAddress(Trbnet::kRichTrb3MaxTrbnetAddress);   // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
+		source->addUnpacker( unp );
             }
             cout<<endl;
         }
@@ -855,23 +859,14 @@ void HDst::setupUnpackers(TString beamtime,TString detectors,Bool_t correctINL)
         if(detectors.Contains("start")){
             ::Info("", "Adding START unpackers");
 
-	  /*
-            for(UInt_t i=0; i<(sizeof(startUnpackers)/sizeof(Int_t)); i++){
-                cout<<hex<<startUnpackers[i]<<", "<<dec<<flush;
-                HStart2Trb2Unpacker *startUnp = new HStart2Trb2Unpacker(startUnpackers[i]);
-                startUnp->setDebugFlag(0);
-                startUnp->setcorrectINL();
-                //startUnp->setQuietMode();
-                //startUnp->disableTimeRef(); // new since apr12 , only for cosmics
-                source->addUnpacker( startUnp );
-            }
-	  */
-            for(UInt_t i=0; i<(sizeof(startUnpackersTrb3)/sizeof(Int_t)); i++){
+	    for(UInt_t i=0; i<(sizeof(startUnpackersTrb3)/sizeof(Int_t)); i++){
                 cout<<hex<<startUnpackersTrb3[i]<<", "<<dec<<flush;
                 HStart2Trb3Unpacker *startUnp = new HStart2Trb3Unpacker(startUnpackersTrb3[i]);
                 startUnp->setDebugFlag(0);
 		startUnp->setQuietMode();
                 startUnp->setCTSId(0x8000);
+		//startUnp->setMinAddress(Trbnet::kStartTrb3MinTrbnetAddress);   // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
+		//startUnp->setMaxAddress(Trbnet::kStartTrb3MaxTrbnetAddress);   // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
                 source->addUnpacker( startUnp );
             }
             cout<<endl;
@@ -912,8 +907,8 @@ void HDst::setupUnpackers(TString beamtime,TString detectors,Bool_t correctINL)
                 cout<<hex<<emcUnpackers[i]<<", "<<dec<<flush;
                 HEmcTrb3Unpacker * emcUnp =
                     new HEmcTrb3Unpacker(emcUnpackers[i]);
-                emcUnp->setMinAddress(0x6000);
-                emcUnp->setMaxAddress(0x6060);
+		//emcUnp->setMinAddress(Trbnet::kEmcTrb3MinTrbnetAddress);    // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
+                //emcUnp->setMaxAddress(Trbnet::kEmcTrb3MaxTrbnetAddress);    // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
                 emcUnp->setDebugFlag(0);
                 emcUnp->setQuietMode();
                 source->addUnpacker( emcUnp );

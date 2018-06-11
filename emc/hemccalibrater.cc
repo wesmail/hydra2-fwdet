@@ -1,6 +1,4 @@
-//_HADES_CLASS_DESCRIPTION
-////////////////////////////////////////////////////////////////
-//
+//_HADES_CLASS_DESCRIPTION//////////////////////////////////////////////////////////////////
 //  HEmcCalibrater:
 //
 //  Calibrates all fired cells in EmcRaw category and fills
@@ -193,7 +191,7 @@ Int_t HEmcCalibrater::execute(void) {
     }
 #endif
     // loop over number of fast hits in raw level
-    for (uint i = 0; i < nfasthits; ++i)
+    for (UInt_t i = 0; i < nfasthits; ++i)
     {
       // calc Time Walk Correction
       Float_t twc = twcCorrection(rawTimeLeading, (parCellData+4));
@@ -208,7 +206,7 @@ Int_t HEmcCalibrater::execute(void) {
       pQA->addFastHit(calTimeLeading, pRaw->getFastWidth(i));
 #endif
       Bool_t has_match = kFALSE;
-      while (kTRUE)
+      while (j < nslowhits)
       {
           rawTimeLeadingS = pRaw->getSlowTimeLeading(j);
           calTimeLeadingS = parCellData[0] * rawTimeLeadingS + parCellData[1];

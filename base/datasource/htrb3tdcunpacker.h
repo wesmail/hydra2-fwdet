@@ -12,6 +12,9 @@
 
 #include "htrb3unpacker.h"
 #include "htrb3calpar.h"
+#include "hades.h"
+#include "hevent.h"
+#include "heventheader.h"
 
 #include "TObject.h"
 #include <vector>
@@ -28,15 +31,18 @@ public:
       Double_t falling_tm[10];
       UInt_t   rising_mult;
       UInt_t   falling_mult;
+      Bool_t   hasData;
 
       ChannelRec() :
          rising_mult(0),
-         falling_mult(0) {}
+	  falling_mult(0),
+          hasData(kFALSE) {}
 
       void clear()
       {
          rising_mult  = 0;
-         falling_mult = 0;
+	 falling_mult = 0;
+         hasData      = kFALSE;
       }
 
       void addHit(Bool_t rising, Double_t tm)
@@ -44,10 +50,11 @@ public:
          if (rising) {
             if (rising_mult < 10)
                rising_tm[rising_mult++] = tm;
-         } else {
+	 } else {
             if (falling_mult < 10)
                falling_tm[falling_mult++] = tm;
-         }
+	 }
+         hasData = kTRUE;
       }
 
       Double_t getHit(Bool_t rising, UInt_t cnt)
@@ -93,7 +100,11 @@ public:
          for (UInt_t i = 0; i < nChan; ++i)
              fCh[i].clear();
       }
-
+      Bool_t hasData(){
+	 for (UInt_t ch=0;ch<numChannels();ch++)
+	     if(fCh[ch].hasData) return kTRUE;
+          return kFALSE;
+      }
       UInt_t getTrbAddr() const { return fTdcId; }
       UInt_t numChannels() const { return nChan; }
       ChannelRec& getCh(UInt_t n) { return fCh[n]; }
@@ -101,8 +112,18 @@ public:
       Int_t correctRefTimeCh(UInt_t refch = 0)
       {
          // calculates all times to first hit in channel 0
-         if (refch>=numChannels()) return kFALSE;
-         if (fCh[refch].rising_mult<=0) return kFALSE;
+	 if (refch>=numChannels()) return kFALSE;
+         if(!hasData())            return kTRUE;   // skipp empty data
+	 if (fCh[refch].rising_mult<=0)
+	 {
+	     Long_t seqnum = -1;
+	     if (gHades != 0 && gHades->getCurrentEvent() != 0 &&
+		 gHades->getCurrentEvent()->getHeader() != 0) {
+		 seqnum = gHades->getCurrentEvent()->getHeader()->getEventSeqNumber();
+	     }
+	     cerr << "   Warning<HTrb3TdcUnpacker::TDC::correctRefTimeCh()>: No reference time for trb=0x" << hex << getTrbAddr() << dec << " in evt seq=" << seqnum << endl;
+	     return kFALSE;
+	 }
          Double_t reftm = fCh[refch].rising_tm[0];
          for (UInt_t ch=0;ch<numChannels();ch++)
             fCh[ch].substractRefTime(reftm);
@@ -119,6 +140,7 @@ protected:
 
    UInt_t fMinAddress; //!< for check of address range when autoregistration of tdcs
    UInt_t fMaxAddress; //!< for check of address range when autoregistration of tdcs
+   Bool_t fUseTDCFromLookup; //! kTRUE : list of TDC build from lookup table, kFALSE : autoregister mode
 
    Int_t getEventSeqNumber();
 

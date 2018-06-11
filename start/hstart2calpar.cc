@@ -149,7 +149,41 @@ Bool_t HStart2Calpar::writeline(Char_t *buf, Int_t mod, Int_t strip)
 }
 
 
+Bool_t HStart2Calpar::isInTable(Int_t mod,Int_t strip, Bool_t silent)
+{
+    // returns kTRUE if parameter for module and strip are in the container
+    // otherwise kFALSE. If strip<0 only the module is checked. If
+    // silent = kTRUU no warnings will be printed (default kFALSE)
 
+
+
+    Int_t maxMod = getSize()-1 ;
+    if(mod>maxMod){
+	if(!silent) Warning("isInTable()","Module number out of range! module = %i (max=%i)",mod,maxMod);
+	return kFALSE;
+    }
+
+    HStart2CalparMod* pMod = (&(*this)[mod]);
+    if(!pMod){
+	if(!silent) Warning("isInTable()","Module number not in HStart2Calpar ! module = %i",mod);
+	return kFALSE;
+    }
+
+    Int_t maxStrip = (*this)[mod].getSize()-1;
+    if(maxStrip==-1){
+	if(!silent) Warning("isInTable()","Module number not in HStart2Calpar ! module = %i",mod);
+	return kFALSE;
+    }
+
+    if(strip<0) return kTRUE;
+
+    if(strip>maxStrip){
+	if(!silent) Warning("isInTable()","Strip number out of range! module = %i , strip = %i (max=%i)",mod,strip,maxStrip);
+	return kFALSE;
+    }
+
+    return kTRUE;
+}
 
 
 
