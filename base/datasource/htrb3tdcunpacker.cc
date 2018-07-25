@@ -1,4 +1,4 @@
-//*-- AUTHOR Sergey Linev
+//*-- AUTHOR Sergey LinFev
 //*-- Modified : 17/04/2014 by I. Koenig
 //_HADES_CLASS_DESCRIPTION
 /////////////////////////////////////////////////////////////
@@ -44,6 +44,7 @@ void HTrb3TdcUnpacker::clearAll()
       fprintf(stderr, "JAM:HTrb3TdcUnpacker::clearAll is called!\n");
 
    for (UInt_t ntds=0;ntds<fTDCs.size();ntds++) fTDCs[ntds].clear();
+   fFilledTDCs.clear();
 }
 
 Int_t HTrb3TdcUnpacker::getEventSeqNumber()
@@ -90,15 +91,18 @@ Bool_t HTrb3TdcUnpacker::scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datale
 
         if (last_trbaddr != trbaddr)
         {
-            try
-            {
-		tdc_index = fTDCsMap.at((UInt_t) trbaddr);
+	    std::map<UInt_t, Int_t>::iterator it;
+	    it = fTDCsMap.find((UInt_t)trbaddr);
+
+	    if(it!=fTDCsMap.end())
+	    {
+		tdc_index = it->second;
                 last_trbaddr = trbaddr;
 		if (!isQuietMode())
                     fprintf(stderr, "HTrb3TdcUnpacker::scanTdcData finds tdcindex %d for trbnetaddress 0x%x .\n", tdc_index, trbaddr);
             }
-            catch (const std::exception& e)
-            {
+            else
+	    {
 		if((fMinAddress<=trbaddr) && (fMaxAddress>=trbaddr))
 		{
 		    if( !fUseTDCFromLookup && fMinAddress!=0 && fMaxAddress!=0){
@@ -118,7 +122,14 @@ Bool_t HTrb3TdcUnpacker::scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datale
             }
         }
 
-        TDC& tdc = fTDCs[tdc_index];
+	TDC& tdc = fTDCs[tdc_index];
+	tdc.fFoundInStream = kTRUE;
+
+	if(find(factiveTDCs.begin(),factiveTDCs.end(),tdc_index)==factiveTDCs.end()){
+	    factiveTDCs.push_back(tdc_index);
+	}
+
+
         if (!isQuietMode())
             fprintf(stderr, "HTrb3TdcUnpacker::scanTdcData finds tdc address 0x%x with subevtid 0x%x for tdcindex %d \n", tdc.getTrbAddr(), tdc.pSubEvtId,  tdc_index);
 
@@ -168,10 +179,13 @@ Bool_t HTrb3TdcUnpacker::scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datale
 
             ChannelRec& rec = tdc.fCh[chid];
 
-            HTrb3CalparTdc * tdcpar = 0;
-            try
+	    HTrb3CalparTdc * tdcpar = 0;
+	    std::map<UInt_t, HTrb3CalparTdc*>::iterator itcal;
+	    itcal = fCalpars.find((UInt_t)trbaddr);
+
+	    if(itcal!=fCalpars.end())
             {
-                tdcpar = fCalpars.at((UInt_t) trbaddr);
+                tdcpar = itcal->second;
                 if (tdcpar && (fine >= (UInt_t)tdcpar->getNBinsPerChannel())) {
 		    if (!isQuietMode())
 			fprintf(stderr, "Evt:%d Subev:0x%04x TDC:0x%04x Fine counter %u out of allowed range 0..%u in channel %u\n",
@@ -181,9 +195,6 @@ Bool_t HTrb3TdcUnpacker::scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datale
                 }
 
 	    }
-	    catch (const std::exception& e)
-            {
-            }
 
 	    if (tdcpar)
 	    {
@@ -226,6 +237,20 @@ Bool_t HTrb3TdcUnpacker::scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datale
 
 	    rec.addHit(isrising, localtm);
 
+            // add to list of TDCs which have data (excluding REFCHAN)
+	    if(REFCHAN!=chid){
+		if(find(fFilledTDCs.begin(),fFilledTDCs.end(),tdc_index)==fFilledTDCs.end()){
+		    fFilledTDCs.push_back(tdc_index);
+		}
+
+#ifdef USE_FILLED_TDC
+		if(find(tdc.chanList.begin(),tdc.chanList.end(),chid)==tdc.chanList.end()){
+		    tdc.chanList.push_back(chid);
+		}
+#endif
+	    }
+
+
 	    continue;
 	}
         // process other messages kinds
@@ -259,9 +284,9 @@ Bool_t HTrb3TdcUnpacker::scanTdcData(UInt_t trbaddr, UInt_t* data, UInt_t datale
 
 Bool_t HTrb3TdcUnpacker::correctRefTimeCh(UInt_t refch)
 {
-    for (UInt_t i = 0; i < fTDCs.size(); ++i)
+    for (UInt_t i = 0; i < numActiveTDC(); ++i)
     {
-        fTDCs[i].correctRefTimeCh(refch);
+        getActiveTDC(i)->correctRefTimeCh(refch);
     }
     return kTRUE;
 }

@@ -24,6 +24,11 @@ class HTrb3CalparTdc;
 
 class HTrb3TdcUnpacker : public HTrb3Unpacker  {
 
+
+#define  REFCHAN 0
+
+    //#define USE_FILLED_TDC 1  // switch to use list of TDCs with data only (CAUTION: TDC with missing ref time will not emmit warnings if they don't transport data)
+
 public:
 
    struct ChannelRec {
@@ -88,32 +93,39 @@ public:
       UInt_t nChan;
       UInt_t fCalibr[2]; //!< temporary fine time calibration info from data stream
       Int_t fNcalibr; // counter of available fine time calibration values
+      Bool_t  fFoundInStream;  // TDC was found in the data stream
       ChannelRec fCh[maxchan];
+      std::vector<Int_t>chanList; // list of channels containing data (if USE_FILLED_TDC is defined)
 
       TDC(size_t numchannels=maxchan) :
          pSubEvtId(0),
          fTdcId(0),
-         nChan(numchannels), fNcalibr(0) {}
+	  nChan(numchannels), fNcalibr(0), fFoundInStream(kFALSE) {
+	      chanList.reserve(maxchan);
+	  }
 
       void clear()
       {
          for (UInt_t i = 0; i < nChan; ++i)
-             fCh[i].clear();
+	     fCh[i].clear();
+	 chanList.clear();
       }
       Bool_t hasData(){
-	 for (UInt_t ch=0;ch<numChannels();ch++)
-	     if(fCh[ch].hasData) return kTRUE;
+	  for (UInt_t ch=0;ch<numChannels();ch++) {
+              if(ch==REFCHAN) continue;
+	      if(fCh[ch].hasData) return kTRUE;
+	  }
           return kFALSE;
       }
       UInt_t getTrbAddr() const { return fTdcId; }
       UInt_t numChannels() const { return nChan; }
       ChannelRec& getCh(UInt_t n) { return fCh[n]; }
 
-      Int_t correctRefTimeCh(UInt_t refch = 0)
+      Int_t correctRefTimeCh(UInt_t refch = REFCHAN)
       {
          // calculates all times to first hit in channel 0
 	 if (refch>=numChannels()) return kFALSE;
-         if(!hasData())            return kTRUE;   // skipp empty data
+         if(!fFoundInStream)       return kTRUE;   // skipp empty data
 	 if (fCh[refch].rising_mult<=0)
 	 {
 	     Long_t seqnum = -1;
@@ -121,7 +133,7 @@ public:
 		 gHades->getCurrentEvent()->getHeader() != 0) {
 		 seqnum = gHades->getCurrentEvent()->getHeader()->getEventSeqNumber();
 	     }
-	     cerr << "   Warning<HTrb3TdcUnpacker::TDC::correctRefTimeCh()>: No reference time for trb=0x" << hex << getTrbAddr() << dec << " in evt seq=" << seqnum << endl;
+	     cerr << "   Warning<HTrb3TdcUnpacker::TDC::correctRefTimeCh()>: No reference time for trb=0x" << hex << getTrbAddr() <<" sub event 0x"<<pSubEvtId<< dec << " in evt seq=" << seqnum << endl;
 	     return kFALSE;
 	 }
          Double_t reftm = fCh[refch].rising_tm[0];
@@ -135,6 +147,8 @@ protected:
    HTrb3Calpar* calpar;         //! TDC calibration parameters
    std::map<UInt_t, HTrb3CalparTdc*> fCalpars;
    std::vector<TDC> fTDCs;      //!
+   std::vector<Int_t> factiveTDCs;      //! list of TDCs found in the data stream
+   std::vector<Int_t> fFilledTDCs;      //! if USE_FILLED_TDC is defined theis list contains TDC with data
    std::map<UInt_t, Int_t> fTDCsMap; //!
    Int_t nCalSrc;               //! 0 -auto, 1 - no calibration, 2 - calpar, 3 - DAQ
 
@@ -152,8 +166,12 @@ protected:
 
    virtual Bool_t reinit();
 
-   UInt_t numTDC() const { return fTDCs.size(); }
-   TDC * getTDC(UInt_t n) { return &(fTDCs[n]); }
+   UInt_t numTDC      () const   { return fTDCs.size(); }
+   TDC *  getTDC      (UInt_t n) { return &(fTDCs[n]); }
+   UInt_t numActiveTDC() const   { return factiveTDCs.size(); }
+   TDC *  getActiveTDC(UInt_t n) { return &(fTDCs[factiveTDCs[n]]); }
+   UInt_t numFilledTDC() const   { return fFilledTDCs.size(); }
+   TDC *  getFilledTDC(UInt_t n) { return &(fTDCs[fFilledTDCs[n]]); }
 
    /** preassign tdc of expected trbnet address. returns index in map*/
    Int_t addTDC(UInt_t trbaddr, size_t numchannels=maxchan);

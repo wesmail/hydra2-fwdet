@@ -47,6 +47,7 @@ ClassImp(HEmcTrb3Unpacker)
 #define EMC_TIME_MIN -500.0
 #define EMC_TIME_MAX  500.0
 // TODO: optionally put this into some parameter container.
+Bool_t HEmcTrb3Unpacker::fHasPrintedTDC = kFALSE;
 
 HEmcTrb3Unpacker::HEmcTrb3Unpacker(UInt_t id) :
         HTrb3TdcUnpacker(id), fLookup(0), fTimeRef(kTRUE) ,fTimeShift(650.) {
@@ -131,6 +132,8 @@ Bool_t HEmcTrb3Unpacker::reinit(void)
 	    setMinAddress(fLookup->getArrayOffset());
 	    setMaxAddress(fLookup->getArrayOffset() + fLookup->getSize());
 	    fUseTDCFromLookup = kTRUE; // do not use auto register if set in
+	    fHasPrintedTDC = kTRUE;
+
 	} else {
             Info("reinit", "TDCs will be added in auto register mode between min address 0x%04x and max address 0x%04x!",fMinAddress,fMaxAddress);
 	}
@@ -171,13 +174,13 @@ Int_t HEmcTrb3Unpacker::execute(void) {
     // this must be done better in future but now is a good workaround
 
     if (fTimeRef) {
-        correctRefTimeCh(0);
+        correctRefTimeCh(REFCHAN);
     }
 
     const Double_t timeUnit=1e9;
 
-    for (UInt_t ntdc = 0; ntdc < numTDC(); ntdc++) {
-        HTrb3TdcUnpacker::TDC* tdc = getTDC(ntdc);
+    for (UInt_t ntdc = 0; ntdc < numActiveTDC(); ntdc++) {
+        HTrb3TdcUnpacker::TDC* tdc = getActiveTDC(ntdc);
 
         // check the lookup table
         HEmcTrb3LookupBoard *board = fLookup->getBoard(tdc->getTrbAddr());
@@ -190,9 +193,10 @@ Int_t HEmcTrb3Unpacker::execute(void) {
         }
 
 	// fill the raw category for EMC detector
-        for (UInt_t i = 1; i < tdc->numChannels(); i++) {
+        for (UInt_t i = 0; i < tdc->numChannels(); i++) {
+            if(REFCHAN == i) continue;
 
-            HTrb3TdcUnpacker::ChannelRec& theRecord = tdc->getCh(i);
+	    HTrb3TdcUnpacker::ChannelRec& theRecord = tdc->getCh(i);
 
 // ignore channels without rising hits already here
 #ifndef EMC_USE_TRAILING_WITHOUT_LEADING_EDGES
@@ -206,9 +210,10 @@ Int_t HEmcTrb3Unpacker::execute(void) {
             }
             chan->getAddress(fLoc[0], fLoc[1]);
 
-	    // if channel not exist in lookup-table, ignore it
-            if (fLoc[0] < 0)
-                continue;
+	    // if channel not connected in lookup-table, ignore it
+	    if (fLoc[0] < 0)  { // empty slot default is -1
+		continue;
+	    }
 
 	    // exclude all not defined and broken channels
             if (!chan->isDefinedChannel() || chan->isBrokenChannel())
@@ -332,7 +337,7 @@ Int_t HEmcTrb3Unpacker::addRawHit(Double_t t_leading, Double_t t_trailing,
 	    raw = new (raw) HEmcRaw;
 	    Char_t row,col;
 	    HEmcDetector::getRowCol(fLoc[1],row,col);
-            raw->setAddress(fLoc[0], fLoc[1],row,col);
+	    raw->setAddress(fLoc[0], fLoc[1],row,col);
         } else {
             if (debugFlag > 0)
                 Warning("addRawHit()", "Can't get slot mod=%i, chan=%i",

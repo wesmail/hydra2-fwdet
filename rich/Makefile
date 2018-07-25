@@ -55,6 +55,7 @@ SOURCE_FILES := hrichanalysis.cc		\
 		hrich700drawhist.cc		\
 		hrich700utils.cc		\
 		hrich700geotestqa.cc		\
+		hrich700geotestrealqa.cc		\
 		hrich700histmanager.cc		\
 		hrich700pmt.cc 			\
 		hrich700digitizer.cc 		\

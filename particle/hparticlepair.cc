@@ -430,22 +430,22 @@ void    HParticlePair::setTruePair()
 	fpair[0]->getSourceInfo(-1,parentTrack,grandparentTrack,geninfo_1,geninfo1_1,geninfo2_1);
 
 	if(grandparentTrack > 0 && getCandSim(1)->getGeantParentTrackNum() == grandparentTrack) {    // decay in GEANT
-        HParticleCandSim * pcandsim0 = dynamic_cast<HParticleCandSim*>(getCandSim(0));
-        if(pcandsim0) { if(!pcandsim0->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
+        HParticleCandSim * pcandsim1 = dynamic_cast<HParticleCandSim*>(getCandSim(1));
+        if(pcandsim1) { if(!pcandsim1->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
         else                                         { fstatusFlags = fstatusFlags|0x01; }
         if(fpair[0]->isTruePair())                  fstatusFlags = fstatusFlags|0x02;
 	    return;
 	}
 
-	Int_t geninfo_2  = getCandSim(0)->getGeantGeninfo();
-        Int_t geninfo2_2 = getCandSim(0)->getGeantGeninfo2();
+	Int_t geninfo_2  = getCandSim(1)->getGeantGeninfo();
+        Int_t geninfo2_2 = getCandSim(1)->getGeantGeninfo2();
 
         if(geninfo_1 > 0                                &&  // external source
 	   geninfo_1  == geninfo_2                      &&  // sourceID
 	   geninfo2_1 == geninfo2_2                         // parentindex if more than 1 decay of the same source is in the event
 	  ) {
-        HParticleCandSim * pcandsim0 = dynamic_cast<HParticleCandSim*>(getCandSim(0));
-        if(pcandsim0) { if(!pcandsim0->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
+        HParticleCandSim * pcandsim1 = dynamic_cast<HParticleCandSim*>(getCandSim(1));
+        if(pcandsim1) { if(!pcandsim1->isGhostTrack()) fstatusFlags = fstatusFlags|0x01; }
         else                                         { fstatusFlags = fstatusFlags|0x01; }
         if(fpair[0]->isTruePair())                  fstatusFlags = fstatusFlags|0x02;
 	}

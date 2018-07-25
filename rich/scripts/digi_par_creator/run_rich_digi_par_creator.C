@@ -2,7 +2,7 @@ Int_t run_rich_digi_par_creator(Int_t nEvents=100000000, Int_t startEvt=0)
 {
     TString inFiles = "/lustre/nyx/cbm/users/slebedev/hades/2018.rich_params.dst.e.*.root";
 
-    string outputFilePath = "richpar_output.dat";
+    string outputFilePath = "rich700n_june2018_params_nowls_final.txt";//"richpar_output.dat";
     string outputHistFilePath = "richpar_hist.root";
 
     TString asciiParFile = "rich_params_nowls.txt";

@@ -102,18 +102,20 @@ void HRich700Trb3Lookup::resetTdcIterator()
 
 Int_t HRich700Trb3Lookup::getNextTdcAddress()
 {
-	Int_t address=0;
-	HRich700Trb3LookupTdc* slot=0;
-	if(arrayCursor>=getSize()) return 0; // supress warnings when exceeding array at first
-	do{
-	    slot= dynamic_cast<HRich700Trb3LookupTdc*> (array->At(arrayCursor++));
-	    //printf("getNextTdcAddress at cursor %d\n",arrayCursor);
-	}	while((slot==0) && (arrayCursor<getSize()));
+    Int_t address=0;
+    HRich700Trb3LookupTdc* slot=0;
+    if(arrayCursor>=getSize()) return 0; // supress warnings when exceeding array at first
 
-	if(slot){
-		address= arrayCursor+arrayOffset;
-		//printf(" HRich700Trb3Lookup::getNextTdcAddress() has 0x%x at cursor %d, size is %d\n",address, arrayCursor, getSize());
+
+    for(Int_t n=arrayCursor;n<getSize();n++){
+	slot= dynamic_cast<HRich700Trb3LookupTdc*> (array->At(n));
+	if(slot){  // first non empty slot
+	    address     = n+arrayOffset;
+	    arrayCursor = n+1; // set cursor to next slot for next call
+	    return address;
 	}
+	arrayCursor = n+1;
+    }
     return address;
 }
 

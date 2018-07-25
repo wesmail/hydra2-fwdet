@@ -15,5 +15,6 @@
 
 #include "hrich700raw.h"
 
+ClassImp(HRich700hit_t)
 ClassImp(HRich700Raw)
 

@@ -61,9 +61,9 @@ HEmcDetector::HEmcDetector(void) : HDetector("Emc","The Emc detector") {
   numCells=163;
   modules = new TArrayI(getMaxSectors());
 
-  for (int i = 0; i < 255; ++i) 
+  for (Int_t i = 0; i < 255; ++i)
     posMap[i] = -1; 
-  for (int i = 0; i < 163; ++i) 
+  for (Int_t i = 0; i < 163; ++i)
     posMap[cellMap[i]] = i;
 }
 
@@ -184,7 +184,6 @@ Int_t HEmcDetector::getMaxSecInSetup(void) {
 
 Int_t HEmcDetector::getCellFromPosition(Int_t pos)
 {
-  pos-=1; // ecal mounting numbers start with 1
   if (pos >= 0 && pos < 163)
     return cellMap[pos];
   return -1;
@@ -193,6 +192,6 @@ Int_t HEmcDetector::getCellFromPosition(Int_t pos)
 Int_t HEmcDetector::getPositionFromCell(Int_t cell)
 {
   if (cell >= 0 && cell < 255)
-    return posMap[cell]+1;
+    return posMap[cell];
   return -1;
 }

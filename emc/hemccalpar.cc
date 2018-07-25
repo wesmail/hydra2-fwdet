@@ -132,7 +132,7 @@ void HEmcCalPar::clear() {
 void HEmcCalPar::printParams() {
   // prints the calibration parameters
   printf("Calibration parameters for the Emc\n");
-  printf(" sector(1...6)   position(1...163)  TdcSlope  TdcOffset  AdcSlope  AdcOffset  Twc0  Twc1  Twc2\n");
+  printf(" sector(0...5)   position(0...162)  TdcSlope  TdcOffset  AdcSlope  AdcOffset  Twc0  Twc1  Twc2\n");
   Float_t data[7];
   Int_t mountpos=-1;
   for (Int_t i = 0; i < getSize(); i++) {
@@ -165,7 +165,6 @@ void HEmcCalPar::readline(const Char_t *buf, Int_t *set) {
   else
   {
 
-    sector-=1; // correct for sector range 1...6 in file
     if(sector<0 || sector>5) return;
     if (!set[sector]) return;
     cell=HEmcDetector::getCellFromPosition(position);
@@ -183,7 +182,7 @@ void HEmcCalPar::putAsciiHeader(TString& header) {
   // puts the ascii header to the string used in HEmcParAsciiFileIo
   header = "# Calibration parameters for the Emc\n"
            "# Format:\n"
-           "# sector(1...6)   position(1...163)   TdcSlope  TdcOffset AdcSlope  AdcOffset  Twc0  Twc1  Twc2\n";
+           "# sector(0...5)   position(0...162)   TdcSlope  TdcOffset AdcSlope  AdcOffset  Twc0  Twc1  Twc2\n";
 }
 
 void HEmcCalPar::write(fstream& fout) {

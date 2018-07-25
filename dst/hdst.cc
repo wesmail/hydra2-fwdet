@@ -29,6 +29,7 @@
 #include "hmdcunpacker.h"
 #include "hshowerunpacker.h"
 #include "hrichunpacker.h"
+#include "hrich700trb3unpacker.h"
 #include "hwalltrb2unpacker.h"
 #include "hrpctrb2unpacker.h"
 #include "htoftrb2unpacker.h"
@@ -145,6 +146,7 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
     Int_t nStartMods[10]      = {1,1,1,1,0,0,0,0,0,0};  // before apr12
     Int_t nStartModsApr12[10] = {1,1,1,1,1,0,0,0,0,0};  // apr12
     Int_t nStartModsJul14[10] = {1,0,0,0,1,0,0,0,0,0};  // jul14 (+may14)  start+hodo
+    Int_t nStartModsAug18[10] = {1,1,0,1,0,0,0,0,0,0};  // aug18  start+veto
     Int_t pionTrackerMods[10] = {1,1,1,1,0,0,0,0,0,0};  // jul14
     Int_t wallMods  [1]  = {1};
     Int_t nTrigMods [1]  = {1};
@@ -169,7 +171,7 @@ void HDst::setupSpectrometer(TString beamtime,Int_t mdcsetup[6][4],TString detec
         } else if (beamtime.CompareTo("jul14") ==0) {
             spec->getDetector("Start")->setModules(-1,nStartModsJul14);
         } else if (beamtime.CompareTo("aug18") ==0) {
-            spec->getDetector("Start")->setModules(-1,nStartModsJul14);
+            spec->getDetector("Start")->setModules(-1,nStartModsAug18);
         }
 
     }
@@ -781,7 +783,7 @@ void HDst::setupUnpackers(TString beamtime,TString detectors,Bool_t correctINL)
         Int_t tofUnpackers   [1]  = {0x8600};        //
         Int_t wallUnpackers  [1]  = {0x8700};        //
         Int_t showerUnpackers[6]  = {0x3200,0x3210,0x3220,0x3230,0x3240,0x3250}; //
-        Int_t richUnpackers  [3]  = {0x8300,0x8310,0x8320};
+        Int_t richUnpackers  [12] = {0x83c0,0x83c1,0x83c2,0x83c3,0x83c4,0x83c5,0x83c6,0x83c7,0x83c8,0x83c9,0x83ca,0x83cb};
         Int_t emcUnpackers   [6] = {0x8A00,0x8A01,0x8A02,0x8A03,0x8A04,0x8A05};
 
         if(detectors.Contains("wall")) {
@@ -806,9 +808,11 @@ void HDst::setupUnpackers(TString beamtime,TString detectors,Bool_t correctINL)
 
             for(UInt_t i=0; i<(sizeof(richUnpackers)/sizeof(Int_t)); i++){
                 cout<<hex<<richUnpackers[i]<<", "<<dec<<flush;
-                HRichUnpacker* unp = new HRichUnpacker(richUnpackers[i]);
-		//unp->setMinAddress(Trbnet::kRichTrb3MinTrbnetAddress);   // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
-		//unp->setMaxAddress(Trbnet::kRichTrb3MaxTrbnetAddress);   // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
+                HRich700Trb3Unpacker* unp = new HRich700Trb3Unpacker(richUnpackers[i]);
+		//unp->setMinAddress(Trbnet::kRICHTrb3MinTrbnetAddress);   // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
+		//unp->setMaxAddress(Trbnet::kRICHTrb3MaxTrbnetAddress);   // set this for auto registering TDCs, otherwise tdc list will be used from lookup table
+                unp->setDebugFlag(0);
+                unp->setQuietMode();
 		source->addUnpacker( unp );
             }
             cout<<endl;

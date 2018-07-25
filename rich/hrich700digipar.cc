@@ -254,6 +254,55 @@ void HRich700DigiPar::getLocation(Int_t pmtId, Float_t x, Float_t y, Int_t *loc,
     loc[2] = indY + pmtData.fIndY * ufNofPixelsInRow; // row
 }
 
+void HRich700DigiPar::pmtIdPixelToColRowSec(Int_t pmtId,Int_t pixel,Int_t& sec,Int_t& col,Int_t& row, Bool_t silent)
+{
+    // pmtID
+    // pixel (1-64)
+    // sec   (0-5)
+    // col   (0-192)
+    // row   (0-192)
+
+    UInt_t ufNofPixelsInRow = (UInt_t)fNofPixelsInRow;
+    col =-1;
+    row =-1;
+    sec =-1;
+
+    if(pixel<1){
+	Warning("pmtIdPixelToColRowSec","pixel < 1 !");
+    }
+
+    map<Int_t, HRich700PmtData>::iterator it = fPmtDataMapPmtId.find(pmtId);
+    if (it == fPmtDataMapPmtId.end()){
+    	if(!silent) Warning("pmtIdPixelToColRowSec","No PMT with id: %i!", pmtId);
+    	return;
+    }
+    pixel-=1;
+
+    HRich700PmtData pmtData = it->second;
+
+    //----------------------------------------------------------------------------------
+    // pmtID, pixel -> col,row
+    UInt_t pix_x = pixel % fNofPixelsInRow;
+    UInt_t pix_y = pixel / fNofPixelsInRow;
+
+    col = pix_x + pmtData.fIndX * ufNofPixelsInRow; // col
+    row = pix_y + pmtData.fIndY * ufNofPixelsInRow; // row
+
+    //----------------------------------------------------------------------------------
+    // pmtID, pixel -> x,y
+    Double_t dx = fPmtSensSize / ufNofPixelsInRow;
+    Double_t halfPmtSensSize = fPmtSensSize / 2.;
+
+    Double_t xLoc = (pix_x + 0.5) * dx - halfPmtSensSize;
+    Double_t yLoc = (pix_y + 0.5) * dx - halfPmtSensSize;
+
+    Float_t x = xLoc + pmtData.fX;
+    Float_t y = yLoc + pmtData.fY;
+
+    sec = getSector(x,y);
+
+}
+
 
 pair<Double_t, Double_t> HRich700DigiPar::getXY(Int_t* loc,Bool_t silent)
 {
@@ -411,7 +460,7 @@ Int_t HRich700DigiPar::getPMTId(Int_t col, Int_t row)
     if (it != fPmtDataMapXY.end()){
 	    return it->second.fPmtId;
     } else {
-    	Warning("getPMTId()","No PMT found for (col,roe) = (%i,%i).",col,row);
+    	Warning("getPMTId()","No PMT found for (col,row) = (%i,%i).",col,row);
     	return -1;
     }
 }

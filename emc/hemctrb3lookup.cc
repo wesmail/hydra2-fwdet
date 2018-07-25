@@ -3,7 +3,7 @@
 // HEmcTrb3Lookup
 //
 // Lookup table for the TRB3 unpacker of the EMC detector to map the
-// Trbnet address (range defined in htrbnetdef.h) and channel (0..255)
+// Trbnet address (range defined in htrbnetdef.h) and channel (1..255)
 // to the detector address sector, cell.
 ///////////////////////////////////////////////////////////////////////
 
@@ -22,7 +22,7 @@ ClassImp(HEmcTrb3Lookup)
 
 HEmcTrb3LookupBoard::HEmcTrb3LookupBoard(void) {
   // constructor creates an array of 65 channels
-  array = new TObjArray(65);
+  array = new TObjArray(65);// channels 1-64 (index 0 empty)
   for (Int_t i = 0; i < 65; i++) array->AddAt(new HEmcTrb3LookupChan(), i);
 }
 
@@ -121,7 +121,7 @@ Bool_t HEmcTrb3Lookup::readline(const Char_t *buf) {
   Int_t n = sscanf(buf, " 0x%x %i %d %d %d", &id, &chan, &sec, &pos, &flag);
   if (5 == n) {
     cell=HEmcDetector::getCellFromPosition(pos);
-    rc = fill(id, chan, sec-1, cell, flag); // JAM2018 - sector numbers in database/ascii start with 1, in hydra arrays with 0
+    rc = fill(id, chan, sec, cell, flag); // JAM2018 - sector numbers in database/ascii start with 1, in hydra arrays with 0
     //Warning("readline", "JAM - read id0x%x chan:%d sector:%d position:%d cell:%d flag:%d\n", id, chan, sec, pos, cell, flag);
   } else {
     if (n < 5) Error("readline", "Not enough values in line %s\n", buf);
@@ -135,7 +135,7 @@ void HEmcTrb3Lookup::putAsciiHeader(TString& header) {
   header =
     "# Lookup table for the TRB3 unpacker of the EMC detector\n"
     "# Format:\n"
-    "# trbnet-address  channel  sector(1...6) position(1...163)  tdcflag(1:fast, 2:slow)\n";
+    "# trbnet-address  channel  sector(0...5) position(0...162)  tdcflag(1:fast, 2:slow)\n";
 }
 
 void HEmcTrb3Lookup::write(fstream& fout) {

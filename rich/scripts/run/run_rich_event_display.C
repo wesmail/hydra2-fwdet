@@ -1,10 +1,10 @@
 Int_t run_rich_event_display(Int_t nEvents=5, Int_t startEvt=0)
 {
-    TString inFile = "/u/slebedev/hades/data/hgeant.e1.root";
-    TString outFile = "/u/slebedev/hades/data/hgeant.eventdisplay.e1.root";
+    TString inFile = "/u/slebedev/hades/data/2018.wls.hgeant.e.11.root";
+    TString outFile = "/u/slebedev/hades/data/2018.wls.reco.e.11.root";
 
-    string outputDir = "results_wls_scan/results_test/";
-    TString asciiParFile = "../rich_params_wls.txt";
+    string outputDir = "results_wls_scan/pair_ee/mixwls_eff70_event_display/";
+    TString asciiParFile = "../rich_params_mixwls_eff70.txt";
 
     TString rootParFile = "/cvmfs/hades.gsi.de/param/sim/apr12/allParam_APR12_sim_run_12001_gen8_27012016.root";
     TString paramSource = "ascii,root"; // root, ascii, oracle

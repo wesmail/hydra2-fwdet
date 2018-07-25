@@ -3,14 +3,14 @@
 
 #include "TObject.h"
 
-
+#define  NMAXRAWRICH 10
 
 /*
  * a single tdc hit. Inspired by testbeam code from C.Pauly
  * JAM (j.adamczewski@gsi.de) 8-Jun-2017
  *
  */
-class HRich700hit_t
+class HRich700hit_t : public TObject
 {
 
 public:
@@ -20,6 +20,20 @@ public:
  	Double_t fTrailingEdgeTime;
  	Double_t fToT;
  	UInt_t fFlag; //bit 0: valid rising edge, bit 1: valid falling edge
+	void set(Double_t leading,Double_t trailing,Double_t tot,UInt_t flag) {
+	    fLeadingEdgeTime  = leading;
+	    fTrailingEdgeTime = trailing;
+	    fToT              = tot;
+	    fFlag             = flag;
+	}
+	void clear(){
+	    fLeadingEdgeTime  = 0;
+	    fTrailingEdgeTime = 0;
+	    fToT              = 0;
+	    fFlag             = 0;
+	}
+      ClassDef(HRich700hit_t, 1)
+
 };
 
 
@@ -33,41 +47,59 @@ public:
 class HRich700Raw : public TObject {
 private:
    Int_t   fPMT;        // global RICH700 PMT id
-   Int_t   fPixel;           // local pixel id on the PMT
-   std::vector <HRich700hit_t> fHitlist; // list of hits in this pixel during the event
-
+   Int_t   fPixel;      // local pixel id on the PMT
+   Int_t   fSector;
+   Int_t   fCol;
+   Int_t   fRow;
+   HRich700hit_t fHitlist[NMAXRAWRICH]; // list of hits in this pixel during the event
+   UInt_t   fnHits;
 public:
-   HRich700Raw() : TObject(), fPMT(-1), fPixel(-1)
-   	   {fHitlist.clear();}
+   HRich700Raw() : TObject(), fPMT(-1), fPixel(-1) ,fSector(-1),fCol(-1),fRow(-1)
+    {
+	clearHits();
+    }
    virtual ~HRich700Raw() {}
 
-   Int_t   getMultiplicity()       const {return fHitlist.size();}
+   Int_t   getMultiplicity()    const {return fnHits;}
    Int_t   getPMT()             const {return fPMT;};
-   Int_t   getPixel()              const {return fPixel;}
-   const HRich700hit_t* getHit(const UInt_t n)      const {  return (n<fHitlist.size() ? &fHitlist[n] : 0 );}
+   Int_t   getPixel()           const {return fPixel;}
+   const HRich700hit_t* getHit(const UInt_t n)  const {  return (n<fnHits ? &fHitlist[n] : 0 );}
 
-   void    setPMT(Int_t p){fPMT=p;}
-   void    setPixel(Int_t p){fPixel=p;}
-   void    setAddress(const Int_t pmt, const Int_t pixel)
+   void    setPMT(Int_t p)   {fPMT=p;}
+   void    setPixel(Int_t p) {fPixel=p;}
+   void    setSector(Int_t s){fSector = s;}
+   void    setCol(Int_t c){fCol = c;}
+   void    setRow(Int_t r){fRow = r;}
+   void    setAddress(const Int_t pmt, const Int_t pixel, const Int_t sec, const Int_t col, const Int_t row)
    {
-	   setPMT(pmt);
-	   setPixel(pixel);
+	   fPMT   = pmt;
+	   fPixel = pixel;
+	   fSector= sec;
+	   fCol   = col;
+	   fRow   = row;
    }
 
-   void    getAddress(Int_t& pmt, Int_t& pix)
+   void    getAddress(Int_t& pmt, Int_t& pix, Int_t& sec,Int_t& col,Int_t& row)
    {
-      pmt = getPMT();
-      pix = getPixel();
+      pmt = fPMT;
+      pix = fPixel;
+      sec = fSector;
+      col = fCol;
+      row = fRow;
    }
 
    void addHit(Double_t leading, Double_t trailing, Double_t tot, UInt_t flag=3)
    {
-	   fHitlist.push_back(HRich700hit_t(leading,trailing,tot,flag));
+       if(fnHits<NMAXRAWRICH-1) {
+	   fHitlist[fnHits].set(leading,trailing,tot,flag);
+           fnHits++;
+       }
    }
 
    void clearHits()
    {
-	   fHitlist.clear();
+       for(Int_t i=0;i<NMAXRAWRICH; i++) fHitlist [i].clear();
+       fnHits = 0 ;
    }
 
    ClassDef(HRich700Raw, 1) // raw data of RICH700 detector using TRB3/dirich for readout

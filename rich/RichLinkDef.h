@@ -49,8 +49,10 @@
 #pragma link C++ class HRichDrawHist;
 #pragma link C++ class HRich700EventDisplay;
 #pragma link C++ class HRich700GeoTestQa;
+#pragma link C++ class HRich700GeoTestRealQa;
 #pragma link C++ class HRich700HistManager;
 #pragma link C++ class HRich700Pmt;
+#pragma link C++ class HRich700PmtData;
 #pragma link C++ class HRich700DigiPar;
 #pragma link C++ class HRich700DigiParCreator;
 #pragma link C++ class HRich700Digitizer;
@@ -72,7 +74,6 @@
 #pragma link C++ class HRich700Trb3Unpacker;
 #pragma link C++ class HRich700Raw;
 #pragma link C++ class HRich700hit_t;
-#pragma link C++ class  std::vector <HRich700hit_t>;
 
 
 #pragma link C++ global catRichRaw;

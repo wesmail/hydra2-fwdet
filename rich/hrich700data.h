@@ -32,7 +32,7 @@ public:
 	vector<HRich700Hit> fHits;
 };
 
-class HRich700PmtData {
+class HRich700PmtData : public TObject {
 public:
 	Double_t fX; // PMT center X position in [mm]
 	Double_t fY; // PMT center Y position in [mm]
@@ -44,6 +44,8 @@ public:
 	Int_t fSector; // Sector number
     Double_t fTheta; // theta for track matching
     Double_t fPhi; // phi for track matching
+
+    ClassDef(HRich700PmtData,1)
 };
 
 

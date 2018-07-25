@@ -70,34 +70,34 @@ Bool_t HRich700EventDisplay::init()
 
     // Initialize geant rich cherenkov photon category and set appropriate iterator
     fCatRichPhoton = gHades->getCurrentEvent()->getCategory(catRichGeantRaw);
-    if (NULL == fCatRichPhoton) {
-	Error("init", "Initializatin of Cherenkov photon category failed, returning...");
-	return kFALSE;
-    }
+    // if (NULL == fCatRichPhoton) {
+	// Error("init", "Initializatin of Cherenkov photon category failed, returning...");
+	// return kFALSE;
+    // }
 
     fCatRichDirect = gHades->getCurrentEvent()->getCategory(catRichGeantRaw + 1);
-    if (NULL == fCatRichDirect) {
-	Error("init", "Initialization of geant category for direct hits failed, returning...");
-	return kFALSE;
-    }
+    // if (NULL == fCatRichDirect) {
+	// Error("init", "Initialization of geant category for direct hits failed, returning...");
+	// return kFALSE;
+    // }
 
     fCatRichCal = gHades->getCurrentEvent()->getCategory(catRichCal);
-    if (NULL == fCatRichCal) {
-	Error("init", "Initialization of RICH cal failed, returning...");
-	return kFALSE;
-    }
+    // if (NULL == fCatRichCal) {
+	// Error("init", "Initialization of RICH cal failed, returning...");
+	// return kFALSE;
+    // }
 
     fCatRichHit = gHades->getCurrentEvent()->getCategory(catRichHit);
-    if (NULL == fCatRichHit) {
-	Error("init", "Initialization of RICH hit failed, returning...");
-	return kFALSE;
-    }
+    // if (NULL == fCatRichHit) {
+	// Error("init", "Initialization of RICH hit failed, returning...");
+	// return kFALSE;
+    // }
 
     fCatKine = gHades->getCurrentEvent()->getCategory(catGeantKine);
-    if (NULL == fCatKine) {
-	Error("init", "Initializatin of kine category failed, returning...");
-	return kFALSE;
-    }
+    // if (NULL == fCatKine) {
+	// Error("init", "Initializatin of kine category failed, returning...");
+	// return kFALSE;
+    // }
 
     fDigiPar = (HRich700DigiPar*) gHades->getRuntimeDb()->getContainer("Rich700DigiPar");
     if(!fDigiPar) {
@@ -158,7 +158,7 @@ void HRich700EventDisplay::drawOneEvent()
 
     drawPmts(0., 0., false);
 
-    if (fDrawRichHits) {
+    if (fDrawRichHits && fCatRichHit != NULL) {
 	Int_t nofRichHits = fCatRichHit->getEntries();
 	for (Int_t i = 0; i < nofRichHits; i++) {
 	    HRichHit* richHit = static_cast<HRichHit*>(fCatRichHit->getObject(i));
@@ -172,7 +172,7 @@ void HRich700EventDisplay::drawOneEvent()
 	}
     }
 
-    if (fDrawRichCals){
+    if (fDrawRichCals && fCatRichCal != NULL){
 	Int_t nofRichCals = fCatRichCal->getEntries();
 	for (Int_t i = 0; i < nofRichCals; i++) {
 	    HRichCal* richCal = static_cast<HRichCal*>(fCatRichCal->getObject(i));
@@ -191,7 +191,7 @@ void HRich700EventDisplay::drawOneEvent()
     }
 
 
-    if (fDrawRichPhotons){
+    if (fDrawRichPhotons && fCatRichPhoton != NULL){
 	Int_t nofRichPhotons = fCatRichPhoton->getEntries();
 	for (Int_t i = 0; i < nofRichPhotons; i++) {
 	    HGeantRichPhoton* richPhoton = static_cast<HGeantRichPhoton*>(fCatRichPhoton->getObject(i));
@@ -206,7 +206,7 @@ void HRich700EventDisplay::drawOneEvent()
 	}
     }
 
-    if (fDrawRichDirects){
+    if (fDrawRichDirects && fCatRichDirect != NULL){
 	Int_t nofRichDirect = fCatRichDirect->getEntries();
 	for (Int_t i = 0; i < nofRichDirect; i++) {
 	    HGeantRichDirect* richDirect = static_cast<HGeantRichDirect*>(fCatRichDirect->getObject(i));
@@ -226,6 +226,8 @@ void HRich700EventDisplay::drawOneEvent()
 void HRich700EventDisplay::drawOneRing()
 {
 
+    if (fCatRichHit == NULL) return;
+
     stringstream ss;
     ss << "hrich_event_display_ring_"<< fNofDrawnEvents;
     TCanvas *c = fHM->CreateCanvas(ss.str().c_str(), ss.str().c_str(), 800, 900);
@@ -243,7 +245,7 @@ void HRich700EventDisplay::drawOneRing()
 
     drawPmts(xc, yc, true);
 
-    if (fDrawRichCals){
+    if (fDrawRichCals && fCatRichCal != NULL){
 	Int_t nofRichCals = fCatRichCal->getEntries();
 	Double_t pixelHalfSize = fDigiPar->getPmtSensSize() /fDigiPar->getNPixelInRow() / 2.;
 
@@ -306,7 +308,7 @@ void HRich700EventDisplay::drawOneRing()
     }
 
 
-    if (fDrawRichPhotons){
+    if (fDrawRichPhotons && fCatRichPhoton != NULL){
 	Int_t nofRichPhotons = fCatRichPhoton->getEntries();
 	for (Int_t i = 0; i < nofRichPhotons; i++) {
 	    HGeantRichPhoton* richPhoton = static_cast<HGeantRichPhoton*>(fCatRichPhoton->getObject(i));
@@ -321,7 +323,7 @@ void HRich700EventDisplay::drawOneRing()
 	}
     }
 
-    if (fDrawRichDirects){
+    if (fDrawRichDirects && fCatRichDirect != NULL){
 	Int_t nofRichDirect = fCatRichDirect->getEntries();
 	for (Int_t i = 0; i < nofRichDirect; i++) {
 	    HGeantRichDirect* richDirect = static_cast<HGeantRichDirect*>(fCatRichDirect->getObject(i));

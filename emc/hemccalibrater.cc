@@ -156,7 +156,7 @@ Int_t HEmcCalibrater::execute(void) {
 
     pos = HEmcDetector::getPositionFromCell(cell);
 
-    if (pStatuspar->getCellStatus(sec, pos-1) == 0)
+    if (pStatuspar->getCellStatus(sec, pos) == 0)
         continue;
 
     loc[0] = sec;

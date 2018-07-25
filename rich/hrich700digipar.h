@@ -54,6 +54,7 @@ public:
 
 
     void                              getLocation(Int_t pmtId, Float_t x, Float_t y, Int_t *loc,Bool_t silent=kTRUE);
+    void                              pmtIdPixelToColRowSec(Int_t pmtId,Int_t pixel,Int_t& sec,Int_t& col,Int_t& row, Bool_t silent=kTRUE);
     pair<Double_t, Double_t>          getXY(Int_t* loc,Bool_t silent=kTRUE);
     pair<Double_t, Double_t>          getPmtCenter(Int_t pmtId);
     vector<pair<Double_t, Double_t> > getPmtCenters();

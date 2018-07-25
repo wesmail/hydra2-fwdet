@@ -105,10 +105,13 @@ HRich700TaskSet::make(const Char_t *select, const Option_t *option)
 
    if (0 == sel.CompareTo("real") &&
        0 == gHades->getEmbeddingMode()) {
+        if(!fNoRingFinder)tasks->add(new HRich700RingFinderHough("rich.ringfinder",  "Rich ring finder"));
    }
 
    if (0 == sel.CompareTo("real") &&
        0 != gHades->getEmbeddingMode()) {
+        tasks->add(new HRich700Digitizer("rich.digi",  "Rich digitizer"));
+        if(!fNoRingFinder)tasks->add(new HRich700RingFinderHough("rich.ringfinder",  "Rich ring finder"));
    }
    return tasks;
 }
